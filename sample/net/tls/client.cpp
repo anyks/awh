@@ -80,8 +80,11 @@ int32_t main(int32_t argc, char * argv[]){
 		tls.onlineCertificateStatusProtocol(cts);
 		// Активируем GREASE-значения (мусорные коды) для транспортного уровня TLS
 		tls.grease(cts, event::mode_t::ENABLED);
-		// Устанавливаем компрессор для транспортного уровня TLS (Zstandard)
-		tls.compressor(cts, compressor_t::method_t::ZSTD);
+		// Устанавливаем компрессор для транспортного уровня TLS
+		tls.compressors(cts, {
+			compressor_t::method_t::BROTLI,
+			compressor_t::method_t::ZSTD
+		});
 		// Создаём идентификатор транспортного уровня DTLS
 		tls_t::id_t ctl = tls.transport(cts);
 		// Выполняем перемешивание поддерживаемых расширений TLS для имитации поведения различных браузеров

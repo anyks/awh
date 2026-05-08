@@ -693,6 +693,578 @@ namespace local {
 			default: return 0xFF;
 		}
 	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения имени для кода метода компрессии (legacy_compression_methods)
+	 *
+	 * @param id код метода компрессии
+	 * @return   имя метода компрессии
+	 */
+	static const char * compressALGName(const uint8_t id) noexcept {
+		/**
+		 * Определяем имя для кода метода компрессии (legacy_compression_methods)
+		 */
+		switch(id){
+			// Если код метода компрессии соответствует Zlib
+			case 0x01:
+				// Возвращаем строку "Zlib" для метода компрессии
+				return "Zlib";
+			// Если код метода компрессии соответствует Brotli
+			case 0x02:
+				// Возвращаем строку "Brotli" для метода компрессии
+				return "Brotli";
+			// Если код метода компрессии соответствует ZStandard (Zstd)
+			case 0x03:
+				// Возвращаем строку "Zstandard (ZSTD)" для метода компрессии
+				return "Zstandard (ZSTD)";
+			// Если код метода компрессии не распознан, возвращаем "UNKNOWN"
+			default: return "UNKNOWN";
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения имени для кода версии TLS
+	 *
+	 * @param version код версии TLS
+	 * @return        имя версии TLS
+	 */
+	static const char * tlsVersionName(const uint16_t version) noexcept {
+		// Если версия является GREASE, возвращаем "GREASE"
+		if(::local::isGrease(version))
+			// Возвращаем строку "GREASE" для GREASE версий
+			return "[GREASE]";
+		/**
+		 * Определяем имя для кода версии TLS
+		 */
+		switch(version){
+			// Если код версии соответствует SSL 3.0, возвращаем "SSLv3"
+			case 0x0300: return "SSLv3";
+			// Если код версии соответствует TLS 1.0, возвращаем "TLSv1.0"
+			case 0x0301: return "TLSv1.0";
+			// Если код версии соответствует TLS 1.1, возвращаем "TLSv1.1"
+			case 0x0302: return "TLSv1.1";
+			// Если код версии соответствует TLS 1.2, возвращаем "TLSv1.2"
+			case 0x0303: return "TLSv1.2";
+			// Если код версии соответствует TLS 1.3, возвращаем "TLSv1.3"
+			case 0x0304: return "TLSv1.3";
+			// Если код версии соответствует DTLS 1.0, возвращаем "DTLSv1.0"
+			case 0xFEFF: return "DTLSv1.0";
+			// Если код версии соответствует DTLS 1.2, возвращаем "DTLSv1.2"
+			case 0xFEFD: return "DTLSv1.2";
+			// Если код версии не распознан, возвращаем "UNKNOWN"
+			default: return "UNKNOWN";
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения имени для кода группы эллиптических кривых
+	 *
+	 * @param id код группы эллиптических кривых
+	 * @return   имя группы эллиптических кривых
+	 */
+	static const char * groupName(const uint16_t gid) noexcept {
+		// Если код группы является GREASE, возвращаем "GREASE"
+		if(::local::isGrease(gid))
+			// Возвращаем строку "GREASE" для GREASE кодов групп эллиптических кривых
+			return "[GREASE]";
+		/**
+		 * Определяем код шифра
+		 */
+		switch(gid){
+			// Если элиптическая кривая соответствует P-256 (secp256r1)
+			case 0x0017:
+				// Возвращаем строку "P-256 (secp256r1)" для группы эллиптических кривых
+				return "P-256 (secp256r1)";
+			break;
+			// Если элиптическая кривая соответствует P-384 (secp384r1)
+			case 0x0018:
+				// Возвращаем строку "P-384 (secp384r1)" для группы эллиптических кривых
+				return "P-384 (secp384r1)";
+			break;
+			// Если элиптическая кривая соответствует P-521 (secp521r1)
+			case 0x0019:
+				// Возвращаем строку "P-521 (secp521r1)" для группы эллиптических кривых
+				return "P-521 (secp521r1)";
+			break;
+			// Если элиптическая кривая соответствует X25519
+			case 0x001D:
+				// Возвращаем строку "X25519" для группы эллиптических кривых
+				return "X25519";
+			break;
+			// Если элиптическая кривая соответствует X448
+			case 0x001E:
+				// Возвращаем строку "X448" для группы эллиптических кривых
+				return "X448";
+			break;
+			// Если элиптическая кривая соответствует secp256k1
+			case 0x001C:
+				// Возвращаем строку "secp256k1" для группы эллиптических кривых
+				return "secp256k1";
+			break;
+			// Если элиптическая кривая соответствует FFDHE 2048
+			case 0x0100:
+				// Возвращаем строку "ffdhe2048" для группы эллиптических кривых
+				return "ffdhe2048";
+			break;
+			// Если элиптическая кривая соответствует FFDHE 3072
+			case 0x0101:
+				// Возвращаем строку "ffdhe3072" для группы эллиптических кривых
+				return "ffdhe3072";
+			break;
+			// Если элиптическая кривая соответствует FFDHE 4096
+			case 0x0102:
+				// Возвращаем строку "ffdhe4096" для группы эллиптических кривых
+				return "ffdhe4096";
+			break;
+			// Если элиптическая кривая соответствует FFDHE 6144
+			case 0x0103:
+				// Возвращаем строку "ffdhe6144" для группы эллиптических кривых
+				return "ffdhe6144";
+			break;
+			// Если элиптическая кривая соответствует FFDHE 8192
+			case 0x0104:
+				// 
+				return "ffdhe8192";
+			break;
+			// Если элиптическая кривая соответствует MLKEM 1024
+			case 0x0202:
+				// Возвращаем строку "mlkem1024" для группы эллиптических кривых
+				return "mlkem1024";
+			break;
+			// Если элиптическая кривая соответствует X25519Kyber768Draft00
+			case 0x6399:
+				// Возвращаем строку "X25519Kyber768Draft00" для группы эллиптических кривых
+				return "X25519Kyber768Draft00";
+			break;
+			// Если элиптическая кривая соответствует X25519MLKEM768
+			case 0x11EC:
+				// Возвращаем строку "X25519MLKEM768" для группы эллиптических кривых
+				return "X25519MLKEM768";
+			break;
+			// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
+			default: return "UNKNOWN";
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения имени для кода алгоритма подписи
+	 *
+	 * @param id код алгоритма подписи
+	 * @return   имя алгоритма подписи
+	 */
+	static const char * signatureName(const uint16_t id) noexcept {
+		// Если код алгоритма подписи является GREASE, возвращаем "GREASE"
+		if(::local::isGrease(id))
+			// Возвращаем строку "GREASE" для GREASE кодов алгоритмов подписи
+			return "[GREASE]";
+		/**
+		 * Определяем имя для кода алгоритма подписи
+		 */
+		switch(id){
+			// Если код алгоритма подписи соответствует RSA_PKCS1_SHA1
+			case 0x0201:
+				// Возвращаем строку "rsa_pkcs1_sha1" для алгоритма подписи
+				return "rsa_pkcs1_sha1";
+			// Если код алгоритма подписи соответствует RSA_PKCS1_SHA256
+			case 0x0401:
+				// Возвращаем строку "rsa_pkcs1_sha256" для алгоритма подписи
+				return "rsa_pkcs1_sha256";
+			// Если код алгоритма подписи соответствует RSA_PKCS1_SHA384
+			case 0x0501:
+				// Возвращаем строку "rsa_pkcs1_sha384" для алгоритма подписи
+				return "rsa_pkcs1_sha384";
+			// Если код алгоритма подписи соответствует RSA_PKCS1_SHA512
+			case 0x0601:
+				// Возвращаем строку "rsa_pkcs1_sha512" для алгоритма подписи
+				return "rsa_pkcs1_sha512";
+			// Если код алгоритма подписи соответствует ECDSA_SHA1
+			case 0x0203:
+				// Возвращаем строку "ecdsa_sha1" для алгоритма подписи
+				return "ecdsa_sha1";
+			// Если код алгоритма подписи соответствует ECDSA_SECP256R1_SHA256
+			case 0x0403:
+				// Возвращаем строку "ecdsa_secp256r1_sha256" для алгоритма подписи
+				return "ecdsa_secp256r1_sha256";
+			// Если код алгоритма подписи соответствует ECDSA_SECP384R1_SHA384
+			case 0x0503:
+				// Возвращаем строку "ecdsa_secp384r1_sha384" для алгоритма подписи
+				return "ecdsa_secp384r1_sha384";
+			// Если код алгоритма подписи соответствует ECDSA_SECP521R1_SHA512
+			case 0x0603:
+				// Возвращаем строку "ecdsa_secp521r1_sha512" для алгоритма подписи
+				return "ecdsa_secp521r1_sha512";
+			// Если код алгоритма подписи соответствует RSA_PSS_RSAE_SHA256
+			case 0x0804:
+				// Возвращаем строку "rsa_pss_rsae_sha256" для алгоритма подписи
+				return "rsa_pss_rsae_sha256";
+			// Если код алгоритма подписи соответствует RSA_PSS_RSAE_SHA384
+			case 0x0805:
+				// Возвращаем строку "rsa_pss_rsae_sha384" для алгоритма подписи
+				return "rsa_pss_rsae_sha384";
+			// Если код алгоритма подписи соответствует RSA_PSS_RSAE_SHA512
+			case 0x0806:
+				// Возвращаем строку "rsa_pss_rsae_sha512" для алгоритма подписи
+				return "rsa_pss_rsae_sha512";
+			// Если код алгоритма подписи соответствует EdDSA-25519
+			case 0x0807:
+				// Возвращаем строку "ed25519" для алгоритма подписи
+				return "ed25519";
+			// Если код алгоритма подписи соответствует EdDSA-448
+			case 0x0808:
+				// Возвращаем строку "ed448" для алгоритма подписи
+				return "ed448";
+			// Если код алгоритма подписи соответствует RSA_PSS_PSS_SHA256
+			case 0x0809:
+				// Возвращаем строку "rsa_pss_pss_sha256" для алгоритма подписи
+				return "rsa_pss_pss_sha256";
+			// Если код алгоритма подписи соответствует RSA_PSS_PSS_SHA384
+			case 0x080A:
+				// Возвращаем строку "rsa_pss_pss_sha384" для алгоритма подписи
+				return "rsa_pss_pss_sha384";
+			// Если код алгоритма подписи соответствует RSA_PSS_PSS_SHA512
+			case 0x080B:
+				// Возвращаем строку "rsa_pss_pss_sha512" для алгоритма подписи
+				return "rsa_pss_pss_sha512";
+			// Если код алгоритма подписи соответствует DSA_SHA1
+			case 0x0202:
+				// Возвращаем строку "dsa_sha1" для алгоритма подписи
+				return "dsa_sha1";
+			// Если код алгоритма подписи соответствует RSA_PKCS1_MD5_SHA1
+			case 0xFF01:
+				// Возвращаем строку "rsa_pkcs1_md5_sha1" для алгоритма подписи
+				return "rsa_pkcs1_md5_sha1";
+			// Если код алгоритма подписи соответствует RSA_PKCS1_SHA256_LEGACY
+			case 0x0420:
+				// Возвращаем строку "rsa_pkcs1_sha256_legacy" для алгоритма подписи
+				return "rsa_pkcs1_sha256_legacy";
+			// Если код алгоритма подписи не распознан, возвращаем "UNKNOWN"
+			default: return "UNKNOWN";
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения имени для кода шифра TLS
+	 *
+	 * @param id код шифра TLS
+	 * @return   имя шифра TLS
+	 */
+	static const char * cipherName(const uint16_t id) noexcept {
+		// Если код шифра является GREASE, возвращаем "GREASE"
+		if(::local::isGrease(id))
+			// Возвращаем строку "GREASE" для GREASE кодов шифров
+			return "[GREASE]";
+		/**
+		 * Определяем код шифра
+		 */
+		switch(id){
+			// Если код шифра соответствует AES128-SHA
+			case 0x002F:
+				// Получаем код шифра
+				return "AES128-SHA";
+			break;
+			// Если код шифра соответствует AES256-SHA
+			case 0x0035:
+				// Получаем код шифра
+				return "AES256-SHA";
+			break;
+			// Если код шифра соответствует AES128-GCM-SHA256
+			case 0x009C:
+				// Получаем код шифра
+				return "AES128-GCM-SHA256";
+			break;
+			// Если код шифра соответствует AES256-GCM-SHA384
+			case 0x009D:
+				// Получаем код шифра
+				return "AES256-GCM-SHA384";
+			break;
+			// Если код шифра соответствует PSK-AES128-CBC-SHA
+			case 0x008C:
+				// Получаем код шифра
+				return "PSK-AES128-CBC-SHA";
+			break;
+			// Если код шифра соответствует PSK-AES256-CBC-SHA
+			case 0x008D:
+				// Получаем код шифра
+				return "PSK-AES256-CBC-SHA";
+			break;
+			// Если код шифра соответствует ECDHE-RSA-AES128-SHA
+			case 0xC013:
+				// Получаем код шифра
+				return "ECDHE-RSA-AES128-SHA";
+			break;
+			// Если код шифра соответствует ECDHE-RSA-AES256-SHA
+			case 0xC014:
+				// Получаем код шифра
+				return "ECDHE-RSA-AES256-SHA";
+			break;
+			// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
+			case 0xC009:
+				// Получаем код шифра
+				return "ECDHE-ECDSA-AES128-SHA";
+			break;
+			// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
+			case 0xC00A:
+				// Получаем код шифра
+				return "ECDHE-ECDSA-AES256-SHA";
+			break;
+			// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
+			case 0xC027:
+				// Получаем код шифра
+				return "ECDHE-RSA-AES128-SHA256";
+			break;
+			// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
+			case 0xC035:
+				// Получаем код шифра
+				return "ECDHE-PSK-AES128-CBC-SHA";
+			break;
+			// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
+			case 0xC036:
+				// Получаем код шифра
+				return "ECDHE-PSK-AES256-CBC-SHA";
+			break;
+			// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
+			case 0xC023:
+				// Получаем код шифра
+				return "ECDHE-ECDSA-AES128-SHA256";
+			break;
+			// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
+			case 0xC02F:
+				// Получаем код шифра
+				return "ECDHE-RSA-AES128-GCM-SHA256";
+			break;
+			// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
+			case 0xC030:
+				// Получаем код шифра
+				return "ECDHE-RSA-AES256-GCM-SHA384";
+			break;
+			// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
+			case 0xCCA8:
+				// Получаем код шифра
+				return "ECDHE-RSA-CHACHA20-POLY1305";
+			break;
+			// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
+			case 0xCCAC:
+				// Получаем код шифра
+				return "ECDHE-PSK-CHACHA20-POLY1305";
+			break;
+			// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+			case 0xC02B:
+				// Получаем код шифра
+				return "ECDHE-ECDSA-AES128-GCM-SHA256";
+			break;
+			// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+			case 0xC02C:
+				// Получаем код шифра
+				return "ECDHE-ECDSA-AES256-GCM-SHA384";
+			break;
+			// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+			case 0xCCA9:
+				// Получаем код шифра
+				return "ECDHE-ECDSA-CHACHA20-POLY1305";
+			break;
+			// Если код шифра соответствует TLS_AES_128_GCM_SHA256
+			case 0x1301:
+				// Получаем код шифра
+				return "TLS_AES_128_GCM_SHA256";
+			break;
+			// Если код шифра соответствует TLS_AES_256_GCM_SHA384
+			case 0x1302:
+				// Получаем код шифра
+				return "TLS_AES_256_GCM_SHA384";
+			break;
+			// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
+			case 0x1303:
+				// Получаем код шифра
+				return "TLS_CHACHA20_POLY1305_SHA256";
+			break;
+			// Если код шифра не соответствует ни одному из известных
+			default: return "UNKNOWN";
+		}
+	}
+
+	/**
+	 * @brief Вспомогательная функция возвращения имени для кода расширения TLS
+	 *
+	 * @param type код расширения TLS
+	 * @return     имя расширения TLS
+	 */
+	static const char * extensionName(const uint16_t type) noexcept {
+		// Если код расширения является GREASE, возвращаем "GREASE"
+		if(::local::isGrease(type))
+			// Возвращаем строку "GREASE" для GREASE кодов расширений
+			return "[GREASE]";
+		/**
+		 * Определяем имя для кода расширения TLS
+		 */
+		switch(type){
+			// Если код расширения соответствует server_name, возвращаем "server_name" (RFC 6066)
+			case 0x0000:
+				// Возвращаем строку "server_name" для расширения
+				return "server_name";
+			// Если код расширения соответствует max_fragment_length (RFC 6066)
+			case 0x0001:
+				// Возвращаем строку "max_fragment_length" для расширения
+				return "max_fragment_length";
+			// Если код расширения соответствует status_request (RFC 6066) (OCSP)
+			case 0x0005:
+				// Возвращаем строку "status_request" для расширения
+				return "status_request";
+			// Если код расширения соответствует supported_groups (RFC 8422)
+			case 0x000A:
+				// Возвращаем строку "supported_groups" для расширения
+				return "supported_groups";
+			// Если код расширения соответствует ec_point_formats (RFC 8422)
+			case 0x000B:
+				// Возвращаем строку "ec_point_formats" для расширения
+				return "ec_point_formats";
+			// Если код расширения соответствует signature_algorithms (RFC 8446)
+			case 0x000D:
+				// Возвращаем строку "signature_algorithms" для расширения
+				return "signature_algorithms";
+			// Если код расширения соответствует use_srtp (RFC 5764)
+			case 0x000E:
+				// Возвращаем строку "use_srtp" для расширения
+				return "use_srtp";
+			// Если код расширения соответствует heartbeat (RFC 6520)
+			case 0x000F:
+				// Возвращаем строку "heartbeat" для расширения
+				return "heartbeat";
+			// Если код расширения соответствует application_layer_protocol_negotiation (RFC 7301)
+			case 0x0010:
+				// Возвращаем строку "application_layer_protocol_negotiation" для расширения
+				return "application_layer_protocol_negotiation";
+			// Если код расширения соответствует signed_certificate_timestamp (RFC 6962)
+			case 0x0012:
+				// Возвращаем строку "signed_certificate_timestamp" для расширения
+				return "signed_certificate_timestamp";
+			// Если код расширения соответствует client_certificate_type (RFC 7250)
+			case 0x0013:
+				// Возвращаем строку "client_certificate_type" для расширения
+				return "client_certificate_type";
+			// Если код расширения соответствует server_certificate_type (RFC 7250)
+			case 0x0014:
+				// Возвращаем строку "server_certificate_type" для расширения
+				return "server_certificate_type";
+			// Если код расширения соответствует padding (RFC 7685)
+			case 0x0015:
+				// Возвращаем строку "padding" для расширения
+				return "padding";
+			// Если код расширения соответствует encrypt_then_mac (RFC 7366)
+			case 0x0016:
+				// Возвращаем строку "encrypt_then_mac" для расширения
+				return "encrypt_then_mac";
+			// Если код расширения соответствует extended_master_secret (RFC 7627)
+			case 0x0017:
+				// Возвращаем строку "extended_master_secret" для расширения
+				return "extended_master_secret";
+			// Если код расширения соответствует compress_certificate (RFC 8879)
+			case 0x001B:
+				// Возвращаем строку "compress_certificate" для расширения
+				return "compress_certificate";
+			// Если код расширения соответствует record_size_limit (RFC 8449)
+			case 0x001C:
+				// Возвращаем строку "record_size_limit" для расширения
+				return "record_size_limit";
+			// Если код расширения соответствует delegated_credential (RFC 9345)
+			case 0x0022:
+				// Возвращаем строку "delegated_credential" для расширения
+				return "delegated_credential";
+			// Если код расширения соответствует session_ticket (RFC 5077)
+			case 0x0023:
+				// Возвращаем строку "session_ticket" для расширения
+				return "session_ticket";
+			// Если код расширения соответствует pre_shared_key (RFC 8446)
+			case 0x0029:
+				// Возвращаем строку "pre_shared_key" для расширения
+				return "pre_shared_key";
+			// Если код расширения соответствует early_data (RFC 8446)
+			case 0x002A:
+				// Возвращаем строку "early_data" для расширения
+				return "early_data";
+			// Если код расширения соответствует supported_versions (RFC 8446)
+			case 0x002B:
+				// Возвращаем строку "supported_versions" для расширения
+				return "supported_versions";
+			// Если код расширения соответствует cookie (RFC 8446)
+			case 0x002C:
+				// Возвращаем строку "cookie" для расширения
+				return "cookie";
+			// Если код расширения соответствует psk_key_exchange_modes (RFC 8446)
+			case 0x002D:
+				// Возвращаем строку "psk_key_exchange_modes" для расширения
+				return "psk_key_exchange_modes";
+			// Если код расширения соответствует certificate_authorities (RFC 8446)
+			case 0x002F:
+				// Возвращаем строку "certificate_authorities" для расширения
+				return "certificate_authorities";
+			// Если код расширения соответствует oid_filters (RFC 8446)
+			case 0x0030:
+				// Возвращаем строку "oid_filters" для расширения
+				return "oid_filters";
+			// Если код расширения соответствует post_handshake_auth (RFC 8446)
+			case 0x0031:
+				// Возвращаем строку "post_handshake_auth" для расширения
+				return "post_handshake_auth";
+			// Если код расширения соответствует signature_algorithms_cert (RFC 8446)
+			case 0x0032:
+				// Возвращаем строку "signature_algorithms_cert" для расширения
+				return "signature_algorithms_cert";
+			// Если код расширения соответствует key_share (RFC 8446)
+			case 0x0033:
+				// Возвращаем строку "key_share" для расширения
+				return "key_share";
+			// Если код расширения соответствует transparency_info (редко)
+			case 0x0035:
+				// Возвращаем строку "transparency_info" для расширения
+				return "transparency_info";
+			// Если код расширения соответствует quic_transport_parameters (RFC 9001)
+			case 0x0039:
+				// Возвращаем строку "quic_transport_parameters" для расширения
+				return "quic_transport_parameters";
+			// Если код расширения соответствует tls_flags (draft)
+			case 0x003E:
+				// Возвращаем строку "tls_flags" для расширения
+				return "tls_flags";
+			// Если код расширения соответствует next_proto_neg (NPN, предшественник ALPN)
+			case 0x3374:
+				// Возвращаем строку "next_proto_neg" для расширения
+				return "next_proto_neg";
+			// Если код расширения соответствует application_settings_old (Chrome legacy ALPS)
+			case 0x4469:
+				// Возвращаем строку "application_settings_old" для расширения
+				return "application_settings_old";
+			// Если код расширения соответствует application_settings (ALPS новый стандарт)
+			case 0x44CD:
+				// Возвращаем строку "application_settings" для расширения
+				return "application_settings";
+			// Если код расширения соответствует channel_id (BoringSSL)
+			case 0x7550:
+				// Возвращаем строку "channel_id" для расширения
+				return "channel_id";
+			// Если код расширения соответствует trust_anchors (BoringSSL draft)
+			case 0xCA34:
+				// Возвращаем строку "trust_anchors" для расширения
+				return "trust_anchors";
+			// Если код расширения соответствует ech_outer_extensions (ECH outer)
+			case 0xFD00:
+				// Возвращаем строку "ech_outer_extensions" для расширения
+				return "ech_outer_extensions";
+			// Если код расширения соответствует extensionEncryptedClientHello (ECH / GREASE)
+			case 0xFE0D:
+				// Возвращаем строку "extensionEncryptedClientHello" для расширения
+				return "extensionEncryptedClientHello";
+			// Если код расширения соответствует extensionRenegotiationInfo (RFC 5746)
+			case 0xFF01:
+				// Возвращаем строку "extensionRenegotiationInfo" для расширения
+				return "extensionRenegotiationInfo";
+			// Если код расширения соответствует quic_transport_parameters_legacy (BoringSSL legacy QUIC)
+			case 0xFFA5:
+				// Возвращаем строку "quic_transport_parameters_legacy" для расширения
+				return "quic_transport_parameters_legacy";
+			// Если код расширения не распознан, возвращаем "UNKNOWN"
+			default: return "UNKNOWN";
+		}
+	}
 };
 
 /**
@@ -2554,15 +3126,12 @@ namespace fingerprint {
 	}
 };
 
+/**
+ * Инкапсулируем статические объекты в пространство имён работы с протоколом HTTP/2
+ */
 namespace http2 {
 	/**
-	 * ================================================================
-	 * HPACK-вспомогательные функции для parseH2()
-	 * ================================================================
-	 */
-
-	/**
-	 * @brief Возвращает односимвольное сокращение псевдо-заголовка по индексу HPACK статической таблицы
+	 * @brief Вспомогательная функция возвращения односимвольных сокращений псевдо-заголовка по индексу HPACK статической таблицы
 	 *
 	 * Согласно RFC 7541 Appendix A, псевдо-заголовки занимают индексы 1-7:
 	 *   1 = :authority → 'a'
@@ -2570,11 +3139,14 @@ namespace http2 {
 	 *   4 = :path / / 5 = :path /index.html → 'p'
 	 *   6 = :scheme http / 7 = :scheme https → 's'
 	 *
-	 * @param idx индекс в статической таблице HPACK
-	 * @return    'a'/'m'/'p'/'s' или '\0' если не псевдо-заголовок / индекс вне диапазона
+	 * @param index индекс в статической таблице HPACK
+	 * @return      'a'/'m'/'p'/'s' или '\0' если не псевдо-заголовок / индекс вне диапазона
 	 */
-	static char hpackPseudoCh(const uint32_t idx) noexcept {
-		switch(idx){
+	static char hpackPseudoChar(const uint32_t index) noexcept {
+		/**
+		 * Определяем псевдо-заголовок по индексу в статической таблице HPACK
+		 */
+		switch(index){
 			case 1:           return 'a'; // :authority
 			case 2: case 3:   return 'm'; // :method
 			case 4: case 5:   return 'p'; // :path
@@ -2584,251 +3156,114 @@ namespace http2 {
 	}
 
 	/**
-	 * @brief Возвращает односимвольное сокращение псевдо-заголовка по его имени
+	 * @brief Вспомогательная функция возвращения односимвольных сокращений псевдо-заголовка по его имени
 	 *
 	 * @param name имя заголовка из HPACK-блока
 	 * @return     'a'/'m'/'p'/'s' или '\0' если не псевдо-заголовок
 	 */
 	static char hpackPseudoFromName(const string & name) noexcept {
-		if(name == ":authority") return 'a';
-		if(name == ":method")    return 'm';
-		if(name == ":path")      return 'p';
-		if(name == ":scheme")    return 's';
+		// Если имя соответствует :authority, возвращаем 'a'
+		if(name == ":authority")
+			// Возвращаем 'a' для :authority
+			return 'a';
+		// Если имя соответствует :method, возвращаем 'm'
+		if(name == ":method")
+			// Возвращаем 'm' для :method
+			return 'm';
+		// Если имя соответствует :path, возвращаем 'p'
+		if(name == ":path")
+			// Возвращаем 'p' для :path
+			return 'p';
+		// Если имя соответствует :scheme, возвращаем 's'
+		if(name == ":scheme")
+			// Возвращаем 's' для :scheme
+			return 's';
+		// Если имя не соответствует ни одному из псевдо-заголовков, возвращаем '\0'
 		return '\0';
 	}
 
 	/**
-	 * @brief Декодирует HPACK-целое число с N-битным префиксом (RFC 7541 §5.1)
+	 * @brief Вспомогательная функция декодирования HPACK-целого числа с N-битным префиксом (RFC 7541 §5.1)
 	 *
-	 * @param buf буфер с HPACK-блоком
-	 * @param len длина буфера
-	 * @param pos текущая позиция (изменяется при чтении)
-	 * @param n   ширина префикса в битах (1-8)
-	 * @return    декодированное целое число; 0 при выходе за границу буфера
+	 * @param buffer буфер с HPACK-блоком
+	 * @param size   размер буфера
+	 * @param offset текущая позиция (изменяется при чтении)
+	 * @param width  ширина префикса в битах (1-8)
+	 * @return       декодированное целое число; 0 при выходе за границу буфера
 	 */
-	static uint32_t hpackDecodeInt(const uint8_t * buf, const size_t len, size_t & pos, const int n) noexcept {
+	static uint32_t hpackDecodeInt(const uint8_t * buffer, const size_t size, size_t & offset, const uint8_t width) noexcept {
 		// Если позиция вышла за конец буфера, возвращаем 0
-		if(pos >= len)
+		if(offset >= size)
 			// Позиция вышла за конец буфера
 			return 0;
 		// Маска для N-битного префикса
-		const uint32_t maxN = (1u << n) - 1u;
+		const uint32_t max = (1u << width) - 1u;
 		// Читаем N-битное значение из первого байта
-		uint32_t value = static_cast <uint32_t> (buf[pos++]) & maxN;
-		// Если значение меньше maxN, оно умещается в N бит — возвращаем сразу
-		if(value < maxN)
+		uint32_t result = (static_cast <uint32_t> (buffer[offset++]) & max);
+		// Если значение меньше max, оно умещается в N бит — возвращаем сразу
+		if(result < max)
 			// Значение умещается в N бит
-			return value;
+			return result;
 		// Иначе читаем дополнительные байты с продолжением (MSB = флаг продолжения)
 		uint32_t shift = 0;
-		// Читаем байты продолжения
-		while(pos < len){
+		/**
+		 * Читаем байты продолжения
+		 */
+		while(offset < size){
 			// Читаем байт продолжения
-			const uint8_t b = buf[pos++];
+			const uint8_t byte = buffer[offset++];
 			// Добавляем 7 бит данных
-			value += static_cast <uint32_t> (b & 0x7F) << shift;
+			result += (static_cast <uint32_t> (byte & 0x7F) << shift);
 			// Сдвигаем позицию на 7 бит
 			shift += 7;
 			// Если MSB = 0, это последний байт продолжения
-			if(!(b & 0x80) || (shift >= 28))
+			if(!(byte & 0x80) || (shift >= 28))
 				// Завершаем декодирование
 				break;
 		}
 		// Возвращаем декодированное целое число
-		return value;
+		return result;
 	}
 
 	/**
-	 * @brief Декодирует HPACK строку из буфера (RFC 7541 §5.2)
+	 * @brief Вспомогательная функция декодирования HPACK строки из буфера (RFC 7541 §5.2)
 	 *
 	 * Поддерживает только raw (не Huffman) кодирование. Для Huffman возвращает пустую строку
-	 * и продвигает pos за строку — это нормально: псевдо-заголовки в реальных браузерах
+	 * и продвигает offset за строку — это нормально: псевдо-заголовки в реальных браузерах
 	 * передаются через indexed header fields из статической таблицы, без Huffman-кодирования имён.
 	 *
-	 * @param buf буфер с HPACK-блоком
-	 * @param len длина буфера
-	 * @param pos текущая позиция (изменяется при чтении)
-	 * @return    декодированная строка; пустая при Huffman-кодировании или ошибке
+	 * @param buffer буфер с HPACK-блоком
+	 * @param size   размер буфера
+	 * @param offset текущее смещение (изменяется при чтении)
+	 * @return       декодированная строка; пустая при Huffman-кодировании или ошибке
 	 */
-	static string hpackDecodeStr(const uint8_t * buf, const size_t len, size_t & pos) noexcept {
+	static string hpackDecodeStr(const uint8_t * buffer, const size_t size, size_t & offset) noexcept {
 		// Если позиция вышла за конец буфера, возвращаем пустую строку
-		if(pos >= len)
+		if(offset >= size)
 			// Позиция вышла за конец буфера
 			return "";
 		// Флаг Huffman-кодирования (бит 7)
-		const bool isHuffman = ((buf[pos] & 0x80) != 0);
+		const bool isHuffman = ((buffer[offset] & 0x80) != 0);
 		// Длина строки (7-битный префикс)
-		const size_t slen = static_cast <size_t> (hpackDecodeInt(buf, len, pos, 7));
+		const size_t length = static_cast <size_t> (hpackDecodeInt(buffer, size, offset, 7));
 		// Проверяем что хватает данных
-		if(pos + slen > len){
+		if((offset + length) > size){
 			// Позиция вышла за конец буфера
-			pos = len;
+			offset = size;
+			// Если данных недостаточно для чтения строки, возвращаем пустую строку
 			return "";
 		}
 		// Результат декодирования
-		string result;
+		string result = "";
 		// Если строка не Huffman-кодирована — читаем как есть
 		if(!isHuffman)
 			// Читаем строку как есть
-			result.assign(reinterpret_cast <const char *> (buf + pos), slen);
+			result.assign(reinterpret_cast <const char *> (buffer + offset), length);
 		// Продвигаем позицию
-		pos += slen;
+		offset += length;
 		// Возвращаем декодированную строку (пустую если Huffman)
 		return result;
 	}
-};
-
-namespace local {
-
-	static const char * tls_version_name(uint16_t ver) {
-		if (::local::isGrease(ver)) return "TLS_GREASE";
-		switch(ver) {
-			case 0x0300: return "SSLv3";
-			case 0x0301: return "TLS 1.0";
-			case 0x0302: return "TLS 1.1";
-			case 0x0303: return "TLS 1.2";
-			case 0x0304: return "TLS 1.3";
-			case 0xFEFF: return "DTLS 1.0";
-			case 0xFEFD: return "DTLS 1.2";
-			default: return "UNKNOWN_VERSION";
-		}
-	}
-
-	static const char* compress_alg_name(uint8_t id) {
-		switch(id) {
-			case 0x01: return "zlib";
-			case 0x02: return "brotli";
-			case 0x03: return "zstd";
-			default: return "UNKNOWN";
-		}
-	}
-
-	// Простая таблица имён для читаемости (опционально, не влияет на парсинг)
-	static const char* cipher_name(uint16_t id) {
-		if (::local::isGrease(id)) return "[GREASE]";
-		switch (id) {
-			case 0x1301: return "TLS_AES_128_GCM_SHA256";
-			case 0x1302: return "TLS_AES_256_GCM_SHA384";
-			case 0x1303: return "TLS_CHACHA20_POLY1305_SHA256";
-			case 0xC02B: return "ECDHE-ECDSA-AES128-GCM-SHA256";
-			case 0xC02F: return "ECDHE-RSA-AES128-GCM-SHA256";
-			case 0xC02C: return "ECDHE-ECDSA-AES256-GCM-SHA384";
-			case 0xC030: return "ECDHE-RSA-AES256-GCM-SHA384";
-			case 0xCCA9: return "ECDHE-ECDSA-CHACHA20-POLY1305";
-			case 0xCCA8: return "ECDHE-RSA-CHACHA20-POLY1305";
-			case 0xC013: return "ECDHE-RSA-AES128-SHA";
-			case 0xC014: return "ECDHE-RSA-AES256-SHA";
-			case 0x009C: return "AES128-GCM-SHA256";
-			case 0x009D: return "AES256-GCM-SHA384";
-			case 0x002F: return "AES128-SHA";
-			case 0x0035: return "AES256-SHA";
-			default:     return "UNKNOWN";
-		}
-	}
-
-	static const char* ext_name(uint16_t type) {
-		if (::local::isGrease(type)) return "TLS_GREASE";
-		switch(type) {
-			case 0x0000: return "server_name";                              // 0   RFC 6066
-			case 0x0001: return "max_fragment_length";                      // 1   RFC 6066
-			case 0x0005: return "status_request";                           // 5   RFC 6066 (OCSP)
-			case 0x000A: return "supported_groups";                         // 10  RFC 8422
-			case 0x000B: return "ec_point_formats";                         // 11  RFC 8422
-			case 0x000D: return "signature_algorithms";                     // 13  RFC 8446
-			case 0x000E: return "use_srtp";                                 // 14  RFC 5764
-			case 0x000F: return "heartbeat";                                // 15  RFC 6520
-			case 0x0010: return "application_layer_protocol_negotiation";   // 16  RFC 7301
-			case 0x0012: return "signed_certificate_timestamp";             // 18  RFC 6962
-			case 0x0013: return "client_certificate_type";                  // 19  RFC 7250
-			case 0x0014: return "server_certificate_type";                  // 20  RFC 7250
-			case 0x0015: return "padding";                                  // 21  RFC 7685
-			case 0x0016: return "encrypt_then_mac";                         // 22  RFC 7366
-			case 0x0017: return "extended_master_secret";                   // 23  RFC 7627
-			case 0x001B: return "compress_certificate";                     // 27  RFC 8879
-			case 0x001C: return "record_size_limit";                        // 28  RFC 8449
-			case 0x0022: return "delegated_credential";                     // 34  RFC 9345
-			case 0x0023: return "session_ticket";                           // 35  RFC 5077
-			case 0x0029: return "pre_shared_key";                           // 41  RFC 8446
-			case 0x002A: return "early_data";                               // 42  RFC 8446
-			case 0x002B: return "supported_versions";                       // 43  RFC 8446
-			case 0x002C: return "cookie";                                   // 44  RFC 8446
-			case 0x002D: return "psk_key_exchange_modes";                   // 45  RFC 8446
-			case 0x002F: return "certificate_authorities";                  // 47  RFC 8446
-			case 0x0030: return "oid_filters";                              // 48  RFC 8446
-			case 0x0031: return "post_handshake_auth";                      // 49  RFC 8446
-			case 0x0032: return "signature_algorithms_cert";                // 50  RFC 8446
-			case 0x0033: return "key_share";                                // 51  RFC 8446
-			case 0x0035: return "transparency_info";                        // 53  редко
-			case 0x0039: return "quic_transport_parameters";                // 57  RFC 9001
-			case 0x003E: return "tls_flags";                                // 62  draft
-			case 0x3374: return "next_proto_neg";                           // 13172 NPN (предшественник ALPN)
-			case 0x4469: return "application_settings_old";                 // 17513 Chrome legacy ALPS
-			case 0x44CD: return "application_settings";                     // 17613 ALPS новый стандарт
-			case 0x7550: return "channel_id";                               // 30032 BoringSSL
-			case 0xCA34: return "trust_anchors";                            // BoringSSL draft
-			case 0xFD00: return "ech_outer_extensions";                     // ECH outer
-			case 0xFE0D: return "extensionEncryptedClientHello";            // 65037 ECH / GREASE
-			case 0xFF01: return "extensionRenegotiationInfo";               // 65281 RFC 5746
-			case 0xFFA5: return "quic_transport_parameters_legacy";         // BoringSSL legacy QUIC
-			default: return "UNKNOWN";
-		}
-	}
-
-	static const char* group_name(uint16_t id) {
-		if (::local::isGrease(id)) return "TLS_GREASE";
-		switch(id) {
-			case 0x0017: return "P-256";      // secp256r1
-			case 0x0018: return "P-384";      // secp384r1
-			case 0x0019: return "P-521";      // secp521r1
-			case 0x001D: return "X25519";
-			case 0x001E: return "X448";
-			case 0x001C: return "secp256k1";
-			// FFDHE (RFC 7919, IANA: 0x0100-0x0104)
-			case 0x0100: return "ffdhe2048";
-			case 0x0101: return "ffdhe3072";
-			case 0x0102: return "ffdhe4096";
-			case 0x0103: return "ffdhe6144";
-			case 0x0104: return "ffdhe8192";
-			// Post-quantum / hybrid (BoringSSL SSL_GROUP_*)
-			case 0x0202: return "mlkem1024";            // SSL_GROUP_MLKEM1024
-			case 0x6399: return "X25519Kyber768Draft00"; // SSL_GROUP_X25519_KYBER768_DRAFT00
-			case 0x11EC: return "X25519MLKEM768";        // SSL_GROUP_X25519_MLKEM768
-			default: return "UNKNOWN_GROUP";
-		}
-	}
-
-	static const char* sig_alg_name(uint16_t id) {
-		if (::local::isGrease(id)) return "TLS_GREASE";
-		switch(id) {
-			// RSA PKCS1 (RFC 8446 / BoringSSL SSL_SIGN_RSA_PKCS1_*)
-			case 0x0201: return "rsa_pkcs1_sha1";
-			case 0x0401: return "rsa_pkcs1_sha256";
-			case 0x0501: return "rsa_pkcs1_sha384";
-			case 0x0601: return "rsa_pkcs1_sha512";
-			// ECDSA (RFC 8446 / BoringSSL SSL_SIGN_ECDSA_*)
-			case 0x0203: return "ecdsa_sha1";
-			case 0x0403: return "ecdsa_secp256r1_sha256";
-			case 0x0503: return "ecdsa_secp384r1_sha384";
-			case 0x0603: return "ecdsa_secp521r1_sha512";
-			// RSA PSS RSAE — ключ из сертификата end-entity (RFC 8446 / BoringSSL SSL_SIGN_RSA_PSS_RSAE_*)
-			case 0x0804: return "rsa_pss_rsae_sha256";
-			case 0x0805: return "rsa_pss_rsae_sha384";
-			case 0x0806: return "rsa_pss_rsae_sha512";
-			// EdDSA (RFC 8446 / BoringSSL SSL_SIGN_ED25519)
-			case 0x0807: return "ed25519";
-			case 0x0808: return "ed448";
-			// RSA PSS PSS — выделенный PSS-сертификат (RFC 8446)
-			case 0x0809: return "rsa_pss_pss_sha256";
-			case 0x080A: return "rsa_pss_pss_sha384";
-			case 0x080B: return "rsa_pss_pss_sha512";
-			// Прочие
-			case 0x0202: return "dsa_sha1";
-			case 0xFF01: return "rsa_pkcs1_md5_sha1";
-			case 0x0420: return "rsa_pkcs1_sha256_legacy";
-			default: return "UNKNOWN_SIG";
-		}
-	}
-
 };
 
 /**
@@ -2879,7 +3314,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		{
 			// Получаем wire-код версии record layer
 			const uint16_t w = ::local::versionWire(browser.record.version);
-			out << "    Version  : " << ::local::tls_version_name(w) << "  (" << hex16(w) << ")\n";
+			out << "    Version  : " << ::local::tlsVersionName(w) << "  (" << hex16(w) << ")\n";
 			out << "    Length   : " << browser.record.length << '\n';
 			// Поля DTLS выводим только если они ненулевые
 			if((browser.record.epoch != 0) || (browser.record.sequence != 0)){
@@ -2902,7 +3337,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		{
 			// Получаем wire-код версии legacy_version из ClientHello
 			const uint16_t w = ::local::versionWire(browser.clientHello.version);
-			out << "    Legacy Version : " << ::local::tls_version_name(w) << "  (" << hex16(w) << ")\n";
+			out << "    Legacy Version : " << ::local::tlsVersionName(w) << "  (" << hex16(w) << ")\n";
 			out << "    Random         : " << ::local::tohex(browser.clientHello.random.data(), browser.clientHello.random.size()) << '\n';
 			// Session ID: выводим hex или пометку "(empty)" если отсутствует
 			if(!browser.session.empty())
@@ -2926,7 +3361,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			// Получаем wire-код шифра
 			const uint16_t w = ::local::cipherWire(browser.ciphers[i]);
 			// Имя шифра: GREASE или реальное название
-			const char * name = (browser.ciphers[i] == cipher_t::GREASE) ? "[GREASE]" : ::local::cipher_name(w);
+			const char * name = (browser.ciphers[i] == cipher_t::GREASE) ? "[GREASE]" : ::local::cipherName(w);
 			// Выравниваем имена по столбцу 40
 			char idx[8];
 			::snprintf(idx, sizeof(idx), "[%2zu]", i);
@@ -2949,7 +3384,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			const uint8_t w = ::local::compressorWire(browser.compressors[i]);
 			char idx[8];
 			::snprintf(idx, sizeof(idx), "[%2zu]", i);
-			out << "    " << idx << "  " << ::local::compress_alg_name(w) << "  (" << hex8(w) << ")\n";
+			out << "    " << idx << "  " << ::local::compressALGName(w) << "  (" << hex8(w) << ")\n";
 		}
 		// ================================================================
 		// Extensions
@@ -2971,7 +3406,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				continue;
 			}
 			// Имя расширения с выравниванием по столбцу 50
-			const char * ename = ::local::ext_name(w);
+			const char * ename = ::local::extensionName(w);
 			out << "    " << idx << "  ";
 			out << ename;
 			const int pad = 46 - static_cast <int> (::strlen(ename));
@@ -2995,7 +3430,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->versions.size(); ++j){
 						if(j) out << ", ";
 						if(p->versions[j] == version_t::GREASE) out << "[GREASE]";
-						else out << ::local::tls_version_name(::local::versionWire(p->versions[j]));
+						else out << ::local::tlsVersionName(::local::versionWire(p->versions[j]));
 					}
 				break; }
 				// supported_groups: выводим список кривых и групп с GREASE-маркерами
@@ -3005,7 +3440,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->supportedGroups.size(); ++j){
 						if(j) out << ", ";
 						if(p->supportedGroups[j] == group_t::GREASE) out << "[GREASE]";
-						else out << ::local::group_name(::local::groupWire(p->supportedGroups[j]));
+						else out << ::local::groupName(::local::groupWire(p->supportedGroups[j]));
 					}
 				break; }
 				// ec_point_formats: выводим форматы точек эллиптической кривой
@@ -3030,7 +3465,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 						const uint16_t sw = ::local::signatureWire(sig);
 						out << "              ";
 						if(sig == signature_t::GREASE) out << "[GREASE]";
-						else out << ::local::sig_alg_name(sw) << "  (" << hex16(sw) << ")";
+						else out << ::local::signatureName(sw) << "  (" << hex16(sw) << ")";
 						out << '\n';
 					}
 					// Переходим к следующему расширению без добавления финальной \n
@@ -3081,7 +3516,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 						if(!first) out << ", ";
 						first = false;
 						if(grp == group_t::GREASE) out << "[GREASE](" << data.size() << "B)";
-						else out << ::local::group_name(::local::groupWire(grp)) << "(" << data.size() << "B)";
+						else out << ::local::groupName(::local::groupWire(grp)) << "(" << data.size() << "B)";
 					}
 				break; }
 				// psk_key_exchange_modes: выводим режимы обмена ключами PSK
@@ -3136,7 +3571,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					out << "  ->  ";
 					for(size_t j = 0; j < p->algorithms.size(); ++j){
 						if(j) out << ", ";
-						out << ::local::compress_alg_name(::local::compressorWire(p->algorithms[j]));
+						out << ::local::compressALGName(::local::compressorWire(p->algorithms[j]));
 					}
 				break; }
 				// heartbeat: выводим режим (allowed/not_allowed)
@@ -3209,8 +3644,8 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			const uint16_t recV = static_cast <uint16_t> (::stoul(imp.tls.record));
 			const uint16_t negV = static_cast <uint16_t> (::stoul(imp.tls.negotiated));
 			// TLS-версии
-			out << "    TLS Record Version     : " << imp.tls.record     << "  (" << hex16(recV) << ")  =  " << ::local::tls_version_name(recV) << '\n';
-			out << "    TLS Negotiated Version : " << imp.tls.negotiated << "  (" << hex16(negV) << ")  =  " << ::local::tls_version_name(negV) << '\n';
+			out << "    TLS Record Version     : " << imp.tls.record     << "  (" << hex16(recV) << ")  =  " << ::local::tlsVersionName(recV) << '\n';
+			out << "    TLS Negotiated Version : " << imp.tls.negotiated << "  (" << hex16(negV) << ")  =  " << ::local::tlsVersionName(negV) << '\n';
 			// Идентификаторы соединения
 			out << "    Client Random          : " << imp.clientRandom << '\n';
 			out << "    Session ID             : " << (imp.sessionId.empty() ? "(empty)" : imp.sessionId) << '\n';
@@ -5072,7 +5507,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 								// ── Indexed Header Field: 1xxxxxxx (RFC 7541 §6.1) ────────
 								const uint32_t idx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 7);
 								// Проверяем индекс в статической таблице
-								pseudoCh = ::http2::hpackPseudoCh(idx);
+								pseudoCh = ::http2::hpackPseudoChar(idx);
 								// Если не псевдо-заголовок — завершаем разбор
 								if(pseudoCh == '\0')
 									// Достигли первого обычного заголовка
@@ -5082,7 +5517,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 								const uint32_t nameIdx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 6);
 								if(nameIdx > 0){
 									// Имя из статической таблицы
-									pseudoCh = ::http2::hpackPseudoCh(nameIdx);
+									pseudoCh = ::http2::hpackPseudoChar(nameIdx);
 								} else {
 									// Имя — литеральная строка
 									const string name = ::http2::hpackDecodeStr(pay, hpackEnd, hpos);
@@ -5097,7 +5532,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 								// ── Literal without Indexing: 0000xxxx (RFC 7541 §6.2.2) ────
 								const uint32_t nameIdx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 4);
 								if(nameIdx > 0){
-									pseudoCh = ::http2::hpackPseudoCh(nameIdx);
+									pseudoCh = ::http2::hpackPseudoChar(nameIdx);
 								} else {
 									const string name = ::http2::hpackDecodeStr(pay, hpackEnd, hpos);
 									pseudoCh = ::http2::hpackPseudoFromName(name);
@@ -5109,7 +5544,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 								// ── Literal Never Indexed: 0001xxxx (RFC 7541 §6.2.3) ───────
 								const uint32_t nameIdx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 4);
 								if(nameIdx > 0){
-									pseudoCh = ::http2::hpackPseudoCh(nameIdx);
+									pseudoCh = ::http2::hpackPseudoChar(nameIdx);
 								} else {
 									const string name = ::http2::hpackDecodeStr(pay, hpackEnd, hpos);
 									pseudoCh = ::http2::hpackPseudoFromName(name);

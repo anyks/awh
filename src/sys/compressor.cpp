@@ -1689,6 +1689,207 @@ namespace driver {
 		}
 	}
 	/**
+	 * @brief Шаблон функции компрессии/декомпрессии данных в формате Zlib (RFC 1950)
+	 *
+	 * @tparam T выходной контейнер (например, string или vector <char>)
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция компрессии/декомпрессии данных в формате Zlib (RFC 1950)
+	 *
+	 * Формат: 2-байтовый zlib-заголовок (CMF/FLG) + DEFLATE-поток + 4-байтовая
+	 * контрольная сумма Adler-32. В отличие от GZip не добавляет gzip-заголовок.
+	 *
+	 * @param buffer буфер входных данных
+	 * @param size   размер входных данных
+	 * @param level  уровень компрессии
+	 * @param wbits  размер скользящего окна
+	 * @param event  событие выполнения операции
+	 * @param result выходной контейнер
+	 * @param log    объект для работы с логами
+	 */
+	static void zlib(const char * buffer, const size_t size, const uint32_t level, const int16_t wbits, const awh::compressor_t::event_t event, T & result, const awh::log_t * log) noexcept {
+		// Если буфер данных передан
+		if((buffer != nullptr) && (size > 0)){
+			/**
+			 * Выполняем отлов ошибок
+			 */
+			try {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				// Создаем поток Zip
+				z_stream zs{};
+				// Инициализируем поля структуры
+				zs.zalloc = Z_NULL;
+				zs.zfree  = Z_NULL;
+				zs.opaque = Z_NULL;
+				// Размер скользящего окна: положительный без +16 → zlib-формат (RFC 1950)
+				const int32_t windowBits = static_cast <int32_t> (wbits);
+				/**
+				 * Определяем событие выполнения операции
+				 */
+				switch(static_cast <uint8_t> (event)){
+					// Если необходимо выполнить компрессию данных
+					case static_cast <uint8_t> (awh::compressor_t::event_t::ENCODE): {
+						// Если поток инициализировать не удалось, выходим
+						if(::deflateInit2(&zs, static_cast <int32_t> (level), Z_DEFLATED, windowBits, MAX_MEM_LEVEL, Z_DEFAULT_STRATEGY) == Z_OK){
+							// Указываем размер входного буфера
+							zs.avail_in = static_cast <uInt> (size);
+							// Заполняем входные данные буфера
+							zs.next_in = reinterpret_cast <Bytef *> (const_cast <char *> (buffer));
+							// Оценка максимального размера (включая zlib-заголовок и Adler-32)
+							const size_t maxSize = ::deflateBound(&zs, static_cast <uLong> (size));
+							// Выделяем память на результирующий буфер
+							result.resize(maxSize);
+							// Указываем размер выходного буфера
+							zs.avail_out = static_cast <uInt> (maxSize);
+							// Заполняем буфер выходными данными
+							zs.next_out = reinterpret_cast <Bytef *> (result.data());
+							// Выполняем компрессию данных
+							const int32_t ret = ::deflate(&zs, Z_FINISH);
+							// Завершаем работу потока
+							::deflateEnd(&zs);
+							// Если компрессия данных выполнена
+							if(ret == Z_STREAM_END)
+								// Устанавливаем реальный размер результирующего буфера
+								result.resize(maxSize - zs.avail_out);
+							// Если компрессия данных не выполнена
+							else {
+								// Выполняем очистку результата
+								result.clear();
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									log->debug("Zlib: %s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), awh::log_t::flag_t::WARNING, "Error during data compression");
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке в лог
+									log->print("Zlib: %s", awh::log_t::flag_t::WARNING, "Error during data compression");
+								#endif
+							}
+						/**
+						 * Если инициализация не удалась
+						 */
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug("Zlib: %s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), awh::log_t::flag_t::WARNING, "Error initializing compression stream");
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке в лог
+								log->print("Zlib: %s", awh::log_t::flag_t::WARNING, "Error initializing compression stream");
+							#endif
+						}
+					} break;
+					// Если необходимо выполнить декомпрессию данных
+					case static_cast <uint8_t> (awh::compressor_t::event_t::DECODE): {
+						// Инициализируем поток для декомпрессии
+						if(::inflateInit2(&zs, windowBits) == Z_OK){
+							// Указываем размер входного буфера
+							zs.avail_in = static_cast <uInt> (size);
+							// Заполняем входные данные буфера
+							zs.next_in = reinterpret_cast <Bytef *> (const_cast <char *> (buffer));
+							// Создаём временный буфер данных
+							vector <Bytef> data(AWH_COMPRESSOR_CHUNK_BUFFER_SIZE, 0);
+							// Результат работы функции
+							int32_t ret = Z_OK;
+							/**
+							 * Выполняем декомпрессию данных
+							 */
+							do {
+								// Указываем размер выходного буфера
+								zs.avail_out = static_cast <uInt> (data.size());
+								// Заполняем буфер выходными данными
+								zs.next_out = data.data();
+								// Выполняем декомпрессию данных
+								ret = ::inflate(&zs, Z_NO_FLUSH);
+								// Если возникает ошибка
+								if((ret != Z_OK) && (ret != Z_STREAM_END)){
+									// Выполняем очистку результата
+									result.clear();
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("Zlib: %s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), awh::log_t::flag_t::WARNING, "Error during data decompression");
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке в лог
+										log->print("Zlib: %s", awh::log_t::flag_t::WARNING, "Error during data decompression");
+									#endif
+									// Выходим из цикла
+									break;
+								}
+								// Вычисляем количество декомпрессированных данных
+								const size_t produced = (data.size() - static_cast <size_t> (zs.avail_out));
+								// Если декомпрессировано хоть что-то
+								if(produced > 0){
+									// Получаем буфер данных
+									const char * chunk = reinterpret_cast <const char *> (data.data());
+									// Добавляем декомпрессированные данные в результат
+									result.insert(result.end(), chunk, chunk + produced);
+								}
+							/**
+							 * Пока нет конца потока и есть входные данные
+							 */
+							} while((ret == Z_OK) && (zs.avail_in > 0));
+							// Завершаем работу потока
+							::inflateEnd(&zs);
+						/**
+						 * Если инициализация не удалась
+						 */
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								log->debug("Zlib: %s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), awh::log_t::flag_t::WARNING, "Error initializing decompression stream");
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке в лог
+								log->print("Zlib: %s", awh::log_t::flag_t::WARNING, "Error initializing decompression stream");
+							#endif
+						}
+					} break;
+				}
+			/**
+			 * Если возникает ошибка
+			 */
+			} catch(const exception & error) {
+				// Выполняем очистку блока с результатом
+				result.clear();
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					log->debug("Zlib: %s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, level, wbits, static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке в лог
+					log->print("Zlib: %s", awh::log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
+		}
+	}
+	/**
 	 * @brief Шаблон функции компрессии/декомпрессии данных в формате raw deflate
 	 *
 	 * @tparam T выходной контейнер (например, string или vector <char>)
@@ -2572,6 +2773,27 @@ void awh::Compressor::compress(const void * buffer, const size_t size, const met
 					#endif
 				}
 			} break;
+			// Если метод компрессии установлен Zlib (RFC 1950)
+			case static_cast <uint8_t> (method_t::ZLIB): {
+				// Выполняем компрессию данных методом Zlib
+				driver::zlib(reinterpret_cast <const char *> (buffer), size, this->_level[1], this->_zlib.wbits, event_t::ENCODE, result, this->_log);
+				// Если результат не получен
+				if(result.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Zlib: %s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Compress failed");
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Zlib: %s", log_t::flag_t::WARNING, "Compress failed");
+					#endif
+				}
+			} break;
 			// Если метод компрессии не установлен
 			case static_cast <uint8_t> (method_t::NONE):
 				// Выводим переданный буфер данных
@@ -2974,6 +3196,27 @@ void awh::Compressor::decompress(const void * buffer, const size_t size, const m
 					#endif
 				}
 			} break;
+			// Если метод декомпрессии установлен Zlib (RFC 1950)
+			case static_cast <uint8_t> (method_t::ZLIB): {
+				// Выполняем декомпрессию данных методом Zlib
+				driver::zlib(reinterpret_cast <const char *> (buffer), size, this->_level[1], this->_zlib.wbits, event_t::DECODE, result, this->_log);
+				// Если результат не получен
+				if(result.empty()){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Zlib: %s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (method)), log_t::flag_t::WARNING, "Decompress failed");
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Zlib: %s", log_t::flag_t::WARNING, "Decompress failed");
+					#endif
+				}
+			} break;
 			// Если метод декомпрессии не установлен
 			case static_cast <uint8_t> (method_t::NONE):
 				// Выводим переданный буфер данных
@@ -3018,6 +3261,8 @@ awh::Compressor::Compressor(const log_t * log) noexcept :
 	this->_gzip.buffer.decompress = z_stream{};
 	// Устанавливаем размер скользящего окна GZip по умолчанию
 	this->_gzip.wbits = static_cast <int16_t> (MAX_WBITS);
+	// Устанавливаем размер скользящего окна Zlib по умолчанию
+	this->_zlib.wbits = static_cast <int16_t> (MAX_WBITS);
 }
 /**
  * @brief Деструктор

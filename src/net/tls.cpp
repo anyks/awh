@@ -268,8 +268,6 @@ namespace {
 			event::node_t node;
 			// Тип протокола события
 			event::protocol_t proto;
-			// Метод компрессии сертификата
-			compressor_t::method_t compressor;
 			// Итератор шаблона контекста безопасности
 			members_t::iterator iterator;
 		public:
@@ -287,8 +285,7 @@ namespace {
 			explicit Member(const layer_t layer) noexcept :
 			 layer(layer), state(0), refs(0),
 			 node(event::node_t::NONE),
-			 proto(event::protocol_t::NONE),
-			 compressor(compressor_t::method_t::NONE) {}
+			 proto(event::protocol_t::NONE) {}
 			/**
 			 * @brief Деструктор
 			 *
@@ -1233,81 +1230,6 @@ namespace ssl {
 		}
 	#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 	/**
-	 * Если мы используем BoringSSL или версия OpenSSL соответствует или выше версии 3.2
-	 */
-	#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
-		/**
-		 * @brief Функция обратного вызова для компрессии данных в BoringSSL
-		 *
-		 * @param ssl  объект SSL
-		 * @param out  буфер для компрессированных данных
-		 * @param in   входные данные для компрессии
-		 * @param size размер входных данных
-		 * @return     результат выполнения функции
-		 */
-		static int32_t compression(SSL * ssl, CBB * out, const uint8_t * in, const size_t size) noexcept {
-			// Если объекты переданы верно
-			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
-				// Получаем объект контекста модуля
-				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-				// Создаём охранника участника обмена защищёнными данными
-				::local::guard_t guard(member);
-				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
-				// Буфер для хранения данных после компрессии
-				vector <uint8_t> buffer;
-				// Выполняем компрессию данных
-				compressor->compress(in, size, member->compressor, buffer);
-				// Если буфер не пустой
-				if(!buffer.empty()){
-					// Выполняем копирование данных в выходной буфер
-					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
-						// Выводим положительный результат
-						return 1;
-				}
-			}
-			// Выводим отрицательный результат
-			return 0;
-		}
-		/**
-		 * @brief Функция обратного вызова для декомпрессии данных в BoringSSL
-		 *
-		 * @param ssl    объект SSL
-		 * @param out    буфер для декомпрессированных данных
-		 * @param length размер буфера декомпрессированных данных
-		 * @param in     входные данные для декомпрессии
-		 * @param size   размер входных данных
-		 * @return       результат выполнения функции
-		 */
-		static int32_t decompression(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
-			// Если объекты переданы верно
-			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
-				// Получаем объект контекста модуля
-				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
-				// Создаём охранника участника обмена защищёнными данными
-				::local::guard_t guard(member);
-				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
-				// Буфер для хранения данных после декомпрессии
-				vector <uint8_t> buffer;
-				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, member->compressor, buffer);
-				// Если размер декомпрессированных данных не соответствует ожидаемому
-				if(buffer.size() != length)
-					// Выводим отрицательный результат
-					return 0;
-				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
-				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
-				// Если объект CRYPTO_BUFFER создан успешно
-				if((* out) != nullptr)
-					// Выводим положительный результат
-					return 1;
-			}
-			// Выводим отрицательный результат
-			return 0;
-		}
-	#endif // defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
-	/**
 	 * Для операционной системы MS Windows
 	 */
 	#if _WIN32 || _WIN64
@@ -1387,6 +1309,227 @@ namespace ssl {
 		}
 	#endif
 };
+
+/**
+ * Если мы используем BoringSSL или версия OpenSSL соответствует или выше версии 3.2
+ */
+#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
+	/**
+	 * Инкапсулируем функции компрессии/декомпрессии в пространство имён compressor
+	 */
+	namespace compressor {
+		/**
+		 * @brief Функция обратного вызова для компрессии данных методом Zlib
+		 *
+		 * @param ssl  объект SSL
+		 * @param out  буфер для компрессированных данных
+		 * @param in   входные данные для компрессии
+		 * @param size размер входных данных
+		 * @return     результат выполнения функции
+		 */
+		static int32_t compressionZlib(SSL * ssl, CBB * out, const uint8_t * in, const size_t size) noexcept {
+			// Если объекты переданы верно
+			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Получаем объект компрессора из контекста SSL
+				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				// Буфер для хранения данных после компрессии
+				vector <uint8_t> buffer;
+				// Выполняем компрессию данных
+				compressor->compress(in, size, awh::compressor_t::method_t::ZLIB, buffer);
+				// Если буфер не пустой
+				if(!buffer.empty()){
+					// Выполняем копирование данных в выходной буфер
+					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
+						// Выводим положительный результат
+						return 1;
+				}
+			}
+			// Выводим отрицательный результат
+			return 0;
+		}
+		/**
+		 * @brief Функция обратного вызова для компрессии данных методом Brotli
+		 *
+		 * @param ssl  объект SSL
+		 * @param out  буфер для компрессированных данных
+		 * @param in   входные данные для компрессии
+		 * @param size размер входных данных
+		 * @return     результат выполнения функции
+		 */
+		static int32_t compressionBrotli(SSL * ssl, CBB * out, const uint8_t * in, const size_t size) noexcept {
+			// Если объекты переданы верно
+			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Получаем объект компрессора из контекста SSL
+				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				// Буфер для хранения данных после компрессии
+				vector <uint8_t> buffer;
+				// Выполняем компрессию данных
+				compressor->compress(in, size, awh::compressor_t::method_t::BROTLI, buffer);
+				// Если буфер не пустой
+				if(!buffer.empty()){
+					// Выполняем копирование данных в выходной буфер
+					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
+						// Выводим положительный результат
+						return 1;
+				}
+			}
+			// Выводим отрицательный результат
+			return 0;
+		}
+		/**
+		 * @brief Функция обратного вызова для компрессии данных методом ZSTD (Zstandard)
+		 *
+		 * @param ssl  объект SSL
+		 * @param out  буфер для компрессированных данных
+		 * @param in   входные данные для компрессии
+		 * @param size размер входных данных
+		 * @return     результат выполнения функции
+		 */
+		static int32_t compressionZstandard(SSL * ssl, CBB * out, const uint8_t * in, const size_t size) noexcept {
+			// Если объекты переданы верно
+			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Получаем объект компрессора из контекста SSL
+				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				// Буфер для хранения данных после компрессии
+				vector <uint8_t> buffer;
+				// Выполняем компрессию данных
+				compressor->compress(in, size, awh::compressor_t::method_t::ZSTD, buffer);
+				// Если буфер не пустой
+				if(!buffer.empty()){
+					// Выполняем копирование данных в выходной буфер
+					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
+						// Выводим положительный результат
+						return 1;
+				}
+			}
+			// Выводим отрицательный результат
+			return 0;
+		}
+		/**
+		 * @brief Функция обратного вызова для декомпрессии данных методом Zlib
+		 *
+		 * @param ssl    объект SSL
+		 * @param out    буфер для декомпрессированных данных
+		 * @param length размер буфера декомпрессированных данных
+		 * @param in     входные данные для декомпрессии
+		 * @param size   размер входных данных
+		 * @return       результат выполнения функции
+		 */
+		static int32_t decompressionZlib(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
+			// Если объекты переданы верно
+			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Получаем объект компрессора из контекста SSL
+				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				// Буфер для хранения данных после декомпрессии
+				vector <uint8_t> buffer;
+				// Выполняем декомпрессию данных
+				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, buffer);
+				// Если размер декомпрессированных данных не соответствует ожидаемому
+				if(buffer.size() != length)
+					// Выводим отрицательный результат
+					return 0;
+				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
+				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
+				// Если объект CRYPTO_BUFFER создан успешно
+				if((* out) != nullptr)
+					// Выводим положительный результат
+					return 1;
+			}
+			// Выводим отрицательный результат
+			return 0;
+		}
+		/**
+		 * @brief Функция обратного вызова для декомпрессии данных методом Brotli
+		 *
+		 * @param ssl    объект SSL
+		 * @param out    буфер для декомпрессированных данных
+		 * @param length размер буфера декомпрессированных данных
+		 * @param in     входные данные для декомпрессии
+		 * @param size   размер входных данных
+		 * @return       результат выполнения функции
+		 */
+		static int32_t decompressionBrotli(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
+			// Если объекты переданы верно
+			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Получаем объект компрессора из контекста SSL
+				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				// Буфер для хранения данных после декомпрессии
+				vector <uint8_t> buffer;
+				// Выполняем декомпрессию данных
+				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, buffer);
+				// Если размер декомпрессированных данных не соответствует ожидаемому
+				if(buffer.size() != length)
+					// Выводим отрицательный результат
+					return 0;
+				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
+				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
+				// Если объект CRYPTO_BUFFER создан успешно
+				if((* out) != nullptr)
+					// Выводим положительный результат
+					return 1;
+			}
+			// Выводим отрицательный результат
+			return 0;
+		}
+		/**
+		 * @brief Функция обратного вызова для декомпрессии данных методом ZSTD (Zstandard)
+		 *
+		 * @param ssl    объект SSL
+		 * @param out    буфер для декомпрессированных данных
+		 * @param length размер буфера декомпрессированных данных
+		 * @param in     входные данные для декомпрессии
+		 * @param size   размер входных данных
+		 * @return       результат выполнения функции
+		 */
+		static int32_t decompressionZstandard(SSL * ssl, CRYPTO_BUFFER ** out, const size_t length, const uint8_t * in, const size_t size) noexcept {
+			// Если объекты переданы верно
+			if((ssl != nullptr) && (out != nullptr) && (in != nullptr) && (size > 0)){
+				// Получаем объект контекста модуля
+				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Получаем объект компрессора из контекста SSL
+				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				// Буфер для хранения данных после декомпрессии
+				vector <uint8_t> buffer;
+				// Выполняем декомпрессию данных
+				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, buffer);
+				// Если размер декомпрессированных данных не соответствует ожидаемому
+				if(buffer.size() != length)
+					// Выводим отрицательный результат
+					return 0;
+				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
+				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
+				// Если объект CRYPTO_BUFFER создан успешно
+				if((* out) != nullptr)
+					// Выводим положительный результат
+					return 1;
+			}
+			// Выводим отрицательный результат
+			return 0;
+		}
+	};
+#endif // defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
 
 /**
  * BoringSSL не поддерживает SSL_use_certificate_chain_file(SSL*, ...).
@@ -8491,267 +8634,6 @@ void awh::Transport_Layer_Security::alps(const id_t id, const vector <alpn_t> & 
 	}
 }
 /**
- * @brief Метод установки поддерживаемых алгоритмов компрессии сертификата
- *
- * @param id     идентификатор события
- * @param method поддерживаемый алгоритм компрессии сертификата
- */
-void awh::Transport_Layer_Security::compressor(const id_t id, const compressor_t::method_t method) noexcept {
-	/**
-	 * Если мы используем BoringSSL или версия OpenSSL соответствует или выше версии 3.2
-	 */
-	#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
-				/**
-				 * Определяем уровень транспортной безопасности
-				 */
-				switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
-					// Если уровень является шаблонным контекстом безопасности
-					case static_cast <uint8_t> (layer_t::CTS): {
-						// Выполняем извлечение объекта шаблона контекста безопасности
-						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
-						// Метод компрессии сертификата
-						uint16_t algorithm = 0x00;
-						/**
-						 * Определяем поддерживаемый алгоритм компрессии сертификата
-						 */
-						switch(static_cast <uint8_t> (method)){
-							// Если алгоритм компрессии сертификата не используется
-							case static_cast <uint8_t> (compressor_t::method_t::NONE): {
-								// Устанавливаем алгоритм компрессии сертификата как "без компрессии"
-								algorithm = 0x00;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата соответствует GZIP
-							case static_cast <uint8_t> (compressor_t::method_t::GZIP): {
-								// Устанавливаем алгоритм компрессии сертификата как ZLIB (GZIP)
-								algorithm = 0x01;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата соответствует Brotli
-							case static_cast <uint8_t> (compressor_t::method_t::BROTLI): {
-								// Устанавливаем алгоритм компрессии сертификата как Brotli
-								algorithm = 0x02;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
-							case static_cast <uint8_t> (compressor_t::method_t::ZSTD): {
-								// Устанавливаем алгоритм компрессии сертификата как ZStandard (Zstd)
-								algorithm = 0x03;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата не поддерживается
-							default: {
-								// Если функция обратного вызова состояния установлена
-								if(member->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
-								// Получаем текст ошибки
-								const string error = ::ssl::error(id, "Unsupported certificate compression method");
-								// Если функция обратного вызова ошибки установлена
-								if(member->callback.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::COMPRESSION_FAILED, error);
-								// Если функция обратного вызова ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
-								}
-							}
-						}
-						// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
-						if(::SSL_CTX_add_cert_compression_alg(
-							member->ctx,
-							algorithm,
-							// функция сжатия (для сервера)
-							&::ssl::compression,
-							// функция распаковки (для клиента)
-							&::ssl::decompression
-						) != 1){
-							// Если функция обратного вызова состояния установлена
-							if(member->callback.state != nullptr)
-								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
-							// Получаем текст ошибки
-							const string error = ::ssl::error(id, "Set certificate compression method is failed");
-							// Если функция обратного вызова ошибки установлена
-							if(member->callback.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::COMPRESSION_FAILED, error);
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-								#endif
-							}
-						}
-					} break;
-					// Если уровень является транспортной передачей данных
-					case static_cast <uint8_t> (layer_t::CTL): {
-						// Выполняем извлечение объекта транспортного уровня передачи
-						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
-						// Метод компрессии сертификата
-						uint16_t algorithm = 0x00;
-						/**
-						 * Определяем поддерживаемый алгоритм компрессии сертификата
-						 */
-						switch(static_cast <uint8_t> (method)){
-							// Если алгоритм компрессии сертификата не используется
-							case static_cast <uint8_t> (compressor_t::method_t::NONE): {
-								// Устанавливаем алгоритм компрессии сертификата как "без компрессии"
-								algorithm = 0x00;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата соответствует GZIP
-							case static_cast <uint8_t> (compressor_t::method_t::GZIP): {
-								// Устанавливаем алгоритм компрессии сертификата как ZLIB (GZIP)
-								algorithm = 0x01;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата соответствует Brotli
-							case static_cast <uint8_t> (compressor_t::method_t::BROTLI): {
-								// Устанавливаем алгоритм компрессии сертификата как Brotli
-								algorithm = 0x02;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
-							case static_cast <uint8_t> (compressor_t::method_t::ZSTD): {
-								// Устанавливаем алгоритм компрессии сертификата как ZStandard (Zstd)
-								algorithm = 0x03;
-								// Сохраняем выбранный алгоритм компрессии сертификата
-								member->compressor = method;
-							} break;
-							// Если алгоритм компрессии сертификата не поддерживается
-							default: {
-								// Если функция обратного вызова состояния установлена
-								if(member->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
-								// Получаем текст ошибки
-								const string error = ::ssl::error(id, "Unsupported certificate compression method");
-								// Если функция обратного вызова ошибки установлена
-								if(member->callback.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::COMPRESSION_FAILED, error);
-								// Если функция обратного вызова ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
-								}
-							}
-						}
-						// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
-						if(::SSL_CTX_add_cert_compression_alg(
-							member->ctx,
-							algorithm,
-							// функция сжатия (для сервера)
-							&::ssl::compression,
-							// функция распаковки (для клиента)
-							&::ssl::decompression
-						) != 1){
-							// Если функция обратного вызова состояния установлена
-							if(member->callback.state != nullptr)
-								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
-							// Получаем текст ошибки
-							const string error = ::ssl::error(id, "Set certificate compression method is failed");
-							// Если функция обратного вызова ошибки установлена
-							if(member->callback.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::COMPRESSION_FAILED, error);
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-								#endif
-							}
-						}
-					} break;
-				}
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	#endif // defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
-}
-/**
  * @brief Метод установки поддерживаемых алгоритмов подписи
  *
  * @param id         идентификатор события
@@ -9150,6 +9032,388 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
+}
+/**
+ * @brief Метод установки поддерживаемых алгоритмов компрессии сертификата
+ *
+ * @param id     идентификатор события
+ * @param methods список поддерживаемых алгоритмов компрессии сертификата
+ */
+void awh::Transport_Layer_Security::compressors(const id_t id, const vector <compressor_t::method_t> & methods) noexcept {
+	/**
+	 * Если мы используем BoringSSL или версия OpenSSL соответствует или выше версии 3.2
+	 */
+	#if defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Если список поддерживаемых алгоритмов компрессии сертификата не пустой
+			if(!methods.empty()){
+				// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+				if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+					/**
+					 * Определяем уровень транспортной безопасности
+					 */
+					switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+						// Если уровень является шаблонным контекстом безопасности
+						case static_cast <uint8_t> (layer_t::CTS): {
+							// Выполняем извлечение объекта шаблона контекста безопасности
+							auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+							// Создаём охранника участника обмена защищёнными данными
+							::local::guard_t guard(member);
+							// Выполняем блокировку потоков
+							const locker_t <recursive_mutex> lock(member->mtx);
+							/**
+							 * Перебираем все поддерживаемые алгоритмы компрессии сертификата
+							 */
+							for(auto & method : methods){
+								/**
+								 * Определяем поддерживаемый алгоритм компрессии сертификата
+								 */
+								switch(static_cast <uint8_t> (method)){
+									// Если алгоритм компрессии сертификата соответствует Zlib
+									case static_cast <uint8_t> (compressor_t::method_t::ZLIB): {
+										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
+										if(::SSL_CTX_add_cert_compression_alg(
+											member->ctx,
+											// Устанавливаем алгоритм компрессии сертификата как Zlib
+											0x01,
+											// Функция сжатия (для сервера)
+											&::compressor::compressionZlib,
+											// Функция распаковки (для клиента)
+											&::compressor::decompressionZlib
+										) != 1){
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr)
+												// Вызываем функцию обратного вызова состояния
+												member->callback.state(id, tls_t::state_t::FAILED);
+											// Получаем текст ошибки
+											const string error = ::ssl::error(id, "Set certificate compression method Zlib is failed");
+											// Если функция обратного вызова ошибки установлена
+											if(member->callback.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки
+												member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+											// Если функция обратного вызова ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если алгоритм компрессии сертификата соответствует Brotli
+									case static_cast <uint8_t> (compressor_t::method_t::BROTLI): {
+										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
+										if(::SSL_CTX_add_cert_compression_alg(
+											member->ctx,
+											// Устанавливаем алгоритм компрессии сертификата как Brotli
+											0x02,
+											// Функция сжатия (для сервера)
+											&::compressor::compressionBrotli,
+											// Функция распаковки (для клиента)
+											&::compressor::decompressionBrotli
+										) != 1){
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr)
+												// Вызываем функцию обратного вызова состояния
+												member->callback.state(id, tls_t::state_t::FAILED);
+											// Получаем текст ошибки
+											const string error = ::ssl::error(id, "Set certificate compression method Brotli is failed");
+											// Если функция обратного вызова ошибки установлена
+											if(member->callback.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки
+												member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+											// Если функция обратного вызова ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
+									case static_cast <uint8_t> (compressor_t::method_t::ZSTD): {
+										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
+										if(::SSL_CTX_add_cert_compression_alg(
+											member->ctx,
+											// Устанавливаем алгоритм компрессии сертификата как ZStandard (Zstd)
+											0x03,
+											// Функция сжатия (для сервера)
+											&::compressor::compressionZstandard,
+											// Функция распаковки (для клиента)
+											&::compressor::decompressionZstandard
+										) != 1){
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr)
+												// Вызываем функцию обратного вызова состояния
+												member->callback.state(id, tls_t::state_t::FAILED);
+											// Получаем текст ошибки
+											const string error = ::ssl::error(id, "Set certificate compression method ZStandard (Zstd) is failed");
+											// Если функция обратного вызова ошибки установлена
+											if(member->callback.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки
+												member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+											// Если функция обратного вызова ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если алгоритм компрессии сертификата не поддерживается
+									default: {
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова состояния
+											member->callback.state(id, tls_t::state_t::FAILED);
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "Unsupported certificate compression method");
+										// Если функция обратного вызова ошибки установлена
+										if(member->callback.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки
+											member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+										// Если функция обратного вызова ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								}
+							}
+						} break;
+						// Если уровень является транспортной передачей данных
+						case static_cast <uint8_t> (layer_t::CTL): {
+							// Выполняем извлечение объекта транспортного уровня передачи
+							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+							// Создаём охранника участника обмена защищёнными данными
+							::local::guard_t guard(member);
+							// Выполняем блокировку потоков
+							const locker_t <recursive_mutex> lock(member->mtx);
+							/**
+							 * Перебираем все поддерживаемые алгоритмы компрессии сертификата
+							 */
+							for(auto & method : methods){
+								/**
+								 * Определяем поддерживаемый алгоритм компрессии сертификата
+								 */
+								switch(static_cast <uint8_t> (method)){
+									// Если алгоритм компрессии сертификата соответствует Zlib
+									case static_cast <uint8_t> (compressor_t::method_t::ZLIB): {
+										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
+										if(::SSL_CTX_add_cert_compression_alg(
+											member->ctx,
+											// Устанавливаем алгоритм компрессии сертификата как Zlib
+											0x01,
+											// Функция сжатия (для сервера)
+											&::compressor::compressionZlib,
+											// Функция распаковки (для клиента)
+											&::compressor::decompressionZlib
+										) != 1){
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr)
+												// Вызываем функцию обратного вызова состояния
+												member->callback.state(id, tls_t::state_t::FAILED);
+											// Получаем текст ошибки
+											const string error = ::ssl::error(id, "Set certificate compression method Zlib is failed");
+											// Если функция обратного вызова ошибки установлена
+											if(member->callback.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки
+												member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+											// Если функция обратного вызова ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если алгоритм компрессии сертификата соответствует Brotli
+									case static_cast <uint8_t> (compressor_t::method_t::BROTLI): {
+										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
+										if(::SSL_CTX_add_cert_compression_alg(
+											member->ctx,
+											// Устанавливаем алгоритм компрессии сертификата как Brotli
+											0x02,
+											// Функция сжатия (для сервера)
+											&::compressor::compressionBrotli,
+											// Функция распаковки (для клиента)
+											&::compressor::decompressionBrotli
+										) != 1){
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr)
+												// Вызываем функцию обратного вызова состояния
+												member->callback.state(id, tls_t::state_t::FAILED);
+											// Получаем текст ошибки
+											const string error = ::ssl::error(id, "Set certificate compression method Brotli is failed");
+											// Если функция обратного вызова ошибки установлена
+											if(member->callback.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки
+												member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+											// Если функция обратного вызова ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
+									case static_cast <uint8_t> (compressor_t::method_t::ZSTD): {
+										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
+										if(::SSL_CTX_add_cert_compression_alg(
+											member->ctx,
+											// Устанавливаем алгоритм компрессии сертификата как ZStandard (Zstd)
+											0x03,
+											// Функция сжатия (для сервера)
+											&::compressor::compressionZstandard,
+											// Функция распаковки (для клиента)
+											&::compressor::decompressionZstandard
+										) != 1){
+											// Если функция обратного вызова состояния установлена
+											if(member->callback.state != nullptr)
+												// Вызываем функцию обратного вызова состояния
+												member->callback.state(id, tls_t::state_t::FAILED);
+											// Получаем текст ошибки
+											const string error = ::ssl::error(id, "Set certificate compression method ZStandard (Zstd) is failed");
+											// Если функция обратного вызова ошибки установлена
+											if(member->callback.error != nullptr)
+												// Вызываем функцию обратного вызова ошибки
+												member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+											// Если функция обратного вызова ошибки не установлена
+											else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+												#endif
+											}
+										}
+									} break;
+									// Если алгоритм компрессии сертификата не поддерживается
+									default: {
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова состояния
+											member->callback.state(id, tls_t::state_t::FAILED);
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "Unsupported certificate compression method");
+										// Если функция обратного вызова ошибки установлена
+										if(member->callback.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки
+											member->callback.error(id, error_t::COMPRESSION_FAILED, error);
+										// Если функция обратного вызова ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								}
+							}
+						} break;
+					}
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, methods.size()), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif // defined(OPENSSL_IS_BORINGSSL) || OPENSSL_VERSION_NUMBER >= 0x30200000L
 }
 /**
  * @brief Метод генерации заранее клиентом эфемерного ключа и отправки серверу для поддерживаемых групп эллиптических кривых

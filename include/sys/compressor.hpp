@@ -76,12 +76,13 @@ namespace awh {
 				LZMA    = 0x02, // Метод сжатия LZma
 				ZSTD    = 0x03, // Метод сжатия ZStd
 				GZIP    = 0x04, // Метод сжатия GZip
-				BZIP2   = 0x05, // Метод сжатия BZip2
-				BROTLI  = 0x06, // Метод сжатия Brotli
-				LIZARD  = 0x07, // Метод сжатия Lizard
-				SNAPPY  = 0x08, // Метод сжатия Snappy
-				DEFLATE = 0x09, // Метод сжатия Deflate
-				DENSITY = 0x0A  // Метод сжатия Density
+				ZLIB    = 0x05, // Метод сжатия Zlib (RFC 1950)
+				BZIP2   = 0x06, // Метод сжатия BZip2
+				BROTLI  = 0x07, // Метод сжатия Brotli
+				LIZARD  = 0x08, // Метод сжатия Lizard
+				SNAPPY  = 0x09, // Метод сжатия Snappy
+				DEFLATE = 0x0A, // Метод сжатия Deflate
+				DENSITY = 0x0B, // Метод сжатия Density
 			};
 		private:
 			/**
@@ -111,6 +112,19 @@ namespace awh {
 				 compress(false), decompress(false) {}
 			} takeover_t;
 			/**
+			 * @brief Структура Zlib
+			 *
+			 */
+			typedef struct Zlib {
+				// Размер скользящего окна
+				int16_t wbits;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Zlib() noexcept : wbits(0) {}
+			} zlib_t;
+			/**
 			 * @brief Структура GZip
 			 *
 			 */
@@ -131,6 +145,8 @@ namespace awh {
 			// Уровни компрессии
 			uint32_t _level[5];
 		private:
+			// Структура Zlib
+			mutable zlib_t _zlib;
 			// Структура GZip
 			mutable gzip_t _gzip;
 		private:

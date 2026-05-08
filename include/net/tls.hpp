@@ -459,20 +459,20 @@ namespace awh {
 			void alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept;
 		public:
 			/**
-			 * @brief Метод установки поддерживаемых алгоритмов компрессии сертификата
-			 *
-			 * @param id     идентификатор события
-			 * @param method поддерживаемый алгоритм компрессии сертификата
-			 */
-			void compressor(const id_t id, const compressor_t::method_t method) noexcept;
-		public:
-			/**
 			 * @brief Метод установки поддерживаемых алгоритмов подписи
 			 *
 			 * @param id         идентификатор события
 			 * @param signatures список поддерживаемых алгоритмов подписи
 			 */
 			void signature(const id_t id, const vector <tls::signature_t> & signatures) noexcept;
+		public:
+			/**
+			 * @brief Метод установки поддерживаемых алгоритмов компрессии сертификата
+			 *
+			 * @param id     идентификатор события
+			 * @param methods список поддерживаемых алгоритмов компрессии сертификата
+			 */
+			void compressors(const id_t id, const vector <compressor_t::method_t> & methods) noexcept;
 		public:
 			/**
 			 * @brief Метод генерации заранее клиентом эфемерного ключа и отправки серверу для поддерживаемых групп эллиптических кривых
