@@ -1459,6 +1459,30 @@ namespace fingerprint {
 	}
 
 	/**
+	 * @brief Вспомогательная функция для парсинга расширения client_certificate_type (RFC 7250)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения client_certificate_type
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseClientCertificateType(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение client_certificate_type в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_client_certificate_type_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения server_certificate_type (RFC 7250)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения server_certificate_type
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseServerCertificateType(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение server_certificate_type в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_server_certificate_type_t> ());
+	}
+
+	/**
 	 * @brief Вспомогательная функция для парсинга расширения extended_master_secret (RFC 7627)
 	 *
 	 * @param buffer  бинарный буфер с данными расширения extended_master_secret
@@ -1480,6 +1504,30 @@ namespace fingerprint {
 	static void postHandshakeAuth(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
 		// Добавляем расширение post_handshake_auth в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_post_handshake_auth_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения oid_filters (RFC 8446 §4.2.5, пустое)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения oid_filters
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseOIDFilters(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение oid_filters в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_oid_filters_t> ());
+	}
+
+	/**
+	 * @brief Вспомогательная функция для парсинга расширения transparency_info (RFC 6962, пустое)
+	 *
+	 * @param buffer  бинарный буфер с данными расширения transparency_info
+	 * @param size    размер данных в буфере
+	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
+	 */
+	static void parseTransparencyInfo(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
+		// Добавляем расширение transparency_info в список расширений браузера
+		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_transparency_info_t> ());
 	}
 
 	/**
@@ -1667,8 +1715,8 @@ namespace fingerprint {
 				break;
 			// Если код группы является GREASE
 			if(::local::isGrease(gid))
-				// Добавляем GREASE-запись в список обмена ключами браузера (порядок сохраняется)
-				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::GREASE, vector <uint8_t> {});
+				// Добавляем GREASE-запись в список обмена ключами браузера (сохраняем ключевой материал для корректного воспроизведения в apply)
+				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::GREASE, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 			// Если код группы является одной из стандартных версий из RFC 8446 §4.2.7
 			else {
 				/**
@@ -5507,6 +5555,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 							// Выполняем парсинг расширения signed_certificate_timestamp / SCT
 							::fingerprint::parseCertificateTimestamp(buffer + offset, size, browser);
 						break;
+						// Если тип расширения соответствует client_certificate_type (RFC 7250)
+						case 0x0013:
+							// Выполняем парсинг расширения client_certificate_type (RFC 7250)
+							::fingerprint::parseClientCertificateType(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует server_certificate_type (RFC 7250)
+						case 0x0014:
+							// Выполняем парсинг расширения server_certificate_type (RFC 7250)
+							::fingerprint::parseServerCertificateType(buffer + offset, size, browser);
+						break;
 						// Если тип расширения соответствует padding (RFC 7685)
 						case 0x0015:
 							// Выполняем парсинг расширения padding
@@ -5572,6 +5630,11 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 							// Выполняем парсинг расширения certificate_authorities
 							::fingerprint::parseCertificateAuthorities(buffer + offset, size, browser);
 						break;
+						// Если тип расширения соответствует oid_filters (RFC 8446 §4.2.5)
+						case 0x0030:
+							// Выполняем парсинг расширения oid_filters (RFC 8446 §4.2.5)
+							::fingerprint::parseOIDFilters(buffer + offset, size, browser);
+						break;
 						// Если тип расширения соответствует post_handshake_auth (RFC 8446 §4.2.9, пустое)
 						case 0x0031:
 							// Выполняем парсинг расширения post_handshake_auth
@@ -5586,6 +5649,11 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 						case 0x0033:
 							// Выполняем парсинг расширения key_share
 							::fingerprint::parseKeyShare(buffer + offset, size, browser);
+						break;
+						// Если тип расширения соответствует transparency_info (RFC 6962, пустое)
+						case 0x0035:
+							// Выполняем парсинг расширения transparency_info (RFC 6962, пустое)
+							::fingerprint::parseTransparencyInfo(buffer + offset, size, browser);
 						break;
 						// Если тип расширения соответствует quic_transport_parameters (RFC 9001)
 						case 0x0039:
@@ -6466,21 +6534,35 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 						/**
 						 * Определяем wire-код профиля SRTP
 						 */
-						switch(profile){
+						switch(static_cast <uint8_t> (profile)){
 							// Если профиль SRTP соответствует AES128_CM_HMAC_SHA1_80 (RFC 5764)
-							case srtp_t::AES128_CM_HMAC_SHA1_80: return 0x0001u;
+							case static_cast <uint8_t> (srtp_t::AES128_CM_HMAC_SHA1_80):
+								// Выводим wire-код профиля SRTP для AES128_CM_HMAC_SHA1_80
+								return 0x0001u;
 							// Если профиль SRTP соответствует AES128_CM_HMAC_SHA1_32 (RFC 5764)
-							case srtp_t::AES128_CM_HMAC_SHA1_32: return 0x0002u;
+							case static_cast <uint8_t> (srtp_t::AES128_CM_HMAC_SHA1_32):
+								// Выводим wire-код профиля SRTP для AES128_CM_HMAC_SHA1_32
+								return 0x0002u;
 							// Если профиль SRTP соответствует AES128_F8_HMAC_SHA1_80 (RFC 5764)
-							case srtp_t::AES128_F8_HMAC_SHA1_80: return 0x0005u;
+							case static_cast <uint8_t> (srtp_t::AES128_F8_HMAC_SHA1_80):
+								// Выводим wire-код профиля SRTP для AES128_F8_HMAC_SHA1_80
+								return 0x0005u;
 							// Если профиль SRTP соответствует NULL_HMAC_SHA1_80 (RFC 5764)
-							case srtp_t::NULL_HMAC_SHA1_80:       return 0x0007u;
+							case static_cast <uint8_t> (srtp_t::NULL_HMAC_SHA1_80):
+								// Выводим wire-код профиля SRTP для NULL_HMAC_SHA1_80
+								return 0x0007u;
 							// Если профиль SRTP соответствует NULL_HMAC_SHA1_32 (RFC 5764)
-							case srtp_t::NULL_HMAC_SHA1_32:       return 0x0008u;
+							case static_cast <uint8_t> (srtp_t::NULL_HMAC_SHA1_32):
+								// Выводим wire-код профиля SRTP для NULL_HMAC_SHA1_32
+								return 0x0008u;
 							// Если профиль SRTP соответствует AEAD_AES_128_GCM (RFC 5764)
-							case srtp_t::AEAD_AES_128_GCM:        return 0x0009u;
+							case static_cast <uint8_t> (srtp_t::AEAD_AES_128_GCM):
+								// Выводим wire-код профиля SRTP для AEAD_AES_128_GCM
+								return 0x0009u;
 							// Если профиль SRTP соответствует AEAD_AES_256_GCM (RFC 5764)
-							case srtp_t::AEAD_AES_256_GCM:        return 0x000Au;
+							case static_cast <uint8_t> (srtp_t::AEAD_AES_256_GCM):
+								// Выводим wire-код профиля SRTP для AEAD_AES_256_GCM
+								return 0x000Au;
 							// Неизвестный профиль SRTP
 							default: return 0u;
 						}
