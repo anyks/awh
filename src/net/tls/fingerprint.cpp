@@ -3147,11 +3147,11 @@ namespace http2 {
 		 * Определяем псевдо-заголовок по индексу в статической таблице HPACK
 		 */
 		switch(index){
-			case 1:           return 'a'; // :authority
-			case 2: case 3:   return 'm'; // :method
-			case 4: case 5:   return 'p'; // :path
-			case 6: case 7:   return 's'; // :scheme
-			default:          return '\0';
+			case 1:         return 'a'; // :authority
+			case 2: case 3: return 'm'; // :method
+			case 4: case 5: return 'p'; // :path
+			case 6: case 7: return 's'; // :scheme
+			default:        return '\0';
 		}
 	}
 
@@ -4010,10 +4010,19 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 		// ─── Секция 1: SETTINGS ────────────────────────────────────────────────────────
 		// Формат: "{id}:{value}" пары через ';', в порядке wire
 		{
+			// Флаг для определения первой пары id:value (для правильного разделения ';')
 			bool first = true;
+			/**
+			 * Перебираем SETTINGS в порядке их объявления и формируем пары id:value, разделяя их ';'
+			 */
 			for(const auto & s : h2.settings){
-				if(!first) out << ';';
+				// Если это не первая пара id:value
+				if(!first)
+					// Выводим ';' для разделения пар id:value
+					out << ';';
+				// Выводим пару id:value в формате "{id}:{value}"
 				out << s.id << ':' << s.value;
+				// Убираем флаг первой пары id:value после обработки первой пары
 				first = false;
 			}
 		}
@@ -4028,13 +4037,22 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 		// Формат: "{streamId}:{exclusive}:{dependency}:{weight}" через ','
 		// weight = raw_byte + 1 (фактический HTTP/2-вес 1-256)
 		{
+			// Флаг для определения первой PRIORITY-записи (для правильного разделения ',')
 			bool first = true;
+			/**
+			 * Перебираем PRIORITY-фреймы в порядке их объявления и формируем строки streamId:exclusive:dependency:weight, разделяя их ','
+			 */
 			for(const auto & p : h2.priorities){
-				if(!first) out << ',';
+				// Если это не первая PRIORITY-запись
+				if(!first)
+					// Выводим ',' для разделения PRIORITY-записей
+					out << ',';
+				// Выводим строку streamId:exclusive:dependency:weight для текущего PRIORITY-фрейма
 				out << p.streamId << ':'
 				    << (p.exclusive ? 1 : 0) << ':'
 				    << p.dependency << ':'
 				    << static_cast <uint32_t> (p.weight + 1);
+				// Убираем флаг первой PRIORITY-записи после обработки первой записи
 				first = false;
 			}
 		}
@@ -4043,10 +4061,19 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 		// ─── Секция 4: pseudo-headers ──────────────────────────────────────────────────
 		// Формат: m/p/s/a через ','
 		{
+			// Флаг для определения первого pseudo-header (для правильного разделения ',')
 			bool first = true;
+			/**
+			 * Перебираем pseudo-headers в порядке их объявления и выводим их, разделяя ','
+			 */
 			for(const auto & ph : h2.pseudoHeaders){
-				if(!first) out << ',';
+				// Если это не первый pseudo-header
+				if(!first)
+					// Выводим ',' для разделения pseudo-headers
+					out << ',';
+				// Выводим pseudo-header (m/p/s/a)
 				out << ph;
+				// Убираем флаг первого pseudo-header после обработки первого pseudo-header
 				first = false;
 			}
 		}
@@ -5678,18 +5705,22 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 		 */
 		while(offset + 9 <= size){
 			// Читаем заголовок фрейма
-			const uint32_t payLen = (static_cast <uint32_t> (buffer[offset    ]) << 16)
-			                      | (static_cast <uint32_t> (buffer[offset + 1]) <<  8)
-			                      |  static_cast <uint32_t> (buffer[offset + 2]);
+			const uint32_t payLen = (
+				(static_cast <uint32_t> (buffer[offset    ])   << 16)
+				| (static_cast <uint32_t> (buffer[offset + 1]) <<  8)
+				|  static_cast <uint32_t> (buffer[offset + 2])
+			);
 			// Тип фрейма
-			const uint8_t  fType  =  buffer[offset + 3];
+			const uint8_t fType = buffer[offset + 3];
 			// Флаги фрейма
-			const uint8_t  fFlags =  buffer[offset + 4];
+			const uint8_t fFlags = buffer[offset + 4];
 			// Stream ID (31 бит, MSB зарезервирован)
-			const uint32_t fSid   = (static_cast <uint32_t> (buffer[offset + 5] & 0x7F) << 24)
-			                      | (static_cast <uint32_t> (buffer[offset + 6]) << 16)
-			                      | (static_cast <uint32_t> (buffer[offset + 7]) <<  8)
-			                      |  static_cast <uint32_t> (buffer[offset + 8]);
+			const uint32_t fSid = (
+				(static_cast <uint32_t> (buffer[offset + 5] & 0x7F) << 24)
+				| (static_cast <uint32_t> (buffer[offset + 6])      << 16)
+				| (static_cast <uint32_t> (buffer[offset + 7])      <<  8)
+				|  static_cast <uint32_t> (buffer[offset + 8])
+			);
 			// Перемещаемся за заголовок
 			offset += 9;
 			// Если данных для payload не хватает — прерываем
@@ -5707,57 +5738,66 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 				case 0x4: {
 					// Обрабатываем только не-ACK SETTINGS на stream 0
 					if((fSid == 0) && !(fFlags & 0x1)){
-						size_t i = 0;
+						// Индекс внутри payload
+						size_t index = 0;
 						// Читаем все пары id:value
-						while(i + 6 <= payLen){
+						while(index + 6 <= payLen){
 							// Идентификатор параметра (2 байта big-endian)
-							const uint16_t id  = (static_cast <uint16_t> (pay[i    ]) << 8) | pay[i + 1];
+							const uint16_t id = ((static_cast <uint16_t> (pay[index]) << 8) | pay[index + 1]);
 							// Значение параметра (4 байта big-endian)
-							const uint32_t val = (static_cast <uint32_t> (pay[i + 2]) << 24)
-							                   | (static_cast <uint32_t> (pay[i + 3]) << 16)
-							                   | (static_cast <uint32_t> (pay[i + 4]) <<  8)
-							                   |  static_cast <uint32_t> (pay[i + 5]);
+							const uint32_t val = (
+								(static_cast <uint32_t> (pay[index + 2])   << 24)
+								| (static_cast <uint32_t> (pay[index + 3]) << 16)
+								| (static_cast <uint32_t> (pay[index + 4]) <<  8)
+								|  static_cast <uint32_t> (pay[index + 5])
+							);
 							// Сохраняем пару в список (порядок важен)
 							h2.settings.emplace_back(id, val);
 							// Перемещаемся к следующей паре
-							i += 6;
+							index += 6;
 						}
 						// Фиксируем что SETTINGS получен
 						gotSettings = true;
 					}
-				break; }
+				} break;
 				// ─── WINDOW_UPDATE (0x8) ────────────────────────────────────────────────────
 				// RFC 7540 §6.9: payload — 4 байта (MSB резерв, 31-бит increment)
 				case 0x8: {
 					// Нас интересует только connection-level (stream 0)
 					if((fSid == 0) && (payLen >= 4)){
-						h2.windowUpdate = (static_cast <uint32_t> (pay[0] & 0x7F) << 24)
-						                | (static_cast <uint32_t> (pay[1]) << 16)
-						                | (static_cast <uint32_t> (pay[2]) <<  8)
-						                |  static_cast <uint32_t> (pay[3]);
+						// Сохраняем значение window update (31-битный increment) для stream 0
+						h2.windowUpdate = (
+							(static_cast <uint32_t> (pay[0] & 0x7F) << 24)
+							| (static_cast <uint32_t> (pay[1])      << 16)
+							| (static_cast <uint32_t> (pay[2])      <<  8)
+							|  static_cast <uint32_t> (pay[3])
+						);
 					}
-				break; }
+				} break;
 				// ─── PRIORITY (0x2) ─────────────────────────────────────────────────────────
 				// RFC 7540 §6.3: payload — 4 байта stream dep + 1 байт weight
 				case 0x2: {
 					// Payload должен быть не менее 5 байт
 					if(payLen >= 5){
-						h2_priority_t prio;
+						// Объект для хранения информации о приоритизации потока
+						h2_priority_t prio{};
 						// Stream ID приоритизируемого потока — из заголовка фрейма
-						prio.streamId   = fSid;
+						prio.streamId = fSid;
 						// E-бит (MSB первого байта payload) — эксклюзивная зависимость
-						prio.exclusive  = ((pay[0] & 0x80) != 0);
+						prio.exclusive = ((pay[0] & 0x80) != 0);
 						// 31-битный stream dependency ID
-						prio.dependency = (static_cast <uint32_t> (pay[0] & 0x7F) << 24)
-						                | (static_cast <uint32_t> (pay[1]) << 16)
-						                | (static_cast <uint32_t> (pay[2]) <<  8)
-						                |  static_cast <uint32_t> (pay[3]);
+						prio.dependency = (
+							(static_cast <uint32_t> (pay[0] & 0x7F) << 24)
+							| (static_cast <uint32_t> (pay[1])      << 16)
+							| (static_cast <uint32_t> (pay[2])      <<  8)
+							|  static_cast <uint32_t> (pay[3])
+						);
 						// Raw weight (0-255); фактический вес = weight + 1
 						prio.weight = pay[4];
 						// Сохраняем в порядке получения
 						h2.priorities.push_back(prio);
 					}
-				break; }
+				} break;
 				// ─── HEADERS (0x1) ──────────────────────────────────────────────────────────
 				// RFC 7540 §6.2: содержит HPACK-блок с заголовками
 				case 0x1: {
@@ -5767,8 +5807,9 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 						gotHeaders = true;
 						// Позиция внутри payload
 						size_t hpos = 0;
-						// Если установлен флаг PADDED (0x8) — первый байт payload = длина padding
+						// Размер padding-а (если есть)
 						uint8_t padLen = 0;
+						// Если установлен флаг PADDED (0x8) — первый байт payload = длина padding
 						if(fFlags & 0x8)
 							// Читаем длину padding
 							padLen = pay[hpos++];
@@ -5777,9 +5818,11 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 							// Пропускаем inline PRIORITY из HEADERS (не учитываем в fingerprint)
 							hpos += 5;
 						// HPACK-блок заканчивается до padding: [hpos, payLen - padLen)
-						const size_t hpackEnd = (payLen > static_cast <uint32_t> (padLen))
-						                      ? static_cast <size_t> (payLen - padLen)
-						                      : static_cast <size_t> (payLen);
+						const size_t hpackEnd = (
+							(payLen > static_cast <uint32_t> (padLen))
+							? static_cast <size_t> (payLen - padLen)
+							: static_cast <size_t> (payLen)
+						);
 						/**
 						 * Декодируем HPACK-блок (RFC 7541) для извлечения порядка псевдо-заголовков.
 						 * Прекращаем, как только встречаем не-псевдо-заголовок:
@@ -5797,6 +5840,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 							const uint8_t b0 = pay[hpos];
 							// Определяем сокращение псевдо-заголовка
 							char pseudoCh = '\0';
+							// Если это Indexed Header Field (1xxxxxxx)
 							if(b0 & 0x80){
 								// ── Indexed Header Field: 1xxxxxxx (RFC 7541 §6.1) ────────
 								const uint32_t idx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 7);
@@ -5806,68 +5850,102 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 								if(pseudoCh == '\0')
 									// Достигли первого обычного заголовка
 									goto endHpack;
-							} else if((b0 & 0xC0) == 0x40){
+							// Если это Literal + Incremental Indexing (01xxxxxx)
+							} else if((b0 & 0xC0) == 0x40) {
 								// ── Literal + Incremental Indexing: 01xxxxxx (RFC 7541 §6.2.1) ──
 								const uint32_t nameIdx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 6);
+								// Если имя представлено индексом в статической таблице — получаем псевдо-символ, иначе декодируем имя как строку
 								if(nameIdx > 0){
 									// Имя из статической таблицы
 									pseudoCh = ::http2::hpackPseudoChar(nameIdx);
+								// Если имя не представлено индексом — декодируем как строку и пытаемся сопоставить псевдо-символу
 								} else {
 									// Имя — литеральная строка
 									const string name = ::http2::hpackDecodeStr(pay, hpackEnd, hpos);
+									// Пытаемся сопоставить псевдо-символу по имени
 									pseudoCh = ::http2::hpackPseudoFromName(name);
 								}
 								// Пропускаем значение
 								::http2::hpackDecodeStr(pay, hpackEnd, hpos);
+								// Если не псевдо-заголовок — завершаем разбор
 								if(pseudoCh == '\0')
 									// Достигли первого обычного заголовка
 									goto endHpack;
-							} else if((b0 & 0xF0) == 0x00){
+							// Если это Literal without Indexing (0000xxxx)
+							} else if((b0 & 0xF0) == 0x00) {
 								// ── Literal without Indexing: 0000xxxx (RFC 7541 §6.2.2) ────
 								const uint32_t nameIdx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 4);
-								if(nameIdx > 0){
+								// Если имя представлено индексом в статической таблице — получаем псевдо-символ, иначе декодируем имя как строку
+								if(nameIdx > 0)
+									// Устанавливаем псевдо-символ по индексу из статической таблицы
 									pseudoCh = ::http2::hpackPseudoChar(nameIdx);
-								} else {
+								// Если имя не представлено индексом — декодируем как строку и пытаемся сопоставить псевдо-символу
+								else {
+									// Получаем имя как литеральную строку
 									const string name = ::http2::hpackDecodeStr(pay, hpackEnd, hpos);
+									// Пытаемся сопоставить псевдо-символу по имени
 									pseudoCh = ::http2::hpackPseudoFromName(name);
 								}
+								// Пропускаем значение
 								::http2::hpackDecodeStr(pay, hpackEnd, hpos);
+								// Если не псевдо-заголовок — завершаем разбор
 								if(pseudoCh == '\0')
+									// Достигли первого обычного заголовка
 									goto endHpack;
-							} else if((b0 & 0xF0) == 0x10){
+							// Если это Literal Never Indexed (0001xxxx)
+							} else if((b0 & 0xF0) == 0x10) {
 								// ── Literal Never Indexed: 0001xxxx (RFC 7541 §6.2.3) ───────
 								const uint32_t nameIdx = ::http2::hpackDecodeInt(pay, hpackEnd, hpos, 4);
-								if(nameIdx > 0){
+								// Если имя представлено индексом в статической таблице — получаем псевдо-символ, иначе декодируем имя как строку
+								if(nameIdx > 0)
+									// Устанавливаем псевдо-символ по индексу из статической таблицы
 									pseudoCh = ::http2::hpackPseudoChar(nameIdx);
-								} else {
+								// Если имя не представлено индексом — декодируем как строку и пытаемся сопоставить псевдо-символу
+								else {
+									// Получаем имя как литеральную строку
 									const string name = ::http2::hpackDecodeStr(pay, hpackEnd, hpos);
+									// Пытаемся сопоставить псевдо-символу по имени
 									pseudoCh = ::http2::hpackPseudoFromName(name);
 								}
+								// Пропускаем значение
 								::http2::hpackDecodeStr(pay, hpackEnd, hpos);
+								// Если не псевдо-заголовок — завершаем разбор
 								if(pseudoCh == '\0')
+									// Достигли первого обычного заголовка
 									goto endHpack;
-							} else if((b0 & 0xE0) == 0x20){
+							// Если это Dynamic Table Size Update (001xxxxx)
+							} else if((b0 & 0xE0) == 0x20) {
 								// ── Dynamic Table Size Update: 001xxxxx (RFC 7541 §6.3) ─────
 								::http2::hpackDecodeInt(pay, hpackEnd, hpos, 5);
 								// Не является заголовком, продолжаем
 								continue;
-							} else {
-								// Неизвестный тип — прерываем
-								break;
-							}
+							// Если это неизвестный тип представления — прерываем
+							} else break;
 							// Если нашли псевдо-заголовок — добавляем, избегая дублей
 							if(pseudoCh != '\0'){
+								// Получаем строку из псевдо-символа
 								const string ph(1, pseudoCh);
+								// Флаг найденного псевдо-заголовка
 								bool found = false;
-								for(const auto & s : h2.pseudoHeaders)
-									if(!s.empty() && s[0] == pseudoCh){ found = true; break; }
+								/**
+								 * Проверяем, не добавляли ли уже этот псевдо-заголовок (может встречаться несколько раз, но в fingerprint учитываем только порядок первых вхождений)
+								 */
+								for(const auto & s : h2.pseudoHeaders){
+									// Если строка начинается с того же псевдо-символа — значит этот псевдо-заголовок уже добавлен
+									if((found = (!s.empty() && (s[0] == pseudoCh))))
+										// Выходим из цикла проверки
+										break;
+								}
+								// Если этот псевдо-заголовок ещё не добавлен — сохраняем его
 								if(!found)
+									// Добавляем псевдо-заголовок в список (порядок важен)
 									h2.pseudoHeaders.push_back(ph);
 							}
 						}
+						// Завершаем разбор HPACK-блока
 						endHpack:;
 					}
-				break; }
+				} break;
 				// Все остальные типы фреймов пропускаем
 				default: break;
 			}
