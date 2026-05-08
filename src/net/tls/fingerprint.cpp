@@ -5980,6 +5980,866 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 	return false;
 }
 /**
+ * @brief Метод применения данных цифрового отпечатка на запрос ClientHello
+ *
+ * @param buffer  буфер с данными цифрового отпечатка для применения к запросу ClientHello
+ * @param size    размер буфера в байтах
+ * @param browser объект с распарсенными данными ClientHello
+ * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
+ */
+vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size_t size, const browser_t & browser) noexcept {
+	// Результат работы функции
+	vector <uint8_t> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Проверяем входные параметры
+		if((buffer == nullptr) || (size == 0) || browser.ciphers.empty())
+			// Возвращаем пустой результат
+			return result;
+		// Парсим исходный буфер для получения структурированных данных
+		browser_t src{};
+		// Если парсинг не удался — возвращаем пустой результат
+		if(!this->parse(buffer, size, src))
+			// Возвращаем пустой результат
+			return result;
+		// Определяем протокол (TLS или DTLS)
+		const bool isDTLS = (
+			(src.record.version == version_t::DTLS_1_0) ||
+			(src.record.version == version_t::DTLS_1_2)
+		);
+		// Размер заголовка record (TLS: 5, DTLS: 13)
+		const size_t recordSize    = (isDTLS ? 13u : 5u);
+		// Размер заголовка handshake (TLS: 4, DTLS: 12)
+		const size_t handshakeSize = (isDTLS ? 12u : 4u);
+		/**
+		 * ─── Пересканируем исходный буфер ───────────────────────────────────────────
+		 * Цель: определить позиции полей и собрать данные, не представленные в browser_t:
+		 *   - GREASE wire-коды шифров из cipher_suites
+		 *   - сырые байты каждого расширения по его wire-типу
+		 *   - GREASE wire-коды и payload типов расширений
+		 */
+		// Начальное смещение: пропускаем record header + handshake header + client_version(2) + random(32)
+		size_t scanOff = (recordSize + handshakeSize + 2u + 32u);
+		// Если буфер слишком короткий для минимальной структуры — возвращаем пустой результат
+		if(scanOff >= size)
+			// Возвращаем пустой результат
+			return result;
+		// Пропускаем session_id (1 байт длины + данные)
+		const size_t sessLen = static_cast <size_t> (buffer[scanOff++]);
+		// Если буфер обрезан на session_id — возвращаем пустой результат
+		if((scanOff + sessLen) > size)
+			// Возвращаем пустой результат
+			return result;
+		// Пропускаем данные session_id
+		scanOff += sessLen;
+		// Для DTLS пропускаем cookie (1 байт длины + данные)
+		if(isDTLS){
+			// Если буфер обрезан на cookie_len — возвращаем пустой результат
+			if(scanOff >= size)
+				// Возвращаем пустой результат
+				return result;
+			// Пропускаем cookie
+			const size_t cookieLen = static_cast <size_t> (buffer[scanOff++]);
+			// Если буфер обрезан на cookie — возвращаем пустой результат
+			if((scanOff + cookieLen) > size)
+				// Возвращаем пустой результат
+				return result;
+			// Пропускаем данные cookie
+			scanOff += cookieLen;
+		}
+		// Запоминаем позицию начала поля cipher_suites_len в исходном буфере
+		const size_t csStart = scanOff;
+		// Если буфер слишком короткий для cipher_suites_len — возвращаем пустой результат
+		if((csStart + 2u) > size)
+			// Возвращаем пустой результат
+			return result;
+		// Получаем байтовую длину списка cipher_suites
+		const size_t csLen = static_cast <size_t> (::local::u16(buffer + csStart));
+		// Проверяем, что cipher_suites помещается в буфер
+		if((csStart + 2u + csLen) > size)
+			// Возвращаем пустой результат
+			return result;
+		// Собираем GREASE wire-коды шифров из cipher_suites (в порядке появления)
+		vector <uint16_t> greaseCipherVals;
+		/**
+		 * Перебираем все cipher_suites из исходного буфера для сбора GREASE-значений
+		 */
+		for(size_t i = 0u; (i + 1u) < csLen; i += 2u){
+			// Читаем 2-байтовый wire-код шифра
+			const uint16_t w = ::local::u16(buffer + csStart + 2u + i);
+			// Если это GREASE-значение — сохраняем его для последующего использования
+			if(::local::isGrease(w))
+				// Добавляем GREASE wire-код шифра в список
+				greaseCipherVals.push_back(w);
+		}
+		// Перемещаем смещение за конец cipher_suites
+		scanOff = (csStart + 2u + csLen);
+		// Запоминаем позицию начала поля compression_methods_len в исходном буфере
+		const size_t cmStart = scanOff;
+		// Если буфер слишком короткий для compression_methods_len — возвращаем пустой результат
+		if(cmStart >= size)
+			// Возвращаем пустой результат
+			return result;
+		// Получаем байтовую длину списка compression_methods
+		const size_t cmLen = static_cast <size_t> (buffer[scanOff++]);
+		// Проверяем, что compression_methods помещаются в буфер
+		if((scanOff + cmLen) > size)
+			// Возвращаем пустой результат
+			return result;
+		// Перемещаем смещение за конец compression_methods (exclusive)
+		scanOff += cmLen;
+		// Запоминаем позицию конца compression_methods
+		const size_t cmEnd = scanOff;
+		// Карта: wire-тип расширения → сырые байты payload расширения (из исходного буфера)
+		unordered_map <uint16_t, vector <uint8_t>> origExtRaw;
+		// Wire-коды GREASE-расширений в порядке появления
+		vector <uint16_t> greaseExtVals;
+		// Payload GREASE-расширений по их wire-типу
+		unordered_map <uint16_t, vector <uint8_t>> greaseExtRaw;
+		// Читаем и разбираем расширения исходного буфера (если они есть)
+		if((scanOff + 2u) <= size){
+			// Байтовая длина всего списка расширений
+			const size_t extTotalLen = static_cast <size_t> (::local::u16(buffer + scanOff));
+			// Начало данных расширений
+			size_t extOff = (scanOff + 2u);
+			// Конец данных расширений
+			const size_t extEnd = (extOff + extTotalLen);
+			/**
+			 * Перебираем все расширения исходного буфера
+			 */
+			while(((extOff + 4u) <= extEnd) && (extEnd <= size)){
+				// Читаем wire-тип расширения
+				const uint16_t extType = ::local::u16(buffer + extOff);
+				// Читаем длину payload расширения
+				const uint16_t extLen  = ::local::u16(buffer + extOff + 2u);
+				// Перемещаемся за заголовок расширения
+				extOff += 4u;
+				// Если данные расширения выходят за пределы extensions — прерываем
+				if((extOff + static_cast <size_t> (extLen)) > extEnd)
+					// Прерываем цикл
+					break;
+				// Если это GREASE-расширение — сохраняем его wire-тип и payload отдельно
+				if(::local::isGrease(extType)){
+					// Добавляем GREASE wire-тип в список (порядок важен)
+					greaseExtVals.push_back(extType);
+					// Сохраняем payload GREASE-расширения по его wire-типу
+					greaseExtRaw[extType] = vector <uint8_t>(buffer + extOff, buffer + extOff + extLen);
+				// Иначе сохраняем payload обычного расширения по его wire-типу
+				} else
+					// Сохраняем сырые байты payload расширения
+					origExtRaw[extType] = vector <uint8_t>(buffer + extOff, buffer + extOff + extLen);
+				// Перемещаемся за payload расширения
+				extOff += static_cast <size_t> (extLen);
+			}
+		}
+		// ─── Строим отфильтрованный список cipher_suites ────────────────────────────
+		/**
+		 * @brief Вспомогательная функция: проверяет, присутствует ли шифр cipher в списке ciphers
+		 *
+		 * Правила:
+		 *   - Порядок определяется шаблоном browser.ciphers
+		 *   - Включаем шифр, если он присутствует в src.ciphers (пересечение)
+		 *   - Для GREASE: используем wire-коды из исходного буфера в том же порядке
+		 *
+		 * @param ciphers список шифров для проверки
+		 * @param cipher  шифр для поиска
+		 * @return        результат проверки существования шифра в списке
+		 */
+		auto hasCipher = [](const vector <cipher_t> & ciphers, const cipher_t cipher) -> bool {
+			// Ищем шифр в списке
+			return (::find(ciphers.begin(), ciphers.end(), cipher) != ciphers.end());
+		};
+		// Индекс GREASE wire-кода шифра из исходного буфера
+		size_t greaseCipherIndex = 0u;
+		// Payload (байты) списка шифров для результирующего буфера
+		vector <uint8_t> cipherPayload;
+		/**
+		 * Перебираем шифры шаблона в порядке шаблона
+		 */
+		for(const auto & cipher : browser.ciphers){
+			// Если шифр отсутствует в исходном ClientHello — пропускаем
+			if(!hasCipher(src.ciphers, cipher))
+				// Пропускаем шифр
+				continue;
+			// Если это GREASE-шифр — используем wire-код из исходного буфера
+			if(cipher == cipher_t::GREASE){
+				// Если GREASE-коды кончились — используем значение по умолчанию
+				const uint16_t gv = (
+					(greaseCipherIndex < greaseCipherVals.size())
+					? greaseCipherVals[greaseCipherIndex++]
+					: 0x0A0Au
+				);
+				// Добавляем GREASE wire-код шифра в payload
+				cipherPayload.push_back(static_cast <uint8_t> (gv >> 8u));
+				// Добавляем второй байт GREASE wire-кода шифра в payload
+				cipherPayload.push_back(static_cast <uint8_t> (gv & 0xFFu));
+			// Иначе конвертируем enum в wire-код и добавляем в payload
+			} else {
+				// Получаем wire-код шифра
+				const uint16_t wire = ::local::cipherWire(cipher);
+				// Если wire-код ненулевой (известный шифр) — добавляем
+				if(wire != 0u){
+					// Добавляем старший байт wire-кода шифра в payload
+					cipherPayload.push_back(static_cast <uint8_t> (wire >> 8u));
+					// Добавляем младший байт wire-кода шифра в payload
+					cipherPayload.push_back(static_cast <uint8_t> (wire & 0xFFu));
+				}
+			}
+		}
+		// Если после фильтрации список шифров пуст — возвращаем пустой результат
+		if(cipherPayload.empty())
+			// Возвращаем пустой результат
+			return result;
+		// ─── Строим отфильтрованный список расширений ───────────────────────────────
+		/**
+		 * @brief Вспомогательная функция: ищет расширение с типом type в src.extensions
+		 *
+		 * Правила:
+		 *   - Порядок определяется шаблоном browser.extensions
+		 *   - Включаем расширение, если оно присутствует в src.extensions (пересечение)
+		 *   - GREASE-расширения: используем wire-коды из исходного буфера в том же порядке
+		 *   - Для "filter-list" расширений (supported_groups, sig_algs и пр.):
+		 *       пересекаем список шаблона со списком из src, порядок — из шаблона
+		 *   - Для "blob" расширений (SNI, session_ticket и пр.):
+		 *       используем сырые байты из исходного буфера без изменений
+		 *
+		 * @param type тип расширения для поиска
+		 * @return     объект найденного расширения или nullptr, если не найдено
+		 */
+		auto findSrcExt = [&src](const extension_type_t type) -> const extension_t * {
+			// Перебираем расширения исходного ClientHello
+			for(const auto & extension : src.extensions){
+				// Если нашли нужный тип — возвращаем указатель
+				if(extension->type == type)
+					// Возвращаем указатель на расширение
+					return extension.get();
+			}
+			// Расширение не найдено
+			return nullptr;
+		};
+		/**
+		 * @brief Вспомогательная функция: добавляет uint16_t big-endian в буфер
+		 *
+		 * @param buffer буфер для добавления байтов
+		 * @param num    число для добавления (будет преобразовано в 2 байта big-endian)
+		 */
+		auto u16be = [](vector <uint8_t> & buffer, const uint16_t num) -> void {
+			// Добавляем старший байт
+			buffer.push_back(static_cast <uint8_t> (num >> 8u));
+			// Добавляем младший байт
+			buffer.push_back(static_cast <uint8_t> (num & 0xFFu));
+		};
+		/**
+		 * @brief Вспомогательная функция: формирует и добавляет расширение (wire-тип + длина + payload) в buffer
+		 *
+		 * @param buffer буфер для добавления расширения
+		 * @param type   wire-тип расширения для добавления
+		 * @param data   байты payload расширения для добавления
+		 */
+		auto appendExt = [&u16be](vector <uint8_t> & buffer, const uint16_t type, const vector <uint8_t> & data) -> void {
+			// Добавляем wire-тип расширения (2 байта big-endian)
+			u16be(buffer, type);
+			// Добавляем длину payload расширения (2 байта big-endian)
+			u16be(buffer, static_cast <uint16_t> (data.size()));
+			// Добавляем байты payload расширения
+			buffer.insert(buffer.end(), data.begin(), data.end());
+		};
+		// Индекс GREASE wire-кода расширения из исходного буфера
+		size_t greaseExtIndex = 0u;
+		// Payload всех расширений для результирующего буфера
+		vector <uint8_t> extPayload;
+		/**
+		 * Перебираем расширения шаблона в порядке шаблона
+		 */
+		for(const auto & tmplExt : browser.extensions){
+			// Тип расширения из шаблона
+			const extension_type_t etype = tmplExt->type;
+			// Wire-тип расширения (будет вычислен ниже)
+			uint16_t wireType = 0u;
+			/**
+			 * Для GREASE-расширения: используем wire-код из исходного буфера
+			 * Для обычных расширений: проверяем наличие в src, получаем wire-код
+			 */
+			if(etype == extension_type_t::GREASE){
+				// Если GREASE-расширения из исходного буфера кончились — пропускаем
+				if(greaseExtIndex >= greaseExtVals.size())
+					// Пропускаем расширение
+					continue;
+				// Используем следующий GREASE wire-тип из исходного буфера
+				wireType = greaseExtVals[greaseExtIndex++];
+			// Если это обычное расширение — проверяем его наличие в src и получаем wire-тип
+			} else {
+				// Проверяем, присутствует ли это расширение в исходном ClientHello
+				if(findSrcExt(etype) == nullptr)
+					// Расширение отсутствует в исходном ClientHello — пропускаем
+					continue;
+				// Получаем wire-тип расширения
+				wireType = ::local::extensionWire(etype);
+				// Если wire-тип неизвестен — пропускаем расширение
+				if(wireType == 0u)
+					// Пропускаем расширение
+					continue;
+			}
+			// Флаг: является ли это "filter-list" расширением (пропустить если payload пуст после фильтрации)
+			bool filterList = false;
+			// Payload текущего расширения
+			vector <uint8_t> payload;
+			/**
+			 * Строим payload в зависимости от типа расширения
+			 */
+			switch(static_cast <uint8_t> (etype)){
+				/**
+				 * GREASE-расширение: payload из исходного буфера
+				 */
+				case static_cast <uint8_t> (extension_type_t::GREASE): {
+					// Ищем payload GREASE-расширения по его wire-типу в карте сырых байт расширений из исходного буфера
+					auto i = greaseExtRaw.find(wireType);
+					// Если payload GREASE-расширения есть в исходном буфере — используем его
+					if(i != greaseExtRaw.end())
+						// Берём payload из исходного буфера
+						payload = i->second;
+				} break;
+				/**
+				 * ─── Filter-list расширения ──────────────────────────────────────────
+				 * Пересекаем список шаблона со списком из src; порядок из шаблона.
+				 * Если пересечение пусто — расширение будет пропущено (filterList = true).
+				 */
+				case static_cast <uint8_t> (extension_type_t::SUPPORTED_GROUPS): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка групп
+					vector <uint8_t> groupBytes;
+					// Получаем указатели на списки групп: шаблон и исходный ClientHello
+					const auto * tmpl = static_cast <const extension_supported_groups_t *> (tmplExt.get());
+					const auto * orig = static_cast <const extension_supported_groups_t *> (findSrcExt(etype));
+					/**
+					 * Перебираем группы шаблона, включаем только те, что есть в исходном ClientHello
+					 */
+					for(const auto & gid : tmpl->supportedGroups){
+						// Проверяем наличие группы в исходном ClientHello
+						if(::find(orig->supportedGroups.begin(), orig->supportedGroups.end(), gid) == orig->supportedGroups.end())
+							// Группы нет в исходном ClientHello — пропускаем
+							continue;
+						// Вычисляем wire-код группы (GREASE → 0x0A0A)
+						const uint16_t gw = ((gid == group_t::GREASE) ? 0x0A0Au : ::local::groupWire(gid));
+						// Пропускаем неизвестные группы
+						if(gw == 0u)
+							// Неизвестная группа — пропускаем
+							continue;
+						// Добавляем wire-код группы в буфер
+						u16be(groupBytes, gw);
+					}
+					// Сериализуем: uint16_t byte_len + uint16_t[N] groups
+					if(!groupBytes.empty()){
+						// Добавляем 2-байтовую длину списка групп
+						u16be(payload, static_cast <uint16_t> (groupBytes.size()));
+						// Добавляем байты списка групп
+						payload.insert(payload.end(), groupBytes.begin(), groupBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует ec_point_formats, то обрабатываем его как filter-list расширение, пересекаем шаблон со списком из src, порядок из шаблона
+				case static_cast <uint8_t> (extension_type_t::EC_POINT_FORMATS): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка форматов точек
+					vector <uint8_t> fmtBytes;
+					// Получаем указатели на списки форматов точек: шаблон и исходный ClientHello
+					const auto * tmpl = static_cast <const extension_ec_point_t *> (tmplExt.get());
+					const auto * orig = static_cast <const extension_ec_point_t *> (findSrcExt(etype));
+					/**
+					 * Перебираем форматы точек шаблона, включаем только те, что есть в исходном ClientHello
+					 */
+					for(const auto & format : tmpl->formats){
+						// Проверяем наличие формата точек в исходном ClientHello
+						if(::find(orig->formats.begin(), orig->formats.end(), format) == orig->formats.end())
+							// Формата точек нет в исходном ClientHello — пропускаем
+							continue;
+						// Получаем wire-код формата точек
+						const uint8_t fw = ::local::ecPointWire(format);
+						// Пропускаем неизвестные форматы точек
+						if(fw == 0xFFu)
+							// Неизвестный формат точек — пропускаем
+							continue;
+						// Добавляем wire-код формата точек в буфер
+						fmtBytes.push_back(fw);
+					}
+					// Сериализуем: uint8_t count + uint8_t[N] formats
+					if(!fmtBytes.empty()){
+						// Добавляем 1-байтовое количество форматов точек
+						payload.push_back(static_cast <uint8_t> (fmtBytes.size()));
+						// Добавляем байты форматов точек
+						payload.insert(payload.end(), fmtBytes.begin(), fmtBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует delegated_credential
+				case static_cast <uint8_t> (extension_type_t::DELEGATED_CREDENTIAL):
+				// Если тип расширения соответствует signature_algorithms
+				case static_cast <uint8_t> (extension_type_t::SIGNATURE_ALGORITHMS):
+				// Если тип расширения соответствует signature_algorithms_cert
+				case static_cast <uint8_t> (extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка алгоритмов подписи
+					vector <uint8_t> algBytes;
+					// Получаем список алгоритмов подписи из шаблона
+					const vector <signature_t> * tmplAlgs = nullptr;
+					// Получаем список алгоритмов подписи из исходного ClientHello
+					const vector <signature_t> * origAlgs = nullptr;
+					// Выбираем правильный тип расширения для приведения указателя
+					if(etype == extension_type_t::SIGNATURE_ALGORITHMS){
+						// Список алгоритмов подписи из шаблона
+						tmplAlgs = &static_cast <const extension_signature_t *> (tmplExt.get())->algorithms;
+						// Список алгоритмов подписи из исходного ClientHello
+						origAlgs = &static_cast <const extension_signature_t *> (findSrcExt(etype))->algorithms;
+					// Если тип расширения соответствует signature_algorithms_cert
+					} else if(etype == extension_type_t::SIGNATURE_ALGORITHMS_CERT) {
+						// Список алгоритмов подписи для сертификатов из шаблона
+						tmplAlgs = &static_cast <const extension_signature_algorithms_cert_t *> (tmplExt.get())->algorithms;
+						// Список алгоритмов подписи для сертификатов из исходного ClientHello
+						origAlgs = &static_cast <const extension_signature_algorithms_cert_t *> (findSrcExt(etype))->algorithms;
+					// Если тип расширения соответствует delegated_credential
+					} else {
+						// Список делегированных алгоритмов подписи из шаблона
+						tmplAlgs = &static_cast <const extension_delegated_credential_t *> (tmplExt.get())->algorithms;
+						// Список делегированных алгоритмов подписи из исходного ClientHello
+						origAlgs = &static_cast <const extension_delegated_credential_t *> (findSrcExt(etype))->algorithms;
+					}
+					/**
+					 * Перебираем алгоритмы подписи шаблона, включаем только те, что есть в исходном ClientHello
+					 */
+					for(const auto & a : * tmplAlgs){
+						// Проверяем наличие алгоритма подписи в исходном ClientHello
+						if(::find(origAlgs->begin(), origAlgs->end(), a) == origAlgs->end())
+							// Алгоритма подписи нет в исходном ClientHello — пропускаем
+							continue;
+						// Вычисляем wire-код алгоритма подписи (GREASE → 0x0A0A)
+						const uint16_t aw = ((a == signature_t::GREASE) ? 0x0A0Au : ::local::signatureWire(a));
+						// Пропускаем неизвестные алгоритмы подписи
+						if(aw == 0u)
+							// Неизвестный алгоритм подписи — пропускаем
+							continue;
+						// Добавляем wire-код алгоритма подписи в буфер
+						u16be(algBytes, aw);
+					}
+					// Сериализуем: uint16_t byte_len + uint16_t[N] algorithms
+					if(!algBytes.empty()){
+						// Добавляем 2-байтовую длину списка алгоритмов подписи
+						u16be(payload, static_cast <uint16_t> (algBytes.size()));
+						// Добавляем байты списка алгоритмов подписи
+						payload.insert(payload.end(), algBytes.begin(), algBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует use_srtp
+				case static_cast <uint8_t> (extension_type_t::USE_SRTP): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка профилей SRTP
+					vector <uint8_t> profBytes;
+					// Получаем указатели на расширение use_srtp: шаблон и исходный ClientHello
+					const auto * tmpl = static_cast <const extension_use_srtp_t *> (tmplExt.get());
+					const auto * orig = static_cast <const extension_use_srtp_t *> (findSrcExt(etype));
+					/**
+					 * @brief Вспомогательная функция: enum srtp_t → wire-код uint16_t
+					 *
+					 * @param profile профиль SRTP
+					 * @return        wire-код профиля SRTP в виде uint16_t (GREASE → 0x0A0A, неизвестные профили → 0) для использования в расширении use_srtp
+					 */
+					auto srtpWire = [](const srtp_t profile) -> uint16_t {
+						/**
+						 * Определяем wire-код профиля SRTP
+						 */
+						switch(profile){
+							// Если профиль SRTP соответствует AES128_CM_HMAC_SHA1_80 (RFC 5764)
+							case srtp_t::AES128_CM_HMAC_SHA1_80: return 0x0001u;
+							// Если профиль SRTP соответствует AES128_CM_HMAC_SHA1_32 (RFC 5764)
+							case srtp_t::AES128_CM_HMAC_SHA1_32: return 0x0002u;
+							// Если профиль SRTP соответствует AES128_F8_HMAC_SHA1_80 (RFC 5764)
+							case srtp_t::AES128_F8_HMAC_SHA1_80: return 0x0005u;
+							// Если профиль SRTP соответствует NULL_HMAC_SHA1_80 (RFC 5764)
+							case srtp_t::NULL_HMAC_SHA1_80:       return 0x0007u;
+							// Если профиль SRTP соответствует NULL_HMAC_SHA1_32 (RFC 5764)
+							case srtp_t::NULL_HMAC_SHA1_32:       return 0x0008u;
+							// Если профиль SRTP соответствует AEAD_AES_128_GCM (RFC 5764)
+							case srtp_t::AEAD_AES_128_GCM:        return 0x0009u;
+							// Если профиль SRTP соответствует AEAD_AES_256_GCM (RFC 5764)
+							case srtp_t::AEAD_AES_256_GCM:        return 0x000Au;
+							// Неизвестный профиль SRTP
+							default: return 0u;
+						}
+					};
+					/**
+					 * Перебираем профили SRTP шаблона, включаем только те, что есть в исходном ClientHello
+					 */
+					for(const auto & profile : tmpl->profiles){
+						// Проверяем наличие профиля SRTP в исходном ClientHello
+						if(::find(orig->profiles.begin(), orig->profiles.end(), profile) == orig->profiles.end())
+							// Профиля SRTP нет в исходном ClientHello — пропускаем
+							continue;
+						// Вычисляем wire-код профиля SRTP (GREASE → 0x0A0A)
+						const uint16_t pw = ((profile == srtp_t::GREASE) ? 0x0A0Au : srtpWire(profile));
+						// Пропускаем неизвестные профили SRTP
+						if(pw == 0u)
+							// Неизвестный профиль SRTP — пропускаем
+							continue;
+						// Добавляем wire-код профиля SRTP в буфер
+						u16be(profBytes, pw);
+					}
+					// Сериализуем: uint16_t byte_len + uint16_t[N] profiles + uint8_t mki_len [+ mki]
+					if(!profBytes.empty()){
+						// Добавляем 2-байтовую длину списка профилей SRTP
+						u16be(payload, static_cast <uint16_t> (profBytes.size()));
+						// Добавляем байты списка профилей SRTP
+						payload.insert(payload.end(), profBytes.begin(), profBytes.end());
+						// Добавляем длину MKI из исходного расширения
+						payload.push_back(orig->mkiLength);
+						// Если MKI данные присутствуют — добавляем их из сырых байт исходного буфера
+						if((orig->mkiLength > 0u) && origExtRaw.count(wireType)){
+							// Получаем сырые байты расширения use_srtp из исходного буфера
+							const auto & raw = origExtRaw.at(wireType);
+							// Вычисляем смещение к MKI (после profiles_len(2) + profiles * 2)
+							const size_t mkiOff = (2u + orig->profiles.size() * 2u);
+							// Проверяем, что MKI данные есть в сырых байтах расширения
+							if((mkiOff + 1u) <= raw.size()){
+								// Читаем фактическую длину MKI из сырых байт
+								const size_t mkiActual = raw[mkiOff];
+								// Добавляем байты MKI если они помещаются в сырые байты расширения
+								if((mkiOff + 1u + mkiActual) <= raw.size())
+									// Добавляем MKI данные в payload
+									payload.insert(payload.end(), raw.begin() + mkiOff + 1u, raw.begin() + mkiOff + 1u + mkiActual);
+							}
+						}
+					}
+				} break;
+				// Если тип расширения соответствует heartbeat
+				case static_cast <uint8_t> (extension_type_t::HEARTBEAT): {
+					// heartbeat: один байт режима; используем значение из исходного ClientHello
+					const auto * orig = static_cast <const extension_heartbeat_t *> (findSrcExt(etype));
+					// Добавляем байт режима heartbeat
+					payload.push_back(static_cast <uint8_t> (orig->mode));
+				} break;
+				// Если тип расширения соответствует ALPN
+				case static_cast <uint8_t> (extension_type_t::ALPN):
+				// Если тип расширения соответствует APPLICATION_SETTINGS
+				case static_cast <uint8_t> (extension_type_t::APPLICATION_SETTINGS):
+				// Если тип расширения соответствует APPLICATION_SETTINGS_OLD
+				case static_cast <uint8_t> (extension_type_t::APPLICATION_SETTINGS_OLD): {
+					// Отмечаем как filter-list расширение (для пропуска при пустом пересечении)
+					filterList = true;
+					// Буфер для байт списка протоколов
+					vector <uint8_t> protoBytes;
+					// Получаем список протоколов из шаблона
+					const vector <string> * tmplProtos = nullptr;
+					// Получаем список протоколов из исходного ClientHello
+					const vector <string> * origProtos = nullptr;
+					// Выбираем правильный тип расширения для приведения указателя
+					if(etype == extension_type_t::ALPN){
+						// Список протоколов ALPN из шаблона
+						tmplProtos = &static_cast <const extension_alpn_t *> (tmplExt.get())->protocols;
+						// Список протоколов ALPN из исходного ClientHello
+						origProtos = &static_cast <const extension_alpn_t *> (findSrcExt(etype))->protocols;
+					// Если тип расширения соответствует APPLICATION_SETTINGS
+					} else if(etype == extension_type_t::APPLICATION_SETTINGS) {
+						// Список протоколов ALPS из шаблона
+						tmplProtos = &static_cast <const extension_application_settings_t *> (tmplExt.get())->protocols;
+						// Список протоколов ALPS из исходного ClientHello
+						origProtos = &static_cast <const extension_application_settings_t *> (findSrcExt(etype))->protocols;
+					// Если тип расширения соответствует APPLICATION_SETTINGS_OLD
+					} else {
+						// Список протоколов ALPS (old) из шаблона
+						tmplProtos = &static_cast <const extension_application_settings_old_t *> (tmplExt.get())->protocols;
+						// Список протоколов ALPS (old) из исходного ClientHello
+						origProtos = &static_cast <const extension_application_settings_old_t *> (findSrcExt(etype))->protocols;
+					}
+					/**
+					 * Перебираем протоколы шаблона, включаем только те, что есть в исходном ClientHello
+					 */
+					for(const auto & proto : * tmplProtos){
+						// Проверяем наличие протокола в исходном ClientHello
+						if(::find(origProtos->begin(), origProtos->end(), proto) == origProtos->end())
+							// Протокола нет в исходном ClientHello — пропускаем
+							continue;
+						// Добавляем 1-байтовую длину имени протокола
+						protoBytes.push_back(static_cast <uint8_t> (proto.size()));
+						// Добавляем байты имени протокола
+						protoBytes.insert(protoBytes.end(), proto.begin(), proto.end());
+					}
+					// Если пересечение непусто — сериализуем: uint16_t total_len + (uint8_t len + bytes)*N
+					if(!protoBytes.empty()){
+						// Добавляем 2-байтовую длину списка протоколов
+						u16be(payload, static_cast <uint16_t> (protoBytes.size()));
+						// Добавляем байты списка протоколов
+						payload.insert(payload.end(), protoBytes.begin(), protoBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует compress_certificate
+				case static_cast <uint8_t> (extension_type_t::COMPRESS_CERTIFICATE): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка алгоритмов сжатия
+					vector <uint8_t> algBytes;
+					// Получаем указатели на расширение compress_certificate: шаблон и исходный ClientHello
+					const auto * tmpl = static_cast <const extension_compress_certificate_t *> (tmplExt.get());
+					const auto * orig = static_cast <const extension_compress_certificate_t *> (findSrcExt(etype));
+					/**
+					 * Перебираем алгоритмы сжатия шаблона, включаем только те, что есть в исходном ClientHello
+					 * RFC 8879: uint8_t byte_count + uint16_t[N] algorithms (wire = 0x0001..0x0003)
+					 */
+					for(const auto & algorithm : tmpl->algorithms){
+						// Проверяем наличие алгоритма в исходном ClientHello
+						if(::find(orig->algorithms.begin(), orig->algorithms.end(), algorithm) == orig->algorithms.end())
+							// Алгоритма нет в исходном ClientHello — пропускаем
+							continue;
+						// Получаем wire-код (NONE и UNKNOWN пропускаем)
+						const uint8_t cw = ::local::compressorWire(algorithm);
+						// Пропускаем NONE и неизвестные алгоритмы
+						if((cw == 0u) || (cw == 0xFFu))
+							// Пропускаем неизвестный алгоритм
+							continue;
+						// Добавляем 2-байтовый wire-код алгоритма сжатия в буфер
+						u16be(algBytes, static_cast <uint16_t> (cw));
+					}
+					// Сериализуем: uint8_t byte_count + uint16_t[N] algorithms
+					if(!algBytes.empty()){
+						// Добавляем 1-байтовое количество байт в списке алгоритмов
+						payload.push_back(static_cast <uint8_t> (algBytes.size()));
+						// Добавляем байты списка алгоритмов сжатия
+						payload.insert(payload.end(), algBytes.begin(), algBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует supported_versions
+				case static_cast <uint8_t> (extension_type_t::SUPPORTED_VERSIONS): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка версий
+					vector <uint8_t> verBytes;
+					// Получаем указатели на расширение supported_versions: шаблон и исходный ClientHello
+					const auto * tmpl = static_cast <const extension_supported_versions_t *> (tmplExt.get());
+					const auto * orig = static_cast <const extension_supported_versions_t *> (findSrcExt(etype));
+					/**
+					 * Перебираем версии шаблона, включаем только те, что есть в исходном ClientHello
+					 */
+					for(const auto & version : tmpl->versions){
+						// Проверяем наличие версии в исходном ClientHello
+						if(::find(orig->versions.begin(), orig->versions.end(), version) == orig->versions.end())
+							// Версии нет в исходном ClientHello — пропускаем
+							continue;
+						// Вычисляем wire-код версии (GREASE → 0x0A0A)
+						const uint16_t vw = ((version == version_t::GREASE) ? 0x0A0Au : ::local::versionWire(version));
+						// Пропускаем неизвестные версии
+						if(vw == 0u)
+							// Неизвестная версия — пропускаем
+							continue;
+						// Добавляем wire-код версии в буфер
+						u16be(verBytes, vw);
+					}
+					// Сериализуем: uint8_t byte_len + uint16_t[N] versions
+					if(!verBytes.empty()){
+						// Добавляем 1-байтовую длину списка версий
+						payload.push_back(static_cast <uint8_t> (verBytes.size()));
+						// Добавляем байты списка версий
+						payload.insert(payload.end(), verBytes.begin(), verBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует psk_key_exchange_modes
+				case static_cast <uint8_t> (extension_type_t::PSK_KEY_EXCHANGE_MODES): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка режимов
+					vector <uint8_t> modeBytes;
+					// Получаем указатели на расширение psk_key_exchange_modes: шаблон и исходный ClientHello
+					const auto * tmpl = static_cast <const extension_psk_key_exchange_t *> (tmplExt.get());
+					const auto * orig = static_cast <const extension_psk_key_exchange_t *> (findSrcExt(etype));
+					/**
+					 * Перебираем режимы PSK шаблона, включаем только те, что есть в исходном ClientHello
+					 */
+					for(const auto & mode : tmpl->modes){
+						// Проверяем наличие режима PSK в исходном ClientHello
+						if(::find(orig->modes.begin(), orig->modes.end(), mode) == orig->modes.end())
+							// Режима PSK нет в исходном ClientHello — пропускаем
+							continue;
+						// Пропускаем UNKNOWN
+						if(mode == psk_key_t::UNKNOWN)
+							// UNKNOWN режим PSK — пропускаем
+							continue;
+						// Добавляем байт режима PSK (wire == enum value: PSK_ONLY=0, PSK_DHE=1)
+						modeBytes.push_back(static_cast <uint8_t> (mode));
+					}
+					// Сериализуем: uint8_t byte_count + uint8_t[N] modes
+					if(!modeBytes.empty()){
+						// Добавляем 1-байтовое количество байт в списке режимов
+						payload.push_back(static_cast <uint8_t> (modeBytes.size()));
+						// Добавляем байты режимов PSK
+						payload.insert(payload.end(), modeBytes.begin(), modeBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует key_share
+				case static_cast <uint8_t> (extension_type_t::KEY_SHARE): {
+					// Отмечаем как filter-list расширение
+					filterList = true;
+					// Буфер для байт списка KeyShareEntry
+					vector <uint8_t> ksBytes;
+					// Получаем указатели на расширение key_share: шаблон и исходный ClientHello
+					const auto * tmpl = static_cast <const extension_key_share_t *> (tmplExt.get());
+					const auto * orig = static_cast <const extension_key_share_t *> (findSrcExt(etype));
+					/**
+					 * Перебираем группы шаблона, включаем только те, что есть в исходном ClientHello.
+					 * Ключевой материал (key_exchange) берём из исходного ClientHello.
+					 */
+					for(const auto & ks : tmpl->keyShares){
+						// Ищем эту группу в исходном ClientHello
+						const auto i = ::find_if(
+							orig->keyShares.begin(), orig->keyShares.end(),
+							[&ks](const pair <group_t, vector <uint8_t>> & e){ return e.first == ks.first; }
+						);
+						// Если группы нет в исходном ClientHello — пропускаем
+						if(i == orig->keyShares.end())
+							// Группы нет в исходном ClientHello — пропускаем
+							continue;
+						// Вычисляем wire-код группы (GREASE → 0x0A0A)
+						const uint16_t gw = ((ks.first == group_t::GREASE) ? 0x0A0Au : ::local::groupWire(ks.first));
+						// Пропускаем неизвестные группы
+						if(gw == 0u)
+							// Неизвестная группа — пропускаем
+							continue;
+						// Добавляем wire-код группы (2 байта)
+						u16be(ksBytes, gw);
+						// Добавляем 2-байтовую длину ключевого материала
+						u16be(ksBytes, static_cast <uint16_t> (i->second.size()));
+						// Добавляем ключевой материал из исходного ClientHello
+						ksBytes.insert(ksBytes.end(), i->second.begin(), i->second.end());
+					}
+					// Сериализуем: uint16_t total_byte_len + (group:2 + key_len:2 + key_data)*N
+					if(!ksBytes.empty()){
+						// Добавляем 2-байтовую суммарную длину KeyShareEntry
+						u16be(payload, static_cast <uint16_t> (ksBytes.size()));
+						// Добавляем байты всех KeyShareEntry
+						payload.insert(payload.end(), ksBytes.begin(), ksBytes.end());
+					}
+				} break;
+				// Если тип расширения соответствует record_size_limit
+				case static_cast <uint8_t> (extension_type_t::RECORD_SIZE_LIMIT): {
+					// record_size_limit: 2-байтовое значение из исходного ClientHello
+					const auto * orig = static_cast <const extension_record_size_limit_t *> (findSrcExt(etype));
+					// Добавляем wire-код значения record_size_limit
+					u16be(payload, orig->data);
+				} break;
+				/**
+				 * ─── Blob-расширения ─────────────────────────────────────────────────
+				 * Используем сырые байты из исходного буфера без изменений.
+				 * Это расширения с данными, специфичными для соединения
+				 * (SNI, session_ticket, PSK, ECH и пр.) или пустые в ClientHello
+				 * (encrypt_then_mac, extended_master_secret, post_handshake_auth и пр.).
+				 */
+				default: {
+					// Ищем сырые байты расширения по его wire-типу в карте сырых байт расширений из исходного буфера
+					auto i = origExtRaw.find(wireType);
+					// Если сырые байты расширения есть в исходном буфере — используем их
+					if(i != origExtRaw.end())
+						// Берём payload из исходного буфера
+						payload = i->second;
+					// Иначе payload остаётся пустым (для расширений без данных в ClientHello)
+				}
+			}
+			// Если это filter-list расширение и payload пуст после фильтрации — пропускаем расширение
+			if(filterList && payload.empty())
+				// Пропускаем расширение с пустым пересечением
+				continue;
+			// Добавляем расширение в общий payload расширений
+			appendExt(extPayload, wireType, payload);
+		}
+		/**
+		 * ─── Собираем результирующий буфер ──────────────────────────────────────────
+		 *
+		 * Структура:
+		 *   1. Verbatim: все байты от начала буфера до cipher_suites_len (record + hs headers + version + random + session_id + cookie)
+		 *   2. cipher_suites_len (2 байта) + cipher_suites (отфильтрованные)
+		 *   3. Verbatim: compression_methods_len + compression_methods из исходного буфера
+		 *   4. extensions_len (2 байта) + extensions (отфильтрованные и переупорядоченные)
+		 */
+		// 1. Копируем verbatim-часть (от начала до cipher_suites_len)
+		result.insert(result.end(), buffer, buffer + csStart);
+		// 2. Добавляем cipher_suites_len + cipher_suites
+		u16be(result, static_cast <uint16_t> (cipherPayload.size()));
+		// Добавляем байты списка шифров
+		result.insert(result.end(), cipherPayload.begin(), cipherPayload.end());
+		// 3. Копируем compression_methods из исходного буфера verbatim
+		result.insert(result.end(), buffer + cmStart, buffer + cmEnd);
+		// 4. Добавляем extensions_len + extensions (если есть)
+		if(!extPayload.empty()){
+			// Добавляем 2-байтовую суммарную длину расширений
+			u16be(result, static_cast <uint16_t> (extPayload.size()));
+			// Добавляем байты всех расширений
+			result.insert(result.end(), extPayload.begin(), extPayload.end());
+		}
+		/**
+		 * ─── Обновляем поля длины в заголовках ──────────────────────────────────────
+		 *
+		 * Handshake length (uint24 big-endian): байты [recordSize+1..recordSize+3]
+		 *   = total - recordSize - handshakeSize  (длина тела ClientHello)
+		 *
+		 * Record payload length (uint16 big-endian):
+		 *   TLS:  байты [3..4] = total - recordSize
+		 *   DTLS: байты [11..12] = total - recordSize
+		 *
+		 * DTLS frag_length (uint24 big-endian): байты [recordSize+9..recordSize+11]
+		 *   = то же значение, что и handshake length (фрагмент не разбит)
+		 */
+		// Вычисляем длину тела ClientHello (после заголовка рукопожатия)
+		const size_t handshakeBodyLen = (result.size() - recordSize - handshakeSize);
+		// Обновляем поле handshake length (bytes [recordSize+1..recordSize+3], uint24)
+		result[recordSize + 1u] = static_cast <uint8_t> ((handshakeBodyLen >> 16u) & 0xFFu);
+		// Обновляем второй байт поля handshake length
+		result[recordSize + 2u] = static_cast <uint8_t> ((handshakeBodyLen >>  8u) & 0xFFu);
+		// Обновляем третий байт поля handshake length
+		result[recordSize + 3u] = static_cast <uint8_t> (handshakeBodyLen          & 0xFFu);
+		// Для DTLS также обновляем frag_length (bytes [recordSize+9..recordSize+11], uint24)
+		if(isDTLS){
+			// Обновляем первый байт поля frag_length
+			result[recordSize + 9u]  = static_cast <uint8_t> ((handshakeBodyLen >> 16u) & 0xFFu);
+			// Обновляем второй байт поля frag_length
+			result[recordSize + 10u] = static_cast <uint8_t> ((handshakeBodyLen >>  8u) & 0xFFu);
+			// Обновляем третий байт поля frag_length
+			result[recordSize + 11u] = static_cast <uint8_t> (handshakeBodyLen          & 0xFFu);
+		}
+		// Вычисляем длину payload записи TLS (после заголовка record)
+		const size_t recordPayloadLen = (result.size() - recordSize);
+		// Обновляем поле record payload length
+		if(!isDTLS){
+			// TLS: record length в байтах [3..4] (uint16 big-endian)
+			result[3u] = static_cast <uint8_t> (recordPayloadLen >> 8u);
+			// Обновляем второй байт поля record length
+			result[4u] = static_cast <uint8_t> (recordPayloadLen & 0xFFu);
+		// Если это DTLS, то поле длины записи находится в байтах [11..12]
+		} else {
+			// DTLS: record length в байтах [11..12] (uint16 big-endian)
+			result[11u] = static_cast <uint8_t> (recordPayloadLen >> 8u);
+			// Обновляем второй байт поля record length
+			result[12u] = static_cast <uint8_t> (recordPayloadLen & 0xFFu);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Конструктор
  *
  * @param fmk объект фреймворка

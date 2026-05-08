@@ -599,7 +599,7 @@ namespace ssl {
 				}
 			} break;
 		}
-		// Выводим сформированное сообщение об ошибке
+		// Выводим результат
 		return result;
 	}
 	/**
@@ -1263,7 +1263,7 @@ namespace ssl {
 						// Выводим сообщение об ошибке
 						log->print("%s", log_t::flag_t::CRITICAL, "Failed to open system certificate store");
 					#endif
-					// Выходим
+					// Выводим результат
 					return result;
 				}
 				// Контекст сертификата
@@ -1304,7 +1304,7 @@ namespace ssl {
 				// Закрываем системный стор
 				::CertCloseStore(sys, 0);
 			}
-			// Выводим сформированный результат
+			// Выводим результат
 			return result;
 		}
 	#endif
@@ -1593,7 +1593,7 @@ namespace ssl {
 				// Закрываем BIO
 				::BIO_free(bio);
 			}
-			// Выводим результат работы функции
+			// Выводим результат
 			return result;
 		}
 	};
@@ -1746,7 +1746,7 @@ namespace cookie {
 			const int32_t result = ::cookie::generate(ssl, cookie, &length);
 			// Получаем размер буфера с печенками
 			(* size) = length;
-			// Выводим результат работы функции
+			// Выводим результат
 			return result;
 		}
 	#endif // !OPENSSL_IS_BORINGSSL
@@ -2823,7 +2823,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выходим из функции
+							// Выводим результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -3073,7 +3073,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выходим из функции
+							// Выводим результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -3411,7 +3411,7 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выходим из функции
+							// Выводим результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -3499,7 +3499,7 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выходим из функции
+							// Выводим результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -5061,7 +5061,7 @@ bool awh::Transport_Layer_Security::destroy(const id_t id) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем отрицательный результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -5142,7 +5142,7 @@ bool awh::Transport_Layer_Security::shutdown(const id_t id) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -5282,9 +5282,17 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 
 												tls::fgp_t fgp(this->_fmk, this->_log);
 
-												fgp.parse(::local::buffer, static_cast <size_t> (bytes), browser);
+												if(fgp.parse(::local::buffer, static_cast <size_t> (bytes), browser)){
 
-												cout << " Browser: " << fgp.print(browser) << endl;
+													cout << " Browser: " << fgp.print(browser) << endl;
+
+													const auto res = fgp.apply(::local::buffer, static_cast <size_t> (bytes), browser);
+
+													tls::fgp_t::browser_t browser2;
+													
+													if(fgp.parse(&res[0], res.size(), browser2))
+														cout << " Browser2: " << fgp.print(browser2) << endl;
+												}
 
 											}
 										}
@@ -5420,7 +5428,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -5539,7 +5547,7 @@ bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -5966,7 +5974,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -6658,7 +6666,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат работы функции
+	// Выводим результат
 	return result;
 }
 /**
@@ -6879,7 +6887,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -6960,7 +6968,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 							result = this->handshake(id);
 							// Если рукопожатие ещё не выполнено
 							if(!result || !(member->state & state::HANDSHAKE_MODE))
-								// Выходим из функции
+								// Выводим результат
 								return result;
 						}
 						// Если у нас есть подготовленные данные для чтения
@@ -7082,7 +7090,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -11098,7 +11106,7 @@ bool awh::Transport_Layer_Security::on(const id_t id, read_callback_t callback) 
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем отрицательный результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -11147,7 +11155,7 @@ bool awh::Transport_Layer_Security::on(const id_t id, write_callback_t callback)
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем отрицательный результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -11212,7 +11220,7 @@ bool awh::Transport_Layer_Security::on(const id_t id, error_callback_t callback)
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем отрицательный результат
+	// Выводим результат
 	return result;
 }
 /**
@@ -11277,7 +11285,7 @@ bool awh::Transport_Layer_Security::on(const id_t id, state_callback_t callback)
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем отрицательный результат
+	// Выводим результат
 	return result;
 }
 /**

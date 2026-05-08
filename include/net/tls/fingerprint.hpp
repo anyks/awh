@@ -1227,6 +1227,16 @@ namespace awh {
 				bool parseH2(const uint8_t * buffer, const size_t size, h2_browser_t & h2) noexcept;
 			public:
 				/**
+				 * @brief Метод применения данных цифрового отпечатка на запрос ClientHello
+				 *
+				 * @param buffer  буфер с данными цифрового отпечатка для применения к запросу ClientHello
+				 * @param size    размер буфера в байтах
+				 * @param browser объект с распарсенными данными ClientHello
+				 * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
+				 */
+				vector <uint8_t> apply(const uint8_t * buffer, const size_t size, const browser_t & browser) noexcept;
+			public:
+				/**
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка
