@@ -768,80 +768,80 @@ namespace local {
 			// Возвращаем строку "GREASE" для GREASE кодов групп эллиптических кривых
 			return "[GREASE]";
 		/**
-		 * Определяем код шифра
+		 * Определяем код группы
 		 */
 		switch(gid){
-			// Если элиптическая кривая соответствует P-256 (secp256r1)
+			// Если эллиптическая кривая соответствует P-256 (secp256r1)
 			case 0x0017:
 				// Возвращаем строку "P-256 (secp256r1)" для группы эллиптических кривых
 				return "P-256 (secp256r1)";
 			break;
-			// Если элиптическая кривая соответствует P-384 (secp384r1)
+			// Если эллиптическая кривая соответствует P-384 (secp384r1)
 			case 0x0018:
 				// Возвращаем строку "P-384 (secp384r1)" для группы эллиптических кривых
 				return "P-384 (secp384r1)";
 			break;
-			// Если элиптическая кривая соответствует P-521 (secp521r1)
+			// Если эллиптическая кривая соответствует P-521 (secp521r1)
 			case 0x0019:
 				// Возвращаем строку "P-521 (secp521r1)" для группы эллиптических кривых
 				return "P-521 (secp521r1)";
 			break;
-			// Если элиптическая кривая соответствует X25519
+			// Если эллиптическая кривая соответствует X25519
 			case 0x001D:
 				// Возвращаем строку "X25519" для группы эллиптических кривых
 				return "X25519";
 			break;
-			// Если элиптическая кривая соответствует X448
+			// Если эллиптическая кривая соответствует X448
 			case 0x001E:
 				// Возвращаем строку "X448" для группы эллиптических кривых
 				return "X448";
 			break;
-			// Если элиптическая кривая соответствует secp256k1
+			// Если эллиптическая кривая соответствует secp256k1
 			case 0x001C:
 				// Возвращаем строку "secp256k1" для группы эллиптических кривых
 				return "secp256k1";
 			break;
-			// Если элиптическая кривая соответствует FFDHE 2048
+			// Если эллиптическая кривая соответствует FFDHE 2048
 			case 0x0100:
 				// Возвращаем строку "ffdhe2048" для группы эллиптических кривых
 				return "ffdhe2048";
 			break;
-			// Если элиптическая кривая соответствует FFDHE 3072
+			// Если эллиптическая кривая соответствует FFDHE 3072
 			case 0x0101:
 				// Возвращаем строку "ffdhe3072" для группы эллиптических кривых
 				return "ffdhe3072";
 			break;
-			// Если элиптическая кривая соответствует FFDHE 4096
+			// Если эллиптическая кривая соответствует FFDHE 4096
 			case 0x0102:
 				// Возвращаем строку "ffdhe4096" для группы эллиптических кривых
 				return "ffdhe4096";
 			break;
-			// Если элиптическая кривая соответствует FFDHE 6144
+			// Если эллиптическая кривая соответствует FFDHE 6144
 			case 0x0103:
 				// Возвращаем строку "ffdhe6144" для группы эллиптических кривых
 				return "ffdhe6144";
 			break;
-			// Если элиптическая кривая соответствует FFDHE 8192
+			// Если эллиптическая кривая соответствует FFDHE 8192
 			case 0x0104:
 				// 
 				return "ffdhe8192";
 			break;
-			// Если элиптическая кривая соответствует MLKEM 1024
+			// Если эллиптическая кривая соответствует MLKEM 1024
 			case 0x0202:
 				// Возвращаем строку "mlkem1024" для группы эллиптических кривых
 				return "mlkem1024";
 			break;
-			// Если элиптическая кривая соответствует X25519Kyber768Draft00
+			// Если эллиптическая кривая соответствует X25519Kyber768Draft00
 			case 0x6399:
 				// Возвращаем строку "X25519Kyber768Draft00" для группы эллиптических кривых
 				return "X25519Kyber768Draft00";
 			break;
-			// Если элиптическая кривая соответствует X25519MLKEM768
+			// Если эллиптическая кривая соответствует X25519MLKEM768
 			case 0x11EC:
 				// Возвращаем строку "X25519MLKEM768" для группы эллиптических кривых
 				return "X25519MLKEM768";
 			break;
-			// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
+			// Если эллиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
 			default: return "UNKNOWN";
 		}
 	}
@@ -959,122 +959,122 @@ namespace local {
 		switch(id){
 			// Если код шифра соответствует AES128-SHA
 			case 0x002F:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "AES128-SHA";
 			break;
 			// Если код шифра соответствует AES256-SHA
 			case 0x0035:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "AES256-SHA";
 			break;
 			// Если код шифра соответствует AES128-GCM-SHA256
 			case 0x009C:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "AES128-GCM-SHA256";
 			break;
 			// Если код шифра соответствует AES256-GCM-SHA384
 			case 0x009D:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "AES256-GCM-SHA384";
 			break;
 			// Если код шифра соответствует PSK-AES128-CBC-SHA
 			case 0x008C:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "PSK-AES128-CBC-SHA";
 			break;
 			// Если код шифра соответствует PSK-AES256-CBC-SHA
 			case 0x008D:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "PSK-AES256-CBC-SHA";
 			break;
 			// Если код шифра соответствует ECDHE-RSA-AES128-SHA
 			case 0xC013:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-RSA-AES128-SHA";
 			break;
 			// Если код шифра соответствует ECDHE-RSA-AES256-SHA
 			case 0xC014:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-RSA-AES256-SHA";
 			break;
 			// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
 			case 0xC009:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-ECDSA-AES128-SHA";
 			break;
 			// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
 			case 0xC00A:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-ECDSA-AES256-SHA";
 			break;
 			// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
 			case 0xC027:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-RSA-AES128-SHA256";
 			break;
 			// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
 			case 0xC035:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-PSK-AES128-CBC-SHA";
 			break;
 			// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
 			case 0xC036:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-PSK-AES256-CBC-SHA";
 			break;
 			// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
 			case 0xC023:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-ECDSA-AES128-SHA256";
 			break;
 			// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
 			case 0xC02F:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-RSA-AES128-GCM-SHA256";
 			break;
 			// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
 			case 0xC030:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-RSA-AES256-GCM-SHA384";
 			break;
 			// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
 			case 0xCCA8:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-RSA-CHACHA20-POLY1305";
 			break;
 			// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
 			case 0xCCAC:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-PSK-CHACHA20-POLY1305";
 			break;
 			// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
 			case 0xC02B:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-ECDSA-AES128-GCM-SHA256";
 			break;
 			// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
 			case 0xC02C:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-ECDSA-AES256-GCM-SHA384";
 			break;
 			// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
 			case 0xCCA9:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "ECDHE-ECDSA-CHACHA20-POLY1305";
 			break;
 			// Если код шифра соответствует TLS_AES_128_GCM_SHA256
 			case 0x1301:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "TLS_AES_128_GCM_SHA256";
 			break;
 			// Если код шифра соответствует TLS_AES_256_GCM_SHA384
 			case 0x1302:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "TLS_AES_256_GCM_SHA384";
 			break;
 			// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
 			case 0x1303:
-				// Получаем код шифра
+				// Возвращаем имя шифра
 				return "TLS_CHACHA20_POLY1305_SHA256";
 			break;
 			// Если код шифра не соответствует ни одному из известных
@@ -1656,80 +1656,80 @@ namespace fingerprint {
 			// Если код группы является одной из стандартных версий из RFC 8446 §4.2.7
 			else {
 				/**
-				 * Определяем код шифра
+				 * Определяем код группы
 				 */
 				switch(gid){
-					// Если элиптическая кривая соответствует P-256 (secp256r1)
+					// Если эллиптическая кривая соответствует P-256 (secp256r1)
 					case 0x0017:
 						// Добавляем код группы эллиптической кривой P-256 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_256, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует P-384 (secp384r1)
+					// Если эллиптическая кривая соответствует P-384 (secp384r1)
 					case 0x0018:
 						// Добавляем код группы эллиптической кривой P-384 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_384, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует P-521 (secp521r1)
+					// Если эллиптическая кривая соответствует P-521 (secp521r1)
 					case 0x0019:
 						// Добавляем код группы эллиптической кривой P-521 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_521, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует X25519
+					// Если эллиптическая кривая соответствует X25519
 					case 0x001D:
 						// Добавляем код группы эллиптической кривой X25519 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует X448
+					// Если эллиптическая кривая соответствует X448
 					case 0x001E:
 						// Добавляем код группы эллиптической кривой X448 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X448, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует secp256k1
+					// Если эллиптическая кривая соответствует secp256k1
 					case 0x001C:
 						// Добавляем код группы эллиптической кривой secp256k1 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::SECP256K1, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует FFDHE 2048
+					// Если эллиптическая кривая соответствует FFDHE 2048
 					case 0x0100:
 						// Добавляем код группы FFDHE 2048 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE2048, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует FFDHE 3072
+					// Если эллиптическая кривая соответствует FFDHE 3072
 					case 0x0101:
 						// Добавляем код группы FFDHE 3072 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE3072, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует FFDHE 4096
+					// Если эллиптическая кривая соответствует FFDHE 4096
 					case 0x0102:
 						// Добавляем код группы FFDHE 4096 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE4096, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует FFDHE 6144
+					// Если эллиптическая кривая соответствует FFDHE 6144
 					case 0x0103:
 						// Добавляем код группы FFDHE 6144 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE6144, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует FFDHE 8192
+					// Если эллиптическая кривая соответствует FFDHE 8192
 					case 0x0104:
 						// Добавляем код группы FFDHE 8192 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE8192, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует MLKEM 1024
+					// Если эллиптическая кривая соответствует MLKEM 1024
 					case 0x0202:
 						// Добавляем код группы MLKEM 1024 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::MLKEM1024, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует X25519Kyber768Draft00
+					// Если эллиптическая кривая соответствует X25519Kyber768Draft00
 					case 0x6399:
 						// Добавляем код группы X25519Kyber768Draft00 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519_KYBER768_DRAFT00, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая соответствует X25519MLKEM768
+					// Если эллиптическая кривая соответствует X25519MLKEM768
 					case 0x11EC:
 						// Добавляем код группы X25519MLKEM768 в список поддерживаемых групп эллиптических кривых браузера
 						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519_MLKEM768, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
-					// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
+					// Если эллиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
 					default: awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::UNKNOWN, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 				}
 			}
@@ -1794,7 +1794,7 @@ namespace fingerprint {
 		if(size < 1)
 			// Выходим из функции
 			return;
-		// Получаем количество поддерживаемых версий из первого байта данных расширения
+		// Получаем байтовую длину списка поддерживаемых версий из первого байта данных расширения
 		const uint8_t count = buffer[0];
 		/**
 		 * count — байтовая длина списка версий (RFC 8446 §4.2.1: versions<2..254> = 1-байт prefixed byte count).
@@ -2129,13 +2129,13 @@ namespace fingerprint {
 		if(size < 2)
 			// Выходим из функции
 			return;
-		// Получаем количество поддерживаемых ALPN-протоколов из первых 2 байт данных расширения
+		// Получаем байтовую длину списка ALPN-протоколов из первых 2 байт данных расширения
 		const uint16_t count = ::local::u16(buffer);
-		// Если количество поддерживаемых ALPN-протоколов больше размера данных в буфере, то данных недостаточно для парсинга
+		// Если байтовая длина списка ALPN-протоколов больше размера данных в буфере, то данных недостаточно для парсинга
 		if(count > (size - 2))
 			// Выходим из функции
 			return;
-		// Если количество поддерживаемых ALPN-протоколов больше 0
+		// Если байтовая длина списка ALPN-протоколов больше 0
 		if(count > 0){
 			// Текущая позиция в буфере данных расширения
 			size_t pos = 2;
@@ -2222,7 +2222,7 @@ namespace fingerprint {
 				if(::local::isGrease(profile))
 					// Добавляем код GREASE в список поддерживаемых профилей SRTP браузера
 					awh_cast <awh::tls::fgp_t::extension_use_srtp_t *> (browser.extensions.back().get())->profiles.push_back(awh::tls::srtp_t::GREASE);
-				// Если код алгоритма подписи является одним из стандартных кодов из RFC 8446
+				// Если код профиля SRTP является одним из стандартных кодов из RFC 5764
 				else {
 					/**
 					 * Определяем код профиля SRTP
@@ -2643,83 +2643,83 @@ namespace fingerprint {
 				if(::local::isGrease(gid))
 					// Добавляем код GREASE в список поддерживаемых групп эллиптических кривых браузера
 					awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::GREASE);
-				// Если код шифра является одним из стандартных кодов из RFC 8446
+				// Если код группы является одним из стандартных кодов из RFC 8446
 				else {
 					/**
-					 * Определяем код шифра
+					 * Определяем код группы
 					 */
 					switch(gid){
-						// Если элиптическая кривая соответствует P-256 (secp256r1)
+						// Если эллиптическая кривая соответствует P-256 (secp256r1)
 						case 0x0017:
 							// Добавляем код группы эллиптической кривой P-256 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_256);
 						break;
-						// Если элиптическая кривая соответствует P-384 (secp384r1)
+						// Если эллиптическая кривая соответствует P-384 (secp384r1)
 						case 0x0018:
 							// Добавляем код группы эллиптической кривой P-384 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_384);
 						break;
-						// Если элиптическая кривая соответствует P-521 (secp521r1)
+						// Если эллиптическая кривая соответствует P-521 (secp521r1)
 						case 0x0019:
 							// Добавляем код группы эллиптической кривой P-521 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::P_521);
 						break;
-						// Если элиптическая кривая соответствует X25519
+						// Если эллиптическая кривая соответствует X25519
 						case 0x001D:
 							// Добавляем код группы эллиптической кривой X25519 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519);
 						break;
-						// Если элиптическая кривая соответствует X448
+						// Если эллиптическая кривая соответствует X448
 						case 0x001E:
 							// Добавляем код группы эллиптической кривой X448 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X448);
 						break;
-						// Если элиптическая кривая соответствует secp256k1
+						// Если эллиптическая кривая соответствует secp256k1
 						case 0x001C:
 							// Добавляем код группы эллиптической кривой secp256k1 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::SECP256K1);
 						break;
-						// Если элиптическая кривая соответствует FFDHE 2048
+						// Если эллиптическая кривая соответствует FFDHE 2048
 						case 0x0100:
 							// Добавляем код группы FFDHE 2048 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE2048);
 						break;
-						// Если элиптическая кривая соответствует FFDHE 3072
+						// Если эллиптическая кривая соответствует FFDHE 3072
 						case 0x0101:
 							// Добавляем код группы FFDHE 3072 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE3072);
 						break;
-						// Если элиптическая кривая соответствует FFDHE 4096
+						// Если эллиптическая кривая соответствует FFDHE 4096
 						case 0x0102:
 							// Добавляем код группы FFDHE 4096 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE4096);
 						break;
-						// Если элиптическая кривая соответствует FFDHE 6144
+						// Если эллиптическая кривая соответствует FFDHE 6144
 						case 0x0103:
 							// Добавляем код группы FFDHE 6144 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE6144);
 						break;
-						// Если элиптическая кривая соответствует FFDHE 8192
+						// Если эллиптическая кривая соответствует FFDHE 8192
 						case 0x0104:
 							// Добавляем код группы FFDHE 8192 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::FFDHE8192);
 						break;
-						// Если элиптическая кривая соответствует MLKEM 1024
+						// Если эллиптическая кривая соответствует MLKEM 1024
 						case 0x0202:
 							// Добавляем код группы MLKEM 1024 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::MLKEM1024);
 						break;
-						// Если элиптическая кривая соответствует X25519Kyber768Draft00
+						// Если эллиптическая кривая соответствует X25519Kyber768Draft00
 						case 0x6399:
 							// Добавляем код группы X25519Kyber768Draft00 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519_KYBER768_DRAFT00);
 						break;
-						// Если элиптическая кривая соответствует X25519MLKEM768
+						// Если эллиптическая кривая соответствует X25519MLKEM768
 						case 0x11EC:
 							// Добавляем код группы X25519MLKEM768 в список поддерживаемых групп эллиптических кривых браузера
 							awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::X25519_MLKEM768);
 						break;
-						// Если элиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
+						// Если эллиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
 						default: awh_cast <awh::tls::fgp_t::extension_supported_groups_t *> (browser.extensions.back().get())->supportedGroups.push_back(awh::tls::group_t::UNKNOWN);
 					}
 				}
@@ -4933,13 +4933,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + 1));
+					this->_log->debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Выводим сообщение об ошибке
-					this->_log->print("Unsupported handshake version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + 1));
+					this->_log->print("Unsupported handshake version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
 				#endif
 				// Выводим результат по умолчанию
 				return result;
@@ -5142,7 +5142,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				if(::local::isGrease(cipher)){
 					// Устанавливаем флаг grease в объекте browser
 					browser.grease = true;
-					// Получаем код шифра
+					// Добавляем шифр в список поддерживаемых шифров браузера
 					browser.ciphers.push_back(cipher_t::GREASE);
 				// Если код шифра является одним из стандартных кодов из RFC 8446
 				} else {
@@ -5152,122 +5152,122 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					switch(cipher){
 						// Если код шифра соответствует AES128-SHA
 						case 0x002F:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::AES128_SHA);
 						break;
 						// Если код шифра соответствует AES256-SHA
 						case 0x0035:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::AES256_SHA);
 						break;
 						// Если код шифра соответствует AES128-GCM-SHA256
 						case 0x009C:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::AES128_GCM_SHA256);
 						break;
 						// Если код шифра соответствует AES256-GCM-SHA384
 						case 0x009D:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::AES256_GCM_SHA384);
 						break;
 						// Если код шифра соответствует PSK-AES128-CBC-SHA
 						case 0x008C:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::PSK_AES128_CBC_SHA);
 						break;
 						// Если код шифра соответствует PSK-AES256-CBC-SHA
 						case 0x008D:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::PSK_AES256_CBC_SHA);
 						break;
 						// Если код шифра соответствует ECDHE-RSA-AES128-SHA
 						case 0xC013:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA);
 						break;
 						// Если код шифра соответствует ECDHE-RSA-AES256-SHA
 						case 0xC014:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_SHA);
 						break;
 						// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
 						case 0xC009:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA);
 						break;
 						// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
 						case 0xC00A:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_SHA);
 						break;
 						// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
 						case 0xC027:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_SHA256);
 						break;
 						// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
 						case 0xC035:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES128_CBC_SHA);
 						break;
 						// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
 						case 0xC036:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_PSK_AES256_CBC_SHA);
 						break;
 						// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
 						case 0xC023:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_SHA256);
 						break;
 						// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
 						case 0xC02F:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES128_GCM_SHA256);
 						break;
 						// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
 						case 0xC030:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_RSA_AES256_GCM_SHA384);
 						break;
 						// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
 						case 0xCCA8:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_RSA_CHACHA20_POLY1305);
 						break;
 						// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
 						case 0xCCAC:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_PSK_CHACHA20_POLY1305);
 						break;
 						// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
 						case 0xC02B:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256);
 						break;
 						// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
 						case 0xC02C:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384);
 						break;
 						// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
 						case 0xCCA9:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305);
 						break;
 						// Если код шифра соответствует TLS_AES_128_GCM_SHA256
 						case 0x1301:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(tls::cipher_t::TLS_AES_128_GCM_SHA256);
 						break;
 						// Если код шифра соответствует TLS_AES_256_GCM_SHA384
 						case 0x1302:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(tls::cipher_t::TLS_AES_256_GCM_SHA384);
 						break;
 						// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
 						case 0x1303:
-							// Получаем код шифра
+							// Добавляем шифр в список поддерживаемых шифров браузера
 							browser.ciphers.push_back(tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256);
 						break;
 						// Если код шифра не соответствует ни одному из известных
@@ -5356,7 +5356,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					default: browser.compressors.push_back(compressor_t::UNKNOWN);
 				}
 			}
-			// Увеличиваем смещение на длину cipher_suites
+			// Увеличиваем смещение на длину compression_methods
 			offset += length;
 			// Если размер данных не хватает для извлечения списка расширений
 			if((offset + 2) > size){
@@ -5425,12 +5425,12 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				if((offset + size) > end)
 					// Выходим из цикла обработки расширений
 					break;
-				// Если код алгоритма подписи является GREASE
+				// Если тип расширения является GREASE
 				if(::local::isGrease(type))
 					// Выполняем парсинг расширения GREASE, который просто пропускает данные и закрывает объект без обработки
 					::fingerprint::parseGrease(buffer + offset, size, browser);
 				/**
-				 * Если код алгоритма подписи не является GREASE, то мы проверяем,
+				 * Если тип расширения не является GREASE, то мы проверяем,
 				 * соответствует ли он одному из известных типов расширений и вызываем соответствующую функцию парсинга для извлечения и отображения информации о расширении.
 				 */
 				else {
@@ -5632,7 +5632,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				offset += static_cast <size_t> (size);
 			}
 			// Выводим результат
-			return !browser.extensions.size();
+			return !browser.extensions.empty();
 		}
 	/**
 	 * Если возникает ошибка
