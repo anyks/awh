@@ -14,7 +14,7 @@
 
 /**
  * Как это использует ТСПУ:
- * 
+ *
  * ТСПУ (Технические Средства Противодействия Угрозам) — это DPI-системы ТСПУ Роскомнадзора. Они перехватывают TLS ClientHello до установки сессии и анализируют отпечатки по нескольким уровням:
  *
  * - 1. Блокировка по ja3Hash:
@@ -681,6 +681,14 @@ namespace local {
 			case static_cast <uint8_t> (awh::tls::compressor_t::ZLIB):
 				// Возвращаем wire-код для ZLIB
 				return 0x01;
+			// Если метод компрессии соответствует Brotli
+			case static_cast <uint8_t> (awh::tls::compressor_t::BROTLI):
+				// Возвращаем wire-код для Brotli
+				return 0x02;
+			// Если метод компрессии соответствует ZStandard (Zstd)
+			case static_cast <uint8_t> (awh::tls::compressor_t::ZSTD):
+				// Возвращаем wire-код для ZStandard (Zstd)
+				return 0x03;
 			// Если метод компрессии не определён, возвращаем неизвестный код
 			default: return 0xFF;
 		}
@@ -1042,7 +1050,7 @@ namespace fingerprint {
 			// Выходим из функции
 			return;
 		/**
-		 * RFC 8446 §4.2.8: поле client_shares_length — это байтовая длина всего списка KeyShareEntry, 
+		 * RFC 8446 §4.2.8: поле client_shares_length — это байтовая длина всего списка KeyShareEntry,
 		 * а не количество записей. Каждая запись: group(2) + key_exchange_length(2) + key_exchange_data.
 		 */
 		const uint16_t count = ::local::u16(buffer);
@@ -1511,19 +1519,19 @@ namespace fingerprint {
 				 * Другие значения считаются неизвестными алгоритмами сжатия
 				 */
 				switch(id){
-					// Если идентификатор алгоритма сжатия соответствует zlib
+					// Если идентификатор алгоритма сжатия соответствует ZLib
 					case 0x01:
-						// Устанавливаем флаг алгоритма сжатия zlib для расширения compress_certificate в списке расширений браузера
+						// Устанавливаем флаг алгоритма сжатия ZLib для расширения compress_certificate в списке расширений браузера
 						awh_cast <awh::tls::fgp_t::extension_compress_certificate_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::compressor_t::ZLIB);
 					break;
-					// Если идентификатор алгоритма сжатия соответствует brotli
+					// Если идентификатор алгоритма сжатия соответствует Brotli
 					case 0x02:
-						// Устанавливаем флаг алгоритма сжатия brotli для расширения compress_certificate в списке расширений браузера
+						// Устанавливаем флаг алгоритма сжатия Brotli для расширения compress_certificate в списке расширений браузера
 						awh_cast <awh::tls::fgp_t::extension_compress_certificate_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::compressor_t::BROTLI);
 					break;
-					// Если идентификатор алгоритма сжатия соответствует zstd
+					// Если идентификатор алгоритма сжатия соответствует ZStandard (Zstd)
 					case 0x03:
-						// Устанавливаем флаг алгоритма сжатия zstd для расширения compress_certificate в списке расширений браузера
+						// Устанавливаем флаг алгоритма сжатия ZStandard (Zstd) для расширения compress_certificate в списке расширений браузера
 						awh_cast <awh::tls::fgp_t::extension_compress_certificate_t *> (browser.extensions.back().get())->algorithms.push_back(awh::tls::compressor_t::ZSTD);
 					break;
 					// Если идентификатор алгоритма сжатия не соответствует известным алгоритмам сжатия
@@ -3350,7 +3358,7 @@ bool awh::tls::Fingerprint::looksLikeBrowser(const imprint_t & imp) const noexce
 	// SNI присутствует (4-й символ ja4 == 'd')
 	if((imp.ja4.size() < 4) || (imp.ja4[3] != 'd'))
 		/**
-		 * Хотя отсутствие SNI не всегда означает, что это не браузер, 
+		 * Хотя отсутствие SNI не всегда означает, что это не браузер,
 		 * но всё же большинство современных браузеров его отправляют,
 		 * так что для простоты будем считать его обязательным.
 		 */
@@ -3724,7 +3732,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			const string prefix(prefixBuf);
 			/**
 			 * @brief Функция для конвертации списка uint16_t в строку hex формата "xxxx,xxxx,..."
-			 * 
+			 *
 			 * @param v вектор uint16_t для конвертации
 			 * @return  строка hex формата "xxxx,xxxx,..."
 			 */

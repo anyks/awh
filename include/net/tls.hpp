@@ -26,6 +26,7 @@
 #include "tls/tls.hpp"
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"
+#include "../sys/compressor.hpp"
 
 #include "tls/fingerprint.hpp"
 
@@ -113,14 +114,15 @@ namespace awh {
 				SIGNATURE_FAILED    = 0x0E, // Ошибка алгоритма подписи
 				HANDSHAKE_FAILED    = 0x0F, // Ошибка рукопожатия
 				STORE_X509_FAILED   = 0x10, // Ошибка хранилища X509
-				TLS_SESSION_FAILED  = 0x11, // Ошибка TLS сессии
-				PRIVATE_KEY_FAILED  = 0x12, // Ошибка приватного ключа
-				HOSTNAME_BAD        = 0x13, // Ошибка имени хоста
-				INVALID_LAYER       = 0x14, // Ошибка уровня TLS
-				UNSUPPORTED_IP      = 0x15, // Ошибка неподдерживаемого IP-адреса
-				HOSTNAME_VERIFY     = 0x16, // Ошибка проверки имени хоста
-				MISMATCH_VERSION    = 0x17, // Ошибка версии TLS
-				UNSUPPORTED_VERSION = 0x18, // Ошибка неподдерживаемой версии TLS
+				COMPRESSION_FAILED  = 0x11, // Ошибка компрессии
+				TLS_SESSION_FAILED  = 0x12, // Ошибка TLS сессии
+				PRIVATE_KEY_FAILED  = 0x13, // Ошибка приватного ключа
+				HOSTNAME_BAD        = 0x14, // Ошибка имени хоста
+				INVALID_LAYER       = 0x15, // Ошибка уровня TLS
+				UNSUPPORTED_IP      = 0x16, // Ошибка неподдерживаемого IP-адреса
+				HOSTNAME_VERIFY     = 0x17, // Ошибка проверки имени хоста
+				MISMATCH_VERSION    = 0x18, // Ошибка версии TLS
+				UNSUPPORTED_VERSION = 0x19, // Ошибка неподдерживаемой версии TLS
 			};
 		public:
 			/**
@@ -182,6 +184,8 @@ namespace awh {
 		private:
 			// Объект работы с IP-адресами
 			net_addr_t _addr;
+			// Объект работы с компрессией
+			compressor_t _compressor;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -411,6 +415,26 @@ namespace awh {
 			void permuteExtensions(const id_t id, const event::mode_t mode) noexcept;
 		public:
 			/**
+			 * @brief Метод активации поддержки SCT (Signed Certificate Timestamp)
+			 *
+			 * @param id идентификатор события
+			 */
+			void signedCertificateTimestamp(const id_t id) noexcept;
+			/**
+			 * @brief Метод активации поддержки Stapling (OCSP)
+			 *
+			 * @param id идентификатор события
+			 */
+			void onlineCertificateStatusProtocol(const id_t id) noexcept;
+			/**
+			 * @brief Метод активации поддержки расширения Next Protocol Negotiation (NPN)
+			 *
+			 * @param id   идентификатор события
+			 * @param mode режим активации/деактивации поддержки расширения
+			 */
+			void nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept;
+		public:
+			/**
 			 * @brief Метод извлечения активного протокола
 			 *
 			 * @param id идентификатор события
@@ -433,6 +457,14 @@ namespace awh {
 			 * @param std  флаг поддерживаемого стандарта
 			 */
 			void alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept;
+		public:
+			/**
+			 * @brief Метод установки поддерживаемых алгоритмов компрессии сертификата
+			 *
+			 * @param id     идентификатор события
+			 * @param method поддерживаемый алгоритм компрессии сертификата
+			 */
+			void compressor(const id_t id, const compressor_t::method_t method) noexcept;
 		public:
 			/**
 			 * @brief Метод установки поддерживаемых алгоритмов подписи

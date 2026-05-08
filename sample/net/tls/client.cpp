@@ -74,8 +74,14 @@ int32_t main(int32_t argc, char * argv[]){
 		tls.certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ TLS
 		tls.privateKey(cts, "../sh/certificates/client/key.pem");
+		// Активируем поддержку SCT (Signed Certificate Timestamp)
+		tls.signedCertificateTimestamp(cts);
+		// Активируем поддержку Stapling (OCSP)
+		tls.onlineCertificateStatusProtocol(cts);
 		// Активируем GREASE-значения (мусорные коды) для транспортного уровня TLS
 		tls.grease(cts, event::mode_t::ENABLED);
+		// Устанавливаем компрессор для транспортного уровня TLS (Zstandard)
+		tls.compressor(cts, compressor_t::method_t::ZSTD);
 		// Создаём идентификатор транспортного уровня DTLS
 		tls_t::id_t ctl = tls.transport(cts);
 		// Выполняем перемешивание поддерживаемых расширений TLS для имитации поведения различных браузеров

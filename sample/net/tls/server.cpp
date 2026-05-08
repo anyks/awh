@@ -91,6 +91,8 @@ int32_t main(int32_t argc, char * argv[]){
 			tls::cipher_t::AES128_SHA,
 			tls::cipher_t::AES256_SHA
 		});
+		// Устанавливаем компрессор для транспортного уровня TLS (Zstandard)
+		tls.compressor(cts, compressor_t::method_t::ZSTD);
 		/**
 		 * Выполняем перебор всех установленных шифров TLS и выводим их информацию
 		 */
