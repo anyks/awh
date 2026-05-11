@@ -7086,7 +7086,1001 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		
+		// Если входной буфер пустой, возвращаем ошибку
+		if(input.empty())
+			// Выводим результат по умолчанию
+			return false;
+		// Текущая позиция чтения в буфере
+		size_t offset = 0;
+		/**
+		 * Вспомогательная функция для безопасного чтения N байт из входного буфера
+		 *
+		 * @param buffer бинарный буфер для записи прочитанных данных
+		 * @param size   количество байт для чтения
+		 * @return       результат чтения
+		 */
+		auto read = [&offset, &input](void * buffer, const size_t size) -> bool {
+			// Если данных в буфере недостаточно, возвращаем ошибку
+			if((offset + size) > input.size())
+				// Недостаточно данных в буфере для чтения — возвращаем ошибку
+				return false;
+			// Копируем данные в целевой буфер
+			::memcpy(buffer, &input[0] + offset, size);
+			// Смещаем позицию чтения
+			offset += size;
+			// Сообщаем об успешном результате
+			return true;
+		};
+		// Очищаем объект цифрового отпечатка браузера от предыдущих данных
+		browser = browser_t{};
+		// Читаем флаг использования GREASE
+		if(!read(&browser.grease, sizeof(browser.grease)))
+			// Возвращаем ошибку при чтении флага использования GREASE
+			return false;
+		// Читаем запись метаданных TLS рукопожатия
+		if(!read(&browser.record, sizeof(browser.record)))
+			// Возвращаем ошибку при чтении записи метаданных TLS рукопожатия
+			return false;
+		// Читаем объект рукопожатия TLS
+		if(!read(&browser.handshake, sizeof(browser.handshake)))
+			// Возвращаем ошибку при чтении объекта рукопожатия TLS
+			return false;
+		// Читаем объект ClientHello TLS
+		if(!read(&browser.clientHello, sizeof(browser.clientHello)))
+			// Возвращаем ошибку при чтении объекта ClientHello TLS
+			return false;
+		// Читаем размер куков DTLS
+		size_t count = 0;
+		// Читаем размер куков DTLS из буфера
+		if(!read(&count, sizeof(count)))
+			// Возвращаем ошибку при чтении размера куков DTLS
+			return false;
+		// Если куки DTLS присутствуют
+		if(count > 0){
+			// Выделяем память под куки DTLS
+			browser.cookie.resize(count);
+			// Читаем куки DTLS
+			if(!read(&browser.cookie[0], count))
+				// Возвращаем ошибку при чтении куков DTLS
+				return false;
+		}
+		// Читаем размер идентификатора сессии TLS
+		count = 0;
+		// Читаем размер идентификатора сессии TLS из буфера
+		if(!read(&count, sizeof(count)))
+			// Возвращаем ошибку при чтении размера идентификатора сессии TLS
+			return false;
+		// Если идентификатор сессии TLS присутствует
+		if(count > 0){
+			// Выделяем память под идентификатор сессии TLS
+			browser.session.resize(count);
+			// Читаем идентификатор сессии TLS
+			if(!read(&browser.session[0], count))
+				// Возвращаем ошибку при чтении идентификатора сессии TLS
+				return false;
+		}
+		// Читаем размер списка шифров TLS
+		count = 0;
+		// Читаем размер списка шифров TLS из буфера
+		if(!read(&count, sizeof(count)))
+			// Возвращаем ошибку при чтении размера списка шифров TLS
+			return false;
+		// Если список шифров TLS не пустой
+		if(count > 0){
+			// Выделяем память под список шифров TLS
+			browser.ciphers.resize(count);
+			// Читаем список шифров TLS
+			if(!read(&browser.ciphers[0], count))
+				// Возвращаем ошибку при чтении списка шифров TLS
+				return false;
+		}
+		// Читаем размер списка методов компрессии сертификата TLS
+		count = 0;
+		// Читаем размер списка методов компрессии сертификата TLS из буфера
+		if(!read(&count, sizeof(count)))
+			// Возвращаем ошибку при чтении размера списка методов компрессии сертификата TLS
+			return false;
+		// Если список методов компрессии не пустой
+		if(count > 0){
+			// Выделяем память под список методов компрессии
+			browser.compressors.resize(count);
+			// Читаем список методов компрессии
+			if(!read(&browser.compressors[0], count))
+				// Возвращаем ошибку при чтении списка методов компрессии TLS
+				return false;
+		}
+		/**
+		 * Тип расширения TLS для чтения и восстановления объектов расширений из буфера
+		 */
+		extension_type_t type = extension_type_t::UNKNOWN;
+		/**
+		 * Читаем расширения TLS, пока не достигнем конца буфера
+		 */
+		while(offset < input.size()){
+			// Читаем тип расширения TLS из буфера
+			if(!read(&type, sizeof(type)))
+				// Возвращаем ошибку при чтении типа расширения TLS
+				return false;
+			/**
+			 * Восстанавливаем объект расширения в зависимости от типа
+			 */
+			switch(static_cast <uint8_t> (type)){
+				// Если тип расширения соответствует grease
+				case static_cast <uint8_t> (awh::tls::extension_type_t::GREASE):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_grease_t> ());
+				break;
+				// Если тип расширения соответствует channel_id
+				case static_cast <uint8_t> (awh::tls::extension_type_t::CHANNEL_ID):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_channel_id_t> ());
+				break;
+				// Если тип расширения соответствует oid_filters
+				case static_cast <uint8_t> (awh::tls::extension_type_t::OID_FILTERS):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_oid_filters_t> ());
+				break;
+				// Если тип расширения соответствует trust_anchors
+				case static_cast <uint8_t> (awh::tls::extension_type_t::TRUST_ANCHORS):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_trust_anchors_t> ());
+				break;
+				// Если тип расширения соответствует encrypt_then_mac
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPT_THEN_MAC):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_encrypt_then_mac_t> ());
+				break;
+				// Если тип расширения соответствует transparency_info
+				case static_cast <uint8_t> (awh::tls::extension_type_t::TRANSPARENCY_INFO):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_transparency_info_t> ());
+				break;
+				// Если тип расширения соответствует post_handshake_auth
+				case static_cast <uint8_t> (awh::tls::extension_type_t::POST_HANDSHAKE_AUTH):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_post_handshake_auth_t> ());
+				break;
+				// Если тип расширения соответствует client_certificate_type
+				case static_cast <uint8_t> (awh::tls::extension_type_t::CLIENT_CERTIFICATE_TYPE):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_client_certificate_type_t> ());
+				break;
+				// Если тип расширения соответствует server_certificate_type
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_CERTIFICATE_TYPE):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_server_certificate_type_t> ());
+				break;
+				// Если тип расширения соответствует signed_certificate_timestamp
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
+					// Добавляем расширение в список
+					browser.extensions.push_back(make_unique <extension_signed_certificate_timestamp_t> ());
+				break;
+				// Если тип расширения соответствует server_name
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_server_name_t> ();
+					// Количество имён серверов в списке
+					size_t count = 0;
+					// Читаем количество имён серверов из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества имён серверов из буфера
+						return false;
+					// Если список имён серверов не пустой
+					if(count > 0){
+						// Размер имени сервера в байтах
+						size_t size = 0;
+						// Выделяем память под список имён серверов
+						extension->names.resize(count);
+						// Перебираем имена серверов
+						for(auto & name : extension->names){
+							// Читаем размер имени сервера из буфера
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера имени сервера из буфера
+								return false;
+							// Если имя сервера не пустое
+							if(size > 0){
+								// Выделяем память под имя сервера
+								name.resize(size);
+								// Читаем имя сервера из буфера
+								if(!read(&name[0], size))
+									// Возвращаем ошибку при чтении имени сервера из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует max_fragment_length
+				case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_max_fragment_length_t> ();
+					// Читаем значение max_fragment_length
+					if(!read(&extension->length, sizeof(extension->length)))
+						// Возвращаем ошибку при чтении значения max_fragment_length из буфера
+						return false;
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует status_request
+				case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_status_request_t> ();
+					// Размер типа статуса сертификата в байтах
+					size_t size = 0;
+					// Читаем размер типа статуса сертификата
+					if(!read(&size, sizeof(size)))
+						// Возвращаем ошибку при чтении размера типа статуса сертификата из буфера
+						return false;
+					// Если тип статуса сертификата не пустой
+					if(size > 0){
+						// Выделяем память под тип статуса сертификата
+						extension->certificateStatusType.resize(size);
+						// Читаем тип статуса сертификата
+						if(!read(&extension->certificateStatusType[0], size))
+							// Возвращаем ошибку при чтении типа статуса сертификата из буфера
+							return false;
+					}
+					// Читаем длину списка идентификаторов ответчиков
+					if(!read(&extension->responderIdListLength, sizeof(extension->responderIdListLength)))
+						// Возвращаем ошибку при чтении длины списка идентификаторов ответчиков из буфера
+						return false;
+					// Читаем длину расширений запроса статуса сертификата
+					if(!read(&extension->requestExtensionsLength, sizeof(extension->requestExtensionsLength)))
+						// Возвращаем ошибку при чтении длины расширений запроса статуса сертификата из буфера
+						return false;
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует supported_groups
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_supported_groups_t> ();
+					// Количество поддерживаемых групп в списке
+					size_t count = 0;
+					// Читаем количество поддерживаемых групп из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества поддерживаемых групп из буфера
+						return false;
+					// Если список поддерживаемых групп не пустой
+					if(count > 0){
+						// Выделяем память под список поддерживаемых групп
+						extension->supportedGroups.resize(count);
+						// Читаем список поддерживаемых групп
+						if(!read(&extension->supportedGroups[0], count))
+							// Возвращаем ошибку при чтении списка поддерживаемых групп из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует ec_point_formats
+				case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_ec_point_t> ();
+					// Количество форматов точек эллиптической кривой в списке
+					size_t count = 0;
+					// Читаем количество форматов точек эллиптической кривой из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества форматов точек эллиптической кривой из буфера
+						return false;
+					// Если список форматов точек не пустой
+					if(count > 0){
+						// Выделяем память под список форматов точек
+						extension->formats.resize(count);
+						// Читаем список форматов точек
+						if(!read(&extension->formats[0], count))
+							// Возвращаем ошибку при чтении списка форматов точек из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует signature_algorithms
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_signature_t> ();
+					// Количество алгоритмов подписи в списке
+					size_t count = 0;
+					// Читаем количество алгоритмов подписи из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества алгоритмов подписи из буфера
+						return false;
+					// Если список алгоритмов подписи не пустой
+					if(count > 0){
+						// Выделяем память под список алгоритмов подписи
+						extension->algorithms.resize(count);
+						// Читаем список алгоритмов подписи
+						if(!read(&extension->algorithms[0], count))
+							// Возвращаем ошибку при чтении списка алгоритмов подписи из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует use_srtp
+				case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_use_srtp_t> ();
+					// Читаем значение mki_length
+					if(!read(&extension->mkiLength, sizeof(extension->mkiLength)))
+						// Возвращаем ошибку при чтении значения mki_length из буфера
+						return false;
+					// Количество профилей SRTP в списке
+					size_t count = 0;
+					// Читаем количество профилей SRTP из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества профилей SRTP из буфера
+						return false;
+					// Если список профилей SRTP не пустой
+					if(count > 0){
+						// Выделяем память под список профилей SRTP
+						extension->profiles.resize(count);
+						// Читаем список профилей SRTP
+						if(!read(&extension->profiles[0], count))
+							// Возвращаем ошибку при чтении списка профилей SRTP из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует heartbeat
+				case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_heartbeat_t> ();
+					// Читаем режим heartbeat
+					if(!read(&extension->mode, sizeof(extension->mode)))
+						// Возвращаем ошибку при чтении режима heartbeat из буфера
+						return false;
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует alpn
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_alpn_t> ();
+					// Количество протоколов ALPN в списке
+					size_t count = 0;
+					// Читаем количество протоколов ALPN из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества протоколов ALPN из буфера
+						return false;
+					// Если список протоколов ALPN не пустой
+					if(count > 0){
+						// Размер протокола ALPN в байтах
+						size_t size = 0;
+						// Выделяем память под список протоколов ALPN
+						extension->protocols.resize(count);
+						// Перебираем протоколы ALPN
+						for(auto & proto : extension->protocols){
+							// Читаем размер протокола ALPN из буфера
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера протокола ALPN из буфера
+								return false;
+							// Если протокол ALPN не пустой
+							if(size > 0){
+								// Выделяем память под протокол ALPN
+								proto.resize(size);
+								// Читаем протокол ALPN
+								if(!read(&proto[0], size))
+									// Возвращаем ошибку при чтении протокола ALPN из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует padding
+				case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_padding_t> ();
+					// Читаем размер паддинга
+					if(!read(&extension->size, sizeof(extension->size)))
+						// Возвращаем ошибку при чтении размера паддинга из буфера
+						return false;
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует extended_master_secret
+				case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_extended_master_secret_t> ();
+					// Размер данных master_secret в байтах
+					size_t size = 0;
+					// Читаем размер данных master_secret из буфера
+					if(!read(&size, sizeof(size)))
+						// Возвращаем ошибку при чтении размера данных master_secret из буфера
+						return false;
+					// Если данные master_secret не пустые
+					if(size > 0){
+						// Выделяем память под данные master_secret
+						extension->masterSecretData.resize(size);
+						// Читаем данные master_secret
+						if(!read(&extension->masterSecretData[0], size))
+							// Возвращаем ошибку при чтении данных master_secret из буфера
+							return false;
+					}
+					// Читаем размер данных extended_master_secret
+					if(!read(&size, sizeof(size)))
+						// Возвращаем ошибку при чтении размера данных extended_master_secret из буфера
+						return false;
+					// Если данные extended_master_secret не пустые
+					if(size > 0){
+						// Выделяем память под данные extended_master_secret
+						extension->extendedMasterSecretData.resize(size);
+						// Читаем данные extended_master_secret
+						if(!read(&extension->extendedMasterSecretData[0], size))
+							// Возвращаем ошибку при чтении данных extended_master_secret из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует compress_certificate
+				case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_compress_certificate_t> ();
+					// Количество алгоритмов сжатия сертификата в списке
+					size_t count = 0;
+					// Читаем количество алгоритмов сжатия сертификата из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества алгоритмов сжатия сертификата из буфера
+						return false;
+					// Если список алгоритмов сжатия не пустой
+					if(count > 0){
+						// Выделяем память под список алгоритмов сжатия
+						extension->algorithms.resize(count);
+						// Читаем список алгоритмов сжатия
+						if(!read(&extension->algorithms[0], count))
+							// Возвращаем ошибку при чтении списка алгоритмов сжатия из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует record_size_limit
+				case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_record_size_limit_t> ();
+					// Читаем значение record_size_limit
+					if(!read(&extension->data, sizeof(extension->data)))
+						// Возвращаем ошибку при чтении значения record_size_limit из буфера
+						return false;
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует delegated_credential
+				case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_delegated_credential_t> ();
+					// Количество алгоритмов делегированных учётных данных в списке
+					size_t count = 0;
+					// Читаем количество алгоритмов делегированных учётных данных из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества алгоритмов делегированных учётных данных из буфера
+						return false;
+					// Если список алгоритмов не пустой
+					if(count > 0){
+						// Выделяем память под список алгоритмов
+						extension->algorithms.resize(count);
+						// Читаем список алгоритмов
+						if(!read(&extension->algorithms[0], count))
+							// Возвращаем ошибку при чтении списка алгоритмов делегированных учётных данных из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует session_ticket
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_session_ticket_t> ();
+					// Размер данных session_ticket в байтах
+					size_t size = 0;
+					// Читаем размер данных session_ticket из буфера
+					if(!read(&size, sizeof(size)))
+						// Возвращаем ошибку при чтении размера данных session_ticket из буфера
+						return false;
+					// Если данные session_ticket не пустые
+					if(size > 0){
+						// Выделяем память под данные session_ticket
+						extension->data.resize(size);
+						// Читаем данные session_ticket
+						if(!read(&extension->data[0], size))
+							// Возвращаем ошибку при чтении данных session_ticket из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует pre_shared_key
+				case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_pre_shared_key_t> ();
+					// Количество идентификаторов PSK в списке
+					size_t count = 0;
+					// Читаем количество идентификаторов PSK
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества идентификаторов PSK из буфера
+						return false;
+					// Если список идентификаторов PSK не пустой
+					if(count > 0){
+						// Размер данных идентификатора PSK в байтах
+						size_t size = 0;
+						// Выделяем память под список идентификаторов PSK
+						extension->identities.resize(count);
+						// Перебираем идентификаторы PSK
+						for(auto & identity : extension->identities){
+							// Читаем значение ticket_age
+							if(!read(&identity.ticketAge, sizeof(identity.ticketAge)))
+								// Возвращаем ошибку при чтении значения ticket_age из буфера
+								return false;
+							// Читаем размер данных идентификатора PSK из буфера
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера данных идентификатора PSK из буфера
+								return false;
+							// Если данные идентификатора PSK не пустые
+							if(size > 0){
+								// Выделяем память под данные идентификатора PSK
+								identity.data.resize(size);
+								// Читаем данные идентификатора PSK из буфера
+								if(!read(&identity.data[0], size))
+									// Возвращаем ошибку при чтении данных идентификатора PSK из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует early_data
+				case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_early_data_t> ();
+					// Читаем максимальный размер ранних данных
+					if(!read(&extension->maxSize, sizeof(extension->maxSize)))
+						// Возвращаем ошибку при чтении максимального размера ранних данных из буфера
+						return false;
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует supported_versions
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_supported_versions_t> ();
+					// Количество поддерживаемых версий TLS в списке
+					size_t count = 0;
+					// Читаем количество поддерживаемых версий TLS из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества поддерживаемых версий TLS из буфера
+						return false;
+					// Если список поддерживаемых версий TLS не пустой
+					if(count > 0){
+						// Выделяем память под список поддерживаемых версий TLS
+						extension->versions.resize(count);
+						// Читаем список поддерживаемых версий TLS
+						if(!read(&extension->versions[0], count))
+							// Возвращаем ошибку при чтении списка поддерживаемых версий TLS из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует cookie
+				case static_cast <uint8_t> (awh::tls::extension_type_t::COOKIE): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_cookie_t> ();
+					// Размер данных расширения cookie в байтах
+					size_t size = 0;
+					// Читаем размер данных расширения cookie из буфера
+					if(!read(&size, sizeof(size)))
+						// Возвращаем ошибку при чтении размера данных расширения cookie из буфера
+						return false;
+					// Если данные расширения cookie не пустые
+					if(size > 0){
+						// Выделяем память под данные расширения cookie
+						extension->data.resize(size);
+						// Читаем данные расширения cookie
+						if(!read(&extension->data[0], size))
+							// Возвращаем ошибку при чтении данных расширения cookie из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует psk_key_exchange_modes
+				case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_psk_key_exchange_t> ();
+					// Количество режимов обмена ключами PSK в списке
+					size_t count = 0;
+					// Читаем количество режимов обмена ключами PSK из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества режимов обмена ключами PSK из буфера
+						return false;
+					// Если список режимов обмена ключами PSK не пустой
+					if(count > 0){
+						// Выделяем память под список режимов обмена ключами PSK
+						extension->modes.resize(count);
+						// Читаем список режимов обмена ключами PSK
+						if(!read(&extension->modes[0], count))
+							// Возвращаем ошибку при чтении списка режимов обмена ключами PSK из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует certificate_authorities
+				case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_certificate_authorities_t> ();
+					// Количество авторитетов сертификатов в списке
+					size_t count = 0;
+					// Читаем количество авторитетов сертификатов
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества авторитетов сертификатов из буфера
+						return false;
+					// Если список авторитетов сертификатов не пустой
+					if(count > 0){
+						// Размер авторитета сертификата в байтах
+						size_t size = 0;
+						// Выделяем память под список авторитетов сертификатов
+						extension->authorities.resize(count);
+						// Перебираем авторитеты сертификатов
+						for(auto & auth : extension->authorities){
+							// Читаем размер авторитета сертификата из буфера
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера авторитета сертификата из буфера
+								return false;
+							// Если авторитет сертификата не пустой
+							if(size > 0){
+								// Выделяем память под авторитет сертификата
+								auth.resize(size);
+								// Читаем авторитет сертификата
+								if(!read(&auth[0], size))
+									// Возвращаем ошибку при чтении авторитета сертификата из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует signature_algorithms_cert
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_signature_algorithms_cert_t> ();
+					// Количество алгоритмов подписи сертификатов в списке
+					size_t count = 0;
+					// Читаем количество алгоритмов подписи сертификатов из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества алгоритмов подписи сертификатов из буфера
+						return false;
+					// Если список алгоритмов подписи сертификатов не пустой
+					if(count > 0){
+						// Выделяем память под список алгоритмов подписи сертификатов
+						extension->algorithms.resize(count);
+						// Читаем список алгоритмов подписи сертификатов
+						if(!read(&extension->algorithms[0], count))
+							// Возвращаем ошибку при чтении списка алгоритмов подписи сертификатов из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует key_share
+				case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_key_share_t> ();
+					// Количество ключей для обмена в списке
+					size_t count = 0;
+					// Читаем количество ключей для обмена из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества ключей для обмена из буфера
+						return false;
+					// Если список ключей для обмена не пустой
+					if(count > 0){
+						// Размер данных ключа для обмена в байтах
+						size_t size = 0;
+						// Выделяем память под список ключей для обмена
+						extension->shares.resize(count);
+						// Перебираем ключи для обмена
+						for(auto & share : extension->shares){
+							// Читаем группу ключа для обмена
+							if(!read(&share.first, sizeof(share.first)))
+								// Возвращаем ошибку при чтении группы ключа для обмена из буфера
+								return false;
+							// Читаем размер данных ключа для обмена из буфера
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера данных ключа для обмена из буфера
+								return false;
+							// Если данные ключа для обмена не пустые
+							if(size > 0){
+								// Выделяем память под данные ключа для обмена
+								share.second.resize(size);
+								// Читаем данные ключа для обмена
+								if(!read(&share.second[0], size))
+									// Возвращаем ошибку при чтении данных ключа для обмена из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует quic_transport_parameters
+				case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_quic_transport_params_t> ();
+					// Количество параметров транспортного уровня QUIC в списке
+					size_t count = 0;
+					// Читаем количество параметров транспортного уровня QUIC
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества параметров транспортного уровня QUIC из буфера
+						return false;
+					// Если список параметров не пустой
+					if(count > 0){
+						// Ключ и значение параметра транспортного уровня QUIC
+						uint64_t key = 0, value = 0;
+						// Перебираем параметры транспортного уровня QUIC
+						for(size_t i = 0; i < count; i++){
+							// Обнуляем ключ параметра транспортного уровня QUIC
+							key = 0;
+							// Читаем ключ параметра транспортного уровня QUIC из буфера
+							if(!read(&key, sizeof(key)))
+								// Возвращаем ошибку при чтении ключа параметра транспортного уровня QUIC из буфера
+								return false;
+							// Обнуляем значение параметра транспортного уровня QUIC
+							value = 0;
+							// Читаем значение параметра транспортного уровня QUIC из буфера
+							if(!read(&value, sizeof(value)))
+								// Возвращаем ошибку при чтении значения параметра транспортного уровня QUIC из буфера
+								return false;
+							// Добавляем параметр в список
+							extension->params.emplace(key, value);
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует tls_flags
+				case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_tls_flags_t> ();
+					// Количество флагов TLS в списке
+					size_t count = 0;
+					// Читаем количество флагов TLS
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества флагов TLS из буфера
+						return false;
+					// Если список флагов TLS не пустой
+					if(count > 0){
+						// Выделяем память под список флагов TLS
+						extension->flags.resize(count);
+						// Читаем список флагов TLS
+						if(!read(&extension->flags[0], count))
+							// Возвращаем ошибку при чтении списка флагов TLS из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует next_protocol_negotiation
+				case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_next_proto_neg_t> ();
+					// Количество протоколов NPN в списке
+					size_t count = 0;
+					// Читаем количество протоколов NPN
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества протоколов NPN из буфера
+						return false;
+					// Если список протоколов NPN не пустой
+					if(count > 0){
+						// Размер протокола NPN в байтах
+						size_t size = 0;
+						// Выделяем память под список протоколов NPN
+						extension->protocols.resize(count);
+						// Перебираем протоколы NPN
+						for(auto & proto : extension->protocols){
+							// Читаем размер протокола NPN
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера протокола NPN из буфера
+								return false;
+							// Если протокол NPN не пустой
+							if(size > 0){
+								// Выделяем память под протокол NPN
+								proto.resize(size);
+								// Читаем протокол NPN
+								if(!read(&proto[0], size))
+									// Возвращаем ошибку при чтении протокола NPN из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует application_settings_old (устаревшее)
+				case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_application_settings_old_t> ();
+					// Количество протоколов в списке
+					size_t count = 0;
+					// Читаем количество протоколов из буфера
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества протоколов из буфера
+						return false;
+					// Если список протоколов не пустой
+					if(count > 0){
+						// Размер протокола в байтах
+						size_t size = 0;
+						// Выделяем память под список протоколов
+						extension->protocols.resize(count);
+						// Перебираем протоколы
+						for(auto & proto : extension->protocols){
+							// Читаем размер протокола
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера протокола из буфера
+								return false;
+							// Если протокол не пустой
+							if(size > 0){
+								// Выделяем память под протокол
+								proto.resize(size);
+								// Читаем протокол
+								if(!read(&proto[0], size))
+									// Возвращаем ошибку при чтении протокола из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует application_settings
+				case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_application_settings_t> ();
+					// Количество протоколов в списке
+					size_t count = 0;
+					// Читаем количество протоколов
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества протоколов из буфера
+						return false;
+					// Если список протоколов не пустой
+					if(count > 0){
+						// Размер протокола в байтах
+						size_t size = 0;
+						// Выделяем память под список протоколов
+						extension->protocols.resize(count);
+						// Перебираем протоколы
+						for(auto & proto : extension->protocols){
+							// Читаем размер протокола
+							if(!read(&size, sizeof(size)))
+								// Возвращаем ошибку при чтении размера протокола из буфера
+								return false;
+							// Если протокол не пустой
+							if(size > 0){
+								// Выделяем память под протокол
+								proto.resize(size);
+								// Читаем протокол
+								if(!read(&proto[0], size))
+									// Возвращаем ошибку при чтении протокола из буфера
+									return false;
+							}
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует ech_outer_extensions
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_ech_outer_extensions_t> ();
+					// Количество расширений в списке
+					size_t count = 0;
+					// Читаем количество расширений в расширении ech_outer_extensions
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества расширений в расширении ech_outer_extensions из буфера
+						return false;
+					// Если список расширений в расширении ech_outer_extensions не пустой
+					if(count > 0){
+						// Выделяем память под список расширений
+						extension->extensions.resize(count);
+						// Читаем список расширений
+						if(!read(&extension->extensions[0], count))
+							// Возвращаем ошибку при чтении списка расширений в расширении ech_outer_extensions из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует encrypted_client_hello
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_encryption_client_hello_t> ();
+					// Размер данных расширения encrypted_client_hello в байтах
+					size_t size = 0;
+					// Читаем размер данных расширения encrypted_client_hello
+					if(!read(&size, sizeof(size)))
+						// Возвращаем ошибку при чтении размера данных расширения encrypted_client_hello из буфера
+						return false;
+					// Если данные расширения encrypted_client_hello не пустые
+					if(size > 0){
+						// Выделяем память под данные расширения encrypted_client_hello
+						extension->data.resize(size);
+						// Читаем данные расширения encrypted_client_hello
+						if(!read(&extension->data[0], size))
+							// Возвращаем ошибку при чтении данных расширения encrypted_client_hello из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует renegotiation_info
+				case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_renegotiation_info_t> ();
+					// Размер данных расширения renegotiation_info в байтах
+					size_t size = 0;
+					// Читаем размер данных расширения renegotiation_info
+					if(!read(&size, sizeof(size)))
+						// Возвращаем ошибку при чтении размера данных расширения renegotiation_info из буфера
+						return false;
+					// Если данные расширения renegotiation_info не пустые
+					if(size > 0){
+						// Выделяем память под данные расширения renegotiation_info
+						extension->data.resize(size);
+						// Читаем данные расширения renegotiation_info
+						if(!read(&extension->data[0], size))
+							// Возвращаем ошибку при чтении данных расширения renegotiation_info из буфера
+							return false;
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Если тип расширения соответствует quic_transport_parameters_legacy
+				case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
+					// Создаём объект расширения
+					auto extension = make_unique <extension_quic_transport_params_legacy_t> ();
+					// Количество параметров транспортного уровня QUIC в списке
+					size_t count = 0;
+					// Читаем количество параметров транспортного уровня QUIC (устаревшее расширение)
+					if(!read(&count, sizeof(count)))
+						// Возвращаем ошибку при чтении количества параметров транспортного уровня QUIC (устаревшее расширение) из буфера
+						return false;
+					// Если список параметров не пустой
+					if(count > 0){
+						// Ключ и значение параметра транспортного уровня QUIC (устаревшее расширение)
+						uint64_t key = 0, value = 0;
+						// Перебираем параметры транспортного уровня QUIC (устаревшее расширение)
+						for(size_t i = 0; i < count; i++){
+							// Обнуляем ключ параметра транспортного уровня QUIC (устаревшее расширение)
+							key = 0;
+							// Читаем ключ параметра транспортного уровня QUIC (устаревшее расширение) из буфера
+							if(!read(&key, sizeof(key)))
+								// Возвращаем ошибку при чтении ключа параметра транспортного уровня QUIC (устаревшее расширение) из буфера
+								return false;
+							// Обнуляем значение параметра транспортного уровня QUIC (устаревшее расширение)
+							value = 0;
+							// Читаем значение параметра транспортного уровня QUIC (устаревшее расширение) из буфера
+							if(!read(&value, sizeof(value)))
+								// Возвращаем ошибку при чтении значения параметра транспортного уровня QUIC (устаревшее расширение) из буфера
+								return false;
+							// Добавляем параметр в список
+							extension->params.emplace(key, value);
+						}
+					}
+					// Добавляем расширение в список
+					browser.extensions.push_back(std::move(extension));
+				} break;
+				// Неизвестный тип расширения — нарушение формата данных
+				default: return false;
+			}
+		}
+		// Выводим результат
+		return true;
 	/**
 	 * Если возникает ошибка
 	 */

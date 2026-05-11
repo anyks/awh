@@ -5289,9 +5289,16 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 													const auto res = fgp.apply(::local::buffer, static_cast <size_t> (bytes), browser);
 
 													tls::fgp_t::browser_t browser2;
-													
+
 													if(fgp.parse(&res[0], res.size(), browser2))
 														cout << " Browser2: " << fgp.print(browser2) << endl;
+
+													vector <uint8_t> input;
+													if(fgp.dump(browser2, input)){
+														tls::fgp_t::browser_t browser3;
+														if(fgp.dump(input, browser3))
+															cout << " Browser3: " << fgp.print(browser3) << " || " << input.size() << endl;
+													}
 												}
 
 											}
