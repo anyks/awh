@@ -839,7 +839,7 @@ namespace local {
 			break;
 			// Если эллиптическая кривая соответствует FFDHE 8192
 			case 0x0104:
-				// 
+				// Возвращаем строку "ffdhe8192" для группы эллиптических кривых
 				return "ffdhe8192";
 			break;
 			// Если эллиптическая кривая соответствует MLKEM 1024
@@ -3331,12 +3331,1139 @@ namespace http2 {
 };
 
 /**
+ * @brief Оператор сравнения двух отпечатков браузеров
+ *
+ * @param browser объект цифрового отпечатка браузера для сравнения
+ * @return        результат сравнения
+ */
+bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const noexcept {
+	// Если флаги поддержки GREASE не совпадают, объекты не равны
+	if(this->grease != browser.grease)
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если объекты записи TLS рукопожатия не совпадают побайтно, объекты не равны
+	else if(::memcmp(&this->record, &browser.record, sizeof(this->record)) != 0)
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если объекты рукопожатия TLS не совпадают побайтно, объекты не равны
+	else if(::memcmp(&this->handshake, &browser.handshake, sizeof(this->handshake)) != 0)
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если объекты ClientHello TLS не совпадают побайтно, объекты не равны
+	else if(::memcmp(&this->clientHello, &browser.clientHello, sizeof(this->clientHello)) != 0)
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если размеры cookie рукопожатия DTLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+	else if((this->cookie.size() != browser.cookie.size()) || (!this->cookie.empty() && (::memcmp(&this->cookie[0], &browser.cookie[0], this->cookie.size()) != 0)))
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если размеры идентификатора сессии TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+	else if((this->session.size() != browser.session.size()) || (!this->session.empty() && (::memcmp(&this->session[0], &browser.session[0], this->session.size()) != 0)))
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если размеры списка поддерживаемых шифров не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+	else if((this->ciphers.size() != browser.ciphers.size()) || (!this->ciphers.empty() && (::memcmp(&this->ciphers[0], &browser.ciphers[0], this->ciphers.size()) != 0)))
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если размеры списка поддерживаемых методов сжатия TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+	else if((this->compressors.size() != browser.compressors.size()) || (!this->compressors.empty() && (::memcmp(&this->compressors[0], &browser.compressors[0], this->compressors.size()) != 0)))
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если размеры списка поддерживаемых расширений TLS не совпадают, объекты не равны
+	else if(this->extensions.size() != browser.extensions.size())
+		// Выводим результат сравнения: объекты не равны
+		return false;
+	// Если объекты расширений совпадают по размерам и не пустые
+	else if(!this->extensions.empty() && !browser.extensions.empty()) {
+		// Итерируем по расширениям и сравниваем их типы
+		for(size_t i = 0; i < this->extensions.size(); ++i){
+			// Если типы расширений не совпадают, объекты не равны
+			if(this->extensions[i]->type != browser.extensions[i]->type)
+				// Выводим результат сравнения: объекты не равны
+				return false;
+			// Если типы расширений совпадают, сравниваем их содержимое в зависимости от типа
+			else {
+				/**
+				 * Восстанавливаем объект расширения в зависимости от типа
+				 */
+				switch(static_cast <uint8_t> (browser.extensions[i]->type)){
+					// Если тип расширения соответствует server_name
+					case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME): {
+						// Если размеры списков имён в расширении server_name не совпадают, объекты не равны
+						if(awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.size() != awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если объекты расширений совпадают по размерам и не пустые
+						else if(!awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.empty() && !awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names.empty()) {
+							// Итерируем по расширениям и сравниваем их типы
+							for(size_t j = 0; j < awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.size(); ++j){
+								// Если имена в расширении server_name не совпадают, объекты не равны
+								if(awh_cast <extension_server_name_t *> (this->extensions[i].get())->names[j] != awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names[j])
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует max_fragment_length
+					case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
+						// Если значение длины максимального фрагмента не совпадает, объекты не равны
+						if(awh_cast <extension_max_fragment_length_t *> (this->extensions[i].get())->length != awh_cast <extension_max_fragment_length_t *> (browser.extensions[i].get())->length)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует status_request
+					case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST): {
+						// Если типы запрашиваемого статуса в расширении status_request не совпадают, объекты не равны
+						if(awh_cast <extension_status_request_t *> (this->extensions[i].get())->certificateStatusType != awh_cast <extension_status_request_t *> (browser.extensions[i].get())->certificateStatusType)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если длины списков идентификаторов респондентов в расширении status_request не совпадают, объекты не равны
+						else if(awh_cast <extension_status_request_t *> (this->extensions[i].get())->responderIdListLength != awh_cast <extension_status_request_t *> (browser.extensions[i].get())->responderIdListLength)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если длины расширений запроса статуса сертификата не совпадают, объекты не равны
+						else if(awh_cast <extension_status_request_t *> (this->extensions[i].get())->requestExtensionsLength != awh_cast <extension_status_request_t *> (browser.extensions[i].get())->requestExtensionsLength)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует supported_groups
+					case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS): {
+						// Если размеры списков поддерживаемых групп не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups.size() != awh_cast <extension_supported_groups_t *> (browser.extensions[i].get())->supportedGroups.size()) ||
+						  (!awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups.empty() && (::memcmp(&awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups[0], &awh_cast <extension_supported_groups_t *> (browser.extensions[i].get())->supportedGroups[0], awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует ec_point_formats
+					case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
+						// Если размеры списков форматов точек в расширении ec_point_formats не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats.size() != awh_cast <extension_ec_point_t *> (browser.extensions[i].get())->formats.size()) ||
+						  (!awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats.empty() && (::memcmp(&awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats[0], &awh_cast <extension_ec_point_t *> (browser.extensions[i].get())->formats[0], awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует signature_algorithms
+					case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS): {
+						// Если размеры списков алгоритмов подписи в расширении signature_algorithms не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_signature_t *> (browser.extensions[i].get())->algorithms.size()) ||
+						  (!awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(&awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms[0], &awh_cast <extension_signature_t *> (browser.extensions[i].get())->algorithms[0], awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует use_srtp
+					case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
+						// Если значения длины MKI в расширении use_srtp не совпадают, объекты не равны
+						if(awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->mkiLength != awh_cast <extension_use_srtp_t *> (browser.extensions[i].get())->mkiLength)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если размеры списков профилей SRTP в расширении use_srtp не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						else if((awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles.size() != awh_cast <extension_use_srtp_t *> (browser.extensions[i].get())->profiles.size()) ||
+							   (!awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles.empty() && (::memcmp(&awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles[0], &awh_cast <extension_use_srtp_t *> (browser.extensions[i].get())->profiles[0], awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует heartbeat
+					case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
+						// Если значения режима heartbeat в расширении heartbeat не совпадают, объекты не равны
+						if(awh_cast <extension_heartbeat_t *> (this->extensions[i].get())->mode != awh_cast <extension_heartbeat_t *> (browser.extensions[i].get())->mode)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует alpn
+					case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN): {
+						// Получаем ссылки на списки протоколов ALPN обоих объектов
+						const auto & lhsProtos = awh_cast <extension_alpn_t *> (this->extensions[i].get())->protocols;
+						const auto & rhsProtos = awh_cast <extension_alpn_t *> (browser.extensions[i].get())->protocols;
+						// Если размеры списков протоколов в расширении alpn не совпадают, объекты не равны
+						if(lhsProtos.size() != rhsProtos.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если списки протоколов ALPN не пустые, сравниваем их поэлементно
+						else if(!lhsProtos.empty()) {
+							// Итерируем по протоколам ALPN и сравниваем их
+							for(size_t j = 0; j < lhsProtos.size(); ++j){
+								// Если протоколы ALPN не совпадают, объекты не равны
+								if(lhsProtos[j] != rhsProtos[j])
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует padding
+					case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
+						// Если значения размера паддинга в расширении padding не совпадают, объекты не равны
+						if(awh_cast <extension_padding_t *> (this->extensions[i].get())->size != awh_cast <extension_padding_t *> (browser.extensions[i].get())->size)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует extended_master_secret
+					case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
+						// Если данные master_secret в расширении extended_master_secret не совпадают, объекты не равны
+						if(awh_cast <extension_extended_master_secret_t *> (this->extensions[i].get())->masterSecretData != awh_cast <extension_extended_master_secret_t *> (browser.extensions[i].get())->masterSecretData)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если данные extended_master_secret в расширении extended_master_secret не совпадают, объекты не равны
+						else if(awh_cast <extension_extended_master_secret_t *> (this->extensions[i].get())->extendedMasterSecretData != awh_cast <extension_extended_master_secret_t *> (browser.extensions[i].get())->extendedMasterSecretData)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует compress_certificate
+					case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
+						// Если размеры списков алгоритмов сжатия сертификата в расширении compress_certificate не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_compress_certificate_t *> (browser.extensions[i].get())->algorithms.size()) ||
+						  (!awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(&awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms[0], &awh_cast <extension_compress_certificate_t *> (browser.extensions[i].get())->algorithms[0], awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует record_size_limit
+					case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
+						// Если значения record_size_limit в расширении record_size_limit не совпадают, объекты не равны
+						if(awh_cast <extension_record_size_limit_t *> (this->extensions[i].get())->data != awh_cast <extension_record_size_limit_t *> (browser.extensions[i].get())->data)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует delegated_credential
+					case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
+						// Если размеры списков алгоритмов делегированных учётных данных в расширении delegated_credential не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_delegated_credential_t *> (browser.extensions[i].get())->algorithms.size()) ||
+						  (!awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(&awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms[0], &awh_cast <extension_delegated_credential_t *> (browser.extensions[i].get())->algorithms[0], awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует session_ticket
+					case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
+						// Если размеры данных session_ticket в расширении session_ticket не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_session_ticket_t *> (browser.extensions[i].get())->data.size()) ||
+						  (!awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data.empty() && (::memcmp(&awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data[0], &awh_cast <extension_session_ticket_t *> (browser.extensions[i].get())->data[0], awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует pre_shared_key
+					case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
+						// Получаем ссылки на списки идентификаторов PSK обоих объектов
+						const auto & lhsIds = awh_cast <extension_pre_shared_key_t *> (this->extensions[i].get())->identities;
+						const auto & rhsIds = awh_cast <extension_pre_shared_key_t *> (browser.extensions[i].get())->identities;
+						// Если размеры списков идентификаторов PSK в расширении pre_shared_key не совпадают, объекты не равны
+						if(lhsIds.size() != rhsIds.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если списки идентификаторов PSK не пустые, сравниваем их поэлементно
+						else if(!lhsIds.empty()) {
+							// Итерируем по идентификаторам PSK и сравниваем их
+							for(size_t j = 0; j < lhsIds.size(); ++j){
+								// Если значения ticket_age не совпадают, объекты не равны
+								if(lhsIds[j].ticketAge != rhsIds[j].ticketAge)
+									// Выводим результат сравнения: объекты не равны
+									return false;
+								// Если размеры данных идентификатора PSK не совпадают или если они не пустые и не совпадают побайтно, объекты не равны
+								else if((lhsIds[j].data.size() != rhsIds[j].data.size()) ||
+								       (!lhsIds[j].data.empty() && (::memcmp(lhsIds[j].data.data(), rhsIds[j].data.data(), lhsIds[j].data.size()) != 0)))
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует early_data
+					case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
+						// Если значения max_early_data_size в расширении early_data не совпадают, объекты не равны
+						if(awh_cast <extension_early_data_t *> (this->extensions[i].get())->maxSize != awh_cast <extension_early_data_t *> (browser.extensions[i].get())->maxSize)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует supported_versions
+					case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
+						// Если размеры списков поддерживаемых версий TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.size() != awh_cast <extension_supported_versions_t *> (browser.extensions[i].get())->versions.size()) ||
+						  (!awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.empty() && (::memcmp(awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.data(), awh_cast <extension_supported_versions_t *> (browser.extensions[i].get())->versions.data(), awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует cookie
+					case static_cast <uint8_t> (awh::tls::extension_type_t::COOKIE): {
+						// Если размеры данных расширения cookie не совпадают или если данные не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_cookie_t *> (browser.extensions[i].get())->data.size()) ||
+						  (!awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.empty() && (::memcmp(awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.data(), awh_cast <extension_cookie_t *> (browser.extensions[i].get())->data.data(), awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует psk_key_exchange_modes
+					case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
+						// Если размеры списков режимов обмена ключами PSK не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.size() != awh_cast <extension_psk_key_exchange_t *> (browser.extensions[i].get())->modes.size()) ||
+						  (!awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.empty() && (::memcmp(awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.data(), awh_cast <extension_psk_key_exchange_t *> (browser.extensions[i].get())->modes.data(), awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует certificate_authorities
+					case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
+						// Получаем ссылки на списки авторитетов сертификатов обоих объектов
+						const auto & lhsAuths = awh_cast <extension_certificate_authorities_t *> (this->extensions[i].get())->authorities;
+						const auto & rhsAuths = awh_cast <extension_certificate_authorities_t *> (browser.extensions[i].get())->authorities;
+						// Если размеры списков авторитетов сертификатов не совпадают, объекты не равны
+						if(lhsAuths.size() != rhsAuths.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если списки авторитетов сертификатов не пустые, сравниваем их поэлементно
+						else if(!lhsAuths.empty()) {
+							// Итерируем по авторитетам сертификатов и сравниваем их
+							for(size_t j = 0; j < lhsAuths.size(); ++j){
+								// Если размеры данных авторитета сертификата не совпадают или если они не пустые и не совпадают побайтно, объекты не равны
+								if((lhsAuths[j].size() != rhsAuths[j].size()) ||
+								   (!lhsAuths[j].empty() && (::memcmp(lhsAuths[j].data(), rhsAuths[j].data(), lhsAuths[j].size()) != 0)))
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует signature_algorithms_cert
+					case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
+						// Если размеры списков алгоритмов подписи сертификатов не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_signature_algorithms_cert_t *> (browser.extensions[i].get())->algorithms.size()) ||
+						  (!awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.data(), awh_cast <extension_signature_algorithms_cert_t *> (browser.extensions[i].get())->algorithms.data(), awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует key_share
+					case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE): {
+						// Получаем ссылки на списки ключей для обмена обоих объектов
+						const auto & lhsShares = awh_cast <extension_key_share_t *> (this->extensions[i].get())->shares;
+						const auto & rhsShares = awh_cast <extension_key_share_t *> (browser.extensions[i].get())->shares;
+						// Если размеры списков ключей для обмена не совпадают, объекты не равны
+						if(lhsShares.size() != rhsShares.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если списки ключей для обмена не пустые, сравниваем их поэлементно
+						else if(!lhsShares.empty()) {
+							// Итерируем по ключам для обмена и сравниваем их
+							for(size_t j = 0; j < lhsShares.size(); ++j){
+								// Если группы ключа для обмена не совпадают, объекты не равны
+								if(lhsShares[j].first != rhsShares[j].first)
+									// Выводим результат сравнения: объекты не равны
+									return false;
+								// Если размеры данных ключа для обмена не совпадают или если они не пустые и не совпадают побайтно, объекты не равны
+								else if((lhsShares[j].second.size() != rhsShares[j].second.size()) ||
+								        (!lhsShares[j].second.empty() && (::memcmp(lhsShares[j].second.data(), rhsShares[j].second.data(), lhsShares[j].second.size()) != 0)))
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует quic_transport_parameters
+					case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
+						// Если параметры транспортного уровня QUIC не совпадают, объекты не равны
+						if(awh_cast <extension_quic_transport_params_t *> (this->extensions[i].get())->params != awh_cast <extension_quic_transport_params_t *> (browser.extensions[i].get())->params)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует tls_flags
+					case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
+						// Если размеры списков флагов TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.size() != awh_cast <extension_tls_flags_t *> (browser.extensions[i].get())->flags.size()) ||
+						  (!awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.empty() && (::memcmp(awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.data(), awh_cast <extension_tls_flags_t *> (browser.extensions[i].get())->flags.data(), awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует next_protocol_negotiation
+					case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
+						// Получаем ссылки на списки протоколов NPN обоих объектов
+						const auto & lhsNPN = awh_cast <extension_next_proto_neg_t *> (this->extensions[i].get())->protocols;
+						const auto & rhsNPN = awh_cast <extension_next_proto_neg_t *> (browser.extensions[i].get())->protocols;
+						// Если размеры списков протоколов NPN не совпадают, объекты не равны
+						if(lhsNPN.size() != rhsNPN.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если списки протоколов NPN не пустые, сравниваем их поэлементно
+						else if(!lhsNPN.empty()) {
+							// Итерируем по протоколам NPN и сравниваем их
+							for(size_t j = 0; j < lhsNPN.size(); ++j){
+								// Если протоколы NPN не совпадают, объекты не равны
+								if(lhsNPN[j] != rhsNPN[j])
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует application_settings_old (устаревшее)
+					case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD): {
+						// Получаем ссылки на списки протоколов расширения application_settings_old обоих объектов
+						const auto & lhsASO = awh_cast <extension_application_settings_old_t *> (this->extensions[i].get())->protocols;
+						const auto & rhsASO = awh_cast <extension_application_settings_old_t *> (browser.extensions[i].get())->protocols;
+						// Если размеры списков протоколов в расширении application_settings_old не совпадают, объекты не равны
+						if(lhsASO.size() != rhsASO.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если списки протоколов не пустые, сравниваем их поэлементно
+						else if(!lhsASO.empty()) {
+							// Итерируем по протоколам и сравниваем их
+							for(size_t j = 0; j < lhsASO.size(); ++j){
+								// Если протоколы не совпадают, объекты не равны
+								if(lhsASO[j] != rhsASO[j])
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует application_settings
+					case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS): {
+						// Получаем ссылки на списки протоколов расширения application_settings обоих объектов
+						const auto & lhsAS = awh_cast <extension_application_settings_t *> (this->extensions[i].get())->protocols;
+						const auto & rhsAS = awh_cast <extension_application_settings_t *> (browser.extensions[i].get())->protocols;
+						// Если размеры списков протоколов в расширении application_settings не совпадают, объекты не равны
+						if(lhsAS.size() != rhsAS.size())
+							// Выводим результат сравнения: объекты не равны
+							return false;
+						// Если списки протоколов не пустые, сравниваем их поэлементно
+						else if(!lhsAS.empty()) {
+							// Итерируем по протоколам и сравниваем их
+							for(size_t j = 0; j < lhsAS.size(); ++j){
+								// Если протоколы не совпадают, объекты не равны
+								if(lhsAS[j] != rhsAS[j])
+									// Выводим результат сравнения: объекты не равны
+									return false;
+							}
+						}
+					} break;
+					// Если тип расширения соответствует ech_outer_extensions
+					case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
+						// Если размеры списков расширений в расширении ech_outer_extensions не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.size() != awh_cast <extension_ech_outer_extensions_t *> (browser.extensions[i].get())->extensions.size()) ||
+						  (!awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.empty() && (::memcmp(awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.data(), awh_cast <extension_ech_outer_extensions_t *> (browser.extensions[i].get())->extensions.data(), awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует encrypted_client_hello
+					case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
+						// Если размеры данных расширения encrypted_client_hello не совпадают или если данные не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_encryption_client_hello_t *> (browser.extensions[i].get())->data.size()) ||
+						  (!awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.empty() && (::memcmp(awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.data(), awh_cast <extension_encryption_client_hello_t *> (browser.extensions[i].get())->data.data(), awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует renegotiation_info
+					case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
+						// Если размеры данных расширения renegotiation_info не совпадают или если данные не пустые и не совпадают побайтно, объекты не равны
+						if((awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_renegotiation_info_t *> (browser.extensions[i].get())->data.size()) ||
+						  (!awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.empty() && (::memcmp(awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.data(), awh_cast <extension_renegotiation_info_t *> (browser.extensions[i].get())->data.data(), awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.size()) != 0)))
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+					// Если тип расширения соответствует quic_transport_parameters_legacy
+					case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
+						// Если параметры транспортного уровня QUIC (устаревшее расширение) не совпадают, объекты не равны
+						if(awh_cast <extension_quic_transport_params_legacy_t *> (this->extensions[i].get())->params != awh_cast <extension_quic_transport_params_legacy_t *> (browser.extensions[i].get())->params)
+							// Выводим результат сравнения: объекты не равны
+							return false;
+					} break;
+				}
+			}
+		}
+	}
+	// Если все проверки пройдены, объекты считаются равными
+	return true;
+}
+/**
+ * @brief Оператор перемещения
+ *
+ * @param browser объект цифрового отпечатка браузера для перемещения
+ * @return        текущий объект после перемещения
+ */
+awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (Browser && browser) noexcept {
+	// Копируем флаг поддержки GREASE
+	this->grease = browser.grease;
+	// Сбрасываем флаг в исходном объекте (необязательно, но подчёркивает что данные перемещены)
+	browser.grease = false;
+	// Перемещаем объект записи TLS рукопожатия
+	this->record = ::move(browser.record);
+	// Перемещаем объект рукопожатия TLS
+	this->handshake = ::move(browser.handshake);
+	// Перемещаем объект ClientHello
+	this->clientHello = ::move(browser.clientHello);
+	// Перемещаем объект cookie рукопожатия DTLS
+	this->cookie = ::move(browser.cookie);
+	// Перемещаем объект идентификатора сессии TLS
+	this->session = ::move(browser.session);
+	// Перемещаем список поддерживаемых шифров
+	this->ciphers = ::move(browser.ciphers);
+	// Перемещаем список поддерживаемых методов сжатия TLS
+	this->compressors = ::move(browser.compressors);
+	// Перемещаем список поддерживаемых расширений TLS
+	this->extensions = ::move(browser.extensions);
+	// Выводим текущий объект после перемещения
+	return (* this);
+}
+/**
+ * @brief Оператор копирования
+ *
+ * @param browser объект цифрового отпечатка браузера для копирования
+ * @return        текущий объект после копирования
+ */
+awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (const Browser & browser) noexcept {
+	// Копируем флаг поддержки GREASE
+	this->grease = browser.grease;
+	// Копируем объект записи TLS рукопожатия
+	this->record = browser.record;
+	// Копируем объект рукопожатия TLS
+	this->handshake = browser.handshake;
+	// Копируем объект ClientHello
+	this->clientHello = browser.clientHello;
+	// Копируем объект cookie рукопожатия DTLS
+	this->cookie = browser.cookie;
+	// Копируем объект идентификатора сессии TLS
+	this->session = browser.session;
+	// Копируем список поддерживаемых шифров
+	this->ciphers = browser.ciphers;
+	// Копируем список поддерживаемых методов сжатия TLS
+	this->compressors = browser.compressors;
+	// Очищаем список расширений в текущем объекте, чтобы подготовиться к копированию расширений из исходного объекта
+	this->extensions.clear();
+	/**
+	 * Перебираем расширения в исходном объекте и восстанавливаем их в текущем объекте в зависимости от типа
+	 */
+	for(auto & extension : browser.extensions){
+		/**
+		 * Восстанавливаем объект расширения в зависимости от типа
+		 */
+		switch(static_cast <uint8_t> (extension->type)){
+			// Если тип расширения соответствует grease
+			case static_cast <uint8_t> (awh::tls::extension_type_t::GREASE):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_grease_t> ());
+			break;
+			// Если тип расширения соответствует channel_id
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CHANNEL_ID):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_channel_id_t> ());
+			break;
+			// Если тип расширения соответствует oid_filters
+			case static_cast <uint8_t> (awh::tls::extension_type_t::OID_FILTERS):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_oid_filters_t> ());
+			break;
+			// Если тип расширения соответствует trust_anchors
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TRUST_ANCHORS):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_trust_anchors_t> ());
+			break;
+			// Если тип расширения соответствует encrypt_then_mac
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPT_THEN_MAC):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_encrypt_then_mac_t> ());
+			break;
+			// Если тип расширения соответствует transparency_info
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TRANSPARENCY_INFO):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_transparency_info_t> ());
+			break;
+			// Если тип расширения соответствует post_handshake_auth
+			case static_cast <uint8_t> (awh::tls::extension_type_t::POST_HANDSHAKE_AUTH):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_post_handshake_auth_t> ());
+			break;
+			// Если тип расширения соответствует client_certificate_type
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CLIENT_CERTIFICATE_TYPE):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_client_certificate_type_t> ());
+			break;
+			// Если тип расширения соответствует server_certificate_type
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_CERTIFICATE_TYPE):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_server_certificate_type_t> ());
+			break;
+			// Если тип расширения соответствует signed_certificate_timestamp
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_signed_certificate_timestamp_t> ());
+			break;
+			// Если тип расширения соответствует server_name
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_server_name_t> ());
+				// Копируем список имён из исходного расширения
+				awh_cast <extension_server_name_t *> (this->extensions.back().get())->names = awh_cast <extension_server_name_t *> (extension.get())->names;
+			} break;
+			// Если тип расширения соответствует max_fragment_length
+			case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_max_fragment_length_t> ());
+				// Копируем значение длины из исходного расширения
+				awh_cast <extension_max_fragment_length_t *> (this->extensions.back().get())->length = awh_cast <extension_max_fragment_length_t *> (extension.get())->length;
+			} break;
+			// Если тип расширения соответствует status_request
+			case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_status_request_t> ());
+				// Копируем значение типа запроса статуса из исходного расширения
+				awh_cast <extension_status_request_t *> (this->extensions.back().get())->certificateStatusType = awh_cast <extension_status_request_t *> (extension.get())->certificateStatusType;
+				// Копируем значение длины списка идентификаторов респондентов из исходного расширения
+				awh_cast <extension_status_request_t *> (this->extensions.back().get())->responderIdListLength = awh_cast <extension_status_request_t *> (extension.get())->responderIdListLength;
+				// Копируем список идентификаторов респондентов из исходного расширения
+				awh_cast <extension_status_request_t *> (this->extensions.back().get())->requestExtensionsLength = awh_cast <extension_status_request_t *> (extension.get())->requestExtensionsLength;
+			} break;
+			// Если тип расширения соответствует supported_groups
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_supported_groups_t> ());
+				// Копируем список поддерживаемых групп из исходного расширения
+				awh_cast <extension_supported_groups_t *> (this->extensions.back().get())->supportedGroups = awh_cast <extension_supported_groups_t *> (extension.get())->supportedGroups;
+			} break;
+			// Если тип расширения соответствует ec_point_formats
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_ec_point_t> ());
+				// Копируем список форматов точек из исходного расширения
+				awh_cast <extension_ec_point_t *> (this->extensions.back().get())->formats = awh_cast <extension_ec_point_t *> (extension.get())->formats;
+			} break;
+			// Если тип расширения соответствует signature_algorithms
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_signature_t> ());
+				// Копируем список алгоритмов подписи из исходного расширения
+				awh_cast <extension_signature_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_signature_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует use_srtp
+			case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_use_srtp_t> ());
+				// Копируем список профилей SRTP из исходного расширения
+				awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->profiles = awh_cast <extension_use_srtp_t *> (extension.get())->profiles;
+				// Копируем значение mki_length из исходного расширения
+				awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->mkiLength = awh_cast <extension_use_srtp_t *> (extension.get())->mkiLength;
+			} break;
+			// Если тип расширения соответствует heartbeat
+			case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_heartbeat_t> ());
+				// Копируем значение режима heartbeat из исходного расширения
+				awh_cast <extension_heartbeat_t *> (this->extensions.back().get())->mode = awh_cast <extension_heartbeat_t *> (extension.get())->mode;
+			} break;
+			// Если тип расширения соответствует alpn
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_alpn_t> ());
+				// Копируем список протоколов ALPN из исходного расширения
+				awh_cast <extension_alpn_t *> (this->extensions.back().get())->protocols = awh_cast <extension_alpn_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует padding
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_padding_t> ());
+				// Копируем значение размера паддинга из исходного расширения
+				awh_cast <extension_padding_t *> (this->extensions.back().get())->size = awh_cast <extension_padding_t *> (extension.get())->size;
+			} break;
+			// Если тип расширения соответствует extended_master_secret
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_extended_master_secret_t> ());
+				// Копируем данные master_secret из исходного расширения
+				awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->masterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->masterSecretData;
+				// Копируем данные extended_master_secret из исходного расширения
+				awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->extendedMasterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->extendedMasterSecretData;
+			} break;
+			// Если тип расширения соответствует compress_certificate
+			case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_compress_certificate_t> ());
+				// Копируем список алгоритмов сжатия сертификата из исходного расширения
+				awh_cast <extension_compress_certificate_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_compress_certificate_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует record_size_limit
+			case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_record_size_limit_t> ());
+				// Копируем значение record_size_limit из исходного расширения
+				awh_cast <extension_record_size_limit_t *> (this->extensions.back().get())->data = awh_cast <extension_record_size_limit_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует delegated_credential
+			case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_delegated_credential_t> ());
+				// Копируем список алгоритмов делегированных учётных данных из исходного расширения
+				awh_cast <extension_delegated_credential_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_delegated_credential_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует session_ticket
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_session_ticket_t> ());
+				// Копируем данные session_ticket из исходного расширения
+				awh_cast <extension_session_ticket_t *> (this->extensions.back().get())->data = awh_cast <extension_session_ticket_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует pre_shared_key
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_pre_shared_key_t> ());
+				// Копируем список идентификаторов PSK из исходного расширения
+				awh_cast <extension_pre_shared_key_t *> (this->extensions.back().get())->identities = awh_cast <extension_pre_shared_key_t *> (extension.get())->identities;
+			} break;
+			// Если тип расширения соответствует early_data
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_early_data_t> ());
+				// Копируем значение maxSize из исходного расширения
+				awh_cast <extension_early_data_t *> (this->extensions.back().get())->maxSize = awh_cast <extension_early_data_t *> (extension.get())->maxSize;
+			} break;
+			// Если тип расширения соответствует supported_versions
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_supported_versions_t> ());
+				// Копируем список поддерживаемых версий TLS из исходного расширения
+				awh_cast <extension_supported_versions_t *> (this->extensions.back().get())->versions = awh_cast <extension_supported_versions_t *> (extension.get())->versions;
+			} break;
+			// Если тип расширения соответствует cookie
+			case static_cast <uint8_t> (awh::tls::extension_type_t::COOKIE): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_cookie_t> ());
+				// Копируем данные расширения cookie из исходного расширения
+				awh_cast <extension_cookie_t *> (this->extensions.back().get())->data = awh_cast <extension_cookie_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует psk_key_exchange_modes
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_psk_key_exchange_t> ());
+				// Копируем список режимов обмена ключами PSK из исходного расширения
+				awh_cast <extension_psk_key_exchange_t *> (this->extensions.back().get())->modes = awh_cast <extension_psk_key_exchange_t *> (extension.get())->modes;
+			} break;
+			// Если тип расширения соответствует certificate_authorities
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_certificate_authorities_t> ());
+				// Копируем список авторитетов сертификатов из исходного расширения
+				awh_cast <extension_certificate_authorities_t *> (this->extensions.back().get())->authorities = awh_cast <extension_certificate_authorities_t *> (extension.get())->authorities;
+			} break;
+			// Если тип расширения соответствует signature_algorithms_cert
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_signature_algorithms_cert_t> ());
+				// Копируем список алгоритмов подписи сертификатов из исходного расширения
+				awh_cast <extension_signature_algorithms_cert_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_signature_algorithms_cert_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует key_share
+			case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_key_share_t> ());
+				// Копируем список ключей для обмена из исходного расширения
+				awh_cast <extension_key_share_t *> (this->extensions.back().get())->shares = awh_cast <extension_key_share_t *> (extension.get())->shares;
+			} break;
+			// Если тип расширения соответствует quic_transport_parameters
+			case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_quic_transport_params_t> ());
+				// Копируем список параметров транспортного уровня QUIC из исходного расширения
+				awh_cast <extension_quic_transport_params_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_t *> (extension.get())->params;
+			} break;
+			// Если тип расширения соответствует tls_flags
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_tls_flags_t> ());
+				// Копируем список флагов TLS из исходного расширения
+				awh_cast <extension_tls_flags_t *> (this->extensions.back().get())->flags = awh_cast <extension_tls_flags_t *> (extension.get())->flags;
+			} break;
+			// Если тип расширения соответствует next_protocol_negotiation
+			case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_next_proto_neg_t> ());
+				// Копируем список протоколов NPN из исходного расширения
+				awh_cast <extension_next_proto_neg_t *> (this->extensions.back().get())->protocols = awh_cast <extension_next_proto_neg_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует application_settings_old (устаревшее)
+			case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_application_settings_old_t> ());
+				// Копируем список протоколов из исходного расширения
+				awh_cast <extension_application_settings_old_t *> (this->extensions.back().get())->protocols = awh_cast <extension_application_settings_old_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует application_settings
+			case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_application_settings_t> ());
+				// Копируем список протоколов из исходного расширения
+				awh_cast <extension_application_settings_t *> (this->extensions.back().get())->protocols = awh_cast <extension_application_settings_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует ech_outer_extensions
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_ech_outer_extensions_t> ());
+				// Копируем список расширений из исходного расширения
+				awh_cast <extension_ech_outer_extensions_t *> (this->extensions.back().get())->extensions = awh_cast <extension_ech_outer_extensions_t *> (extension.get())->extensions;
+			} break;
+			// Если тип расширения соответствует encrypted_client_hello
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_encryption_client_hello_t> ());
+				// Копируем данные расширения encrypted_client_hello из исходного расширения
+				awh_cast <extension_encryption_client_hello_t *> (this->extensions.back().get())->data = awh_cast <extension_encryption_client_hello_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует renegotiation_info
+			case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_renegotiation_info_t> ());
+				// Копируем данные расширения renegotiation_info из исходного расширения
+				awh_cast <extension_renegotiation_info_t *> (this->extensions.back().get())->data = awh_cast <extension_renegotiation_info_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует quic_transport_parameters_legacy
+			case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_quic_transport_params_legacy_t> ());
+				// Копируем список параметров транспортного уровня QUIC из исходного расширения
+				awh_cast <extension_quic_transport_params_legacy_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_legacy_t *> (extension.get())->params;
+			} break;
+		}
+	}
+	// Выводим текущий объект после перемещения
+	return (* this);
+}
+/**
+ * @brief Конструктор перемещения
+ *
+ * @param browser объект цифрового отпечатка браузера для перемещения
+ */
+awh::tls::Fingerprint::Browser::Browser(browser_t && browser) noexcept {
+	// Копируем флаг поддержки GREASE
+	this->grease = browser.grease;
+	// Сбрасываем флаг в исходном объекте (необязательно, но подчёркивает что данные перемещены)
+	browser.grease = false;
+	// Перемещаем объект записи TLS рукопожатия
+	this->record = ::move(browser.record);
+	// Перемещаем объект рукопожатия TLS
+	this->handshake = ::move(browser.handshake);
+	// Перемещаем объект ClientHello
+	this->clientHello = ::move(browser.clientHello);
+	// Перемещаем объект cookie рукопожатия DTLS
+	this->cookie = ::move(browser.cookie);
+	// Перемещаем объект идентификатора сессии TLS
+	this->session = ::move(browser.session);
+	// Перемещаем список поддерживаемых шифров
+	this->ciphers = ::move(browser.ciphers);
+	// Перемещаем список поддерживаемых методов сжатия TLS
+	this->compressors = ::move(browser.compressors);
+	// Перемещаем список поддерживаемых расширений TLS
+	this->extensions = ::move(browser.extensions);
+}
+/**
+ * @brief Конструктор копирования
+ *
+ * @param browser объект цифрового отпечатка браузера для копирования
+ */
+awh::tls::Fingerprint::Browser::Browser(const browser_t & browser) noexcept {
+	// Копируем флаг поддержки GREASE
+	this->grease = browser.grease;
+	// Копируем объект записи TLS рукопожатия
+	this->record = browser.record;
+	// Копируем объект рукопожатия TLS
+	this->handshake = browser.handshake;
+	// Копируем объект ClientHello
+	this->clientHello = browser.clientHello;
+	// Копируем объект cookie рукопожатия DTLS
+	this->cookie = browser.cookie;
+	// Копируем объект идентификатора сессии TLS
+	this->session = browser.session;
+	// Копируем список поддерживаемых шифров
+	this->ciphers = browser.ciphers;
+	// Копируем список поддерживаемых методов сжатия TLS
+	this->compressors = browser.compressors;
+	// Очищаем список расширений в текущем объекте, чтобы подготовиться к копированию расширений из исходного объекта
+	this->extensions.clear();
+	/**
+	 * Перебираем расширения в исходном объекте и восстанавливаем их в текущем объекте в зависимости от типа
+	 */
+	for(auto & extension : browser.extensions){
+		/**
+		 * Восстанавливаем объект расширения в зависимости от типа
+		 */
+		switch(static_cast <uint8_t> (extension->type)){
+			// Если тип расширения соответствует grease
+			case static_cast <uint8_t> (awh::tls::extension_type_t::GREASE):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_grease_t> ());
+			break;
+			// Если тип расширения соответствует channel_id
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CHANNEL_ID):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_channel_id_t> ());
+			break;
+			// Если тип расширения соответствует oid_filters
+			case static_cast <uint8_t> (awh::tls::extension_type_t::OID_FILTERS):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_oid_filters_t> ());
+			break;
+			// Если тип расширения соответствует trust_anchors
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TRUST_ANCHORS):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_trust_anchors_t> ());
+			break;
+			// Если тип расширения соответствует encrypt_then_mac
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPT_THEN_MAC):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_encrypt_then_mac_t> ());
+			break;
+			// Если тип расширения соответствует transparency_info
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TRANSPARENCY_INFO):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_transparency_info_t> ());
+			break;
+			// Если тип расширения соответствует post_handshake_auth
+			case static_cast <uint8_t> (awh::tls::extension_type_t::POST_HANDSHAKE_AUTH):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_post_handshake_auth_t> ());
+			break;
+			// Если тип расширения соответствует client_certificate_type
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CLIENT_CERTIFICATE_TYPE):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_client_certificate_type_t> ());
+			break;
+			// Если тип расширения соответствует server_certificate_type
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_CERTIFICATE_TYPE):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_server_certificate_type_t> ());
+			break;
+			// Если тип расширения соответствует signed_certificate_timestamp
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_signed_certificate_timestamp_t> ());
+			break;
+			// Если тип расширения соответствует server_name
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_server_name_t> ());
+				// Копируем список имён из исходного расширения
+				awh_cast <extension_server_name_t *> (this->extensions.back().get())->names = awh_cast <extension_server_name_t *> (extension.get())->names;
+			} break;
+			// Если тип расширения соответствует max_fragment_length
+			case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_max_fragment_length_t> ());
+				// Копируем значение длины из исходного расширения
+				awh_cast <extension_max_fragment_length_t *> (this->extensions.back().get())->length = awh_cast <extension_max_fragment_length_t *> (extension.get())->length;
+			} break;
+			// Если тип расширения соответствует status_request
+			case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_status_request_t> ());
+				// Копируем значение типа запроса статуса из исходного расширения
+				awh_cast <extension_status_request_t *> (this->extensions.back().get())->certificateStatusType = awh_cast <extension_status_request_t *> (extension.get())->certificateStatusType;
+				// Копируем значение длины списка идентификаторов респондентов из исходного расширения
+				awh_cast <extension_status_request_t *> (this->extensions.back().get())->responderIdListLength = awh_cast <extension_status_request_t *> (extension.get())->responderIdListLength;
+				// Копируем список идентификаторов респондентов из исходного расширения
+				awh_cast <extension_status_request_t *> (this->extensions.back().get())->requestExtensionsLength = awh_cast <extension_status_request_t *> (extension.get())->requestExtensionsLength;
+			} break;
+			// Если тип расширения соответствует supported_groups
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_supported_groups_t> ());
+				// Копируем список поддерживаемых групп из исходного расширения
+				awh_cast <extension_supported_groups_t *> (this->extensions.back().get())->supportedGroups = awh_cast <extension_supported_groups_t *> (extension.get())->supportedGroups;
+			} break;
+			// Если тип расширения соответствует ec_point_formats
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_ec_point_t> ());
+				// Копируем список форматов точек из исходного расширения
+				awh_cast <extension_ec_point_t *> (this->extensions.back().get())->formats = awh_cast <extension_ec_point_t *> (extension.get())->formats;
+			} break;
+			// Если тип расширения соответствует signature_algorithms
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_signature_t> ());
+				// Копируем список алгоритмов подписи из исходного расширения
+				awh_cast <extension_signature_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_signature_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует use_srtp
+			case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_use_srtp_t> ());
+				// Копируем список профилей SRTP из исходного расширения
+				awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->profiles = awh_cast <extension_use_srtp_t *> (extension.get())->profiles;
+				// Копируем значение mki_length из исходного расширения
+				awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->mkiLength = awh_cast <extension_use_srtp_t *> (extension.get())->mkiLength;
+			} break;
+			// Если тип расширения соответствует heartbeat
+			case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_heartbeat_t> ());
+				// Копируем значение режима heartbeat из исходного расширения
+				awh_cast <extension_heartbeat_t *> (this->extensions.back().get())->mode = awh_cast <extension_heartbeat_t *> (extension.get())->mode;
+			} break;
+			// Если тип расширения соответствует alpn
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_alpn_t> ());
+				// Копируем список протоколов ALPN из исходного расширения
+				awh_cast <extension_alpn_t *> (this->extensions.back().get())->protocols = awh_cast <extension_alpn_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует padding
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_padding_t> ());
+				// Копируем значение размера паддинга из исходного расширения
+				awh_cast <extension_padding_t *> (this->extensions.back().get())->size = awh_cast <extension_padding_t *> (extension.get())->size;
+			} break;
+			// Если тип расширения соответствует extended_master_secret
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_extended_master_secret_t> ());
+				// Копируем данные master_secret из исходного расширения
+				awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->masterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->masterSecretData;
+				// Копируем данные extended_master_secret из исходного расширения
+				awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->extendedMasterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->extendedMasterSecretData;
+			} break;
+			// Если тип расширения соответствует compress_certificate
+			case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_compress_certificate_t> ());
+				// Копируем список алгоритмов сжатия сертификата из исходного расширения
+				awh_cast <extension_compress_certificate_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_compress_certificate_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует record_size_limit
+			case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_record_size_limit_t> ());
+				// Копируем значение record_size_limit из исходного расширения
+				awh_cast <extension_record_size_limit_t *> (this->extensions.back().get())->data = awh_cast <extension_record_size_limit_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует delegated_credential
+			case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_delegated_credential_t> ());
+				// Копируем список алгоритмов делегированных учётных данных из исходного расширения
+				awh_cast <extension_delegated_credential_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_delegated_credential_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует session_ticket
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_session_ticket_t> ());
+				// Копируем данные session_ticket из исходного расширения
+				awh_cast <extension_session_ticket_t *> (this->extensions.back().get())->data = awh_cast <extension_session_ticket_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует pre_shared_key
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_pre_shared_key_t> ());
+				// Копируем список идентификаторов PSK из исходного расширения
+				awh_cast <extension_pre_shared_key_t *> (this->extensions.back().get())->identities = awh_cast <extension_pre_shared_key_t *> (extension.get())->identities;
+			} break;
+			// Если тип расширения соответствует early_data
+			case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_early_data_t> ());
+				// Копируем значение maxSize из исходного расширения
+				awh_cast <extension_early_data_t *> (this->extensions.back().get())->maxSize = awh_cast <extension_early_data_t *> (extension.get())->maxSize;
+			} break;
+			// Если тип расширения соответствует supported_versions
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_supported_versions_t> ());
+				// Копируем список поддерживаемых версий TLS из исходного расширения
+				awh_cast <extension_supported_versions_t *> (this->extensions.back().get())->versions = awh_cast <extension_supported_versions_t *> (extension.get())->versions;
+			} break;
+			// Если тип расширения соответствует cookie
+			case static_cast <uint8_t> (awh::tls::extension_type_t::COOKIE): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_cookie_t> ());
+				// Копируем данные расширения cookie из исходного расширения
+				awh_cast <extension_cookie_t *> (this->extensions.back().get())->data = awh_cast <extension_cookie_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует psk_key_exchange_modes
+			case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_psk_key_exchange_t> ());
+				// Копируем список режимов обмена ключами PSK из исходного расширения
+				awh_cast <extension_psk_key_exchange_t *> (this->extensions.back().get())->modes = awh_cast <extension_psk_key_exchange_t *> (extension.get())->modes;
+			} break;
+			// Если тип расширения соответствует certificate_authorities
+			case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_certificate_authorities_t> ());
+				// Копируем список авторитетов сертификатов из исходного расширения
+				awh_cast <extension_certificate_authorities_t *> (this->extensions.back().get())->authorities = awh_cast <extension_certificate_authorities_t *> (extension.get())->authorities;
+			} break;
+			// Если тип расширения соответствует signature_algorithms_cert
+			case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_signature_algorithms_cert_t> ());
+				// Копируем список алгоритмов подписи сертификатов из исходного расширения
+				awh_cast <extension_signature_algorithms_cert_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_signature_algorithms_cert_t *> (extension.get())->algorithms;
+			} break;
+			// Если тип расширения соответствует key_share
+			case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_key_share_t> ());
+				// Копируем список ключей для обмена из исходного расширения
+				awh_cast <extension_key_share_t *> (this->extensions.back().get())->shares = awh_cast <extension_key_share_t *> (extension.get())->shares;
+			} break;
+			// Если тип расширения соответствует quic_transport_parameters
+			case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_quic_transport_params_t> ());
+				// Копируем список параметров транспортного уровня QUIC из исходного расширения
+				awh_cast <extension_quic_transport_params_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_t *> (extension.get())->params;
+			} break;
+			// Если тип расширения соответствует tls_flags
+			case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_tls_flags_t> ());
+				// Копируем список флагов TLS из исходного расширения
+				awh_cast <extension_tls_flags_t *> (this->extensions.back().get())->flags = awh_cast <extension_tls_flags_t *> (extension.get())->flags;
+			} break;
+			// Если тип расширения соответствует next_protocol_negotiation
+			case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_next_proto_neg_t> ());
+				// Копируем список протоколов NPN из исходного расширения
+				awh_cast <extension_next_proto_neg_t *> (this->extensions.back().get())->protocols = awh_cast <extension_next_proto_neg_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует application_settings_old (устаревшее)
+			case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_application_settings_old_t> ());
+				// Копируем список протоколов из исходного расширения
+				awh_cast <extension_application_settings_old_t *> (this->extensions.back().get())->protocols = awh_cast <extension_application_settings_old_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует application_settings
+			case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_application_settings_t> ());
+				// Копируем список протоколов из исходного расширения
+				awh_cast <extension_application_settings_t *> (this->extensions.back().get())->protocols = awh_cast <extension_application_settings_t *> (extension.get())->protocols;
+			} break;
+			// Если тип расширения соответствует ech_outer_extensions
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_ech_outer_extensions_t> ());
+				// Копируем список расширений из исходного расширения
+				awh_cast <extension_ech_outer_extensions_t *> (this->extensions.back().get())->extensions = awh_cast <extension_ech_outer_extensions_t *> (extension.get())->extensions;
+			} break;
+			// Если тип расширения соответствует encrypted_client_hello
+			case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_encryption_client_hello_t> ());
+				// Копируем данные расширения encrypted_client_hello из исходного расширения
+				awh_cast <extension_encryption_client_hello_t *> (this->extensions.back().get())->data = awh_cast <extension_encryption_client_hello_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует renegotiation_info
+			case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_renegotiation_info_t> ());
+				// Копируем данные расширения renegotiation_info из исходного расширения
+				awh_cast <extension_renegotiation_info_t *> (this->extensions.back().get())->data = awh_cast <extension_renegotiation_info_t *> (extension.get())->data;
+			} break;
+			// Если тип расширения соответствует quic_transport_parameters_legacy
+			case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
+				// Добавляем расширение в список
+				this->extensions.push_back(make_unique <extension_quic_transport_params_legacy_t> ());
+				// Копируем список параметров транспортного уровня QUIC из исходного расширения
+				awh_cast <extension_quic_transport_params_legacy_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_legacy_t *> (extension.get())->params;
+			} break;
+		}
+	}
+}
+
+/**
  * @brief Оператор преобразования в сырой итератор
- * 
+ *
  * @return iterator итератор для преобразования
  */
 awh::tls::Fingerprint::Iterator::operator awh::tls::Fingerprint::Iterator::iterator() noexcept {
-
+	// Выводим текущее значение итератора
+	return this->_it;
 }
 /**
  * @brief Оператор извлечения указателя заголовка
@@ -3344,7 +4471,8 @@ awh::tls::Fingerprint::Iterator::operator awh::tls::Fingerprint::Iterator::itera
  * @return указатель заголовка
  */
 awh::tls::Fingerprint::Iterator::pointer awh::tls::Fingerprint::Iterator::operator -> () noexcept {
-
+	// Выводим результат
+	return &this->_it->second;
 }
 /**
  * @brief Оператор разыменования заголовка
@@ -3352,7 +4480,8 @@ awh::tls::Fingerprint::Iterator::pointer awh::tls::Fingerprint::Iterator::operat
  * @return значение заголовка
  */
 awh::tls::Fingerprint::Iterator::reference awh::tls::Fingerprint::Iterator::operator * () const noexcept {
-
+	// Выводим результат
+	return this->_it->second;
 }
 /**
  * @brief Оператор смещения вперед
@@ -3360,7 +4489,32 @@ awh::tls::Fingerprint::Iterator::reference awh::tls::Fingerprint::Iterator::oper
  * @return значение текущего итератора
  */
 awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ () noexcept {
-
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем смещение итератора
+		++this->_it;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return (* this);
 }
 /**
  * @brief Оператор сравнения соответствия итератора
@@ -3369,7 +4523,8 @@ awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ (
  * @return      результат сравнения
  */
 bool awh::tls::Fingerprint::Iterator::operator == (const Iterator & other) const noexcept {
-
+	// Выводим результат
+	return (this->_it == other._it);
 }
 /**
  * @brief Оператора сравнения несоответствия итератора
@@ -3378,7 +4533,8 @@ bool awh::tls::Fingerprint::Iterator::operator == (const Iterator & other) const
  * @return      результат сравнения
  */
 bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const noexcept {
-
+	// Выводим результат
+	return (this->_it != other._it);
 }
 
 /**
@@ -3430,7 +4586,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		};
 		/**
 		 * @brief Вспомогательная лямбда: секционный заголовок с количеством элементов
-		 * 
+		 *
 		 * @param title название секции
 		 */
 		const auto section = [&out](const string & title) -> void {
@@ -6993,7 +8149,10 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
  *
  */
 void awh::tls::Fingerprint::clear() noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Очищаем хранилище цифровых отпечатков браузеров
+	this->_browsers.clear();
 }
 /**
  * @brief Метод проверки, пусто ли хранилище цифровых отпечатков браузеров
@@ -7001,7 +8160,10 @@ void awh::tls::Fingerprint::clear() noexcept {
  * @return результат проверки
  */
 bool awh::tls::Fingerprint::empty() const noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Проверяем, что хранилище цифровых отпечатков браузеров пусто
+	return this->_browsers.empty();
 }
 /**
  * @brief Метод получения количества цифровых отпечатков браузеров, хранящихся в хранилище
@@ -7009,7 +8171,10 @@ bool awh::tls::Fingerprint::empty() const noexcept {
  * @return количество цифровых отпечатков браузеров
  */
 size_t awh::tls::Fingerprint::size() const noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Возвращаем количество цифровых отпечатков браузеров в хранилище
+	return this->_browsers.size();
 }
 /**
  * @brief Метод получения списка идентификаторов всех цифровых отпечатков браузеров, хранящихся в хранилище
@@ -7017,7 +8182,16 @@ size_t awh::tls::Fingerprint::size() const noexcept {
  * @return список идентификаторов цифровых отпечатков браузеров
  */
 vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcept {
-
+	// Результат работы функции
+	vector <id_t> result;
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выполняем перебор всех цифровых отпечатков браузеров в хранилище
+	for(const auto & [id, browser] : this->_browsers)
+		// Добавляем идентификатор цифрового отпечатка браузера в результат
+		result.push_back(id);
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод удаления цифрового отпечатка браузера из хранилища по идентификатору
@@ -7026,17 +8200,82 @@ vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcep
  * @return   результат выполнения удаления цифрового отпечатка
  */
 bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Ищем цифровой отпечаток браузера по идентификатору
+		auto i = this->_browsers.find(id);
+		// Если цифровой отпечаток браузера найден — удаляем его из хранилища
+		if((result = (i != this->_browsers.end())))
+			// Удаляем цифровой отпечаток браузера из хранилища
+			this->_browsers.erase(i);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод получения данных цифрового отпечатка браузера по идентификатору
  *
- * @param id      идентификатор цифрового отпечатка
- * @param browser объект для хранения распарсенных данных цифрового отпечатка
- * @return        результат получения данных цифрового отпечатка по идентификатору
+ * @param id идентификатор цифрового отпечатка
+ * @return   объект с цифровым отпечатком браузера, соответствующий указанному идентификатору
  */
-bool awh::tls::Fingerprint::get(const id_t id, browser_t & browser) const noexcept {
-
+const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t id) const noexcept {
+	// Результат работы функции
+	const static browser_t result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Ищем цифровой отпечаток браузера по идентификатору
+		auto i = this->_browsers.find(id);
+		// Если цифровой отпечаток браузера найден
+		if(i != this->_browsers.end())
+			// Выводим цифровой отпечаток браузера, соответствующий указанному идентификатору
+			return i->second;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод добавления цифрового отпечатка браузера в хранилище
@@ -7045,7 +8284,44 @@ bool awh::tls::Fingerprint::get(const id_t id, browser_t & browser) const noexce
  * @return        идентификатор добавленного цифрового отпечатка
  */
 awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser) noexcept {
-
+	// Результат работы функции
+	id_t result = 0;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Начинаем с 1 (0 можно оставить как "invalid")
+		static atomic_uint8_t id{1};
+		// Выводим новое значение идентификатора
+		result = id.fetch_add(1, memory_order_relaxed);
+		// Если результат не получен
+		if(result == 0)
+			// Генерируем результат заново
+			result = id.fetch_add(1, memory_order_relaxed);
+		// Выполняем блокировку потока
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Добавляем цифровой отпечаток браузера в хранилище с новым идентификатором
+		this->_browsers.emplace(result, browser);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод добавления цифрового отпечатка браузера в хранилище в бинарном виде (дамп цифрового отпечатка)
@@ -7055,7 +8331,47 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
  * @return       идентификатор добавленного цифрового отпечатка
  */
 awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, const size_t size) noexcept {
-
+	// Результат работы функции
+	id_t result = 0;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Объект снимка цифрового отпечатка браузера для загрузки данных из бинарного буфера
+		browser_t browser{};
+		// Если данные снимка цифрового отпечатка браузера успешно загружены из бинарного буфера
+		if(this->parse(buffer, size, browser))
+			// Добавляем цифровой отпечаток браузера в хранилище и получаем его идентификатор
+			result = this->add(browser);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::tls::Fingerprint::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков для доступа к хранилищу цифровых отпечатков браузеров
+	this->_mtx.enabled = mode;
 }
 /**
  * @brief Метод формирования бинарного дампа всех цифровых отпечатков браузеров
@@ -7063,7 +8379,63 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, c
  * @return бинарный буфер, содержащий дамп всех цифровых отпечатков браузеров
  */
 vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
-
+	// Результат работы функции
+	vector <uint8_t> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Если список цифровых отпечатков браузеров заполнен
+		if(!this->_browsers.empty()){
+			// Бинарный буфер снимка цифрового отпечатка браузера
+			vector <uint8_t> buffer;
+			// Размер буфера снимка цифрового отпечатка браузера и количество снимков браузеров в результирующем дампе
+			size_t size = 0, count = 0;
+			// Выполняем перебор всех снимков браузеров в хранилище
+			for(const auto & [id, browser] : this->_browsers){
+				// Очищаем буфер от предыдущих данных
+				buffer.clear();
+				// Если данные снимка цифрового отпечатка браузера успешно загружены в буфер
+				if(this->dump(browser, buffer)){
+					// Получаем размер буфера снимка цифрового отпечатка браузера
+					size = buffer.size();
+					// Добавляем в результирующий буфер идентификатор цифрового отпечатка браузера
+					result.insert(result.end(), reinterpret_cast <const uint8_t *> (&id), reinterpret_cast <const uint8_t *> (&id) + sizeof(id));
+					// Добавляем в результирующий буфер размер снимка цифрового отпечатка браузера
+					result.insert(result.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Добавляем в результирующий буфер, полученный буфер снимка цифрового отпечатка браузера
+					result.insert(result.end(), buffer.begin(), buffer.end());
+					// Увеличиваем счётчик успешно добавленных снимков цифровых отпечатков браузеров
+					count++;
+				}
+			}
+			// Если удалось добавить хотя бы один снимок цифрового отпечатка браузера в результирующий дамп
+			if(count > 0)
+				// Добавляем в начало результирующего буфера количество добавленных снимков цифровых отпечатков браузеров
+				result.insert(result.begin(), reinterpret_cast <const uint8_t *> (&count), reinterpret_cast <const uint8_t *> (&count) + sizeof(count));
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод загрузки бинарного дампа всех цифровых отпечатков браузеров
@@ -7072,7 +8444,81 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
  * @return       результат загрузки бинарного дампа
  */
 bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
-
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем блокировку потока
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Очищаем хранилище от предыдущих данных
+		this->_browsers.clear();
+		// Если буфер с данными цифровых отпечатков браузеров не пустой
+		if(!buffer.empty() && (buffer.size() > sizeof(size_t))){
+			// Текущая позиция чтения в буфере
+			size_t offset = 0;
+			// Количество снимков цифровых отпечатков браузеров
+			size_t count = 0;
+			// Извлекаем количество снимков цифровых отпечатков браузеров
+			::memcpy(&count, &buffer[0], sizeof(count));
+			// Смещаем позицию чтения из бинарного буфера
+			offset += sizeof(count);
+			// Если в буфере есть данные хотя бы для одного снимка цифрового отпечатка браузера
+			if((count > 0) && (buffer.size() >= (offset + count * (sizeof(id_t) + sizeof(size_t))))){
+				// Идентификатор снимка цифрового отпечатка браузера
+				id_t id = 0;
+				// Размер снимка цифрового отпечатка браузера
+				size_t size = 0;
+				// Объект для хранения данных цифрового отпечатка браузера
+				browser_t browser{};
+				/**
+				 * Выполняем загрузку каждого снимка цифрового отпечатка браузера из буфера
+				 */
+				for(size_t i = 0; i < count; i++){
+					// Извлекаем идентификатор снимка цифрового отпечатка браузера
+					::memcpy(&id, &buffer[offset], sizeof(id));
+					// Смещаем позицию чтения на размер идентификатора
+					offset += sizeof(id);
+					// Извлекаем размер снимка цифрового отпечатка браузера
+					::memcpy(&size, &buffer[offset], sizeof(size));
+					// Смещаем позицию чтения на размер поля
+					offset += sizeof(size);
+					// Если в буфере достаточно данных для загрузки снимка цифрового отпечатка браузера
+					if(buffer.size() >= (offset + size)){
+						// Загружаем снимок цифрового отпечатка браузера из буфера
+						if(this->dump(vector <uint8_t> (&buffer[0] + offset, &buffer[0] + offset + size), browser))
+							// Добавляем снимок цифрового отпечатка браузера в хранилище
+							this->_browsers.emplace(id, ::move(browser));
+						// Смещаем позицию чтения на размер снимка цифрового отпечатка браузера
+						offset += size;
+					// Если недостаточно данных в буфере для загрузки снимка цифрового отпечатка браузера — прерываем загрузку
+					} else break;
+				}
+				// Если удалось загрузить хотя бы один снимок цифрового отпечатка браузера — сообщаем об успешном результате
+				result = !this->_browsers.empty();
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer.size()), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод загрузки бинарного дампа цифрового отпечатка
@@ -7289,7 +8735,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует max_fragment_length
 				case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
@@ -7300,7 +8746,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						// Возвращаем ошибку при чтении значения max_fragment_length из буфера
 						return false;
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует status_request
 				case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST): {
@@ -7330,7 +8776,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						// Возвращаем ошибку при чтении длины расширений запроса статуса сертификата из буфера
 						return false;
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует supported_groups
 				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS): {
@@ -7352,7 +8798,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует ec_point_formats
 				case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
@@ -7374,7 +8820,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует signature_algorithms
 				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS): {
@@ -7396,7 +8842,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует use_srtp
 				case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
@@ -7422,7 +8868,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует heartbeat
 				case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
@@ -7433,7 +8879,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						// Возвращаем ошибку при чтении режима heartbeat из буфера
 						return false;
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует alpn
 				case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN): {
@@ -7469,7 +8915,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует padding
 				case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
@@ -7480,7 +8926,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						// Возвращаем ошибку при чтении размера паддинга из буфера
 						return false;
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует extended_master_secret
 				case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
@@ -7515,7 +8961,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует compress_certificate
 				case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
@@ -7537,7 +8983,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует record_size_limit
 				case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
@@ -7548,7 +8994,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						// Возвращаем ошибку при чтении значения record_size_limit из буфера
 						return false;
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует delegated_credential
 				case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
@@ -7570,7 +9016,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует session_ticket
 				case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
@@ -7592,7 +9038,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует pre_shared_key
 				case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
@@ -7632,7 +9078,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует early_data
 				case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
@@ -7643,7 +9089,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						// Возвращаем ошибку при чтении максимального размера ранних данных из буфера
 						return false;
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует supported_versions
 				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
@@ -7665,7 +9111,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует cookie
 				case static_cast <uint8_t> (awh::tls::extension_type_t::COOKIE): {
@@ -7687,7 +9133,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует psk_key_exchange_modes
 				case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
@@ -7709,7 +9155,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует certificate_authorities
 				case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
@@ -7745,7 +9191,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует signature_algorithms_cert
 				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
@@ -7767,7 +9213,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует key_share
 				case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE): {
@@ -7807,7 +9253,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует quic_transport_parameters
 				case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
@@ -7842,7 +9288,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует tls_flags
 				case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
@@ -7864,7 +9310,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует next_protocol_negotiation
 				case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
@@ -7900,7 +9346,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует application_settings_old (устаревшее)
 				case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD): {
@@ -7936,7 +9382,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует application_settings
 				case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS): {
@@ -7972,7 +9418,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует ech_outer_extensions
 				case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
@@ -7994,7 +9440,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует encrypted_client_hello
 				case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
@@ -8016,7 +9462,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует renegotiation_info
 				case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
@@ -8038,7 +9484,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 							return false;
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Если тип расширения соответствует quic_transport_parameters_legacy
 				case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
@@ -8073,7 +9519,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						}
 					}
 					// Добавляем расширение в список
-					browser.extensions.push_back(std::move(extension));
+					browser.extensions.push_back(::move(extension));
 				} break;
 				// Неизвестный тип расширения — нарушение формата данных
 				default: return false;
@@ -8713,7 +10159,10 @@ bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & o
  * @param fgp объект Fingerprint для обмена данными
  */
 void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Обмениваемся данными между объектами
+	this->_browsers.swap(fgp._browsers);
 }
 /**
  * @brief Метод получения конечного итератора
@@ -8721,7 +10170,10 @@ void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
  * @return конечный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим результат
+	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
 }
 /**
  * @brief Метод получение начального итератора
@@ -8729,16 +10181,49 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
  * @return начальный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим результат
+	return iterator_t(this->_browsers.begin(), this->_fmk, this->_log);
 }
 /**
  * @brief Метод поиска указанного заголовка
  *
- * @param name название заголовка для поиска
- * @return     итератор указанного заголовка
+ * @param id идентификатор заголовка для поиска
+ * @return   итератор указанного заголовка
  */
-awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const string & name) noexcept {
-
+awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noexcept {
+	// Если идентификатор заголовка передан
+	if(id != 0){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем блокировку потока
+			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Извлекаем текущий итератор
+			return iterator_t(this->_browsers.find(id), this->_fmk, this->_log);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
 }
 /**
  * @brief Оператор извлечения цифрового отпечатка браузера
@@ -8747,7 +10232,8 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const string & nam
  * @return   цифровой отпечаток браузера
  */
 const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const id_t id) const noexcept {
-
+	// Выводим результат
+	return this->get(id);
 }
 /**
  * @brief Проверка, пусто ли хранилище цифровых отпечатков браузеров
@@ -8755,7 +10241,10 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const
  * @return результат проверки
  */
 awh::tls::Fingerprint::operator bool() const noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим результат выполенной проверки
+	return !this->_browsers.empty();
 }
 /**
  * @brief Получения количества цифровых отпечатков браузеров, хранящихся в хранилище
@@ -8763,7 +10252,10 @@ awh::tls::Fingerprint::operator bool() const noexcept {
  * @return количество цифровых отпечатков браузеров
  */
 awh::tls::Fingerprint::operator size_t() const noexcept {
-
+	// Выполняем блокировку потока
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим результат количество цифровых отпечатков браузеров, хранящихся в хранилище
+	return this->_browsers.size();
 }
 /**
  * @brief Получения бинарных данных дампа всех цифровых отпечатков браузеров
@@ -8771,25 +10263,37 @@ awh::tls::Fingerprint::operator size_t() const noexcept {
  * @return бинарные данные буфера дампа всех цифровых отпечатков браузеров
  */
 awh::tls::Fingerprint::operator vector <uint8_t> () const noexcept {
-
+	// Выводим результат бинарных данных дампа всех цифровых отпечатков браузеров
+	return this->dump();
 }
 /**
- * @brief Оператор сравнения двух отпечатков браузеров
+ * @brief Оператор сравнения двух контейнеров отпечатков браузеров
  *
  * @param fgp отпечатки браузеров для сравнения
  * @return    результат сравнения
  */
 bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept {
-
-}
-/**
- * @brief Оператор установки дампа цифрового отпечатка браузера с использованием перемещения
- *
- * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
- * @return       текущий контейнер отпечатков браузеров
- */
-awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (vector <uint8_t> && buffer) noexcept {
-
+	// Выполняем блокировку поток для текущего объекта
+	const locker_t <std::shared_mutex> lock1(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выполняем блокировку потока для объекта для копирования
+	const locker_t <std::shared_mutex> lock2(fgp._mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	/**
+	 * Перебираем отпечатки браузеров в текущем контейнере отпечатков браузеров
+	 */
+	for(auto & [id, browser] : this->_browsers){
+		// Ищем отпечаток браузера с данным идентификатором в другом контейнере отпечатков браузеров
+		auto i = fgp._browsers.find(id);
+		// Если отпечаток браузера с данным идентификатором не найден в другом контейнере отпечатков браузеров
+		if(i == fgp._browsers.end())
+			// Выводим результат сравнения
+			return false;
+		// Если отпечаток браузера не совпадает с отпечатком браузера с данным идентификатором в другом контейнере отпечатков браузеров
+		else if(!(browser == i->second))
+			// Выводим результат сравнения
+			return false;
+	}
+	// Выводим результат сравнения двух отпечатков браузеров
+	return true;
 }
 /**
  * @brief Оператор установки дампа цифрового отпечатка браузера
@@ -8798,7 +10302,10 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (vector <uint8_t> && b
  * @return       текущий контейнер отпечатков браузеров
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t> & buffer) noexcept {
-
+	// Загружаем данные цифровых отпечатков из бинарного буфера
+	this->dump(buffer);
+	// Выводим текущий контейнер отпечатков браузеров
+	return (* this);
 }
 /**
  * @brief Оператор перемещения
@@ -8807,7 +10314,17 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t
  * @return    текущий контейнер отпечатков браузеров
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) noexcept {
-
+	// Если объект для перемещения не является текущим объектом
+	if(this != &fgp){
+		// Выполняем блокировку поток для текущего объекта
+		const locker_t <std::shared_mutex> lock1(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем блокировку потока для объекта для перемещения
+		const locker_t <std::shared_mutex> lock2(fgp._mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Перемещаем данные из объекта для перемещения в текущий объект
+		this->_browsers = ::move(fgp._browsers);
+	}
+	// Выводим текущий контейнер отпечатков браузеров
+	return (* this);
 }
 /**
  * @brief Оператор копирования
@@ -8816,7 +10333,17 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) n
  * @return    текущий контейнер отпечатков браузеров
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & fgp) noexcept {
-
+	// Если объект для копирования не является текущим объектом
+	if(this != &fgp){
+		// Выполняем блокировку потока для текущего объекта
+		const locker_t <std::shared_mutex> lock1(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем блокировку потока для объекта для копирования
+		const locker_t <std::shared_mutex> lock2(fgp._mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Копируем данные из объекта для копирования в текущий объект
+		this->_browsers = fgp._browsers;
+	}
+	// Выводим текущий контейнер отпечатков браузеров
+	return (* this);
 }
 /**
  * @brief Конструктор

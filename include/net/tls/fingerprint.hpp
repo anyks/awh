@@ -33,6 +33,7 @@
 #include "tls.hpp"
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
+#include "../../sys/locker.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -206,7 +207,7 @@ namespace awh {
 					 */
 					virtual ~Extension_Post_Handshake_Auth() = default;
 				} extension_post_handshake_auth_t;
-				
+
 				/**
 				 * @brief Структура расширения TLS для указания типа сертификата клиента (Client Certificate Type)
 				 *
@@ -510,7 +511,7 @@ namespace awh {
 					 */
 					virtual ~Extension_Session_Ticket() = default;
 				} extension_session_ticket_t;
-				
+
 				/**
 				 * @brief Структура расширения TLS для указания поддерживаемых версий (Supported Versions)
 				 *
@@ -847,7 +848,7 @@ namespace awh {
 					 */
 					virtual ~Extension_Signature_Algorithms_Cert() = default;
 				} extension_signature_algorithms_cert_t;
-				
+
 				/**
 				 * @brief Структура расширения TLS для передачи информации о прозрачности (Transparency Info)
 				 *
@@ -1066,33 +1067,71 @@ namespace awh {
 				} client_hello_t;
 
 				/**
-				 * @brief Структура цифрового отпечатка браузера
+				 * @brief Класс цифрового отпечатка браузера
 				 *
 				 */
-				typedef struct Browser {
-					// Флаг, указывающий на использование GREASE (Generate Random Extensions And Sustain Extensibility)
-					bool grease;
-					// Запись метаданных TLS рукопожатия
-					record_t record;
-					// Объект рукопожатия TLS
-					handshake_t handshake;
-					// Объект ClientHello TLS
-					client_hello_t clientHello;
-					// Куки DTLS, если используется протокол DTLS
-					vector <uint8_t> cookie;
-					// Идентификатор сессии TLS
-					vector <uint8_t> session;
-					// Список поддерживаемых шифров
-					vector <cipher_t> ciphers;
-					// Список компрессоров, поддерживаемых браузером
-					vector <compressor_t> compressors;
-					// Список расширений, поддерживаемых браузером
-					vector <unique_ptr <extension_t>> extensions;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Browser() noexcept : grease(false) {}
+				typedef class __AWH_SHARED_EXPORT__ Browser {
+					public:
+						// Флаг, указывающий на использование GREASE (Generate Random Extensions And Sustain Extensibility)
+						bool grease;
+						// Запись метаданных TLS рукопожатия
+						record_t record;
+						// Объект рукопожатия TLS
+						handshake_t handshake;
+						// Объект ClientHello TLS
+						client_hello_t clientHello;
+						// Куки рукопожатия DTLS
+						vector <uint8_t> cookie;
+						// Идентификатор сессии TLS
+						vector <uint8_t> session;
+						// Список поддерживаемых шифров
+						vector <cipher_t> ciphers;
+						// Список компрессоров, поддерживаемых браузером
+						vector <compressor_t> compressors;
+						// Список расширений, поддерживаемых браузером
+						vector <unique_ptr <extension_t>> extensions;
+					public:
+						/**
+						 * @brief Оператор сравнения двух отпечатков браузеров
+						 *
+						 * @param browser объект цифрового отпечатка браузера для сравнения
+						 * @return        результат сравнения
+						 */
+						bool operator == (const Browser & browser) const noexcept;
+					public:
+						/**
+						 * @brief Оператор перемещения
+						 *
+						 * @param browser объект цифрового отпечатка браузера для перемещения
+						 * @return        текущий объект после перемещения
+						 */
+						Browser & operator = (Browser && browser) noexcept;
+						/**
+						 * @brief Оператор копирования
+						 *
+						 * @param browser объект цифрового отпечатка браузера для копирования
+						 * @return        текущий объект после копирования
+						 */
+						Browser & operator = (const Browser & browser) noexcept;
+					public:
+						/**
+						 * @brief Конструктор перемещения
+						 *
+						 * @param browser объект цифрового отпечатка браузера для перемещения
+						 */
+						explicit Browser(Browser && browser) noexcept;
+						/**
+						 * @brief Конструктор копирования
+						 *
+						 * @param browser объект цифрового отпечатка браузера для копирования
+						 */
+						explicit Browser(const Browser & browser) noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit Browser() noexcept : grease(false) {}
 				} browser_t;
 			public:
 				/**
@@ -1101,7 +1140,7 @@ namespace awh {
 				 */
 				typedef struct H2Setting {
 					/**
-					 * Идентификатор параметра (1=HEADER_TABLE_SIZE, 2=ENABLE_PUSH, 3=MAX_CONCURRENT_STREAMS, 
+					 * Идентификатор параметра (1=HEADER_TABLE_SIZE, 2=ENABLE_PUSH, 3=MAX_CONCURRENT_STREAMS,
 					 * 4=INITIAL_WINDOW_SIZE, 5=MAX_FRAME_SIZE, 6=MAX_HEADER_LIST_SIZE)
 					 */
 					uint16_t id;
@@ -1189,7 +1228,7 @@ namespace awh {
 					public:
 						/**
 						 * @brief Оператор преобразования в сырой итератор
-						 * 
+						 *
 						 * @return iterator итератор для преобразования
 						 */
 						operator iterator() noexcept;
@@ -1238,6 +1277,9 @@ namespace awh {
 						 */
 						explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept : _it(it), _fmk(fmk), _log(log) {}
 				} iterator_t;
+			private:
+				// Мьютекс для блокировки потоков
+				mutable lock_state_t <shared_mutex> _mtx;
 			private:
 				// Список поддерживаемых цифровых отпечатков браузеров
 				unordered_map <uint8_t, browser_t> _browsers;
@@ -1360,11 +1402,10 @@ namespace awh {
 				/**
 				 * @brief Метод получения данных цифрового отпечатка браузера по идентификатору
 				 *
-				 * @param id      идентификатор цифрового отпечатка
-				 * @param browser объект для хранения распарсенных данных цифрового отпечатка
-				 * @return        результат получения данных цифрового отпечатка по идентификатору
+				 * @param id идентификатор цифрового отпечатка
+				 * @return   объект с цифровым отпечатком браузера, соответствующий указанному идентификатору
 				 */
-				bool get(const id_t id, browser_t & browser) const noexcept;
+				const browser_t & get(const id_t id) const noexcept;
 			public:
 				/**
 				 * @brief Метод добавления цифрового отпечатка браузера в хранилище
@@ -1381,6 +1422,13 @@ namespace awh {
 				 * @return       идентификатор добавленного цифрового отпечатка
 				 */
 				id_t add(const uint8_t * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод формирования бинарного дампа всех цифровых отпечатков браузеров
@@ -1436,10 +1484,10 @@ namespace awh {
 				/**
 				 * @brief Метод поиска указанного заголовка
 				 *
-				 * @param name название заголовка для поиска
-				 * @return     итератор указанного заголовка
+				 * @param id идентификатор заголовка для поиска
+				 * @return   итератор указанного заголовка
 				 */
-				iterator_t find(const string & name) noexcept;
+				iterator_t find(const id_t id) noexcept;
 			public:
 				/**
 				 * @brief Оператор извлечения цифрового отпечатка браузера
@@ -1469,20 +1517,13 @@ namespace awh {
 				operator vector <uint8_t> () const noexcept;
 			public:
 				/**
-				 * @brief Оператор сравнения двух отпечатков браузеров
+				 * @brief Оператор сравнения двух контейнеров отпечатков браузеров
 				 *
 				 * @param fgp отпечатки браузеров для сравнения
 				 * @return    результат сравнения
 				 */
 				bool operator == (const Fingerprint & fgp) const noexcept;
 			public:
-				/**
-				 * @brief Оператор установки дампа цифрового отпечатка браузера с использованием перемещения
-				 *
-				 * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
-				 * @return       текущий контейнер отпечатков браузеров
-				 */
-				Fingerprint & operator = (vector <uint8_t> && buffer) noexcept;
 				/**
 				 * @brief Оператор установки дампа цифрового отпечатка браузера
 				 *

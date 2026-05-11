@@ -5297,7 +5297,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 													if(fgp.dump(browser2, input)){
 														tls::fgp_t::browser_t browser3;
 														if(fgp.dump(input, browser3))
-															cout << " Browser3: " << fgp.print(browser3) << " || " << input.size() << endl;
+															cout << " Browser3: " << fgp.print(browser3) << " || " << input.size() << " || " << (browser3 == browser2) << endl;
 													}
 												}
 
