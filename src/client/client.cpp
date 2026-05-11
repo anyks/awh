@@ -117,11 +117,11 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_tls != nullptr) && (this->_tid > 0)){
+		if((this->_coder != nullptr) && (this->_tid > 0)){
 			// Если подключение успешно
 			if(ok){
 				// Если рукопожатие TLS не выполнено
-				if(!this->_tls->handshake(this->_tid)){
+				if(!this->_coder->handshake(this->_tid)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("errorTLS")){
 						/**
@@ -214,9 +214,9 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_tls != nullptr) && (this->_tid > 0)){
+		if((this->_coder != nullptr) && (this->_tid > 0)){
 			// Если данные не расшифрованы
-			if(!this->_tls->decrypt(this->_tid, buffer, size)){
+			if(!this->_coder->decrypt(this->_tid, buffer, size)){
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("errorTLS")){
 					/**
@@ -317,15 +317,15 @@ void awh::Client::spool(const event::id_t eid, const event::send_error_t error, 
  * @param id    идентификатор TLS
  * @param state состояние TLS
  */
-void awh::Client::stateTLS(const tls_t::id_t id, const tls_t::state_t state) noexcept {
+void awh::Client::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("stateTLS"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const tls_t::id_t, const tls_t::state_t)> ("stateTLS", id, state);
+			this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::state_t)> ("stateTLS", id, state);
 		// Если состояние рукопожатия успешно завершено
-		if(state == tls_t::state_t::HANDSHAKED){
+		if(state == tls::coder_t::state_t::HANDSHAKED){
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("connect"))
 				// Выполняем функцию обратного вызова
@@ -340,7 +340,7 @@ void awh::Client::stateTLS(const tls_t::id_t id, const tls_t::state_t state) noe
  * @param error   код ошибки TLS
  * @param message сообщение об ошибке TLS
  */
-void awh::Client::errorTLS(const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept {
+void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова не установлена
@@ -359,7 +359,7 @@ void awh::Client::errorTLS(const tls_t::id_t id, const tls_t::error_t error, con
 				this->_log->print("%s", log_t::flag_t::CRITICAL, message.c_str());
 			#endif
 		// Выполняем функцию обратного вызова
-		} else this->_callback.call <void (const tls_t::id_t, const tls_t::error_t, const string &)> ("errorTLS", id, error, message);
+		} else this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::error_t, const string &)> ("errorTLS", id, error, message);
 	}
 }
 /**
@@ -370,7 +370,7 @@ void awh::Client::errorTLS(const tls_t::id_t id, const tls_t::error_t error, con
  * @param size   размер данных для события шифрования/дешифрования TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
  */
-void awh::Client::processTLS([[maybe_unused]] const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
+void awh::Client::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		/**
@@ -378,7 +378,7 @@ void awh::Client::processTLS([[maybe_unused]] const tls_t::id_t id, const tls_t:
 		 */
 		switch(static_cast <uint8_t> (event)){
 			// Если событие шифрования данных TLS
-			case static_cast <uint8_t> (tls_t::event_t::ENCRYPTION): {
+			case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
 				// Отправляем данные обратно клиенту, которые были зашифрованы TLS
 				if(!this->_client->send(this->_eid, reinterpret_cast <const char *> (buffer), size)){
 					// Если функция обратного вызова не установлена
@@ -400,7 +400,7 @@ void awh::Client::processTLS([[maybe_unused]] const tls_t::id_t id, const tls_t:
 				}
 			} break;
 			// Если событие дешифрования данных TLS
-			case static_cast <uint8_t> (tls_t::event_t::DECRYPTION): {
+			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("read"))
 					// Выполняем функцию обратного вызова
@@ -699,11 +699,11 @@ void awh::Client::threadSafety(const bool mode) noexcept {
 		// Устанавливаем режим безопасности работы потоков для объекта DNS-резолвера
 		this->_dns->threadSafety(mode);
 	// Если идентификатор TLS и объект TLS установлены
-	if((this->_tid > 0) && (this->_tls != nullptr))
+	if((this->_tid > 0) && (this->_coder != nullptr))
 		// Устанавливаем режим безопасности работы потоков для объекта TLS
-		this->_tls->threadSafety(this->_tid, mode);
+		this->_coder->threadSafety(this->_tid, mode);
 	// Если идентификатор TLS не установлен, но объект TLS установлен
-	else if((this->_tid == 0) && (this->_tls != nullptr)) {
+	else if((this->_tid == 0) && (this->_coder != nullptr)) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -763,9 +763,9 @@ void awh::Client::callback(const callback_t & callback) noexcept {
  */
 size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 	// Если идентификатор TLS и объект TLS установлены
-	if((this->_tid > 0) && (this->_tls != nullptr)){
+	if((this->_tid > 0) && (this->_coder != nullptr)){
 		// Если шифрование данных TLS выполнено успешно
-		if(this->_tls->encrypt(this->_tid, buffer, size))
+		if(this->_coder->encrypt(this->_tid, buffer, size))
 			// Возвращаем размер отправленных данных
 			return size;
 		// Выводим результат по умолчанию
@@ -1457,17 +1457,17 @@ void awh::Client::setEventId(const event::id_t eid) noexcept {
  *
  * @param tid идентификатор TLS для установки
  */
-void awh::Client::setSecurityId(const tls_t::id_t tid) noexcept {
+void awh::Client::setSecurityId(const tls::coder_t::id_t tid) noexcept {
 	// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-	if((tid > 0) && (this->_tls != nullptr)){
+	if((tid > 0) && (this->_coder != nullptr)){
 		// Устанавливаем идентификатор TLS для клиента
 		this->_tid = tid;
 		// Устанавливаем функцию обратного вызова на событие состояния TLS
-		this->_tls->on(this->_tid, std::bind(&client_t::stateTLS, this, _1, _2));
+		this->_coder->on(this->_tid, std::bind(&client_t::stateTLS, this, _1, _2));
 		// Устанавливаем функцию обратного вызова на событие ошибок TLS
-		this->_tls->on(this->_tid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
+		this->_coder->on(this->_tid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
 		// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-		this->_tls->on(this->_tid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
+		this->_coder->on(this->_tid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
 	}
 }
 /**
@@ -1478,8 +1478,8 @@ void awh::Client::setSecurityId(const tls_t::id_t tid) noexcept {
  * @param log    объект для работы с логами
  */
 awh::Client::Client(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _tid(0), _eid(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _tls(nullptr), _dns(nullptr), _client(client), _fmk(fmk), _log(log) {
+ _host{""}, _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
+ _timeoutDNS(3000), _dns(nullptr), _coder(nullptr), _client(client), _fmk(fmk), _log(log) {
 	// Если объект клиента установлен
 	if(this->_client != nullptr){
 		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -1525,17 +1525,17 @@ awh::Client::Client(unit::client_t * client, const fmk_t * fmk, const log_t * lo
  * @brief Конструктор
  *
  * @param client объект юнита клиента
- * @param tls    объект транспортного уровня безопасности
+ * @param coder  объект транспортного уровня безопасности
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Client::Client(unit::client_t * client, tls_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _tid(0), _eid(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _tls(tls), _dns(nullptr), _client(client), _fmk(fmk), _log(log) {
+awh::Client::Client(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
+ _timeoutDNS(3000), _dns(nullptr), _coder(coder), _client(client), _fmk(fmk), _log(log) {
 	// Если объект клиента установлен
 	if(this->_client != nullptr){
 		// Если объект транспортного уровня безопасности не установлен
-		if(this->_tls == nullptr){
+		if(this->_coder == nullptr){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -1600,8 +1600,8 @@ awh::Client::Client(unit::client_t * client, tls_t * tls, const fmk_t * fmk, con
  * @param log    объект для работы с логами
  */
 awh::Client::Client(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _tid(0), _eid(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _tls(nullptr), _dns(dns), _client(client), _fmk(fmk), _log(log) {
+ _host{""},  _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
+ _timeoutDNS(3000), _dns(dns), _coder(nullptr), _client(client), _fmk(fmk), _log(log) {
 	// Если объект клиента установлен
 	if(this->_client != nullptr){
 		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -1676,17 +1676,17 @@ awh::Client::Client(unit::client_t * client, unit::dns_t * dns, const fmk_t * fm
  *
  * @param client объект юнита клиента
  * @param dns    объект DNS-резолвера
- * @param tls    объект транспортного уровня безопасности
+ * @param coder  объект транспортного уровня безопасности
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Client::Client(unit::client_t * client, unit::dns_t * dns, tls_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _tid(0), _eid(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _tls(tls), _dns(dns), _client(client), _fmk(fmk), _log(log) {
+awh::Client::Client(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
+ _timeoutDNS(3000), _dns(dns), _coder(coder), _client(client), _fmk(fmk), _log(log) {
 	// Если объект клиента установлен
 	if(this->_client != nullptr){
 		// Если объект транспортного уровня безопасности не установлен
-		if(this->_tls == nullptr){
+		if(this->_coder == nullptr){
 			/**
 			 * Если включён режим отладки
 			 */

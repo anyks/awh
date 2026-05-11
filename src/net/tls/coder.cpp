@@ -1,5 +1,5 @@
 /**
- * @file: tls.cpp
+ * @file: coder.cpp
  * @date: 2025-12-19
  * @license: GPL-3.0
  *
@@ -44,7 +44,7 @@
 #include <sys/os.hpp>
 #include <sys/locker.hpp>
 #include <net/net.hpp>
-#include <net/tls.hpp>
+#include <net/tls/coder.hpp>
 
 /**
  * Подписываемся на стандартное пространство имён
@@ -115,12 +115,12 @@ namespace {
 	 * @brief Глобальный набор идентификаторов контекстов TLS
 	 *
 	 */
-	unordered_set <awh::tls_t::id_t> __awh_ssl_ids__;
+	unordered_set <::tls::coder_t::id_t> __awh_ssl_ids__;
 	/**
 	 * @brief Глобальная карта сплайса контекстов TLS
 	 *
 	 */
-	map <pair <event::protocol_t, string>, tls_t::id_t> __awh_ssl_splice_map__;
+	map <pair <event::protocol_t, string>, ::tls::coder_t::id_t> __awh_ssl_splice_map__;
 	/**
 	 * @brief Индексы для хранения состояний проверки куков
 	 *
@@ -220,9 +220,9 @@ namespace {
 	 */
 	typedef struct Callback {
 		// Функция обратного вызова получения ошибок
-		tls_t::error_callback_t error;
+		::tls::coder_t::error_callback_t error;
 		// Функция обратного вызова при изменении состояния
-		tls_t::state_callback_t state;
+		::tls::coder_t::state_callback_t state;
 		/**
 		 * @brief Конструктор
 		 *
@@ -241,9 +241,9 @@ namespace {
 	 */
 	typedef struct Callback_Transfer : public callback_t {
 		// Функция обратного вызова чтения данных
-		tls_t::read_callback_t read;
+		::tls::coder_t::read_callback_t read;
 		// Функция обратного вызова записи данных
-		tls_t::write_callback_t write;
+		::tls::coder_t::write_callback_t write;
 		/**
 		 * @brief Конструктор
 		 *
@@ -301,7 +301,7 @@ namespace {
 		// Выполняем блокировку потоков
 		const locker_t <> lock(::__awh_ssl_members_mtx__);
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(static_cast <tls_t::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())));
+		auto i = ::__awh_ssl_ids__.find(static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())));
 		// Если идентификатор контекста TLS найден
 		if(i != ::__awh_ssl_ids__.end())
 			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
@@ -517,13 +517,18 @@ namespace local {
  */
 namespace ssl {
 	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Функция формирования сообщения об ошибке
 	 *
 	 * @param id      идентификатор события
 	 * @param message дополнительное сообщение
 	 * @return        сформированное сообщение об ошибке
 	 */
-	static string error(const tls_t::id_t id, string_view message = "") noexcept {
+	static string error(const ::tls::coder_t::id_t id, string_view message = "") noexcept {
 		// Результат работы функции
 		string result = "";
 		/**
@@ -1319,6 +1324,11 @@ namespace ssl {
 	 */
 	namespace compressor {
 		/**
+		 * Подписываемся на пространство имён AWH
+		 */
+		using namespace awh;
+
+		/**
 		 * @brief Функция обратного вызова для компрессии данных методом Zlib
 		 *
 		 * @param ssl  объект SSL
@@ -1543,6 +1553,11 @@ namespace ssl {
 	 */
 	namespace boringssl {
 		/**
+		 * Подписываемся на пространство имён AWH
+		 */
+		using namespace awh;
+
+		/**
 		 * @brief Функция установки сертификата и цепочки сертификатов из PEM-файла для BoringSSL
 		 *
 		 * @param ssl      объект SSL
@@ -1604,6 +1619,11 @@ namespace ssl {
  */
 namespace cookie {
 	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Функция обратного вызова для генерации куков
 	 *
 	 * @param ssl    объект SSL
@@ -1625,13 +1645,13 @@ namespace cookie {
 				// Если функция обратного вызова состояния установлена
 				if(member->callback.state != nullptr)
 					// Вызываем функцию обратного вызова состояния
-					member->callback.state(id, tls_t::state_t::FAILED);
+					member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 				// Получаем текст ошибки
 				const string error = ::ssl::error(id, "Setting random cookie secret");
 				// Если функция обратного вызова ошибки установлена
 				if(member->callback.error != nullptr)
 					// Вызываем функцию обратного вызова ошибки
-					member->callback.error(id, awh::tls_t::error_t::COOKIE_FAILED, error);
+					member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					// Получаем объект логирования
@@ -1667,13 +1687,13 @@ namespace cookie {
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, tls_t::state_t::FAILED);
+				member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 			// Получаем текст ошибки
 			const string error = ::ssl::error(id, "Out of memory cookie");
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, awh::tls_t::error_t::COOKIE_FAILED, error);
+				member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
@@ -1780,13 +1800,13 @@ namespace cookie {
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, tls_t::state_t::FAILED);
+				member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 			// Получаем текст ошибки
 			const string error = ::ssl::error(id, "Out of memory cookie");
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, awh::tls_t::error_t::COOKIE_FAILED, error);
+				member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
@@ -1863,6 +1883,11 @@ namespace cookie {
  * Инкапсулируем функции проверки сертификата в пространство имён
  */
 namespace verify {
+	/**
+	 * Подписываемся на пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Статусы проверки сертификата
 	 *
@@ -2009,13 +2034,13 @@ namespace verify {
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
-				member->callback.state(id, tls_t::state_t::FAILED);
+				member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 			// Получаем текст ошибки
 			const string error = ::ssl::error(id, "SNI is not set by client");
 			// Если функция обратного вызова ошибки установлена
 			if(member->callback.error != nullptr)
 				// Вызываем функцию обратного вызова ошибки
-				member->callback.error(id, awh::tls_t::error_t::SNI_FAILED, error);
+				member->callback.error(id, ::tls::coder_t::error_t::SNI_FAILED, error);
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
@@ -2258,13 +2283,13 @@ namespace verify {
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "Certificate is not found in store");
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
-							member->callback.error(id, awh::tls_t::error_t::CERT_FAILED, error);
+							member->callback.error(id, ::tls::coder_t::error_t::CERT_FAILED, error);
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							// Получаем объект логирования
@@ -2294,13 +2319,13 @@ namespace verify {
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Certificate issuer name is not found");
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, awh::tls_t::error_t::CERT_FAILED, error);
+								member->callback.error(id, ::tls::coder_t::error_t::CERT_FAILED, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								// Получаем объект логирования
@@ -2385,13 +2410,13 @@ namespace verify {
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", result, member->host.c_str(), fqdn));
 								// Если функция обратного вызова ошибки установлена
 								if(member->callback.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, awh::tls_t::error_t::HOSTNAME_BAD, error);
+									member->callback.error(id, ::tls::coder_t::error_t::HOSTNAME_BAD, error);
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									// Получаем объект логирования
@@ -2426,7 +2451,7 @@ namespace verify {
  *
  * @return версия OpenSSL
  */
-string awh::Transport_Layer_Security::version() const noexcept {
+string awh::tls::Coder::version() const noexcept {
 	// Возвращаем версию OpenSSL
 	return ::OpenSSL_version(OPENSSL_VERSION);
 }
@@ -2436,7 +2461,7 @@ string awh::Transport_Layer_Security::version() const noexcept {
  * @param id идентификатор события
  * @return   общая информация о TLS соединении
  */
-string awh::Transport_Layer_Security::info(const id_t id) const noexcept {
+string awh::tls::Coder::info(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2460,7 +2485,7 @@ string awh::Transport_Layer_Security::info(const id_t id) const noexcept {
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for info operation";
 					// Если функция обратного вызова ошибки установлена
@@ -2673,7 +2698,7 @@ string awh::Transport_Layer_Security::info(const id_t id) const noexcept {
  * @param id идентификатор события
  * @return   информация о одноразовом узле TLS
  */
-string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
+string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -2699,7 +2724,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr){
 							// Вызываем функцию обратного вызова ошибки
@@ -2764,7 +2789,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
@@ -2800,7 +2825,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -2831,7 +2856,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -2884,7 +2909,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr){
 							// Вызываем функцию обратного вызова ошибки
@@ -2949,7 +2974,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
@@ -3050,7 +3075,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -3081,7 +3106,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -3150,7 +3175,7 @@ string awh::Transport_Layer_Security::peerInfo(const id_t id) const noexcept {
  * @param id идентификатор события
  * @return   информация о шифре
  */
-string awh::Transport_Layer_Security::cipherInfo(const id_t id) const noexcept {
+string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -3172,7 +3197,7 @@ string awh::Transport_Layer_Security::cipherInfo(const id_t id) const noexcept {
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for cipher info operation";
 					// Если функция обратного вызова ошибки установлена
@@ -3229,7 +3254,7 @@ string awh::Transport_Layer_Security::cipherInfo(const id_t id) const noexcept {
  * @param id идентификатор события
  * @return   информация о сертификате
  */
-string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexcept {
+string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -3253,7 +3278,7 @@ string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexc
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for certificate info operation";
 					// Если функция обратного вызова ошибки установлена
@@ -3358,7 +3383,7 @@ string awh::Transport_Layer_Security::certificateInfo(const id_t id) const noexc
  * @param id идентификатор события
  * @return   информация о списке отзыва сертификатов
  */
-string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t id) const noexcept {
+string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -3388,7 +3413,7 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -3419,7 +3444,7 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -3476,7 +3501,7 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -3507,7 +3532,7 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -3576,7 +3601,7 @@ string awh::Transport_Layer_Security::certificateRevocationListInfo(const id_t i
  * @param id идентификатор события
  * @return   список доступных шифров
  */
-vector <awh::Transport_Layer_Security::cipher_info_t> awh::Transport_Layer_Security::availableCiphers(const id_t id) const noexcept {
+vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const id_t id) const noexcept {
 	// Результат работы функции
 	vector <cipher_info_t> result;
 	/**
@@ -3608,17 +3633,17 @@ vector <awh::Transport_Layer_Security::cipher_info_t> awh::Transport_Layer_Secur
 				// Если код шифра соответствует TLS_AES_128_GCM_SHA256
 				case 0x1301:
 					// Получаем код шифра
-					info.cipher = tls::cipher_t::TLS_AES_128_GCM_SHA256;
+					info.cipher = cipher_t::TLS_AES_128_GCM_SHA256;
 				break;
 				// Если код шифра соответствует TLS_AES_256_GCM_SHA384
 				case 0x1302:
 					// Получаем код шифра
-					info.cipher = tls::cipher_t::TLS_AES_256_GCM_SHA384;
+					info.cipher = cipher_t::TLS_AES_256_GCM_SHA384;
 				break;
 				// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
 				case 0x1303:
 					// Получаем код шифра
-					info.cipher = tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256;
+					info.cipher = cipher_t::TLS_CHACHA20_POLY1305_SHA256;
 				break;
 			}
 			// Получаем название шифра
@@ -3667,110 +3692,110 @@ vector <awh::Transport_Layer_Security::cipher_info_t> awh::Transport_Layer_Secur
 								// Если код шифра соответствует AES128-SHA
 								case 0x002F:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES128_SHA;
+									info.cipher = cipher_t::AES128_SHA;
 								break;
 								// Если код шифра соответствует AES256-SHA
 								case 0x0035:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES256_SHA;
+									info.cipher = cipher_t::AES256_SHA;
 								break;
 								// Если код шифра соответствует AES128-GCM-SHA256
 								case 0x009C:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES128_GCM_SHA256;
+									info.cipher = cipher_t::AES128_GCM_SHA256;
 								break;
 								// Если код шифра соответствует AES256-GCM-SHA384
 								case 0x009D:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES256_GCM_SHA384;
+									info.cipher = cipher_t::AES256_GCM_SHA384;
 								break;
 								// Если код шифра соответствует PSK-AES128-CBC-SHA
 								case 0x008C:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::PSK_AES128_CBC_SHA;
+									info.cipher = cipher_t::PSK_AES128_CBC_SHA;
 								break;
 								// Если код шифра соответствует PSK-AES256-CBC-SHA
 								case 0x008D:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::PSK_AES256_CBC_SHA;
+									info.cipher = cipher_t::PSK_AES256_CBC_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES128-SHA
 								case 0xC013:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA;
+									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES256-SHA
 								case 0xC014:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_SHA;
+									info.cipher = cipher_t::ECDHE_RSA_AES256_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
 								case 0xC009:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
 								case 0xC00A:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_SHA;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES256_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
 								case 0xC027:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA256;
+									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
 								case 0xC035:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA;
+									info.cipher = cipher_t::ECDHE_PSK_AES128_CBC_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
 								case 0xC036:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA;
+									info.cipher = cipher_t::ECDHE_PSK_AES256_CBC_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
 								case 0xC023:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA256;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
 								case 0xC02F:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
+									info.cipher = cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
 								case 0xC030:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
+									info.cipher = cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
 								case 0xCCA8:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
+									info.cipher = cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
 								break;
 								// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
 								case 0xCCAC:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
+									info.cipher = cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
 								case 0xC02B:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
 								case 0xC02C:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
 								case 0xCCA9:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
+									info.cipher = cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
 								break;
 								// Если код шифра не соответствует ни одному из известных
-								default: info.cipher = tls::cipher_t::UNKNOWN;
+								default: info.cipher = cipher_t::UNKNOWN;
 							}
 							// Получаем название шифра
 							info.name = ::SSL_CIPHER_get_name(c);
@@ -3819,110 +3844,110 @@ vector <awh::Transport_Layer_Security::cipher_info_t> awh::Transport_Layer_Secur
 								// Если код шифра соответствует AES128-SHA
 								case 0x002F:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES128_SHA;
+									info.cipher = cipher_t::AES128_SHA;
 								break;
 								// Если код шифра соответствует AES256-SHA
 								case 0x0035:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES256_SHA;
+									info.cipher = cipher_t::AES256_SHA;
 								break;
 								// Если код шифра соответствует AES128-GCM-SHA256
 								case 0x009C:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES128_GCM_SHA256;
+									info.cipher = cipher_t::AES128_GCM_SHA256;
 								break;
 								// Если код шифра соответствует AES256-GCM-SHA384
 								case 0x009D:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::AES256_GCM_SHA384;
+									info.cipher = cipher_t::AES256_GCM_SHA384;
 								break;
 								// Если код шифра соответствует PSK-AES128-CBC-SHA
 								case 0x008C:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::PSK_AES128_CBC_SHA;
+									info.cipher = cipher_t::PSK_AES128_CBC_SHA;
 								break;
 								// Если код шифра соответствует PSK-AES256-CBC-SHA
 								case 0x008D:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::PSK_AES256_CBC_SHA;
+									info.cipher = cipher_t::PSK_AES256_CBC_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES128-SHA
 								case 0xC013:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA;
+									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES256-SHA
 								case 0xC014:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_SHA;
+									info.cipher = cipher_t::ECDHE_RSA_AES256_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
 								case 0xC009:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
 								case 0xC00A:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_SHA;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES256_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
 								case 0xC027:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_SHA256;
+									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
 								case 0xC035:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA;
+									info.cipher = cipher_t::ECDHE_PSK_AES128_CBC_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
 								case 0xC036:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA;
+									info.cipher = cipher_t::ECDHE_PSK_AES256_CBC_SHA;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
 								case 0xC023:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_SHA256;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
 								case 0xC02F:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
+									info.cipher = cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
 								case 0xC030:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
+									info.cipher = cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
 								break;
 								// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
 								case 0xCCA8:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
+									info.cipher = cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
 								break;
 								// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
 								case 0xCCAC:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
+									info.cipher = cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
 								case 0xC02B:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
 								case 0xC02C:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
+									info.cipher = cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
 								break;
 								// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
 								case 0xCCA9:
 									// Получаем код шифра
-									info.cipher = tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
+									info.cipher = cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
 								break;
 								// Если код шифра не соответствует ни одному из известных
-								default: info.cipher = tls::cipher_t::UNKNOWN;
+								default: info.cipher = cipher_t::UNKNOWN;
 							}
 							// Получаем название шифра
 							info.name = ::SSL_CIPHER_get_name(c);
@@ -3964,7 +3989,7 @@ vector <awh::Transport_Layer_Security::cipher_info_t> awh::Transport_Layer_Secur
  * @param id идентификатор события
  * @return   активный протокол
  */
-string awh::Transport_Layer_Security::certificateExtract(const id_t id) const noexcept {
+string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 	// Результат работы функции
 	string result = "";
 	/**
@@ -3988,7 +4013,7 @@ string awh::Transport_Layer_Security::certificateExtract(const id_t id) const no
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for certificate extract operation";
 					// Если функция обратного вызова ошибки установлена
@@ -4088,7 +4113,7 @@ string awh::Transport_Layer_Security::certificateExtract(const id_t id) const no
  * @param id идентификатор события
  * @return   результат проверки валидности сертификата
  */
-bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noexcept {
+bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4110,7 +4135,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for validate certificate operation";
 					// Если функция обратного вызова ошибки установлена
@@ -4155,7 +4180,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "Сertificate is not yet valid or has expired");
 						// Если функция обратного вызова ошибки установлена
@@ -4190,7 +4215,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "X509 Store context init");
 						// Если функция обратного вызова ошибки установлена
@@ -4223,7 +4248,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "X509 Store context init");
 						// Если функция обратного вызова ошибки установлена
@@ -4256,7 +4281,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем код ошибки
 						const int32_t error = ::X509_STORE_CTX_get_error(ctx);
 						// Если функция обратного вызова ошибки установлена
@@ -4355,7 +4380,7 @@ bool awh::Transport_Layer_Security::validateCertificate(const id_t id) const noe
  * @param id   идентификатор события
  * @param mode режим проверки доменного имени сервера
  */
-void awh::Transport_Layer_Security::validateServerNameIndication(const id_t id, const bool mode) noexcept {
+void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4469,7 +4494,7 @@ void awh::Transport_Layer_Security::validateServerNameIndication(const id_t id, 
  * @param id идентификатор события
  * @return   режим работы TLS
  */
-awh::Transport_Layer_Security::mode_t awh::Transport_Layer_Security::mode(const id_t id) const noexcept {
+awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4535,7 +4560,7 @@ awh::Transport_Layer_Security::mode_t awh::Transport_Layer_Security::mode(const 
  * @param id   идентификатор события
  * @param mode режим работы TLS
  */
-void awh::Transport_Layer_Security::mode(const id_t id, const mode_t mode) noexcept {
+void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4635,7 +4660,7 @@ void awh::Transport_Layer_Security::mode(const id_t id, const mode_t mode) noexc
  * @param id идентификатор события
  * @return   доменное имя сервера
  */
-string awh::Transport_Layer_Security::serverNameIndication(const id_t id) const noexcept {
+string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4683,7 +4708,7 @@ string awh::Transport_Layer_Security::serverNameIndication(const id_t id) const 
  * @param id  идентификатор события
  * @param sni доменное имя сервера
  */
-void awh::Transport_Layer_Security::serverNameIndication(const id_t id, string_view sni) noexcept {
+void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4750,7 +4775,7 @@ void awh::Transport_Layer_Security::serverNameIndication(const id_t id, string_v
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Host verification failed");
 								// Если функция обратного вызова ошибки установлена
@@ -4810,7 +4835,7 @@ void awh::Transport_Layer_Security::serverNameIndication(const id_t id, string_v
  * @param port порт отдалённого узла
  * @return     результат выполнения установки
  */
-bool awh::Transport_Layer_Security::peer(const id_t id, string_view ip, const uint16_t port) noexcept {
+bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -4834,7 +4859,7 @@ bool awh::Transport_Layer_Security::peer(const id_t id, string_view ip, const ui
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = "Invalid layer for set peer operation";
 						// Если функция обратного вызова ошибки установлена
@@ -4982,7 +5007,7 @@ bool awh::Transport_Layer_Security::peer(const id_t id, string_view ip, const ui
  * @param id идентификатор транспортного уровня или шаблона контекста безопасности
  * @return   результат выполнения удаления
  */
-bool awh::Transport_Layer_Security::destroy(const id_t id) noexcept {
+bool awh::tls::Coder::destroy(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -5024,7 +5049,7 @@ bool awh::Transport_Layer_Security::destroy(const id_t id) noexcept {
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::DESTROYED);
+						member->callback.state(id, state_t::DESTROYED);
 					// Устанавливаем режим удаления участника обмена защищёнными данными
 					member->state |= ::state::GARBAGE_MODE;
 				} break;
@@ -5037,7 +5062,7 @@ bool awh::Transport_Layer_Security::destroy(const id_t id) noexcept {
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::DESTROYED);
+						member->callback.state(id, state_t::DESTROYED);
 					// Устанавливаем режим удаления участника обмена защищёнными данными
 					member->state |= ::state::GARBAGE_MODE;
 				} break;
@@ -5070,7 +5095,7 @@ bool awh::Transport_Layer_Security::destroy(const id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения завершения
  */
-bool awh::Transport_Layer_Security::shutdown(const id_t id) noexcept {
+bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -5094,7 +5119,7 @@ bool awh::Transport_Layer_Security::shutdown(const id_t id) noexcept {
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for shutdown operation";
 					// Если функция обратного вызова ошибки установлена
@@ -5151,7 +5176,7 @@ bool awh::Transport_Layer_Security::shutdown(const id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения рукопожатия
  */
-bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
+bool awh::tls::Coder::handshake(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -5173,7 +5198,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 				// Если функция обратного вызова состояния установлена
 				if(member->callback.state != nullptr)
 					// Вызываем функцию обратного вызова состояния
-					member->callback.state(id, tls_t::state_t::FAILED);
+					member->callback.state(id, state_t::FAILED);
 				// Получаем текст ошибки
 				const string error = "Invalid layer for handshake operation";
 				// Если функция обратного вызова ошибки установлена
@@ -5236,7 +5261,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Handshake failed");
 											// Если функция обратного вызова ошибки установлена
@@ -5262,9 +5287,9 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr){
 												// Вызываем функцию обратного вызова на неудачу рукопожатия
-												member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
+												member->callback.state(id, state_t::HANDSHAKE_FAILED);
 												// Вызываем функцию обратного вызова на уничтожение контекста TLS
-												member->callback.state(id, tls_t::state_t::DESTROYED);
+												member->callback.state(id, state_t::DESTROYED);
 											}
 											// Устанавливаем режим удаления участника обмена защищёнными данными
 											member->state |= ::state::GARBAGE_MODE;
@@ -5278,26 +5303,24 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 											// Если рукопожатие ещё не выполнено
 											if(!(member->state & state::HANDSHAKE_MODE)){
 
-												tls::fgp_t::browser_t browser;
+												fgp_t::browser_t browser;
 
-												tls::fgp_t fgp(this->_fmk, this->_log);
+												if(this->_fgp.parse(::local::buffer, static_cast <size_t> (bytes), browser)){
 
-												if(fgp.parse(::local::buffer, static_cast <size_t> (bytes), browser)){
+													cout << " Browser: " << this->_fgp.print(browser) << endl;
 
-													cout << " Browser: " << fgp.print(browser) << endl;
+													const auto res = this->_fgp.apply(::local::buffer, static_cast <size_t> (bytes), browser);
 
-													const auto res = fgp.apply(::local::buffer, static_cast <size_t> (bytes), browser);
+													fgp_t::browser_t browser2;
 
-													tls::fgp_t::browser_t browser2;
-
-													if(fgp.parse(&res[0], res.size(), browser2))
-														cout << " Browser2: " << fgp.print(browser2) << endl;
+													if(this->_fgp.parse(&res[0], res.size(), browser2))
+														cout << " Browser2: " << this->_fgp.print(browser2) << endl;
 
 													vector <uint8_t> input;
-													if(fgp.dump(browser2, input)){
-														tls::fgp_t::browser_t browser3;
-														if(fgp.dump(input, browser3))
-															cout << " Browser3: " << fgp.print(browser3) << " || " << input.size() << " || " << (browser3 == browser2) << endl;
+													if(this->_fgp.dump(browser2, input)){
+														fgp_t::browser_t browser3;
+														if(this->_fgp.dump(input, browser3))
+															cout << " Browser3: " << this->_fgp.print(browser3) << " || " << input.size() << " || " << (browser3 == browser2) << endl;
 													}
 												}
 
@@ -5312,7 +5335,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова на получение ошибки рукопожатия
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Handshake failed");
 								// Если функция обратного вызова ошибки установлена
@@ -5338,9 +5361,9 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr){
 									// Вызываем функцию обратного вызова на неудачу рукопожатия
-									member->callback.state(id, tls_t::state_t::HANDSHAKE_FAILED);
+									member->callback.state(id, state_t::HANDSHAKE_FAILED);
 									// Вызываем функцию обратного вызова на уничтожение контекста TLS
-									member->callback.state(id, tls_t::state_t::DESTROYED);
+									member->callback.state(id, state_t::DESTROYED);
 								}
 								// Устанавливаем режим удаления участника обмена защищёнными данными
 								member->state |= ::state::GARBAGE_MODE;
@@ -5413,7 +5436,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::HANDSHAKED);
+						member->callback.state(id, state_t::HANDSHAKED);
 				}
 			} break;
 		}
@@ -5444,7 +5467,7 @@ bool awh::Transport_Layer_Security::handshake(const id_t id) noexcept {
  * @param id идентификатор события
  * @return   результат выполнения повторной передачи
  */
-bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
+bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -5468,7 +5491,7 @@ bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for retransmit operation";
 					// Если функция обратного вызова ошибки установлена
@@ -5563,7 +5586,7 @@ bool awh::Transport_Layer_Security::retransmit(const id_t id) noexcept {
  * @param id идентификатор шаблона контекста безопасности
  * @return   идентификатор транспортного уровня
  */
-awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(const id_t id) noexcept {
+awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 	// Результат работы функции
 	id_t result = 0;
 	/**
@@ -5614,7 +5637,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 							// Если функция обратного вызова состояния установлена
 							if(cts->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								cts->callback.state(id, tls_t::state_t::FAILED);
+								cts->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(result, "Could not create TLS session object");
 							// Если функция обратного вызова ошибки установлена
@@ -5649,7 +5672,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 						// Привязываем текущий объект лога к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[2], const_cast <log_t *> (this->_log));
 						// Привязываем текущий объект компрессора к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor_t *> (&this->_compressor));
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <awh::compressor_t *> (&this->_compressor));
 						// Создаём объект BIO для чтения
 						member->bio.read = ::BIO_new(::BIO_s_mem());
 						// Создаём объект BIO для записи
@@ -5659,7 +5682,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 							// Если функция обратного вызова состояния установлена
 							if(cts->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								cts->callback.state(id, tls_t::state_t::FAILED);
+								cts->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(result, "Create BIO is failed");
 							// Если функция обратного вызова ошибки установлена
@@ -5742,7 +5765,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 									// Если функция обратного вызова состояния установлена
 									if(cts->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										cts->callback.state(id, tls_t::state_t::FAILED);
+										cts->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Host verification failed");
 									// Если функция обратного вызова ошибки установлена
@@ -5810,7 +5833,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 							// Если функция обратного вызова состояния установлена
 							if(cts->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								cts->callback.state(id, tls_t::state_t::FAILED);
+								cts->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(result, "Could not create TLS session object");
 							// Если функция обратного вызова ошибки установлена
@@ -5845,7 +5868,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 						// Привязываем текущий объект лога к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[2], const_cast <log_t *> (this->_log));
 						// Привязываем текущий объект компрессора к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor_t *> (&this->_compressor));
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <awh::compressor_t *> (&this->_compressor));
 						// Создаём объект BIO для чтения
 						member->bio.read = ::BIO_new(::BIO_s_mem());
 						// Создаём объект BIO для записи
@@ -5855,7 +5878,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 							// Если функция обратного вызова состояния установлена
 							if(cts->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								cts->callback.state(id, tls_t::state_t::FAILED);
+								cts->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(result, "Create BIO is failed");
 							// Если функция обратного вызова ошибки установлена
@@ -5930,7 +5953,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
 								// Если функция обратного вызова состояния установлена
 								if(cts->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									cts->callback.state(id, tls_t::state_t::FAILED);
+									cts->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Host verification failed");
 								// Если функция обратного вызова ошибки установлена
@@ -5991,7 +6014,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::transport(con
  * @param proto тип протокола события
  * @return      идентификатор шаблона контекста безопасности
  */
-awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const event::node_t node, const event::protocol_t proto) noexcept {
+awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const event::protocol_t proto) noexcept {
 	// Результат работы функции
 	id_t result = 0;
 	/**
@@ -6684,7 +6707,7 @@ awh::Transport_Layer_Security::id_t awh::Transport_Layer_Security::context(const
  * @param size   размер буфера данных для шифрования
  * @return       результат выполнения шифрования
  */
-bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
+bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -6708,7 +6731,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for encryption operation";
 					// Если функция обратного вызова ошибки установлена
@@ -6753,7 +6776,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Write is failed");
 								// Если функция обратного вызова ошибки установлена
@@ -6779,7 +6802,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова на уничтожение контекста TLS
-									member->callback.state(id, tls_t::state_t::DESTROYED);
+									member->callback.state(id, state_t::DESTROYED);
 								// Устанавливаем режим удаления участника обмена защищёнными данными
 								member->state |= ::state::GARBAGE_MODE;
 							}
@@ -6806,7 +6829,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния
-											member->callback.state(id, tls_t::state_t::FAILED);
+											member->callback.state(id, state_t::FAILED);
 										// Получаем текст ошибки
 										const string error = ::ssl::error(id, "Write is failed");
 										// Если функция обратного вызова ошибки установлена
@@ -6832,7 +6855,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова на уничтожение контекста TLS
-											member->callback.state(id, tls_t::state_t::DESTROYED);
+											member->callback.state(id, state_t::DESTROYED);
 										// Устанавливаем режим удаления участника обмена защищёнными данными
 										member->state |= ::state::GARBAGE_MODE;
 									}
@@ -6849,7 +6872,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "Handshake has not yet been completed");
 						// Если функция обратного вызова ошибки установлена
@@ -6905,7 +6928,7 @@ bool awh::Transport_Layer_Security::encrypt(const id_t id, const void * buffer, 
  * @param size   размер буфера данных для расшифровки
  * @return       результат выполнения расшифровки
  */
-bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
+bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -6929,7 +6952,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
-						member->callback.state(id, tls_t::state_t::FAILED);
+						member->callback.state(id, state_t::FAILED);
 					// Получаем текст ошибки
 					const string error = "Invalid layer for decryption operation";
 					// Если функция обратного вызова ошибки установлена
@@ -6995,7 +7018,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния
-											member->callback.state(id, tls_t::state_t::FAILED);
+											member->callback.state(id, state_t::FAILED);
 										// Получаем текст ошибки
 										const string error = ::ssl::error(id, "Read is failed");
 										// Если функция обратного вызова ошибки установлена
@@ -7021,7 +7044,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова на уничтожение контекста TLS
-											member->callback.state(id, tls_t::state_t::DESTROYED);
+											member->callback.state(id, state_t::DESTROYED);
 										// Устанавливаем режим удаления участника обмена защищёнными данными
 										member->state |= ::state::GARBAGE_MODE;
 									}
@@ -7045,7 +7068,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "BIO write failed");
 							// Если функция обратного вызова ошибки установлена
@@ -7071,7 +7094,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова на уничтожение контекста TLS
-								member->callback.state(id, tls_t::state_t::DESTROYED);
+								member->callback.state(id, state_t::DESTROYED);
 							// Устанавливаем режим удаления участника обмена защищёнными данными
 							member->state |= ::state::GARBAGE_MODE;
 						}
@@ -7106,7 +7129,7 @@ bool awh::Transport_Layer_Security::decrypt(const id_t id, const void * buffer, 
  * @param id   идентификатор события
  * @param mode флаг режима безопасности потоков
  */
-void awh::Transport_Layer_Security::threadSafety(const id_t id, const bool mode) noexcept {
+void awh::tls::Coder::threadSafety(const id_t id, const bool mode) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7158,7 +7181,7 @@ void awh::Transport_Layer_Security::threadSafety(const id_t id, const bool mode)
  * @param id     идентификатор события
  * @param groups список поддерживаемых групп эллиптических кривых
  */
-void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::group_t> & groups) noexcept {
+void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7182,47 +7205,47 @@ void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::gro
 						 */
 						switch(static_cast <uint8_t> (item)){
 							// Если группа эллиптической кривой соответствует X25519
-							case static_cast <uint8_t> (tls::group_t::X25519):
+							case static_cast <uint8_t> (group_t::X25519):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x3B4);
 							break;
 							// Если группа эллиптической кривой соответствует X448
-							case static_cast <uint8_t> (tls::group_t::X448):
+							case static_cast <uint8_t> (group_t::X448):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x3C1);
 							break;
 							// Если группа эллиптической кривой соответствует P-256
-							case static_cast <uint8_t> (tls::group_t::P_256):
+							case static_cast <uint8_t> (group_t::P_256):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x19F);
 							break;
 							// Если группа эллиптической кривой соответствует P-384
-							case static_cast <uint8_t> (tls::group_t::P_384):
+							case static_cast <uint8_t> (group_t::P_384):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x2CB);
 							break;
 							// Если группа эллиптической кривой соответствует P-521
-							case static_cast <uint8_t> (tls::group_t::P_521):
+							case static_cast <uint8_t> (group_t::P_521):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x2CC);
 							break;
 							// Если группа эллиптической кривой соответствует постквантовому алгоритму ML-KEM (Kyber)
-							case static_cast <uint8_t> (tls::group_t::MLKEM1024):
+							case static_cast <uint8_t> (group_t::MLKEM1024):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x3C6);
 							break;
 							// Если группа эллиптической кривой соответствует SECP256K1
-							case static_cast <uint8_t> (tls::group_t::SECP256K1):
+							case static_cast <uint8_t> (group_t::SECP256K1):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x2CA);
 							break;
 							// Если группа эллиптической кривой соответствует X25519_MLKEM768
-							case static_cast <uint8_t> (tls::group_t::X25519_MLKEM768):
+							case static_cast <uint8_t> (group_t::X25519_MLKEM768):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x3C5);
 							break;
 							// Если группа эллиптической кривой соответствует X25519_KYBER768_DRAFT00
-							case static_cast <uint8_t> (tls::group_t::X25519_KYBER768_DRAFT00):
+							case static_cast <uint8_t> (group_t::X25519_KYBER768_DRAFT00):
 								// Создаём объект элептической кривой для алгоритма обмена ключами
 								ecdh = ::EC_KEY_new_by_curve_name(0x3C4);
 							break;
@@ -7248,7 +7271,7 @@ void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::gro
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set temporary ECDH is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -7286,7 +7309,7 @@ void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::gro
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set temporary ECDH is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -7331,47 +7354,47 @@ void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::gro
 						 */
 						switch(static_cast <uint8_t> (item)){
 							// Если группа эллиптической кривой соответствует X25519
-							case static_cast <uint8_t> (tls::group_t::X25519):
+							case static_cast <uint8_t> (group_t::X25519):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x3B4);
 							break;
 							// Если группа эллиптической кривой соответствует X448
-							case static_cast <uint8_t> (tls::group_t::X448):
+							case static_cast <uint8_t> (group_t::X448):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x3C1);
 							break;
 							// Если группа эллиптической кривой соответствует P-256
-							case static_cast <uint8_t> (tls::group_t::P_256):
+							case static_cast <uint8_t> (group_t::P_256):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x19F);
 							break;
 							// Если группа эллиптической кривой соответствует P-384
-							case static_cast <uint8_t> (tls::group_t::P_384):
+							case static_cast <uint8_t> (group_t::P_384):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x2CB);
 							break;
 							// Если группа эллиптической кривой соответствует P-521
-							case static_cast <uint8_t> (tls::group_t::P_521):
+							case static_cast <uint8_t> (group_t::P_521):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x2CC);
 							break;
 							// Если группа эллиптической кривой соответствует постквантовому алгоритму ML-KEM (Kyber)
-							case static_cast <uint8_t> (tls::group_t::MLKEM1024):
+							case static_cast <uint8_t> (group_t::MLKEM1024):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x3C6);
 							break;
 							// Если группа эллиптической кривой соответствует SECP256K1
-							case static_cast <uint8_t> (tls::group_t::SECP256K1):
+							case static_cast <uint8_t> (group_t::SECP256K1):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x2CA);
 							break;
 							// Если группа эллиптической кривой соответствует X25519_MLKEM768
-							case static_cast <uint8_t> (tls::group_t::X25519_MLKEM768):
+							case static_cast <uint8_t> (group_t::X25519_MLKEM768):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x3C5);
 							break;
 							// Если группа эллиптической кривой соответствует X25519_KYBER768_DRAFT00
-							case static_cast <uint8_t> (tls::group_t::X25519_KYBER768_DRAFT00):
+							case static_cast <uint8_t> (group_t::X25519_KYBER768_DRAFT00):
 								// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 								support.push_back(0x3C4);
 							break;
@@ -7396,7 +7419,7 @@ void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::gro
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set groups is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -7434,7 +7457,7 @@ void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::gro
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set groups is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -7489,7 +7512,7 @@ void awh::Transport_Layer_Security::groups(const id_t id, const vector <tls::gro
  * @param id      идентификатор события
  * @param ciphers список алгоритмов шифрования для установки
  */
-void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <tls::cipher_t> & ciphers) noexcept {
+void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7511,107 +7534,107 @@ void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <tls::ci
 					 */
 					switch(static_cast <uint8_t> (item)){
 						// Если алгоритм шифрования соответствует AES128-SHA
-						case static_cast <uint8_t> (tls::cipher_t::AES128_SHA):
+						case static_cast <uint8_t> (cipher_t::AES128_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0x002F);
 						break;
 						// Если алгоритм шифрования соответствует AES256-SHA
-						case static_cast <uint8_t> (tls::cipher_t::AES256_SHA):
+						case static_cast <uint8_t> (cipher_t::AES256_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0x0035);
 						break;
 						// Если алгоритм шифрования соответствует AES128-GCM-SHA256
-						case static_cast <uint8_t> (tls::cipher_t::AES128_GCM_SHA256):
+						case static_cast <uint8_t> (cipher_t::AES128_GCM_SHA256):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0x009C);
 						break;
 						// Если алгоритм шифрования соответствует AES256-GCM-SHA384
-						case static_cast <uint8_t> (tls::cipher_t::AES256_GCM_SHA384):
+						case static_cast <uint8_t> (cipher_t::AES256_GCM_SHA384):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0x009D);
 						break;
 						// Если алгоритм шифрования соответствует PSK-AES128-CBC-SHA
-						case static_cast <uint8_t> (tls::cipher_t::PSK_AES128_CBC_SHA):
+						case static_cast <uint8_t> (cipher_t::PSK_AES128_CBC_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0x008C);
 						break;
 						// Если алгоритм шифрования соответствует PSK-AES256-CBC-SHA
-						case static_cast <uint8_t> (tls::cipher_t::PSK_AES256_CBC_SHA):
+						case static_cast <uint8_t> (cipher_t::PSK_AES256_CBC_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0x008D);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-SHA
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES128_SHA):
+						case static_cast <uint8_t> (cipher_t::ECDHE_RSA_AES128_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC013);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-RSA-AES256-SHA
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES256_SHA):
+						case static_cast <uint8_t> (cipher_t::ECDHE_RSA_AES256_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC014);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-SHA
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES128_SHA):
+						case static_cast <uint8_t> (cipher_t::ECDHE_ECDSA_AES128_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC009);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES256-SHA
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES256_SHA):
+						case static_cast <uint8_t> (cipher_t::ECDHE_ECDSA_AES256_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC00A);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-SHA256
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES128_SHA256):
+						case static_cast <uint8_t> (cipher_t::ECDHE_RSA_AES128_SHA256):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC027);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-PSK-AES128-CBC-SHA
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_PSK_AES128_CBC_SHA):
+						case static_cast <uint8_t> (cipher_t::ECDHE_PSK_AES128_CBC_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC035);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-PSK-AES256-CBC-SHA
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_PSK_AES256_CBC_SHA):
+						case static_cast <uint8_t> (cipher_t::ECDHE_PSK_AES256_CBC_SHA):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC036);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-SHA256
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES128_SHA256):
+						case static_cast <uint8_t> (cipher_t::ECDHE_ECDSA_AES128_SHA256):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC023);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-RSA-AES128-GCM-SHA256
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256):
+						case static_cast <uint8_t> (cipher_t::ECDHE_RSA_AES128_GCM_SHA256):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC02F);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-RSA-AES256-GCM-SHA384
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384):
+						case static_cast <uint8_t> (cipher_t::ECDHE_RSA_AES256_GCM_SHA384):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC030);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-RSA-CHACHA20-POLY1305
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305):
+						case static_cast <uint8_t> (cipher_t::ECDHE_RSA_CHACHA20_POLY1305):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xCCA8);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-PSK-CHACHA20-POLY1305
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_PSK_CHACHA20_POLY1305):
+						case static_cast <uint8_t> (cipher_t::ECDHE_PSK_CHACHA20_POLY1305):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xCCAC);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES128-GCM-SHA256
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256):
+						case static_cast <uint8_t> (cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC02B);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-ECDSA-AES256-GCM-SHA384
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384):
+						case static_cast <uint8_t> (cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xC02C);
 						break;
 						// Если алгоритм шифрования соответствует ECDHE-ECDSA-CHACHA20-POLY1305
-						case static_cast <uint8_t> (tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305):
+						case static_cast <uint8_t> (cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305):
 							// Получаем объект шифра по его коду
 							cipher = ::SSL_get_cipher_by_value(0xCCA9);
 						break;
@@ -7646,7 +7669,7 @@ void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <tls::ci
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Set ciphers is failed");
 								// Если функция обратного вызова ошибки установлена
@@ -7684,7 +7707,7 @@ void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <tls::ci
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Set ciphers is failed");
 								// Если функция обратного вызова ошибки установлена
@@ -7738,7 +7761,7 @@ void awh::Transport_Layer_Security::ciphers(const id_t id, const vector <tls::ci
  * @param id   идентификатор события
  * @param mode режим активации/деактивации
  */
-void awh::Transport_Layer_Security::grease(const id_t id, const event::mode_t mode) noexcept {
+void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 	/**
 	 * Если BoringSSL используется в качестве криптографической библиотеки
 	 */
@@ -7783,7 +7806,7 @@ void awh::Transport_Layer_Security::grease(const id_t id, const event::mode_t mo
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "GREASE codes are only allowed to be added for the client");
 							// Если функция обратного вызова ошибки установлена
@@ -7838,7 +7861,7 @@ void awh::Transport_Layer_Security::grease(const id_t id, const event::mode_t mo
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "GREASE codes are only allowed to be added for the client");
 							// Если функция обратного вызова ошибки установлена
@@ -7891,7 +7914,7 @@ void awh::Transport_Layer_Security::grease(const id_t id, const event::mode_t mo
  * @param id   идентификатор события
  * @param mode режим активации/деактивации перемешивания расширений
  */
-void awh::Transport_Layer_Security::permuteExtensions(const id_t id, const event::mode_t mode) noexcept {
+void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode) noexcept {
 	/**
 	 * Если BoringSSL используется в качестве криптографической библиотеки
 	 */
@@ -7936,7 +7959,7 @@ void awh::Transport_Layer_Security::permuteExtensions(const id_t id, const event
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Permuting extensions is only allowed to be added for the client");
 							// Если функция обратного вызова ошибки установлена
@@ -7991,7 +8014,7 @@ void awh::Transport_Layer_Security::permuteExtensions(const id_t id, const event
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Permuting extensions is only allowed to be added for the client");
 							// Если функция обратного вызова ошибки установлена
@@ -8043,7 +8066,7 @@ void awh::Transport_Layer_Security::permuteExtensions(const id_t id, const event
  *
  * @param id идентификатор события
  */
-void awh::Transport_Layer_Security::signedCertificateTimestamp(const id_t id) noexcept {
+void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8108,7 +8131,7 @@ void awh::Transport_Layer_Security::signedCertificateTimestamp(const id_t id) no
  *
  * @param id идентификатор события
  */
-void awh::Transport_Layer_Security::onlineCertificateStatusProtocol(const id_t id) noexcept {
+void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8174,7 +8197,7 @@ void awh::Transport_Layer_Security::onlineCertificateStatusProtocol(const id_t i
  * @param id   идентификатор события
  * @param mode режим активации/деактивации поддержки расширения
  */
-void awh::Transport_Layer_Security::nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept {
+void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept {
 	/**
 	 * Если OpenSSL собран с поддержкой Next Protocol Negotiation (NPN)
 	 */
@@ -8323,7 +8346,7 @@ void awh::Transport_Layer_Security::nextProtocolNegotiation(const id_t id, const
  * @param id идентификатор события
  * @return   метод активного протокола
  */
-uint8_t awh::Transport_Layer_Security::alpn(const id_t id) const noexcept {
+uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8371,7 +8394,7 @@ uint8_t awh::Transport_Layer_Security::alpn(const id_t id) const noexcept {
  * @param id   идентификатор события
  * @param alpn список поддерживаемых ALPN-протоколов
  */
-void awh::Transport_Layer_Security::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
+void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8485,7 +8508,7 @@ void awh::Transport_Layer_Security::alpn(const id_t id, const vector <alpn_t> & 
  * @param alps список поддерживаемых ALPS-протоколов
  * @param std  флаг поддерживаемого стандарта
  */
-void awh::Transport_Layer_Security::alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept {
+void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const standard_t std) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8505,7 +8528,7 @@ void awh::Transport_Layer_Security::alps(const id_t id, const vector <alpn_t> & 
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "ALPS protocols are only allowed to be added for the transport data layer");
 						// Если функция обратного вызова ошибки установлена
@@ -8600,7 +8623,7 @@ void awh::Transport_Layer_Security::alps(const id_t id, const vector <alpn_t> & 
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "ALPS protocols are only allowed to be added for the client");
 								// Если функция обратного вызова ошибки установлена
@@ -8654,7 +8677,7 @@ void awh::Transport_Layer_Security::alps(const id_t id, const vector <alpn_t> & 
  * @param id         идентификатор события
  * @param signatures список поддерживаемых алгоритмов подписи
  */
-void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::signature_t> & signatures) noexcept {
+void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & signatures) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -8679,56 +8702,56 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 						 */
 						switch(static_cast <uint8_t> (item)){
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA1
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA1): {
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA1): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha1);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(EVP_PKEY_RSA);
 							} break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA256
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA256): {
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA256): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha256);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(EVP_PKEY_RSA);
 							} break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA384
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA384): {
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA384): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha384);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(EVP_PKEY_RSA);
 							} break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA512
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA512): {
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA512): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha512);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(EVP_PKEY_RSA);
 							} break;
 							// Если группа алгоритма подписи соответствует ECDSA_SHA1
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SHA1): {
+							case static_cast <uint8_t> (signature_t::ECDSA_SHA1): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha1);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(EVP_PKEY_EC);
 							} break;
 							// Если группа алгоритма подписи соответствует ECDSA_SECP256R1_SHA256
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP256R1_SHA256): {
+							case static_cast <uint8_t> (signature_t::ECDSA_SECP256R1_SHA256): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha256);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(EVP_PKEY_EC);
 							} break;
 							// Если группа алгоритма подписи соответствует ECDSA_SECP384R1_SHA384
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP384R1_SHA384): {
+							case static_cast <uint8_t> (signature_t::ECDSA_SECP384R1_SHA384): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha384);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(EVP_PKEY_EC);
 							} break;
 							// Если группа алгоритма подписи соответствует ECDSA_SECP521R1_SHA512
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP521R1_SHA512): {
+							case static_cast <uint8_t> (signature_t::ECDSA_SECP521R1_SHA512): {
 								// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 								sigalgs.push_back(NID_sha512);
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
@@ -8742,21 +8765,21 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 							 */
 							#if OPENSSL_VERSION_NUMBER >= 0x10101000L
 								// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA256
-								case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA256): {
+								case static_cast <uint8_t> (signature_t::RSA_PSS_RSAE_SHA256): {
 									// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 									sigalgs.push_back(NID_sha256);
 									// Добавляем код алгоритма подписи в список поддерживаемых подписей
 									sigalgs.push_back(EVP_PKEY_RSA_PSS);
 								} break;
 								// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA384
-								case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA384): {
+								case static_cast <uint8_t> (signature_t::RSA_PSS_RSAE_SHA384): {
 									// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 									sigalgs.push_back(NID_sha384);
 									// Добавляем код алгоритма подписи в список поддерживаемых подписей
 									sigalgs.push_back(EVP_PKEY_RSA_PSS);
 								} break;
 								// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA512
-								case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA512): {
+								case static_cast <uint8_t> (signature_t::RSA_PSS_RSAE_SHA512): {
 									// Добавляем код идентификатора хеш-функции в список поддерживаемых подписей
 									sigalgs.push_back(NID_sha512);
 									// Добавляем код алгоритма подписи в список поддерживаемых подписей
@@ -8784,7 +8807,7 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set signature algorithms is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -8822,7 +8845,7 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set signature algorithms is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -8865,72 +8888,72 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 						 */
 						switch(static_cast <uint8_t> (item)){
 							// Если группа алгоритма подписи соответствует ED25519
-							case static_cast <uint8_t> (tls::signature_t::ED25519):
+							case static_cast <uint8_t> (signature_t::ED25519):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_ED25519);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA1
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA1):
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA1):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA1);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA256
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA256):
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA256):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA256);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA384
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA384):
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA384):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA384);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA512
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA512):
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA512):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA512);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA256
-							case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA256):
+							case static_cast <uint8_t> (signature_t::RSA_PSS_RSAE_SHA256):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PSS_RSAE_SHA256);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA384
-							case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA384):
+							case static_cast <uint8_t> (signature_t::RSA_PSS_RSAE_SHA384):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PSS_RSAE_SHA384);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PSS_RSAE_SHA512
-							case static_cast <uint8_t> (tls::signature_t::RSA_PSS_RSAE_SHA512):
+							case static_cast <uint8_t> (signature_t::RSA_PSS_RSAE_SHA512):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PSS_RSAE_SHA512);
 							break;
 							// Если группа алгоритма подписи соответствует ECDSA_SHA1
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SHA1):
+							case static_cast <uint8_t> (signature_t::ECDSA_SHA1):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_ECDSA_SHA1);
 							break;
 							// Если группа алгоритма подписи соответствует ECDSA_SECP256R1_SHA256
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP256R1_SHA256):
+							case static_cast <uint8_t> (signature_t::ECDSA_SECP256R1_SHA256):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_ECDSA_SECP256R1_SHA256);
 							break;
 							// Если группа алгоритма подписи соответствует ECDSA_SECP384R1_SHA384
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP384R1_SHA384):
+							case static_cast <uint8_t> (signature_t::ECDSA_SECP384R1_SHA384):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_ECDSA_SECP384R1_SHA384);
 							break;
 							// Если группа алгоритма подписи соответствует ECDSA_SECP521R1_SHA512
-							case static_cast <uint8_t> (tls::signature_t::ECDSA_SECP521R1_SHA512):
+							case static_cast <uint8_t> (signature_t::ECDSA_SECP521R1_SHA512):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_ECDSA_SECP521R1_SHA512);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_MD5_SHA1
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_MD5_SHA1):
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_MD5_SHA1):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_MD5_SHA1);
 							break;
 							// Если группа алгоритма подписи соответствует RSA_PKCS1_SHA256_LEGACY
-							case static_cast <uint8_t> (tls::signature_t::RSA_PKCS1_SHA256_LEGACY):
+							case static_cast <uint8_t> (signature_t::RSA_PKCS1_SHA256_LEGACY):
 								// Добавляем код алгоритма подписи в список поддерживаемых подписей
 								sigalgs.push_back(SSL_SIGN_RSA_PKCS1_SHA256_LEGACY);
 							break;
@@ -8958,7 +8981,7 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set signature algorithms is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -8999,7 +9022,7 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Set signature algorithms is failed");
 									// Если функция обратного вызова ошибки установлена
@@ -9054,7 +9077,7 @@ void awh::Transport_Layer_Security::signature(const id_t id, const vector <tls::
  * @param id     идентификатор события
  * @param methods список поддерживаемых алгоритмов компрессии сертификата
  */
-void awh::Transport_Layer_Security::compressors(const id_t id, const vector <compressor_t::method_t> & methods) noexcept {
+void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t::method_t> & methods) noexcept {
 	/**
 	 * Если мы используем BoringSSL или версия OpenSSL соответствует или выше версии 3.2
 	 */
@@ -9088,7 +9111,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 								 */
 								switch(static_cast <uint8_t> (method)){
 									// Если алгоритм компрессии сертификата соответствует Zlib
-									case static_cast <uint8_t> (compressor_t::method_t::ZLIB): {
+									case static_cast <uint8_t> (awh::compressor_t::method_t::ZLIB): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -9102,7 +9125,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Set certificate compression method Zlib is failed");
 											// Если функция обратного вызова ошибки установлена
@@ -9128,7 +9151,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует Brotli
-									case static_cast <uint8_t> (compressor_t::method_t::BROTLI): {
+									case static_cast <uint8_t> (awh::compressor_t::method_t::BROTLI): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -9142,7 +9165,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Set certificate compression method Brotli is failed");
 											// Если функция обратного вызова ошибки установлена
@@ -9168,7 +9191,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
-									case static_cast <uint8_t> (compressor_t::method_t::ZSTD): {
+									case static_cast <uint8_t> (awh::compressor_t::method_t::ZSTD): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -9182,7 +9205,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Set certificate compression method ZStandard (Zstd) is failed");
 											// Если функция обратного вызова ошибки установлена
@@ -9212,7 +9235,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния
-											member->callback.state(id, tls_t::state_t::FAILED);
+											member->callback.state(id, state_t::FAILED);
 										// Получаем текст ошибки
 										const string error = ::ssl::error(id, "Unsupported certificate compression method");
 										// Если функция обратного вызова ошибки установлена
@@ -9256,7 +9279,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 								 */
 								switch(static_cast <uint8_t> (method)){
 									// Если алгоритм компрессии сертификата соответствует Zlib
-									case static_cast <uint8_t> (compressor_t::method_t::ZLIB): {
+									case static_cast <uint8_t> (awh::compressor_t::method_t::ZLIB): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -9270,7 +9293,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Set certificate compression method Zlib is failed");
 											// Если функция обратного вызова ошибки установлена
@@ -9296,7 +9319,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует Brotli
-									case static_cast <uint8_t> (compressor_t::method_t::BROTLI): {
+									case static_cast <uint8_t> (awh::compressor_t::method_t::BROTLI): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -9310,7 +9333,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Set certificate compression method Brotli is failed");
 											// Если функция обратного вызова ошибки установлена
@@ -9336,7 +9359,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
-									case static_cast <uint8_t> (compressor_t::method_t::ZSTD): {
+									case static_cast <uint8_t> (awh::compressor_t::method_t::ZSTD): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -9350,7 +9373,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Set certificate compression method ZStandard (Zstd) is failed");
 											// Если функция обратного вызова ошибки установлена
@@ -9380,7 +9403,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния
-											member->callback.state(id, tls_t::state_t::FAILED);
+											member->callback.state(id, state_t::FAILED);
 										// Получаем текст ошибки
 										const string error = ::ssl::error(id, "Unsupported certificate compression method");
 										// Если функция обратного вызова ошибки установлена
@@ -9437,7 +9460,7 @@ void awh::Transport_Layer_Security::compressors(const id_t id, const vector <com
  * @param groups список поддерживаемых групп эллиптических кривых для ключевого обмена
  * @param grease флаг активации/деактивации ложного ключа EncryptedClientHello (ECH)
  */
-void awh::Transport_Layer_Security::keyShare(const id_t id, const vector <tls::group_t> & groups, const event::mode_t grease) noexcept {
+void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, const event::mode_t grease) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9457,7 +9480,7 @@ void awh::Transport_Layer_Security::keyShare(const id_t id, const vector <tls::g
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
-							member->callback.state(id, tls_t::state_t::FAILED);
+							member->callback.state(id, state_t::FAILED);
 						// Получаем текст ошибки
 						const string error = ::ssl::error(id, "Groups elliptic curves are only allowed to be added for the transport data layer");
 						// Если функция обратного вызова ошибки установлена
@@ -9502,37 +9525,37 @@ void awh::Transport_Layer_Security::keyShare(const id_t id, const vector <tls::g
 									 */
 									switch(static_cast <uint8_t> (item)){
 										// Если группа эллиптической кривой соответствует X25519
-										case static_cast <uint8_t> (tls::group_t::X25519):
+										case static_cast <uint8_t> (group_t::X25519):
 											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 											support.push_back(SSL_GROUP_X25519);
 										break;
 										// Если группа эллиптической кривой соответствует P-256
-										case static_cast <uint8_t> (tls::group_t::P_256):
+										case static_cast <uint8_t> (group_t::P_256):
 											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 											support.push_back(SSL_GROUP_SECP256R1);
 										break;
 										// Если группа эллиптической кривой соответствует P-384
-										case static_cast <uint8_t> (tls::group_t::P_384):
+										case static_cast <uint8_t> (group_t::P_384):
 											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 											support.push_back(SSL_GROUP_SECP384R1);
 										break;
 										// Если группа эллиптической кривой соответствует P-521
-										case static_cast <uint8_t> (tls::group_t::P_521):
+										case static_cast <uint8_t> (group_t::P_521):
 											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 											support.push_back(SSL_GROUP_SECP521R1);
 										break;
 										// Если группа эллиптической кривой соответствует постквантовому алгоритму ML-KEM (Kyber)
-										case static_cast <uint8_t> (tls::group_t::MLKEM1024):
+										case static_cast <uint8_t> (group_t::MLKEM1024):
 											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 											support.push_back(SSL_GROUP_MLKEM1024);
 										break;
 										// Если группа эллиптической кривой соответствует X25519_MLKEM768
-										case static_cast <uint8_t> (tls::group_t::X25519_MLKEM768):
+										case static_cast <uint8_t> (group_t::X25519_MLKEM768):
 											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 											support.push_back(SSL_GROUP_X25519_MLKEM768);
 										break;
 										// Если группа эллиптической кривой соответствует X25519_KYBER768_DRAFT00
-										case static_cast <uint8_t> (tls::group_t::X25519_KYBER768_DRAFT00):
+										case static_cast <uint8_t> (group_t::X25519_KYBER768_DRAFT00):
 											// Добавляем код группы эллиптической кривой в список поддерживаемых групп
 											support.push_back(SSL_GROUP_X25519_KYBER768_DRAFT00);
 										break;
@@ -9564,7 +9587,7 @@ void awh::Transport_Layer_Security::keyShare(const id_t id, const vector <tls::g
 										// Если функция обратного вызова состояния установлена
 										if(member->callback.state != nullptr)
 											// Вызываем функцию обратного вызова состояния
-											member->callback.state(id, tls_t::state_t::FAILED);
+											member->callback.state(id, state_t::FAILED);
 										// Получаем текст ошибки
 										const string error = ::ssl::error(id, "Set groups is failed");
 										// Если функция обратного вызова ошибки установлена
@@ -9594,7 +9617,7 @@ void awh::Transport_Layer_Security::keyShare(const id_t id, const vector <tls::g
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "Groups elliptic curves are only allowed to be added for the client");
 								// Если функция обратного вызова ошибки установлена
@@ -9648,7 +9671,7 @@ void awh::Transport_Layer_Security::keyShare(const id_t id, const vector <tls::g
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename адрес файла сертификата доверенных центров сертификации
  */
-void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noexcept {
+void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9676,7 +9699,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Get x509 store is not found");
 							// Если функция обратного вызова ошибки установлена
@@ -9707,7 +9730,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "CA-file is not loaded");
 							// Если функция обратного вызова ошибки установлена
@@ -9746,7 +9769,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = "Load client CA file is failed";
 								// Если функция обратного вызова ошибки установлена
@@ -9790,7 +9813,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Get x509 store is not found");
 							// Если функция обратного вызова ошибки установлена
@@ -9821,7 +9844,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "CA-file is not loaded");
 							// Если функция обратного вызова ошибки установлена
@@ -9881,7 +9904,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view filename) noex
  * @param dir  адрес директории с сертификатами доверенных центров сертификации
  * @param file адрес файла сертификата доверенного центра сертификации
  */
-void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_view file) noexcept {
+void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -9909,7 +9932,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Get x509 store is not found");
 							// Если функция обратного вызова ошибки установлена
@@ -9950,7 +9973,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "CA-file is not loaded");
 								// Если функция обратного вызова ошибки установлена
@@ -9987,7 +10010,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "CA-file is not loaded");
 								// Если функция обратного вызова ошибки установлена
@@ -10037,7 +10060,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Get x509 store is not found");
 							// Если функция обратного вызова ошибки установлена
@@ -10078,7 +10101,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "CA-file is not loaded");
 								// Если функция обратного вызова ошибки установлена
@@ -10115,7 +10138,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, tls_t::state_t::FAILED);
+									member->callback.state(id, state_t::FAILED);
 								// Получаем текст ошибки
 								const string error = ::ssl::error(id, "CA-file is not loaded");
 								// Если функция обратного вызова ошибки установлена
@@ -10175,7 +10198,7 @@ void awh::Transport_Layer_Security::ca(const id_t id, string_view dir, string_vi
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename адрес файла списка отзыва сертификатов
  */
-void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, string_view filename) noexcept {
+void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -10207,7 +10230,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -10238,7 +10261,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "CRL-file is corrupted or unreadable");
 							// Если функция обратного вызова ошибки установлена
@@ -10273,7 +10296,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "CRL-file cannot be set");
 							// Если функция обратного вызова ошибки установлена
@@ -10319,7 +10342,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Engine store CRL");
 							// Если функция обратного вызова ошибки установлена
@@ -10350,7 +10373,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "CRL-file is corrupted or unreadable");
 							// Если функция обратного вызова ошибки установлена
@@ -10385,7 +10408,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "CRL-file cannot be set");
 							// Если функция обратного вызова ошибки установлена
@@ -10441,7 +10464,7 @@ void awh::Transport_Layer_Security::certificateRevocationList(const id_t id, str
  * @param filename адрес файла приватного ключа клиента
  * @param type     тип файла приватного ключа клиента
  */
-void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filename, const type_t type) noexcept {
+void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -10473,7 +10496,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Private key cannot be set");
 									// Если функция обратного вызова ошибки установлена
@@ -10507,7 +10530,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Private key cannot be set");
 									// Если функция обратного вызова ошибки установлена
@@ -10540,7 +10563,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Private key is not valid");
 							// Если функция обратного вызова ошибки установлена
@@ -10584,7 +10607,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Private key cannot be set");
 									// Если функция обратного вызова ошибки установлена
@@ -10618,7 +10641,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
 									// Если функция обратного вызова состояния установлена
 									if(member->callback.state != nullptr)
 										// Вызываем функцию обратного вызова состояния
-										member->callback.state(id, tls_t::state_t::FAILED);
+										member->callback.state(id, state_t::FAILED);
 									// Получаем текст ошибки
 									const string error = ::ssl::error(id, "Private key cannot be set");
 									// Если функция обратного вызова ошибки установлена
@@ -10651,7 +10674,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, tls_t::state_t::FAILED);
+								member->callback.state(id, state_t::FAILED);
 							// Получаем текст ошибки
 							const string error = ::ssl::error(id, "Private key is not valid");
 							// Если функция обратного вызова ошибки установлена
@@ -10705,7 +10728,7 @@ void awh::Transport_Layer_Security::privateKey(const id_t id, string_view filena
  * @param filename адрес файла клиентского сертификата
  * @param type     тип файла приватного ключа клиента
  */
-void awh::Transport_Layer_Security::certificate(const id_t id, string_view filename, const type_t type) noexcept {
+void awh::tls::Coder::certificate(const id_t id, string_view filename, const type_t type) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -10743,7 +10766,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Certificate cannot be set");
 											// Если функция обратного вызова ошибки установлена
@@ -10775,7 +10798,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Certificate cannot be set");
 											// Если функция обратного вызова ошибки установлена
@@ -10815,7 +10838,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Certificate cannot be set");
 											// Если функция обратного вызова ошибки установлена
@@ -10847,7 +10870,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Certificate cannot be set");
 											// Если функция обратного вызова ошибки установлена
@@ -10901,7 +10924,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Certificate cannot be set");
 											// Если функция обратного вызова ошибки установлена
@@ -10933,7 +10956,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Certificate cannot be set");
 											// Если функция обратного вызова ошибки установлена
@@ -10984,7 +11007,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 												// Если функция обратного вызова состояния установлена
 												if(member->callback.state != nullptr)
 													// Вызываем функцию обратного вызова состояния
-													member->callback.state(id, tls_t::state_t::FAILED);
+													member->callback.state(id, state_t::FAILED);
 												// Получаем текст ошибки
 												const string error = ::ssl::error(id, "Certificate cannot be set");
 												// Если функция обратного вызова ошибки установлена
@@ -11016,7 +11039,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
 											// Если функция обратного вызова состояния установлена
 											if(member->callback.state != nullptr)
 												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, tls_t::state_t::FAILED);
+												member->callback.state(id, state_t::FAILED);
 											// Получаем текст ошибки
 											const string error = ::ssl::error(id, "Certificate cannot be set");
 											// Если функция обратного вызова ошибки установлена
@@ -11074,7 +11097,7 @@ void awh::Transport_Layer_Security::certificate(const id_t id, string_view filen
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::Transport_Layer_Security::on(const id_t id, read_callback_t callback) noexcept {
+bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -11123,7 +11146,7 @@ bool awh::Transport_Layer_Security::on(const id_t id, read_callback_t callback) 
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::Transport_Layer_Security::on(const id_t id, write_callback_t callback) noexcept {
+bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -11172,7 +11195,7 @@ bool awh::Transport_Layer_Security::on(const id_t id, write_callback_t callback)
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::Transport_Layer_Security::on(const id_t id, error_callback_t callback) noexcept {
+bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -11237,7 +11260,7 @@ bool awh::Transport_Layer_Security::on(const id_t id, error_callback_t callback)
  * @param callback функция обратного вызова для установки
  * @return         результат установки функции обратного вызова
  */
-bool awh::Transport_Layer_Security::on(const id_t id, state_callback_t callback) noexcept {
+bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -11301,8 +11324,8 @@ bool awh::Transport_Layer_Security::on(const id_t id, state_callback_t callback)
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Transport_Layer_Security::Transport_Layer_Security(const fmk_t * fmk, const log_t * log) noexcept :
- _addr(fmk, log), _compressor(log), _fmk(fmk), _log(log) {
+awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
+ _fgp(fmk, log), _addr(fmk, log), _compressor(log), _fmk(fmk), _log(log) {
 	// Увеличиваем счётчик инициализации библиотеки OpenSSL
 	::__awh_ssl_init_count__++;
 	// Если библиотека OpenSSL ещё не инициализирована
@@ -11388,7 +11411,7 @@ awh::Transport_Layer_Security::Transport_Layer_Security(const fmk_t * fmk, const
  * @brief Деструктор
  *
  */
-awh::Transport_Layer_Security::~Transport_Layer_Security() noexcept {
+awh::tls::Coder::~Coder() noexcept {
 	// Уменьшаем счётчик инициализации библиотеки OpenSSL
 	::__awh_ssl_init_count__--;
 	// Если счётчик инициализации библиотеки OpenSSL равен нулю

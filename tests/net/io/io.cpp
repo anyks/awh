@@ -26,10 +26,10 @@ void IoFixture::SetUp(){
 	this->_fmk = std::make_unique <awh::fmk_t> ();
 	// Создаём объект логгера
 	this->_log = std::make_unique <awh::log_t> (this->_fmk.get());
-	// Создаём объект транспортного уровня безопасности
-	this->_tls = std::make_unique <awh::tls_t> (this->_fmk.get(), this->_log.get());
 	// Создаём объект асинхронного движка ввода-вывода
 	this->_io = std::make_unique <awh::engine::io_t> (this->_fmk.get(), this->_log.get());
+	// Создаём объект транспортного уровня безопасности
+	this->_coder = std::make_unique <awh::tls::coder_t> (this->_fmk.get(), this->_log.get());
 	/**
 	 * Для операционной системы Linux или FreeBSD
 	 */

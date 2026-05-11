@@ -20,8 +20,8 @@
  */
 #include "../../main.hpp"
 #include "../../../include/net/io.hpp"
-#include "../../../include/net/tls.hpp"
 #include "../../../include/net/addr.hpp"
+#include "../../../include/net/tls/coder.hpp"
 
 /**
  * @brief Класс фикстуры для тестов асинхронного движка ввода-вывода
@@ -34,10 +34,10 @@ class IoFixture : public testing::Test {
 		std::unique_ptr <awh::fmk_t> _fmk;
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
-		// Объект транспортного уровня безопасности
-		std::unique_ptr <awh::tls_t> _tls;
 		// Объект асинхронного движка ввода-вывода
 		std::unique_ptr <awh::engine::io_t> _io;
+		// Объект транспортного уровня безопасности
+		std::unique_ptr <awh::tls::coder_t> _coder;
 		/**
 		 * Для операционной системы Linux или FreeBSD
 		 */

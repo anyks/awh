@@ -21,9 +21,9 @@
 /**
  * Наши модули
  */
-#include "../net/tls.hpp"
 #include "../units/dns.hpp"
 #include "../units/client.hpp"
+#include "../net/tls/coder.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -53,10 +53,10 @@ namespace awh {
 			// Адрес хоста целевой машины
 			string _host;
 		protected:
-			// Идентификатор TLS для выполнения запросов к серверу
-			tls_t::id_t _tid;
 			// Идентификатор клиента для выполнения запросов к серверу
 			event::id_t _eid;
+			// Идентификатор TLS для выполнения запросов к серверу
+			tls::coder_t::id_t _tid;
 		protected:
 			// Объект работы с сетевыми адресами
 			net_addr_t _addr;
@@ -67,10 +67,10 @@ namespace awh {
 			// Таймаут резолвинга доменного имени в миллисекундах
 			atomic_uint32_t _timeoutDNS;
 		protected:
-			// Объект транспортного уровня безопасности
-			tls_t * _tls;
 			// Объект DNS-резолвера
 			unit::dns_t * _dns;
+			// Объект транспортного уровня безопасности
+			tls::coder_t * _coder;
 			// Объект клиента
 			unit::client_t * _client;
 		protected:
@@ -164,7 +164,7 @@ namespace awh {
 			 * @param id    идентификатор TLS
 			 * @param state состояние TLS
 			 */
-			void stateTLS(const tls_t::id_t id, const tls_t::state_t state) noexcept;
+			void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
 			/**
 			 * @brief Метод получения ошибок TLS
 			 *
@@ -172,7 +172,7 @@ namespace awh {
 			 * @param error   код ошибки TLS
 			 * @param message сообщение об ошибке TLS
 			 */
-			void errorTLS(const tls_t::id_t id, const tls_t::error_t error, const string & message) noexcept;
+			void errorTLS(const tls::coder_t::id_t id, const tls::coder_t::error_t error, const string & message) noexcept;
 			/**
 			 * @brief Метод получения событий шифрования/дешифрования данных TLS
 			 *
@@ -181,7 +181,7 @@ namespace awh {
 			 * @param size   размер данных для события шифрования/дешифрования TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 */
-			void processTLS(const tls_t::id_t id, const tls_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+			void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		private:
 			/**
 			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
@@ -551,7 +551,7 @@ namespace awh {
 			 *
 			 * @param tid идентификатор TLS для установки
 			 */
-			void setSecurityId(const tls_t::id_t tid) noexcept;
+			void setSecurityId(const tls::coder_t::id_t tid) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -577,11 +577,11 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param client объект юнита клиента
-			 * @param tls    объект транспортного уровня безопасности
+			 * @param coder  объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Client(unit::client_t * client, tls_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
@@ -596,11 +596,11 @@ namespace awh {
 			 *
 			 * @param client объект юнита клиента
 			 * @param dns    объект DNS-резолвера
-			 * @param tls    объект транспортного уровня безопасности
+			 * @param coder  объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Client(unit::client_t * client, unit::dns_t * dns, tls_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор
