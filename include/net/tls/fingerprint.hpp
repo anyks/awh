@@ -56,6 +56,12 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ Fingerprint {
 			public:
 				/**
+				 * @brief Тип идентификатора отпечатка браузера
+				 *
+				 */
+				using id_t = uint8_t;
+			public:
+				/**
 				 * @brief Структура расширения TLS
 				 *
 				 */
@@ -449,7 +455,7 @@ namespace awh {
 				typedef struct Extension_Extended_Master_Secret : public extension_t {
 					// Данные расширения Master Secret
 					string masterSecretData;
-					// Данные расширения Extended Master Secret для сервера
+					// Данные расширения Extended Master Secret для сервера (устаревшее расширение)
 					string extendedMasterSecretData;
 					/**
 					 * @brief Конструктор
@@ -571,7 +577,7 @@ namespace awh {
 				 */
 				typedef struct Extension_Key_Share : public extension_t {
 					// Список групп обмена ключами в порядке появления в ClientHello (порядок важен — отражает предпочтение клиента)
-					vector <pair <group_t, vector <uint8_t>>> keyShares;
+					vector <pair <group_t, vector <uint8_t>>> shares;
 					/**
 					 * @brief Конструктор
 					 *
@@ -1066,11 +1072,11 @@ namespace awh {
 				typedef struct Browser {
 					// Флаг, указывающий на использование GREASE (Generate Random Extensions And Sustain Extensibility)
 					bool grease;
-					// Запись TLS рукопожатия
+					// Запись метаданных TLS рукопожатия
 					record_t record;
-					// Рукопожатие TLS
+					// Объект рукопожатия TLS
 					handshake_t handshake;
-					// ClientHello TLS
+					// Объект ClientHello TLS
 					client_hello_t clientHello;
 					// Куки DTLS, если используется протокол DTLS
 					vector <uint8_t> cookie;
@@ -1152,6 +1158,86 @@ namespace awh {
 					 */
 					explicit H2Browser() noexcept : windowUpdate(0) {}
 				} h2_browser_t;
+			public:
+				/**
+				 * @brief Итератор как вложенный класс
+				 *
+				 */
+				typedef class __AWH_SHARED_EXPORT__ Iterator {
+					public:
+						/**
+						 * Создаём необходимые нам типы данных
+						 */
+						using value_type        = browser_t;
+						using pointer           = browser_t *;
+						using reference         = browser_t &;
+						using difference_type   = std::ptrdiff_t;
+						using iterator_category = std::bidirectional_iterator_tag;
+					public:
+						/**
+						 * Создаём тип данных итератора
+						 */
+						using iterator = unordered_map <uint8_t, browser_t>::iterator;
+					private:
+						// Текущее значение итератора
+						iterator _it;
+					private:
+						// Объект фреймворка
+						const fmk_t * _fmk;
+						// Объект работы с логами
+						const log_t * _log;
+					public:
+						/**
+						 * @brief Оператор преобразования в сырой итератор
+						 * 
+						 * @return iterator итератор для преобразования
+						 */
+						operator iterator() noexcept;
+					public:
+						/**
+						 * @brief Оператор извлечения указателя заголовка
+						 *
+						 * @return указатель заголовка
+						 */
+						pointer operator -> () noexcept;
+						/**
+						 * @brief Оператор разыменования заголовка
+						 *
+						 * @return значение заголовка
+						 */
+						reference operator * () const noexcept;
+					public:
+						/**
+						 * @brief Оператор смещения вперед
+						 *
+						 * @return значение текущего итератора
+						 */
+						Iterator & operator ++ () noexcept;
+					public:
+						/**
+						 * @brief Оператор сравнения соответствия итератора
+						 *
+						 * @param other итератор для сравнения
+						 * @return      результат сравнения
+						 */
+						bool operator == (const Iterator & other) const noexcept;
+						/**
+						 * @brief Оператора сравнения несоответствия итератора
+						 *
+						 * @param other итератор для сравнения
+						 * @return      результат сравнения
+						 */
+						bool operator != (const Iterator & other) const noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 * @param it  итератор для установки
+						 * @param fmk объект фреймворка
+						 * @param log объект для работы с логами
+						 */
+						explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept : _it(it), _fmk(fmk), _log(log) {}
+				} iterator_t;
 			private:
 				// Список поддерживаемых цифровых отпечатков браузеров
 				unordered_map <uint8_t, browser_t> _browsers;
@@ -1235,6 +1321,196 @@ namespace awh {
 				 * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
 				 */
 				vector <uint8_t> apply(const uint8_t * buffer, const size_t size, const browser_t & browser) noexcept;
+			public:
+				/**
+				 * @brief Метод очистки всех цифровых отпечатков браузеров из хранилища
+				 *
+				 */
+				void clear() noexcept;
+			public:
+				/**
+				 * @brief Метод проверки, пусто ли хранилище цифровых отпечатков браузеров
+				 *
+				 * @return результат проверки
+				 */
+				bool empty() const noexcept;
+			public:
+				/**
+				 * @brief Метод получения количества цифровых отпечатков браузеров, хранящихся в хранилище
+				 *
+				 * @return количество цифровых отпечатков браузеров
+				 */
+				size_t size() const noexcept;
+			public:
+				/**
+				 * @brief Метод получения списка идентификаторов всех цифровых отпечатков браузеров, хранящихся в хранилище
+				 *
+				 * @return список идентификаторов цифровых отпечатков браузеров
+				 */
+				vector <id_t> list() const noexcept;
+			public:
+				/**
+				 * @brief Метод удаления цифрового отпечатка браузера из хранилища по идентификатору
+				 *
+				 * @param id идентификатор цифрового отпечатка
+				 * @return   результат выполнения удаления цифрового отпечатка
+				 */
+				bool remove(const id_t id) noexcept;
+			public:
+				/**
+				 * @brief Метод получения данных цифрового отпечатка браузера по идентификатору
+				 *
+				 * @param id      идентификатор цифрового отпечатка
+				 * @param browser объект для хранения распарсенных данных цифрового отпечатка
+				 * @return        результат получения данных цифрового отпечатка по идентификатору
+				 */
+				bool get(const id_t id, browser_t & browser) const noexcept;
+			public:
+				/**
+				 * @brief Метод добавления цифрового отпечатка браузера в хранилище
+				 *
+				 * @param browser объект с распарсенными данными ClientHello
+				 * @return        идентификатор добавленного цифрового отпечатка
+				 */
+				id_t add(const browser_t & browser) noexcept;
+				/**
+				 * @brief Метод добавления цифрового отпечатка браузера в хранилище в бинарном виде (дамп цифрового отпечатка)
+				 *
+				 * @param buffer бинарный буфер с данными цифрового отпечатка
+				 * @param size   размер бинарного буфера в байтах
+				 * @return       идентификатор добавленного цифрового отпечатка
+				 */
+				id_t add(const uint8_t * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод формирования бинарного дампа всех цифровых отпечатков браузеров
+				 *
+				 * @return бинарный буфер, содержащий дамп всех цифровых отпечатков браузеров
+				 */
+				vector <uint8_t> dump() const noexcept;
+				/**
+				 * @brief Метод загрузки бинарного дампа всех цифровых отпечатков браузеров
+				 *
+				 * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
+				 * @return       результат загрузки бинарного дампа
+				 */
+				bool dump(const vector <uint8_t> & buffer) noexcept;
+			public:
+				/**
+				 * @brief Метод загрузки бинарного дампа цифрового отпечатка
+				 *
+				 * @param input   бинарный буфер с данными цифрового отпечатка
+				 * @param browser объект для хранения данных цифрового отпечатка
+				 * @return        результат загрузки бинарного дампа цифрового отпечатка
+				 */
+				bool dump(const vector <uint8_t> & input, browser_t & browser) const noexcept;
+				/**
+				 * @brief Метод формирования бинарного дампа цифрового отпечатка браузера
+				 *
+				 * @param browser объект с распарсенными данными ClientHello
+				 * @param output  буфер для записи бинарного дампа цифрового отпечатка
+				 * @return        результат формирования бинарного дампа цифрового отпечатка
+				 */
+				bool dump(const browser_t & browser, vector <uint8_t> & output) const noexcept;
+			public:
+				/**
+				 * @brief Метод обмена заголовками
+				 *
+				 * @param fgp объект Fingerprint для обмена данными
+				 */
+				void swap(Fingerprint & fgp) noexcept;
+			public:
+				/**
+				 * @brief Метод получения конечного итератора
+				 *
+				 * @return конечный итератор
+				 */
+				iterator_t end() noexcept;
+				/**
+				 * @brief Метод получение начального итератора
+				 *
+				 * @return начальный итератор
+				 */
+				iterator_t begin() noexcept;
+			public:
+				/**
+				 * @brief Метод поиска указанного заголовка
+				 *
+				 * @param name название заголовка для поиска
+				 * @return     итератор указанного заголовка
+				 */
+				iterator_t find(const string & name) noexcept;
+			public:
+				/**
+				 * @brief Оператор извлечения цифрового отпечатка браузера
+				 *
+				 * @param id идентификатор цифрового отпечатка
+				 * @return   цифровой отпечаток браузера
+				 */
+				const browser_t & operator[](const id_t id) const noexcept;
+			public:
+				/**
+				 * @brief Проверка, пусто ли хранилище цифровых отпечатков браузеров
+				 *
+				 * @return результат проверки
+				 */
+				operator bool() const noexcept;
+				/**
+				 * @brief Получения количества цифровых отпечатков браузеров, хранящихся в хранилище
+				 *
+				 * @return количество цифровых отпечатков браузеров
+				 */
+				operator size_t() const noexcept;
+				/**
+				 * @brief Получения бинарных данных дампа всех цифровых отпечатков браузеров
+				 *
+				 * @return бинарные данные буфера дампа всех цифровых отпечатков браузеров
+				 */
+				operator vector <uint8_t> () const noexcept;
+			public:
+				/**
+				 * @brief Оператор сравнения двух отпечатков браузеров
+				 *
+				 * @param fgp отпечатки браузеров для сравнения
+				 * @return    результат сравнения
+				 */
+				bool operator == (const Fingerprint & fgp) const noexcept;
+			public:
+				/**
+				 * @brief Оператор установки дампа цифрового отпечатка браузера с использованием перемещения
+				 *
+				 * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
+				 * @return       текущий контейнер отпечатков браузеров
+				 */
+				Fingerprint & operator = (vector <uint8_t> && buffer) noexcept;
+				/**
+				 * @brief Оператор установки дампа цифрового отпечатка браузера
+				 *
+				 * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
+				 * @return       текущий контейнер отпечатков браузеров
+				 */
+				Fingerprint & operator = (const vector <uint8_t> & buffer) noexcept;
+			public:
+				/**
+				 * @brief Оператор перемещения
+				 *
+				 * @param fgp объект Fingerprint для перемещения
+				 * @return    текущий контейнер отпечатков браузеров
+				 */
+				Fingerprint & operator = (Fingerprint && fgp) noexcept;
+				/**
+				 * @brief Оператор копирования
+				 *
+				 * @param fgp объект Fingerprint для копирования
+				 * @return    текущий контейнер отпечатков браузеров
+				 */
+				Fingerprint & operator = (const Fingerprint & fgp) noexcept;
+			public:
+				/**
+				 * @brief Конструктор копирования
+				 *
+				 */
+				explicit Fingerprint(const Fingerprint &) = delete;
 			public:
 				/**
 				 * @brief Конструктор

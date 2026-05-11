@@ -1716,7 +1716,7 @@ namespace fingerprint {
 			// Если код группы является GREASE
 			if(::local::isGrease(gid))
 				// Добавляем GREASE-запись в список обмена ключами браузера (сохраняем ключевой материал для корректного воспроизведения в apply)
-				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::GREASE, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+				awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::GREASE, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 			// Если код группы является одной из стандартных версий из RFC 8446 §4.2.7
 			else {
 				/**
@@ -1726,75 +1726,75 @@ namespace fingerprint {
 					// Если эллиптическая кривая соответствует P-256 (secp256r1)
 					case 0x0017:
 						// Добавляем код группы эллиптической кривой P-256 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_256, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::P_256, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует P-384 (secp384r1)
 					case 0x0018:
 						// Добавляем код группы эллиптической кривой P-384 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_384, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::P_384, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует P-521 (secp521r1)
 					case 0x0019:
 						// Добавляем код группы эллиптической кривой P-521 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::P_521, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::P_521, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует X25519
 					case 0x001D:
 						// Добавляем код группы эллиптической кривой X25519 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::X25519, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует X448
 					case 0x001E:
 						// Добавляем код группы эллиптической кривой X448 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X448, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::X448, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует secp256k1
 					case 0x001C:
 						// Добавляем код группы эллиптической кривой secp256k1 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::SECP256K1, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::SECP256K1, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует FFDHE 2048
 					case 0x0100:
 						// Добавляем код группы FFDHE 2048 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE2048, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::FFDHE2048, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует FFDHE 3072
 					case 0x0101:
 						// Добавляем код группы FFDHE 3072 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE3072, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::FFDHE3072, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует FFDHE 4096
 					case 0x0102:
 						// Добавляем код группы FFDHE 4096 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE4096, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::FFDHE4096, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует FFDHE 6144
 					case 0x0103:
 						// Добавляем код группы FFDHE 6144 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE6144, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::FFDHE6144, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует FFDHE 8192
 					case 0x0104:
 						// Добавляем код группы FFDHE 8192 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::FFDHE8192, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::FFDHE8192, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует MLKEM 1024
 					case 0x0202:
 						// Добавляем код группы MLKEM 1024 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::MLKEM1024, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::MLKEM1024, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует X25519Kyber768Draft00
 					case 0x6399:
 						// Добавляем код группы X25519Kyber768Draft00 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519_KYBER768_DRAFT00, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::X25519_KYBER768_DRAFT00, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая соответствует X25519MLKEM768
 					case 0x11EC:
 						// Добавляем код группы X25519MLKEM768 в список поддерживаемых групп эллиптических кривых браузера
-						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::X25519_MLKEM768, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+						awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::X25519_MLKEM768, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 					break;
 					// Если эллиптическая кривая не соответствует ни одной из известных, добавляем код UNKNOWN в список поддерживаемых групп эллиптических кривых браузера
-					default: awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->keyShares.emplace_back(awh::tls::group_t::UNKNOWN, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
+					default: awh_cast <awh::tls::fgp_t::extension_key_share_t *> (browser.extensions.back().get())->shares.emplace_back(awh::tls::group_t::UNKNOWN, vector <uint8_t> (buffer + offset, buffer + (offset + length)));
 				}
 			}
 			// Увеличиваем смещение на длину ключа для текущей группы обмена ключами
@@ -3331,6 +3331,57 @@ namespace http2 {
 };
 
 /**
+ * @brief Оператор преобразования в сырой итератор
+ * 
+ * @return iterator итератор для преобразования
+ */
+awh::tls::Fingerprint::Iterator::operator awh::tls::Fingerprint::Iterator::iterator() noexcept {
+
+}
+/**
+ * @brief Оператор извлечения указателя заголовка
+ *
+ * @return указатель заголовка
+ */
+awh::tls::Fingerprint::Iterator::pointer awh::tls::Fingerprint::Iterator::operator -> () noexcept {
+
+}
+/**
+ * @brief Оператор разыменования заголовка
+ *
+ * @return значение заголовка
+ */
+awh::tls::Fingerprint::Iterator::reference awh::tls::Fingerprint::Iterator::operator * () const noexcept {
+
+}
+/**
+ * @brief Оператор смещения вперед
+ *
+ * @return значение текущего итератора
+ */
+awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ () noexcept {
+
+}
+/**
+ * @brief Оператор сравнения соответствия итератора
+ *
+ * @param other итератор для сравнения
+ * @return      результат сравнения
+ */
+bool awh::tls::Fingerprint::Iterator::operator == (const Iterator & other) const noexcept {
+
+}
+/**
+ * @brief Оператора сравнения несоответствия итератора
+ *
+ * @param other итератор для сравнения
+ * @return      результат сравнения
+ */
+bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const noexcept {
+
+}
+
+/**
  * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера
  *
  * Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
@@ -3779,7 +3830,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					/**
 					 * Перебираем пары группа→размер ключа и выводим их, разделяя запятой
 					 */
-					for(const auto & [grp, data] : p->keyShares){
+					for(const auto & [grp, data] : p->shares){
 						// Если это не первая пара группа→размер ключа
 						if(!first)
 							// Выводим запятую для разделения пар группа→размер ключа
@@ -6785,14 +6836,14 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 					 * Перебираем группы шаблона, включаем только те, что есть в исходном ClientHello.
 					 * Ключевой материал (key_exchange) берём из исходного ClientHello.
 					 */
-					for(const auto & ks : tmpl->keyShares){
+					for(const auto & ks : tmpl->shares){
 						// Ищем эту группу в исходном ClientHello
 						const auto i = ::find_if(
-							orig->keyShares.begin(), orig->keyShares.end(),
+							orig->shares.begin(), orig->shares.end(),
 							[&ks](const pair <group_t, vector <uint8_t>> & e){ return e.first == ks.first; }
 						);
 						// Если группы нет в исходном ClientHello — пропускаем
-						if(i == orig->keyShares.end())
+						if(i == orig->shares.end())
 							// Группы нет в исходном ClientHello — пропускаем
 							continue;
 						// Вычисляем wire-код группы (GREASE → 0x0A0A)
@@ -6936,6 +6987,842 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 	}
 	// Выводим результат
 	return result;
+}
+/**
+ * @brief Метод очистки всех цифровых отпечатков браузеров из хранилища
+ *
+ */
+void awh::tls::Fingerprint::clear() noexcept {
+
+}
+/**
+ * @brief Метод проверки, пусто ли хранилище цифровых отпечатков браузеров
+ *
+ * @return результат проверки
+ */
+bool awh::tls::Fingerprint::empty() const noexcept {
+
+}
+/**
+ * @brief Метод получения количества цифровых отпечатков браузеров, хранящихся в хранилище
+ *
+ * @return количество цифровых отпечатков браузеров
+ */
+size_t awh::tls::Fingerprint::size() const noexcept {
+
+}
+/**
+ * @brief Метод получения списка идентификаторов всех цифровых отпечатков браузеров, хранящихся в хранилище
+ *
+ * @return список идентификаторов цифровых отпечатков браузеров
+ */
+vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcept {
+
+}
+/**
+ * @brief Метод удаления цифрового отпечатка браузера из хранилища по идентификатору
+ *
+ * @param id идентификатор цифрового отпечатка
+ * @return   результат выполнения удаления цифрового отпечатка
+ */
+bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
+
+}
+/**
+ * @brief Метод получения данных цифрового отпечатка браузера по идентификатору
+ *
+ * @param id      идентификатор цифрового отпечатка
+ * @param browser объект для хранения распарсенных данных цифрового отпечатка
+ * @return        результат получения данных цифрового отпечатка по идентификатору
+ */
+bool awh::tls::Fingerprint::get(const id_t id, browser_t & browser) const noexcept {
+
+}
+/**
+ * @brief Метод добавления цифрового отпечатка браузера в хранилище
+ *
+ * @param browser объект с распарсенными данными ClientHello
+ * @return        идентификатор добавленного цифрового отпечатка
+ */
+awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser) noexcept {
+
+}
+/**
+ * @brief Метод добавления цифрового отпечатка браузера в хранилище в бинарном виде (дамп цифрового отпечатка)
+ *
+ * @param buffer бинарный буфер с данными цифрового отпечатка
+ * @param size   размер бинарного буфера в байтах
+ * @return       идентификатор добавленного цифрового отпечатка
+ */
+awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, const size_t size) noexcept {
+
+}
+/**
+ * @brief Метод формирования бинарного дампа всех цифровых отпечатков браузеров
+ *
+ * @return бинарный буфер, содержащий дамп всех цифровых отпечатков браузеров
+ */
+vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
+
+}
+/**
+ * @brief Метод загрузки бинарного дампа всех цифровых отпечатков браузеров
+ *
+ * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
+ * @return       результат загрузки бинарного дампа
+ */
+bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
+
+}
+/**
+ * @brief Метод загрузки бинарного дампа цифрового отпечатка
+ *
+ * @param input   бинарный буфер с данными цифрового отпечатка
+ * @param browser объект для хранения данных цифрового отпечатка
+ * @return        результат загрузки бинарного дампа цифрового отпечатка
+ */
+bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & browser) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод формирования бинарного дампа цифрового отпечатка браузера
+ *
+ * @param browser объект с распарсенными данными ClientHello
+ * @param output  буфер для записи бинарного дампа цифрового отпечатка
+ * @return        результат формирования бинарного дампа цифрового отпечатка
+ */
+bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & output) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем очистку выходного буфера от предыдущих данных
+		output.clear();
+		// Добавляем флаг, указывающий на использование GREASE в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&browser.grease), reinterpret_cast <const uint8_t *> (&browser.grease) + sizeof(browser.grease));
+		// Добавляем запись  метаданных TLS рукопожатия в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&browser.record), reinterpret_cast <const uint8_t *> (&browser.record) + sizeof(browser.record));
+		// Добавляем объект TLS рукопожатия в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&browser.handshake), reinterpret_cast <const uint8_t *> (&browser.handshake) + sizeof(browser.handshake));
+		// Добавляем объект ClientHello TLS рукопожатия в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&browser.clientHello), reinterpret_cast <const uint8_t *> (&browser.clientHello) + sizeof(browser.clientHello));
+		// Получаем размер куков DTLS
+		size_t size = browser.cookie.size();
+		// Добавляем размер куков DTLS в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+		// Если куки DTLS присутствуют
+		if(size > 0)
+			// Добавляем куки DTLS в результирующий буфер
+			output.insert(output.end(), browser.cookie.begin(), browser.cookie.end());
+		// Получаем размер идентификатора сессии TLS
+		size = browser.session.size();
+		// Добавляем размер идентификатора сессии TLS в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+		// Если идентификатор сессии TLS присутствует
+		if(size > 0)
+			// Добавляем идентификатор сессии TLS в результирующий буфер
+			output.insert(output.end(), browser.session.begin(), browser.session.end());
+		// Получаем размер списка шифров TLS
+		size = browser.ciphers.size();
+		// Добавляем размер списка шифров TLS в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+		// Если список шифров TLS не пустой
+		if(size > 0)
+			// Добавляем список шифров TLS в результирующий буфер
+			output.insert(output.end(), reinterpret_cast <const uint8_t *> (&browser.ciphers[0]), reinterpret_cast <const uint8_t *> (&browser.ciphers[0]) + size);
+		// Получаем размер списка методов компрессии сертификата TLS
+		size = browser.compressors.size();
+		// Добавляем размер списка методов компрессии сертификата TLS в результирующий буфер
+		output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+		// Если список методов компрессии сертификата TLS не пустой
+		if(size > 0)
+			// Добавляем список методов компрессии сертификата TLS в результирующий буфер
+			output.insert(output.end(), reinterpret_cast <const uint8_t *> (&browser.compressors[0]), reinterpret_cast <const uint8_t *> (&browser.compressors[0]) + size);
+		/**
+		 * Выполняем перебор всех расширений TLS в цифровом отпечатке браузера
+		 */
+		for(const auto & ext : browser.extensions){
+			// Добавляем тип расширения в результирующий буфер
+			output.insert(output.end(), reinterpret_cast <const uint8_t *> (&ext->type), reinterpret_cast <const uint8_t *> (&ext->type) + sizeof(ext->type));
+			/**
+			 * Строим payload в зависимости от типа расширения
+			 */
+			switch(static_cast <uint8_t> (ext->type)){
+				// Если тип расширения соответствует server_name
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_server_name_t *> (ext.get());
+					// Получаем размер списка имён серверов в расширении server_name
+					size = extension->names.size();
+					// Добавляем размер списка имён серверов в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список имён серверов не пустой
+					if(size > 0){
+						/**
+						 * Перебираем имена серверов в расширении server_name
+						 */
+						for(const auto & name : extension->names){
+							// Получаем размер имени сервера
+							size = name.size();
+							// Добавляем размер имени сервера в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если имя сервера не пустое
+							if(size > 0)
+								// Добавляем имя сервера в результирующий буфер
+								output.insert(output.end(), name.begin(), name.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует max_fragment_length
+				case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_max_fragment_length_t *> (ext.get());
+					// Добавляем значение max_fragment_length в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->length), reinterpret_cast <const uint8_t *> (&extension->length) + sizeof(extension->length));
+				} break;
+				// Если тип расширения соответствует status_request
+				case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_status_request_t *> (ext.get());
+					// Получаем размер типа статуса сертификата
+					size = extension->certificateStatusType.size();
+					// Добавляем размер типа статуса сертификата в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если тип статуса сертификата не пустой
+					if(size > 0)
+						// Добавляем тип статуса сертификата в результирующий буфер
+						output.insert(output.end(), extension->certificateStatusType.begin(), extension->certificateStatusType.end());
+					// Устанавливаем длину списка идентификаторов ответчиков
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->responderIdListLength), reinterpret_cast <const uint8_t *> (&extension->responderIdListLength) + sizeof(extension->responderIdListLength));
+					// Устанавливаем длину расширений запроса статуса сертификата
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->requestExtensionsLength), reinterpret_cast <const uint8_t *> (&extension->requestExtensionsLength) + sizeof(extension->requestExtensionsLength));
+				} break;
+				// Если тип расширения соответствует supported_groups
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_GROUPS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_supported_groups_t *> (ext.get());
+					// Получаем размер списка поддерживаемых групп
+					size = extension->supportedGroups.size();
+					// Добавляем размер списка поддерживаемых групп в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список поддерживаемых групп не пустой
+					if(size > 0)
+						// Добавляем список поддерживаемых групп в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->supportedGroups[0]), reinterpret_cast <const uint8_t *> (&extension->supportedGroups[0]) + size);
+				} break;
+				// Если тип расширения соответствует ec_point_formats
+				case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_ec_point_t *> (ext.get());
+					// Получаем размер списка форматов точек эллиптической кривой
+					size = extension->formats.size();
+					// Добавляем размер списка форматов точек эллиптической кривой в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список форматов точек эллиптической кривой не пустой
+					if(size > 0)
+						// Добавляем список форматов точек эллиптической кривой в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->formats[0]), reinterpret_cast <const uint8_t *> (&extension->formats[0]) + size);
+				} break;
+				// Если тип расширения соответствует signature_algorithms
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_signature_t *> (ext.get());
+					// Получаем размер списка алгоритмов подписи
+					size = extension->algorithms.size();
+					// Добавляем размер списка алгоритмов подписи в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список алгоритмов подписи не пустой
+					if(size > 0)
+						// Добавляем список алгоритмов подписи в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]) + size);
+				} break;
+				// Если тип расширения соответствует use_srtp
+				case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_use_srtp_t *> (ext.get());
+					// Устанавливаем значение mki_length в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->mkiLength), reinterpret_cast <const uint8_t *> (&extension->mkiLength) + sizeof(extension->mkiLength));
+					// Получаем размер профилей SRTP
+					size = extension->profiles.size();
+					// Добавляем размер профилей SRTP в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список профилей SRTP не пустой
+					if(size > 0)
+						// Добавляем список профилей SRTP в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->profiles[0]), reinterpret_cast <const uint8_t *> (&extension->profiles[0]) + size);
+				} break;
+				// Если тип расширения соответствует heartbeat
+				case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_heartbeat_t *> (ext.get());
+					// Добавляем значение режима heartbeat в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->mode), reinterpret_cast <const uint8_t *> (&extension->mode) + sizeof(extension->mode));
+				} break;
+				// Если тип расширения соответствует alpn
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ALPN): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_alpn_t *> (ext.get());
+					// Получаем размер списка протоколов ALPN
+					size = extension->protocols.size();
+					// Добавляем размер списка протоколов ALPN в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список протоколов ALPN не пустой
+					if(size > 0){
+						/**
+						 * Перебираем протоколы в расширении ALPN
+						 */
+						for(const auto & protocol : extension->protocols){
+							// Получаем размер протокола ALPN
+							size = protocol.size();
+							// Добавляем размер протокола ALPN в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если протокол ALPN не пустой
+							if(size > 0)
+								// Добавляем протокол ALPN в результирующий буфер
+								output.insert(output.end(), protocol.begin(), protocol.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует padding
+				case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_padding_t *> (ext.get());
+					// Добавляем размер паддинга в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->size), reinterpret_cast <const uint8_t *> (&extension->size) + sizeof(extension->size));
+				} break;
+				// Если тип расширения соответствует extended_master_secret
+				case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_extended_master_secret_t *> (ext.get());
+					// Получаем размер данных extended_master_secret
+					size = extension->masterSecretData.size();
+					// Добавляем размер данных extended_master_secret в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные extended_master_secret не пустые
+					if(size > 0)
+						// Добавляем данные extended_master_secret в результирующий буфер
+						output.insert(output.end(), extension->masterSecretData.begin(), extension->masterSecretData.end());
+					// Получаем размер данных extended_master_secret (устаревшее расширение)
+					size = extension->extendedMasterSecretData.size();
+					// Добавляем размер данных extended_master_secret в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные extended_master_secret не пустые
+					if(size > 0)
+						// Добавляем данные extended_master_secret в результирующий буфер
+						output.insert(output.end(), extension->extendedMasterSecretData.begin(), extension->extendedMasterSecretData.end());
+				} break;
+				// Если тип расширения соответствует compress_certificate
+				case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_compress_certificate_t *> (ext.get());
+					// Получаем размер списка алгоритмов сжатия сертификата
+					size = extension->algorithms.size();
+					// Добавляем размер списка алгоритмов сжатия сертификата в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список алгоритмов сжатия сертификата не пустой
+					if(size > 0)
+						// Добавляем список алгоритмов сжатия сертификата в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]) + size);
+				} break;
+				// Если тип расширения соответствует record_size_limit
+				case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_record_size_limit_t *> (ext.get());
+					// Добавляем значение record_size_limit в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->data), reinterpret_cast <const uint8_t *> (&extension->data) + sizeof(extension->data));
+				} break;
+				// Если тип расширения соответствует delegated_credential
+				case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_delegated_credential_t *> (ext.get());
+					// Получаем размер списка алгоритмов делегированных учётных данных
+					size = extension->algorithms.size();
+					// Добавляем размер списка алгоритмов делегированных учётных данных в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список алгоритмов делегированных учётных данных не пустой
+					if(size > 0)
+						// Добавляем список алгоритмов делегированных учётных данных в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]) + size);
+				} break;
+				// Если тип расширения соответствует session_ticket
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_session_ticket_t *> (ext.get());
+					// Получаем размер данных расширения session_ticket
+					size = extension->data.size();
+					// Добавляем размер данных расширения session_ticket в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные расширения session_ticket не пустые
+					if(size > 0)
+						// Добавляем данные расширения session_ticket в результирующий буфер
+						output.insert(output.end(), extension->data.begin(), extension->data.end());
+				} break;
+				// Если тип расширения соответствует pre_shared_key
+				case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_pre_shared_key_t *> (ext.get());
+					// Получаем размер списка идентификаторов PSK
+					size = extension->identities.size();
+					// Добавляем размер списка идентификаторов PSK в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список идентификаторов PSK не пустой
+					if(size > 0){
+						/**
+						 * Перебираем идентификаторы PSK в расширении pre_shared_key
+						 */
+						for(const auto & identity : extension->identities){
+							// Добавляем значение ticket_age в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&identity.ticketAge), reinterpret_cast <const uint8_t *> (&identity.ticketAge) + sizeof(identity.ticketAge));
+							// Получаем размер идентификатора PSK
+							size = identity.data.size();
+							// Добавляем размер идентификатора PSK в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если идентификатор PSK не пустой
+							if(size > 0)
+								// Добавляем идентификатор PSK в результирующий буфер
+								output.insert(output.end(), identity.data.begin(), identity.data.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует early_data
+				case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_early_data_t *> (ext.get());
+					// Добавляем значение max_early_data_size в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->maxSize), reinterpret_cast <const uint8_t *> (&extension->maxSize) + sizeof(extension->maxSize));
+				} break;
+				// Если тип расширения соответствует supported_versions
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_supported_versions_t *> (ext.get());
+					// Получаем размер списка поддерживаемых версий TLS
+					size = extension->versions.size();
+					// Добавляем размер списка поддерживаемых версий TLS в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список поддерживаемых версий TLS не пустой
+					if(size > 0)
+						// Добавляем список поддерживаемых версий TLS в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->versions[0]), reinterpret_cast <const uint8_t *> (&extension->versions[0]) + size);
+				} break;
+				// Если тип расширения соответствует cookie
+				case static_cast <uint8_t> (awh::tls::extension_type_t::COOKIE): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_cookie_t *> (ext.get());
+					// Получаем размер данных расширения cookie
+					size = extension->data.size();
+					// Добавляем размер данных расширения cookie в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные расширения cookie не пустые
+					if(size > 0)
+						// Добавляем данные расширения cookie в результирующий буфер
+						output.insert(output.end(), extension->data.begin(), extension->data.end());
+				} break;
+				// Если тип расширения соответствует psk_key_exchange_modes
+				case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_psk_key_exchange_t *> (ext.get());
+					// Получаем размер списка режимов обмена ключами PSK
+					size = extension->modes.size();
+					// Добавляем размер списка режимов обмена ключами PSK в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список режимов обмена ключами PSK не пустой
+					if(size > 0)
+						// Добавляем список режимов обмена ключами PSK в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->modes[0]), reinterpret_cast <const uint8_t *> (&extension->modes[0]) + size);
+				} break;
+				// Если тип расширения соответствует certificate_authorities
+				case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_certificate_authorities_t *> (ext.get());
+					// Получаем размер списка авторитетов сертификатов
+					size = extension->authorities.size();
+					// Добавляем размер списка авторитетов сертификатов в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список авторитетов сертификатов не пустой
+					if(size > 0){
+						/**
+						 * Перебираем авторитеты сертификатов в расширении certificate_authorities
+						 */
+						for(const auto & authority : extension->authorities){
+							// Получаем размер авторитета сертификата
+							size = authority.size();
+							// Добавляем размер авторитета сертификата в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если авторитет сертификата не пустой
+							if(size > 0)
+								// Добавляем авторитет сертификата в результирующий буфер
+								output.insert(output.end(), authority.begin(), authority.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует signature_algorithms_cert
+				case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_signature_algorithms_cert_t *> (ext.get());
+					// Получаем размер списка алгоритмов подписи сертификатов
+					size = extension->algorithms.size();
+					// Добавляем размер списка алгоритмов подписи сертификатов в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список алгоритмов подписи сертификатов не пустой
+					if(size > 0)
+						// Добавляем список алгоритмов подписи сертификатов в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]), reinterpret_cast <const uint8_t *> (&extension->algorithms[0]) + size);
+				} break;
+				// Если тип расширения соответствует key_share
+				case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_key_share_t *> (ext.get());
+					// Получаем размер списка ключей для обмена
+					size = extension->shares.size();
+					// Добавляем размер списка ключей для обмена в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список ключей для обмена не пустой
+					if(size > 0){
+						/**
+						 * Перебираем ключи для обмена в расширении key_share
+						 */
+						for(const auto & share : extension->shares){
+							// Добавляем значение group в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&share.first), reinterpret_cast <const uint8_t *> (&share.first) + sizeof(share.first));
+							// Получаем размер данных ключа для обмена
+							size = share.second.size();
+							// Добавляем размер данных ключа для обмена в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если данные ключа для обмена не пустые
+							if(size > 0)
+								// Добавляем данные ключа для обмена в результирующий буфер
+								output.insert(output.end(), share.second.begin(), share.second.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует quic_transport_parameters
+				case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_quic_transport_params_t *> (ext.get());
+					// Получаем размер параметров транспортного уровня QUIC
+					size = extension->params.size();
+					// Добавляем размер параметров транспортного уровня QUIC в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если параметры транспортного уровня QUIC не пустые
+					if(size > 0){
+						/**
+						 * Перебираем параметры транспортного уровня QUIC в расширении quic_transport_parameters
+						 */
+						for(const auto & param : extension->params){
+							// Добавляем значение идентификатора параметра транспортного уровня QUIC в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&param.first), reinterpret_cast <const uint8_t *> (&param.first) + sizeof(param.first));
+							// Добавляем значение параметра транспортного уровня QUIC в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&param.second), reinterpret_cast <const uint8_t *> (&param.second) + sizeof(param.second));
+						}
+					}
+				} break;
+				// Если тип расширения соответствует tls_flags
+				case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_tls_flags_t *> (ext.get());
+					// Получаем размер списка флагов TLS
+					size = extension->flags.size();
+					// Добавляем размер списка флагов TLS в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список флагов TLS не пустой
+					if(size > 0)
+						// Добавляем список флагов TLS в результирующий буфер
+						output.insert(output.end(), extension->flags.begin(), extension->flags.end());
+				} break;
+				// Если тип расширения соответствует next_protocol_negotiation
+				case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_next_proto_neg_t *> (ext.get());
+					// Получаем размер данных расширения next_protocol_negotiation
+					size = extension->protocols.size();
+					// Добавляем размер данных расширения next_protocol_negotiation в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные расширения next_protocol_negotiation не пустые
+					if(size > 0){
+						/**
+						 * Перебираем протоколы в расширении next_protocol_negotiation
+						 */
+						for(const auto & protocol : extension->protocols){
+							// Получаем размер протокола в расширении next_protocol_negotiation
+							size = protocol.size();
+							// Добавляем размер протокола в расширении next_protocol_negotiation в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если протокол в расширении next_protocol_negotiation не пустой
+							if(size > 0)
+								// Добавляем протокол в расширении next_protocol_negotiation в результирующий буфер
+								output.insert(output.end(), protocol.begin(), protocol.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует application_settings_old (устаревшее)
+				case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_application_settings_old_t *> (ext.get());
+					// Получаем количество протоколов в расширении application_settings_old
+					size = extension->protocols.size();
+					// Добавляем количество протоколов в расширении application_settings_old в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные расширения application_settings_old не пустые
+					if(size > 0){
+						/**
+						 * Перебираем протоколы в расширении application_settings_old
+						 */
+						for(const auto & protocol : extension->protocols){
+							// Получаем размер протокола в расширении application_settings_old
+							size = protocol.size();
+							// Добавляем размер протокола в расширении application_settings_old в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если протокол в расширении application_settings_old не пустой
+							if(size > 0)
+								// Добавляем протокол в расширении application_settings_old в результирующий буфер
+								output.insert(output.end(), protocol.begin(), protocol.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует application_settings
+				case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_application_settings_t *> (ext.get());
+					// Получаем количество протоколов в расширении application_settings
+					size = extension->protocols.size();
+					// Добавляем количество протоколов в расширении application_settings в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные расширения application_settings не пустые
+					if(size > 0){
+						/**
+						 * Перебираем протоколы в расширении application_settings
+						 */
+						for(const auto & protocol : extension->protocols){
+							// Получаем размер протокола в расширении application_settings
+							size = protocol.size();
+							// Добавляем размер протокола в расширении application_settings в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+							// Если протокол в расширении application_settings не пустой
+							if(size > 0)
+								// Добавляем протокол в расширении application_settings в результирующий буфер
+								output.insert(output.end(), protocol.begin(), protocol.end());
+						}
+					}
+				} break;
+				// Если тип расширения соответствует ech_outer_extensions
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_ech_outer_extensions_t *> (ext.get());
+					// Получаем количество расширений в расширении ech_outer_extensions
+					size = extension->extensions.size();
+					// Добавляем количество расширений в расширении ech_outer_extensions в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если список расширений в расширении ech_outer_extensions не пустой
+					if(size > 0)
+						// Добавляем список расширений в результирующий буфер
+						output.insert(output.end(), reinterpret_cast <const uint8_t *> (&extension->extensions[0]), reinterpret_cast <const uint8_t *> (&extension->extensions[0]) + size);
+				} break;
+				// Если тип расширения соответствует encrypted_client_hello
+				case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_encryption_client_hello_t *> (ext.get());
+					// Получаем размер данных расширения encrypted_client_hello
+					size = extension->data.size();
+					// Добавляем размер данных расширения encrypted_client_hello в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные расширения encrypted_client_hello не пустые
+					if(size > 0)
+						// Добавляем данные расширения encrypted_client_hello в результирующий буфер
+						output.insert(output.end(), extension->data.begin(), extension->data.end());
+				} break;
+				// Если тип расширения соответствует renegotiation_info
+				case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_renegotiation_info_t *> (ext.get());
+					// Получаем размер данных расширения renegotiation_info
+					size = extension->data.size();
+					// Добавляем размер данных расширения renegotiation_info в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если данные расширения renegotiation_info не пустые
+					if(size > 0)
+						// Добавляем данные расширения renegotiation_info в результирующий буфер
+						output.insert(output.end(), extension->data.begin(), extension->data.end());
+				} break;
+				// Если тип расширения соответствует quic_transport_parameters_legacy
+				case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
+					// Получаем объект расширения
+					const auto * extension = static_cast <const extension_quic_transport_params_legacy_t *> (ext.get());
+					// Получаем размер параметров транспортного уровня QUIC (устаревшее расширение)
+					size = extension->params.size();
+					// Добавляем размер параметров транспортного уровня QUIC (устаревшее расширение) в результирующий буфер
+					output.insert(output.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
+					// Если параметры транспортного уровня QUIC (устаревшее расширение) не пустые
+					if(size > 0){
+						/**
+						 * Перебираем параметры транспортного уровня QUIC (устаревшее расширение) в расширении quic_transport_parameters_legacy
+						 */
+						for(const auto & param : extension->params){
+							// Добавляем значение идентификатора параметра транспортного уровня QUIC (устаревшее расширение) в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&param.first), reinterpret_cast <const uint8_t *> (&param.first) + sizeof(param.first));
+							// Добавляем значение параметра транспортного уровня QUIC (устаревшее расширение) в результирующий буфер
+							output.insert(output.end(), reinterpret_cast <const uint8_t *> (&param.second), reinterpret_cast <const uint8_t *> (&param.second) + sizeof(param.second));
+						}
+					}
+				} break;
+			}
+		}
+		// Выводим результат
+		return !output.empty();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод обмена заголовками
+ *
+ * @param fgp объект Fingerprint для обмена данными
+ */
+void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
+
+}
+/**
+ * @brief Метод получения конечного итератора
+ *
+ * @return конечный итератор
+ */
+awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
+
+}
+/**
+ * @brief Метод получение начального итератора
+ *
+ * @return начальный итератор
+ */
+awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
+
+}
+/**
+ * @brief Метод поиска указанного заголовка
+ *
+ * @param name название заголовка для поиска
+ * @return     итератор указанного заголовка
+ */
+awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const string & name) noexcept {
+
+}
+/**
+ * @brief Оператор извлечения цифрового отпечатка браузера
+ *
+ * @param id идентификатор цифрового отпечатка
+ * @return   цифровой отпечаток браузера
+ */
+const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const id_t id) const noexcept {
+
+}
+/**
+ * @brief Проверка, пусто ли хранилище цифровых отпечатков браузеров
+ *
+ * @return результат проверки
+ */
+awh::tls::Fingerprint::operator bool() const noexcept {
+
+}
+/**
+ * @brief Получения количества цифровых отпечатков браузеров, хранящихся в хранилище
+ *
+ * @return количество цифровых отпечатков браузеров
+ */
+awh::tls::Fingerprint::operator size_t() const noexcept {
+
+}
+/**
+ * @brief Получения бинарных данных дампа всех цифровых отпечатков браузеров
+ *
+ * @return бинарные данные буфера дампа всех цифровых отпечатков браузеров
+ */
+awh::tls::Fingerprint::operator vector <uint8_t> () const noexcept {
+
+}
+/**
+ * @brief Оператор сравнения двух отпечатков браузеров
+ *
+ * @param fgp отпечатки браузеров для сравнения
+ * @return    результат сравнения
+ */
+bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept {
+
+}
+/**
+ * @brief Оператор установки дампа цифрового отпечатка браузера с использованием перемещения
+ *
+ * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
+ * @return       текущий контейнер отпечатков браузеров
+ */
+awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (vector <uint8_t> && buffer) noexcept {
+
+}
+/**
+ * @brief Оператор установки дампа цифрового отпечатка браузера
+ *
+ * @param buffer бинарный буфер для загрузки данных цифровых отпечатков
+ * @return       текущий контейнер отпечатков браузеров
+ */
+awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t> & buffer) noexcept {
+
+}
+/**
+ * @brief Оператор перемещения
+ *
+ * @param fgp объект Fingerprint для перемещения
+ * @return    текущий контейнер отпечатков браузеров
+ */
+awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) noexcept {
+
+}
+/**
+ * @brief Оператор копирования
+ *
+ * @param fgp объект Fingerprint для копирования
+ * @return    текущий контейнер отпечатков браузеров
+ */
+awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & fgp) noexcept {
+
 }
 /**
  * @brief Конструктор
