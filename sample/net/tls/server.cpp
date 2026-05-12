@@ -62,7 +62,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем объект транспортного уровня безопасности
 		tls::coder_t::id_t cts = coder.context(event::node_t::SERVER, event::protocol_t::TCP);
 		// Устанавливаем ALPN протоколы TLS
-		coder.alpn(cts, {{0,"h2"},{1,"h3"},{2,"http/1.1"}});
+		coder.alpn(cts, {{3,"h2"},{2,"http/1.1"}});
 		// Устанавливаем файл центра сертификации TLS
 		coder.ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста TLS
