@@ -23,6 +23,7 @@
  */
 #include <net/io.hpp>
 #include <net/tls/coder.hpp>
+#include <net/tls/fingerprint.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -48,8 +49,10 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
+	// Создаём объект отпечатка браузера
+	tls::fgp_t fgp(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
-	tls::coder_t coder(&fmk, &log);
+	tls::coder_t coder(&fgp, &fmk, &log);
 	// Добавляем новое событие сервера TCP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
@@ -248,11 +251,16 @@ int32_t main(int32_t argc, char * argv[]){
 				}
 			});
 			// Устанавливаем функцию обратного вызова на принятие события
-			io.on(eid, static_cast <engine::callback::accept_t> ([cts, &coder, &io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
+			io.on(eid, static_cast <engine::callback::accept_t> ([cts, &fgp, &coder, &io, &log](const event::id_t sid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
 				log.print("Событие принято: ID=%u, Клиентский ID=%u", log_t::flag_t::INFO, sid, cid);
 				// Создаём идентификатор транспортного уровня DTLS
 				tls::coder_t::id_t ctl = coder.transport(cts);
+				// Регистрируем функцию обратного вызова на получение снимка браузера приславшего ClientHello
+				coder.on(ctl, [&fgp, &log](const tls::coder_t::id_t id, const tls::fgp_t::browser_t & browser) noexcept -> void {
+					// Выводим информацию о браузере, который прислал ClientHello
+					log.print("Отпечаток браузера TLS: ID=%" PRIu64 ", Сообщение:\n%s", log_t::flag_t::INFO, id, fgp.print(browser).c_str());
+				});
 				// Регистрируем функцию обратного вызова на получение ошибок TLS
 				coder.on(ctl, [&log](const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept -> void {
 					// Выводим сообщение о предупреждающей ошибке TLS

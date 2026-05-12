@@ -5999,7 +5999,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
  * @param browser объект для хранения распарсенных данных цифрового отпечатка
  * @return        результат парсинга данных цифрового отпечатка
  */
-bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, browser_t & browser) noexcept {
+bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, browser_t & browser) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -6958,7 +6958,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
  * @param h2     объект для хранения распарсенных данных
  * @return       true если SETTINGS-фрейм был успешно разобран, иначе false
  */
-bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h2_browser_t & h2) noexcept {
+bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h2_browser_t & h2) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7278,7 +7278,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
  * @param browser объект с распарсенными данными ClientHello
  * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
  */
-vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size_t size, const browser_t & browser) noexcept {
+vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size_t size, const browser_t & browser) const noexcept {
 	// Результат работы функции
 	vector <uint8_t> result;
 	/**

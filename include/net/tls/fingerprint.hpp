@@ -1339,7 +1339,7 @@ namespace awh {
 				 * @param browser объект для хранения распарсенных данных цифрового отпечатка
 				 * @return        результат парсинга данных цифрового отпечатка
 				 */
-				bool parse(const uint8_t * buffer, const size_t size, browser_t & browser) noexcept;
+				bool parse(const uint8_t * buffer, const size_t size, browser_t & browser) const noexcept;
 				/**
 				 * @brief Метод парсинга connection preface и начальных фреймов HTTP/2-соединения
 				 *
@@ -1352,7 +1352,7 @@ namespace awh {
 				 * @param h2     объект для хранения распарсенных данных
 				 * @return       true если SETTINGS-фрейм был успешно разобран, иначе false
 				 */
-				bool parseH2(const uint8_t * buffer, const size_t size, h2_browser_t & h2) noexcept;
+				bool parseH2(const uint8_t * buffer, const size_t size, h2_browser_t & h2) const noexcept;
 			public:
 				/**
 				 * @brief Метод применения данных цифрового отпечатка на запрос ClientHello
@@ -1362,7 +1362,7 @@ namespace awh {
 				 * @param browser объект с распарсенными данными ClientHello
 				 * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
 				 */
-				vector <uint8_t> apply(const uint8_t * buffer, const size_t size, const browser_t & browser) noexcept;
+				vector <uint8_t> apply(const uint8_t * buffer, const size_t size, const browser_t & browser) const noexcept;
 			public:
 				/**
 				 * @brief Метод очистки всех цифровых отпечатков браузеров из хранилища

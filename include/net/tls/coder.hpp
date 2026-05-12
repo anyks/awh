@@ -119,15 +119,16 @@ namespace awh {
 					SIGNATURE_FAILED    = 0x0E, // Ошибка алгоритма подписи
 					HANDSHAKE_FAILED    = 0x0F, // Ошибка рукопожатия
 					STORE_X509_FAILED   = 0x10, // Ошибка хранилища X509
-					COMPRESSION_FAILED  = 0x11, // Ошибка компрессии
-					TLS_SESSION_FAILED  = 0x12, // Ошибка TLS сессии
-					PRIVATE_KEY_FAILED  = 0x13, // Ошибка приватного ключа
-					HOSTNAME_BAD        = 0x14, // Ошибка имени хоста
-					INVALID_LAYER       = 0x15, // Ошибка уровня TLS
-					UNSUPPORTED_IP      = 0x16, // Ошибка неподдерживаемого IP-адреса
-					HOSTNAME_VERIFY     = 0x17, // Ошибка проверки имени хоста
-					MISMATCH_VERSION    = 0x18, // Ошибка версии TLS
-					UNSUPPORTED_VERSION = 0x19, // Ошибка неподдерживаемой версии TLS
+					FINGERPRINT_FAILED  = 0x11, // Ошибка цифрового отпечатка
+					COMPRESSION_FAILED  = 0x12, // Ошибка компрессии
+					TLS_SESSION_FAILED  = 0x13, // Ошибка TLS сессии
+					PRIVATE_KEY_FAILED  = 0x14, // Ошибка приватного ключа
+					HOSTNAME_BAD        = 0x15, // Ошибка имени хоста
+					INVALID_LAYER       = 0x16, // Ошибка уровня TLS
+					UNSUPPORTED_IP      = 0x17, // Ошибка неподдерживаемого IP-адреса
+					HOSTNAME_VERIFY     = 0x18, // Ошибка проверки имени хоста
+					MISMATCH_VERSION    = 0x19, // Ошибка версии TLS
+					UNSUPPORTED_VERSION = 0x1A, // Ошибка неподдерживаемой версии TLS
 				};
 			public:
 				/**
@@ -172,28 +173,33 @@ namespace awh {
 				 */
 				using state_callback_t = std::function <void (const id_t, const state_t)>;
 				/**
+				 * @brief Функция обратного вызова срабатывающая при записи
+				 *
+				 */
+				using write_callback_t = std::function <void (const id_t, const event_t, const size_t)>;
+				/**
 				 * @brief Функция обратного вызова срабатывающая при ошибке события
 				 *
 				 */
 				using error_callback_t = std::function <void (const id_t, const error_t, const string &)>;
 				/**
-				 * @brief Функция обратного вызова срабатывающая при записи
+				 * @brief Функция обратного вызова срабатывающая при получении снимка браузера приславшего ClientHello
 				 *
 				 */
-				using write_callback_t = std::function <void (const id_t, const event_t, const size_t)>;
+				using fingerprint_callback_t = std::function <void (const id_t, const fgp_t::browser_t &)>;
 				/**
 				 * @brief Функция обратного вызова срабатывающая при чтении
 				 *
 				 */
 				using read_callback_t = std::function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
 			private:
-				// Объект работы с отпечатками TLS
-				fgp_t _fgp;
 				// Объект работы с IP-адресами
 				net_addr_t _addr;
 				// Объект работы с компрессией
 				awh::compressor_t _compressor;
 			private:
+				// Объект работы с отпечатками TLS
+				const fgp_t * _fgp;
 				// Объект фреймворка
 				const fmk_t * _fmk;
 				// Объект работы с логами
@@ -205,6 +211,13 @@ namespace awh {
 				 * @return версия OpenSSL
 				 */
 				string version() const noexcept;
+			public:
+				/**
+				 * @brief Метод подключения объекта для работы с отпечатками TLS
+				 *
+				 * @param fgp объект для работы с отпечатками TLS
+				 */
+				void fingerprint(const fgp_t * fgp) noexcept;
 			public:
 				/**
 				 * @brief Метод получения общей информации о TLS соединении
@@ -442,6 +455,14 @@ namespace awh {
 				void nextProtocolNegotiation(const id_t id, const event::mode_t mode) noexcept;
 			public:
 				/**
+				 * @brief Метод активации поддержки наложения цифрового отпечатка браузера на TLS-соединение
+				 *
+				 * @param id  идентификатор события
+				 * @param fid идентификатор цифрового отпечатка браузера
+				 */
+				void browser(const id_t id, const fgp_t::id_t fid) noexcept;
+			public:
+				/**
 				 * @brief Метод извлечения активного протокола
 				 *
 				 * @param id идентификатор события
@@ -547,6 +568,14 @@ namespace awh {
 				 */
 				bool on(const id_t id, write_callback_t callback) noexcept;
 				/**
+				 * @brief Метод установки функции обратного вызова изменения состояния
+				 *
+				 * @param id       идентификатор транспортного уровня
+				 * @param callback функция обратного вызова для установки
+				 * @return         результат установки функции обратного вызова
+				 */
+				bool on(const id_t id, state_callback_t callback) noexcept;
+				/**
 				 * @brief Метод установки функции обратного вызова получения ошибок
 				 *
 				 * @param id       идентификатор транспортного уровня
@@ -555,13 +584,13 @@ namespace awh {
 				 */
 				bool on(const id_t id, error_callback_t callback) noexcept;
 				/**
-				 * @brief Метод установки функции обратного вызова изменения состояния
+				 * @brief Метод установки функции обратного вызова получения снимка браузера приславшего ClientHello
 				 *
 				 * @param id       идентификатор транспортного уровня
 				 * @param callback функция обратного вызова для установки
 				 * @return         результат установки функции обратного вызова
 				 */
-				bool on(const id_t id, state_callback_t callback) noexcept;
+				bool on(const id_t id, fingerprint_callback_t callback) noexcept;
 			public:
 				/**
 				 * @brief Конструктор
@@ -570,6 +599,14 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				explicit Coder(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fgp объект для работы с отпечатками TLS
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

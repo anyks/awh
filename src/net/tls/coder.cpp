@@ -244,12 +244,14 @@ namespace {
 		::tls::coder_t::read_callback_t read;
 		// Функция обратного вызова записи данных
 		::tls::coder_t::write_callback_t write;
+		// Функция обратного вызова получения снимка браузера приславшего ClientHello
+		::tls::coder_t::fingerprint_callback_t fingerprint;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Callback_Transfer() noexcept :
-		 read(nullptr), write(nullptr) {}
+		 read(nullptr), write(nullptr), fingerprint(nullptr) {}
 	} callback_transfer_t;
 
 	/**
@@ -262,6 +264,8 @@ namespace {
 			layer_t layer;
 			// Объект состояния
 			uint8_t state;
+			// Идентификатор цифрового отпечатка браузера
+			tls::fgp_t::id_t fid;
 			// Счётчик ссылок на событие
 			atomic_uint16_t refs;
 			// Тип узла события
@@ -283,7 +287,7 @@ namespace {
 			 *
 			 */
 			explicit Member(const layer_t layer) noexcept :
-			 layer(layer), state(0), refs(0),
+			 layer(layer), state(0), fid(0), refs(0),
 			 node(event::node_t::NONE),
 			 proto(event::protocol_t::NONE) {}
 			/**
@@ -2454,6 +2458,15 @@ namespace verify {
 string awh::tls::Coder::version() const noexcept {
 	// Возвращаем версию OpenSSL
 	return ::OpenSSL_version(OPENSSL_VERSION);
+}
+/**
+ * @brief Метод подключения объекта для работы с отпечатками TLS
+ *
+ * @param fgp объект для работы с отпечатками TLS
+ */
+void awh::tls::Coder::fingerprint(const fgp_t * fgp) noexcept {
+	// Сохраняем объект для работы с отпечатками TLS
+	this->_fgp = fgp;
 }
 /**
  * @brief Метод получения общей информации о TLS соединении
@@ -5298,32 +5311,54 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 										break;
 									// Если функция обратного вызова чтения данных установлена
 									} else if(member->callback.read != nullptr) {
-										// Если узел является клиентом
-										if(member->node == event::node_t::CLIENT){
+										// Если узел является клиентом и объект для работы с отпечатками TLS установлен
+										if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
 											// Если рукопожатие ещё не выполнено
 											if(!(member->state & state::HANDSHAKE_MODE)){
-
-												fgp_t::browser_t browser;
-
-												if(this->_fgp.parse(::local::buffer, static_cast <size_t> (bytes), browser)){
-
-													cout << " Browser: " << this->_fgp.print(browser) << endl;
-
-													const auto res = this->_fgp.apply(::local::buffer, static_cast <size_t> (bytes), browser);
-
-													fgp_t::browser_t browser2;
-
-													if(this->_fgp.parse(&res[0], res.size(), browser2))
-														cout << " Browser2: " << this->_fgp.print(browser2) << endl;
-
-													vector <uint8_t> input;
-													if(this->_fgp.dump(browser2, input)){
-														fgp_t::browser_t browser3;
-														if(this->_fgp.dump(input, browser3))
-															cout << " Browser3: " << this->_fgp.print(browser3) << " || " << input.size() << " || " << (browser3 == browser2) << endl;
+												// Получаем объект браузера из шаблона контекста безопасности
+												const fgp_t::browser_t & browser = this->_fgp->get(member->fid);
+												// Если объект браузера получен
+												if(!browser.ciphers.empty() && !browser.extensions.empty()){
+													// Выполняем применение шаблона отпечатка браузера к данным рукопожатия TLS
+													const auto & buffer = this->_fgp->apply(::local::buffer, static_cast <size_t> (bytes), browser);
+													// Если отпечатк браузера TLS успешно наложен
+													if(!buffer.empty())
+														// Вызываем функцию обратного вызова чтения данных
+														member->callback.read(id, event_t::ENCRYPTION, &buffer[0], buffer.size());
+													// Если отпечаток браузера TLS не наложен
+													else {
+														// Если функция обратного вызова состояния установлена
+														if(member->callback.state != nullptr)
+															// Вызываем функцию обратного вызова на получение ошибки
+															member->callback.state(id, state_t::FAILED);
+														// Получаем текст ошибки
+														const string error = ::ssl::error(id, "Browser fingerprint is failed to apply");
+														// Если функция обратного вызова ошибки установлена
+														if(member->callback.error != nullptr)
+															// Вызываем функцию обратного вызова ошибки
+															member->callback.error(id, error_t::FINGERPRINT_FAILED, error);
+														// Если функция обратного вызова ошибки не установлена
+														else {
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+															#endif
+														}
+														// Вызываем функцию обратного вызова чтения данных
+														member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
 													}
+													// Выводим результат
+													return result;
 												}
-
 											}
 										}
 										// Вызываем функцию обратного вызова чтения данных
@@ -6994,6 +7029,15 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 							member->callback.write(id, event_t::DECRYPTION, static_cast <size_t> (bytes));
 						// Если рукопожатие ещё не выполнено
 						if(!(member->state & state::HANDSHAKE_MODE)){
+							// Если функция обратного вызова на вывод отпечатка браузера установлена
+							if((this->_fgp != nullptr) && (member->callback.fingerprint != nullptr)){
+								// Создаём объект отпечатка браузера
+								fgp_t::browser_t browser{};
+								// Выполняем парсинг отпечатка браузера
+								if(this->_fgp->parse(reinterpret_cast <const uint8_t *> (buffer), size, browser))
+									// Вызываем функцию обратного вызова на вывод отпечатка браузера
+									member->callback.fingerprint(id, browser);
+							}
 							// Выполняем рукопожатие TLS
 							result = this->handshake(id);
 							// Если рукопожатие ещё не выполнено
@@ -8339,6 +8383,54 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 			#endif
 		}
 	#endif // !OPENSSL_NO_NEXTPROTONEG
+}
+/**
+ * @brief Метод активации поддержки наложения цифрового отпечатка браузера на TLS-соединение
+ *
+ * @param id  идентификатор события
+ * @param fid идентификатор цифрового отпечатка браузера
+ */
+void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			/**
+			 * Определяем уровень транспортной безопасности
+			 */
+			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+				// Если уровень является шаблонным контекстом безопасности
+				case static_cast <uint8_t> (layer_t::CTS):
+					// Выполняем установку идентификатора цифрового отпечатка браузера
+					reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id))->fid = fid;
+				break;
+				// Если уровень является транспортной передачей данных
+				case static_cast <uint8_t> (layer_t::CTL):
+					// Выполняем установку идентификатора цифрового отпечатка браузера
+					reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->fid = fid;
+				break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод извлечения активного протокола
@@ -11189,71 +11281,6 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 	return result;
 }
 /**
- * @brief Метод установки функции обратного вызова получения ошибок
- *
- * @param id       идентификатор транспортного уровня
- * @param callback функция обратного вызова для установки
- * @return         результат установки функции обратного вызова
- */
-bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
-	// Результат работы функции
-	bool result = false;
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
-			/**
-			 * Определяем уровень транспортной безопасности
-			 */
-			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
-				// Если уровень является шаблонным контекстом безопасности
-				case static_cast <uint8_t> (layer_t::CTS): {
-					// Выполняем извлечение объекта шаблона контекста безопасности
-					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
-					// Устанавливаем функцию обратного вызова получения ошибок
-					member->callback.error = ::move(callback);
-				} break;
-				// Если уровень является транспортной передачей данных
-				case static_cast <uint8_t> (layer_t::CTL): {
-					// Выполняем извлечение объекта транспортного уровня передачи
-					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
-					// Устанавливаем функцию обратного вызова получения ошибок
-					member->callback.error = ::move(callback);
-				} break;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод установки функции обратного вызова изменения состояния
  *
  * @param id       идентификатор транспортного уровня
@@ -11319,13 +11346,217 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 	return result;
 }
 /**
+ * @brief Метод установки функции обратного вызова получения ошибок
+ *
+ * @param id       идентификатор транспортного уровня
+ * @param callback функция обратного вызова для установки
+ * @return         результат установки функции обратного вызова
+ */
+bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
+			/**
+			 * Определяем уровень транспортной безопасности
+			 */
+			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+				// Если уровень является шаблонным контекстом безопасности
+				case static_cast <uint8_t> (layer_t::CTS): {
+					// Выполняем извлечение объекта шаблона контекста безопасности
+					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
+					// Выполняем блокировку потоков
+					const locker_t <recursive_mutex> lock(member->mtx);
+					// Устанавливаем функцию обратного вызова получения ошибок
+					member->callback.error = ::move(callback);
+				} break;
+				// Если уровень является транспортной передачей данных
+				case static_cast <uint8_t> (layer_t::CTL): {
+					// Выполняем извлечение объекта транспортного уровня передачи
+					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Создаём охранника участника обмена защищёнными данными
+					::local::guard_t guard(member);
+					// Выполняем блокировку потоков
+					const locker_t <recursive_mutex> lock(member->mtx);
+					// Устанавливаем функцию обратного вызова получения ошибок
+					member->callback.error = ::move(callback);
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки функции обратного вызова получения снимка браузера приславшего ClientHello
+ *
+ * @param id       идентификатор транспортного уровня
+ * @param callback функция обратного вызова для установки
+ * @return         результат установки функции обратного вызова
+ */
+bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Если уровень является транспортной передачей данных
+			if((result = (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTL))){
+				// Выполняем извлечение объекта транспортного уровня передачи
+				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+				// Создаём охранника участника обмена защищёнными данными
+				::local::guard_t guard(member);
+				// Выполняем блокировку потоков
+				const locker_t <recursive_mutex> lock(member->mtx);
+				// Устанавливаем функцию обратного вызова получения снимка браузера приславшего ClientHello
+				member->callback.fingerprint = ::move(callback);
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Конструктор
  *
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
 awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
- _fgp(fmk, log), _addr(fmk, log), _compressor(log), _fmk(fmk), _log(log) {
+ _addr(fmk, log), _compressor(log), _fgp(nullptr), _fmk(fmk), _log(log) {
+	// Увеличиваем счётчик инициализации библиотеки OpenSSL
+	::__awh_ssl_init_count__++;
+	// Если библиотека OpenSSL ещё не инициализирована
+	if(!::__awh_ssl_initialized__){
+		// Устанавливаем флаг инициализации библиотеки OpenSSL
+		::__awh_ssl_initialized__ = !::__awh_ssl_initialized__;
+		// Выполняем игнорирование сигналов SIGPIPE
+		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
+			#endif
+		}
+		/**
+		 * Если версия OPENSSL ниже версии 1.1.0
+		 */
+		#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
+			// Выполняем конфигурацию OpenSSL
+			::OPENSSL_config(nullptr);
+			// Выполняем инициализацию OpenSSL
+			::SSL_library_init();
+		/**
+		 * Для более свежей версии
+		 */
+		#else
+			// Выполняем инициализацию OpenSSL
+			::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
+			// Выполняем загрузки описаний ошибок SSL
+			::ERR_load_SSL_strings();
+		#endif
+		// Выполняем загрузки описаний ошибок шифрования
+		::ERR_load_crypto_strings();
+		// Выполняем загрузки описаний ошибок OpenSSL
+		::SSL_load_error_strings();
+		// Добавляем все алгоритмы шифрования
+		::OpenSSL_add_all_algorithms();
+		// Активируем рандомный генератор
+		if(::RAND_poll() != 1){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Rand poll is not allowed", log_t::flag_t::CRITICAL);
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
+		// Деактивируем мьютекс глобального режим безопасности потоков
+		::__awh_ssl_members_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
+		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL
+		::__awh_ssl_index__[1] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL
+		::__awh_ssl_index__[2] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта компрессора AWH в структуре SSL
+		::__awh_ssl_index__[3] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL_CTX
+		::__awh_ssl_index__[4] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL_CTX
+		::__awh_ssl_index__[5] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL_CTX
+		::__awh_ssl_index__[6] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+	}
+}
+/**
+ * @brief Конструктор
+ *
+ * @param fgp объект для работы с отпечатками TLS
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) noexcept :
+ _addr(fmk, log), _compressor(log), _fgp(fgp), _fmk(fmk), _log(log) {
 	// Увеличиваем счётчик инициализации библиотеки OpenSSL
 	::__awh_ssl_init_count__++;
 	// Если библиотека OpenSSL ещё не инициализирована
