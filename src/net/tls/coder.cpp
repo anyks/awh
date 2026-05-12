@@ -8407,7 +8407,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
-					if(member->node == event::node_t::CLIENT){
+					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
 						{
@@ -8564,7 +8564,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
-					if(member->node == event::node_t::CLIENT){
+					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
 						{
