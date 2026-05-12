@@ -8432,60 +8432,11 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 								 * Определяем тип поддерживаемого расширения TLS
 								 */
 								switch(static_cast <uint8_t> (extension->type)){
-									// Если тип расширения соответствует channel_id
-									case static_cast <uint8_t> (awh::tls::extension_type_t::CHANNEL_ID):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_channel_id_t> ());
-									break;
-									// Если тип расширения соответствует oid_filters
-									case static_cast <uint8_t> (awh::tls::extension_type_t::OID_FILTERS):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_oid_filters_t> ());
-									break;
-									// Если тип расширения соответствует trust_anchors
-									case static_cast <uint8_t> (awh::tls::extension_type_t::TRUST_ANCHORS):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_trust_anchors_t> ());
-									break;
-									// Если тип расширения соответствует encrypt_then_mac
-									case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPT_THEN_MAC):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_encrypt_then_mac_t> ());
-									break;
-									// Если тип расширения соответствует transparency_info
-									case static_cast <uint8_t> (awh::tls::extension_type_t::TRANSPARENCY_INFO):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_transparency_info_t> ());
-									break;
-									// Если тип расширения соответствует post_handshake_auth
-									case static_cast <uint8_t> (awh::tls::extension_type_t::POST_HANDSHAKE_AUTH):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_post_handshake_auth_t> ());
-									break;
-									// Если тип расширения соответствует client_certificate_type
-									case static_cast <uint8_t> (awh::tls::extension_type_t::CLIENT_CERTIFICATE_TYPE):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_client_certificate_type_t> ());
-									break;
-									// Если тип расширения соответствует server_certificate_type
-									case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_CERTIFICATE_TYPE):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_server_certificate_type_t> ());
-									break;
 									// Если тип расширения соответствует signed_certificate_timestamp
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
 										// Активируем поддержку SCT (Signed Certificate Timestamp)
 										this->signedCertificateTimestamp(id);
 									break;
-									// Если тип расширения соответствует max_fragment_length
-									case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_max_fragment_length_t> ());
-										// Копируем значение длины из исходного расширения
-										awh_cast <extension_max_fragment_length_t *> (this->extensions.back().get())->length = awh_cast <extension_max_fragment_length_t *> (extension.get())->length;
-										*/
-									} break;
 									// Если тип расширения соответствует status_request
 									case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST):
 										// Активируем поддержку Stapling (OCSP)
@@ -8496,60 +8447,11 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										// Устанавливаем поддерживаемые группы (кривые) для TLS-соединения
 										this->groups(id, awh_cast <fgp_t::extension_supported_groups_t *> (extension.get())->supportedGroups);
 									break;
-									// Если тип расширения соответствует ec_point_formats
-									case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_ec_point_t> ());
-										// Копируем список форматов точек из исходного расширения
-										awh_cast <extension_ec_point_t *> (this->extensions.back().get())->formats = awh_cast <extension_ec_point_t *> (extension.get())->formats;
-										*/
-									} break;
 									// Если тип расширения соответствует signature_algorithms
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS):
 										// Устанавливаем поддерживаемые алгоритмы подписи для TLS-соединения
 										this->signature(id, awh_cast <fgp_t::extension_signature_t *> (extension.get())->algorithms);
 									break;
-									// Если тип расширения соответствует use_srtp
-									case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_use_srtp_t> ());
-										// Копируем список профилей SRTP из исходного расширения
-										awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->profiles = awh_cast <extension_use_srtp_t *> (extension.get())->profiles;
-										// Копируем значение mki_length из исходного расширения
-										awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->mkiLength = awh_cast <extension_use_srtp_t *> (extension.get())->mkiLength;
-										*/
-									} break;
-									// Если тип расширения соответствует heartbeat
-									case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_heartbeat_t> ());
-										// Копируем значение режима heartbeat из исходного расширения
-										awh_cast <extension_heartbeat_t *> (this->extensions.back().get())->mode = awh_cast <extension_heartbeat_t *> (extension.get())->mode;
-										*/
-									} break;
-									// Если тип расширения соответствует padding
-									case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_padding_t> ());
-										// Копируем значение размера паддинга из исходного расширения
-										awh_cast <extension_padding_t *> (this->extensions.back().get())->size = awh_cast <extension_padding_t *> (extension.get())->size;
-										*/
-									} break;
-									// Если тип расширения соответствует extended_master_secret
-									case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_extended_master_secret_t> ());
-										// Копируем данные master_secret из исходного расширения
-										awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->masterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->masterSecretData;
-										// Копируем данные extended_master_secret из исходного расширения
-										awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->extendedMasterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->extendedMasterSecretData;
-										*/
-									} break;
 									// Если тип расширения соответствует compress_certificate
 									case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
 										// Список поддерживаемых методов компрессии сертификата TLS
@@ -8583,51 +8485,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										if(!methods.empty())
 											// Устанавливаем поддерживаемые методы компрессии сертификата TLS
 											this->compressors(id, methods);
-									} break;
-									// Если тип расширения соответствует record_size_limit
-									case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_record_size_limit_t> ());
-										// Копируем значение record_size_limit из исходного расширения
-										awh_cast <extension_record_size_limit_t *> (this->extensions.back().get())->data = awh_cast <extension_record_size_limit_t *> (extension.get())->data;
-										*/
-									} break;
-									// Если тип расширения соответствует delegated_credential
-									case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_delegated_credential_t> ());
-										// Копируем список алгоритмов делегированных учётных данных из исходного расширения
-										awh_cast <extension_delegated_credential_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_delegated_credential_t *> (extension.get())->algorithms;
-										*/
-									} break;
-									// Если тип расширения соответствует session_ticket
-									case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_session_ticket_t> ());
-										// Копируем данные session_ticket из исходного расширения
-										awh_cast <extension_session_ticket_t *> (this->extensions.back().get())->data = awh_cast <extension_session_ticket_t *> (extension.get())->data;
-										*/
-									} break;
-									// Если тип расширения соответствует pre_shared_key
-									case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_pre_shared_key_t> ());
-										// Копируем список идентификаторов PSK из исходного расширения
-										awh_cast <extension_pre_shared_key_t *> (this->extensions.back().get())->identities = awh_cast <extension_pre_shared_key_t *> (extension.get())->identities;
-										*/
-									} break;
-									// Если тип расширения соответствует early_data
-									case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_early_data_t> ());
-										// Копируем значение maxSize из исходного расширения
-										awh_cast <extension_early_data_t *> (this->extensions.back().get())->maxSize = awh_cast <extension_early_data_t *> (extension.get())->maxSize;
-										*/
 									} break;
 									// Если тип расширения соответствует supported_versions
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
@@ -8664,87 +8521,11 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 											}
 										}
 									} break;
-									// Если тип расширения соответствует psk_key_exchange_modes
-									case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_psk_key_exchange_t> ());
-										// Копируем список режимов обмена ключами PSK из исходного расширения
-										awh_cast <extension_psk_key_exchange_t *> (this->extensions.back().get())->modes = awh_cast <extension_psk_key_exchange_t *> (extension.get())->modes;
-										*/
-									} break;
-									// Если тип расширения соответствует certificate_authorities
-									case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_certificate_authorities_t> ());
-										// Копируем список авторитетов сертификатов из исходного расширения
-										awh_cast <extension_certificate_authorities_t *> (this->extensions.back().get())->authorities = awh_cast <extension_certificate_authorities_t *> (extension.get())->authorities;
-										*/
-									} break;
-									// Если тип расширения соответствует signature_algorithms_cert
-									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_signature_algorithms_cert_t> ());
-										// Копируем список алгоритмов подписи сертификатов из исходного расширения
-										awh_cast <extension_signature_algorithms_cert_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_signature_algorithms_cert_t *> (extension.get())->algorithms;
-										*/
-									} break;
-									// Если тип расширения соответствует quic_transport_parameters
-									case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_quic_transport_params_t> ());
-										// Копируем список параметров транспортного уровня QUIC из исходного расширения
-										awh_cast <extension_quic_transport_params_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_t *> (extension.get())->params;
-										*/
-									} break;
-									// Если тип расширения соответствует tls_flags
-									case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_tls_flags_t> ());
-										// Копируем список флагов TLS из исходного расширения
-										awh_cast <extension_tls_flags_t *> (this->extensions.back().get())->flags = awh_cast <extension_tls_flags_t *> (extension.get())->flags;
-										*/
-									} break;
 									// Если тип расширения соответствует next_protocol_negotiation
-									case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_next_proto_neg_t> ());
-										// Копируем список протоколов NPN из исходного расширения
-										awh_cast <extension_next_proto_neg_t *> (this->extensions.back().get())->protocols = awh_cast <extension_next_proto_neg_t *> (extension.get())->protocols;
-										*/
-									} break;
-									// Если тип расширения соответствует ech_outer_extensions
-									case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_ech_outer_extensions_t> ());
-										// Копируем список расширений из исходного расширения
-										awh_cast <extension_ech_outer_extensions_t *> (this->extensions.back().get())->extensions = awh_cast <extension_ech_outer_extensions_t *> (extension.get())->extensions;
-										*/
-									} break;
-									// Если тип расширения соответствует renegotiation_info
-									case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_renegotiation_info_t> ());
-										// Копируем данные расширения renegotiation_info из исходного расширения
-										awh_cast <extension_renegotiation_info_t *> (this->extensions.back().get())->data = awh_cast <extension_renegotiation_info_t *> (extension.get())->data;
-										*/
-									} break;
-									// Если тип расширения соответствует quic_transport_parameters_legacy
-									case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_quic_transport_params_legacy_t> ());
-										// Копируем список параметров транспортного уровня QUIC из исходного расширения
-										awh_cast <extension_quic_transport_params_legacy_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_legacy_t *> (extension.get())->params;
-										*/
-									} break;
+									case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG):
+										// Активируем поддержку расширения Next Protocol Negotiation (NPN)
+										this->nextProtocolNegotiation(id, event::mode_t::ENABLED);
+									break;
 								}
 							}
 						}
@@ -8810,60 +8591,11 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 								 * Определяем тип поддерживаемого расширения TLS
 								 */
 								switch(static_cast <uint8_t> (extension->type)){
-									// Если тип расширения соответствует channel_id
-									case static_cast <uint8_t> (awh::tls::extension_type_t::CHANNEL_ID):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_channel_id_t> ());
-									break;
-									// Если тип расширения соответствует oid_filters
-									case static_cast <uint8_t> (awh::tls::extension_type_t::OID_FILTERS):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_oid_filters_t> ());
-									break;
-									// Если тип расширения соответствует trust_anchors
-									case static_cast <uint8_t> (awh::tls::extension_type_t::TRUST_ANCHORS):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_trust_anchors_t> ());
-									break;
-									// Если тип расширения соответствует encrypt_then_mac
-									case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPT_THEN_MAC):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_encrypt_then_mac_t> ());
-									break;
-									// Если тип расширения соответствует transparency_info
-									case static_cast <uint8_t> (awh::tls::extension_type_t::TRANSPARENCY_INFO):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_transparency_info_t> ());
-									break;
-									// Если тип расширения соответствует post_handshake_auth
-									case static_cast <uint8_t> (awh::tls::extension_type_t::POST_HANDSHAKE_AUTH):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_post_handshake_auth_t> ());
-									break;
-									// Если тип расширения соответствует client_certificate_type
-									case static_cast <uint8_t> (awh::tls::extension_type_t::CLIENT_CERTIFICATE_TYPE):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_client_certificate_type_t> ());
-									break;
-									// Если тип расширения соответствует server_certificate_type
-									case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_CERTIFICATE_TYPE):
-										// Добавляем расширение в список
-										// this->extensions.push_back(make_unique <extension_server_certificate_type_t> ());
-									break;
 									// Если тип расширения соответствует signed_certificate_timestamp
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP):
 										// Активируем поддержку SCT (Signed Certificate Timestamp)
 										this->signedCertificateTimestamp(id);
 									break;
-									// Если тип расширения соответствует max_fragment_length
-									case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_max_fragment_length_t> ());
-										// Копируем значение длины из исходного расширения
-										awh_cast <extension_max_fragment_length_t *> (this->extensions.back().get())->length = awh_cast <extension_max_fragment_length_t *> (extension.get())->length;
-										*/
-									} break;
 									// Если тип расширения соответствует status_request
 									case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST):
 										// Активируем поддержку Stapling (OCSP)
@@ -8874,60 +8606,11 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										// Устанавливаем поддерживаемые группы (кривые) для TLS-соединения
 										this->groups(id, awh_cast <fgp_t::extension_supported_groups_t *> (extension.get())->supportedGroups);
 									break;
-									// Если тип расширения соответствует ec_point_formats
-									case static_cast <uint8_t> (awh::tls::extension_type_t::EC_POINT_FORMATS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_ec_point_t> ());
-										// Копируем список форматов точек из исходного расширения
-										awh_cast <extension_ec_point_t *> (this->extensions.back().get())->formats = awh_cast <extension_ec_point_t *> (extension.get())->formats;
-										*/
-									} break;
 									// Если тип расширения соответствует signature_algorithms
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS):
 										// Устанавливаем поддерживаемые алгоритмы подписи для TLS-соединения
 										this->signature(id, awh_cast <fgp_t::extension_signature_t *> (extension.get())->algorithms);
 									break;
-									// Если тип расширения соответствует use_srtp
-									case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_use_srtp_t> ());
-										// Копируем список профилей SRTP из исходного расширения
-										awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->profiles = awh_cast <extension_use_srtp_t *> (extension.get())->profiles;
-										// Копируем значение mki_length из исходного расширения
-										awh_cast <extension_use_srtp_t *> (this->extensions.back().get())->mkiLength = awh_cast <extension_use_srtp_t *> (extension.get())->mkiLength;
-										*/
-									} break;
-									// Если тип расширения соответствует heartbeat
-									case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_heartbeat_t> ());
-										// Копируем значение режима heartbeat из исходного расширения
-										awh_cast <extension_heartbeat_t *> (this->extensions.back().get())->mode = awh_cast <extension_heartbeat_t *> (extension.get())->mode;
-										*/
-									} break;
-									// Если тип расширения соответствует padding
-									case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_padding_t> ());
-										// Копируем значение размера паддинга из исходного расширения
-										awh_cast <extension_padding_t *> (this->extensions.back().get())->size = awh_cast <extension_padding_t *> (extension.get())->size;
-										*/
-									} break;
-									// Если тип расширения соответствует extended_master_secret
-									case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_extended_master_secret_t> ());
-										// Копируем данные master_secret из исходного расширения
-										awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->masterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->masterSecretData;
-										// Копируем данные extended_master_secret из исходного расширения
-										awh_cast <extension_extended_master_secret_t *> (this->extensions.back().get())->extendedMasterSecretData = awh_cast <extension_extended_master_secret_t *> (extension.get())->extendedMasterSecretData;
-										*/
-									} break;
 									// Если тип расширения соответствует compress_certificate
 									case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
 										// Список поддерживаемых методов компрессии сертификата TLS
@@ -8961,51 +8644,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										if(!methods.empty())
 											// Устанавливаем поддерживаемые методы компрессии сертификата TLS
 											this->compressors(id, methods);
-									} break;
-									// Если тип расширения соответствует record_size_limit
-									case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_record_size_limit_t> ());
-										// Копируем значение record_size_limit из исходного расширения
-										awh_cast <extension_record_size_limit_t *> (this->extensions.back().get())->data = awh_cast <extension_record_size_limit_t *> (extension.get())->data;
-										*/
-									} break;
-									// Если тип расширения соответствует delegated_credential
-									case static_cast <uint8_t> (awh::tls::extension_type_t::DELEGATED_CREDENTIAL): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_delegated_credential_t> ());
-										// Копируем список алгоритмов делегированных учётных данных из исходного расширения
-										awh_cast <extension_delegated_credential_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_delegated_credential_t *> (extension.get())->algorithms;
-										*/
-									} break;
-									// Если тип расширения соответствует session_ticket
-									case static_cast <uint8_t> (awh::tls::extension_type_t::SESSION_TICKET): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_session_ticket_t> ());
-										// Копируем данные session_ticket из исходного расширения
-										awh_cast <extension_session_ticket_t *> (this->extensions.back().get())->data = awh_cast <extension_session_ticket_t *> (extension.get())->data;
-										*/
-									} break;
-									// Если тип расширения соответствует pre_shared_key
-									case static_cast <uint8_t> (awh::tls::extension_type_t::PRE_SHARED_KEY): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_pre_shared_key_t> ());
-										// Копируем список идентификаторов PSK из исходного расширения
-										awh_cast <extension_pre_shared_key_t *> (this->extensions.back().get())->identities = awh_cast <extension_pre_shared_key_t *> (extension.get())->identities;
-										*/
-									} break;
-									// Если тип расширения соответствует early_data
-									case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_early_data_t> ());
-										// Копируем значение maxSize из исходного расширения
-										awh_cast <extension_early_data_t *> (this->extensions.back().get())->maxSize = awh_cast <extension_early_data_t *> (extension.get())->maxSize;
-										*/
 									} break;
 									// Если тип расширения соответствует supported_versions
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
@@ -9042,33 +8680,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 											}
 										}
 									} break;
-									// Если тип расширения соответствует psk_key_exchange_modes
-									case static_cast <uint8_t> (awh::tls::extension_type_t::PSK_KEY_EXCHANGE_MODES): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_psk_key_exchange_t> ());
-										// Копируем список режимов обмена ключами PSK из исходного расширения
-										awh_cast <extension_psk_key_exchange_t *> (this->extensions.back().get())->modes = awh_cast <extension_psk_key_exchange_t *> (extension.get())->modes;
-										*/
-									} break;
-									// Если тип расширения соответствует certificate_authorities
-									case static_cast <uint8_t> (awh::tls::extension_type_t::CERTIFICATE_AUTHORITIES): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_certificate_authorities_t> ());
-										// Копируем список авторитетов сертификатов из исходного расширения
-										awh_cast <extension_certificate_authorities_t *> (this->extensions.back().get())->authorities = awh_cast <extension_certificate_authorities_t *> (extension.get())->authorities;
-										*/
-									} break;
-									// Если тип расширения соответствует signature_algorithms_cert
-									case static_cast <uint8_t> (awh::tls::extension_type_t::SIGNATURE_ALGORITHMS_CERT): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_signature_algorithms_cert_t> ());
-										// Копируем список алгоритмов подписи сертификатов из исходного расширения
-										awh_cast <extension_signature_algorithms_cert_t *> (this->extensions.back().get())->algorithms = awh_cast <extension_signature_algorithms_cert_t *> (extension.get())->algorithms;
-										*/
-									} break;
 									// Если тип расширения соответствует key_share
 									case static_cast <uint8_t> (awh::tls::extension_type_t::KEY_SHARE): {
 										// Список поддерживаемых групп (кривых) для обмена ключами TLS
@@ -9082,41 +8693,15 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										// Устанавливаем поддерживаемые группы (кривые) для обмена ключами TLS
 										this->keyShare(id, groups, ech);
 									} break;
-									// Если тип расширения соответствует quic_transport_parameters
-									case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_quic_transport_params_t> ());
-										// Копируем список параметров транспортного уровня QUIC из исходного расширения
-										awh_cast <extension_quic_transport_params_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_t *> (extension.get())->params;
-										*/
-									} break;
-									// Если тип расширения соответствует tls_flags
-									case static_cast <uint8_t> (awh::tls::extension_type_t::TLS_FLAGS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_tls_flags_t> ());
-										// Копируем список флагов TLS из исходного расширения
-										awh_cast <extension_tls_flags_t *> (this->extensions.back().get())->flags = awh_cast <extension_tls_flags_t *> (extension.get())->flags;
-										*/
-									} break;
 									// Если тип расширения соответствует next_protocol_negotiation
-									case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_next_proto_neg_t> ());
-										// Копируем список протоколов NPN из исходного расширения
-										awh_cast <extension_next_proto_neg_t *> (this->extensions.back().get())->protocols = awh_cast <extension_next_proto_neg_t *> (extension.get())->protocols;
-										*/
-									} break;
+									case static_cast <uint8_t> (awh::tls::extension_type_t::NEXT_PROTO_NEG):
+										// Активируем поддержку расширения Next Protocol Negotiation (NPN)
+										this->nextProtocolNegotiation(id, event::mode_t::ENABLED);
+									break;
 									// Если тип расширения соответствует application_settings_old (устаревшее)
 									case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS_OLD): {
 										/**
-										 * Для BoringSSL включаем ALPS (Application Layer Protocol Settings).
-										 * SSL_add_application_settings регистрирует расширение application_settings
-										 * для каждого ALPN-протокола (пустые настройки — Chrome-стиль).
-										 * SSL_set_alps_use_new_codepoint(ssl, 0) переключает на старый codepoint
-										 * 0x4469 (application_settings_old, decimal 17513) вместо 0x44CD (17613).
+										 * Если BoringSSL используется в качестве криптографической библиотеки
 										 */
 										#ifdef OPENSSL_IS_BORINGSSL
 											// Выполняем блокировку потоков
@@ -9128,11 +8713,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									// Если тип расширения соответствует application_settings
 									case static_cast <uint8_t> (awh::tls::extension_type_t::APPLICATION_SETTINGS): {
 										/**
-										 * Для BoringSSL включаем ALPS (Application Layer Protocol Settings).
-										 * SSL_add_application_settings регистрирует расширение application_settings
-										 * для каждого ALPN-протокола (пустые настройки — Chrome-стиль).
-										 * SSL_set_alps_use_new_codepoint(ssl, 0) переключает на старый codepoint
-										 * 0x4469 (application_settings_old, decimal 17513) вместо 0x44CD (17613).
+										 * Если BoringSSL используется в качестве криптографической библиотеки
 										 */
 										#ifdef OPENSSL_IS_BORINGSSL
 											// Выполняем блокировку потоков
@@ -9140,15 +8721,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 											// Используем новый codepoint (application_settings = 0x44CD = 17613)
 											::SSL_set_alps_use_new_codepoint(member->ssl, 1);
 										#endif // OPENSSL_IS_BORINGSSL
-									} break;
-									// Если тип расширения соответствует ech_outer_extensions
-									case static_cast <uint8_t> (awh::tls::extension_type_t::ECH_OUTER_EXTENSIONS): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_ech_outer_extensions_t> ());
-										// Копируем список расширений из исходного расширения
-										awh_cast <extension_ech_outer_extensions_t *> (this->extensions.back().get())->extensions = awh_cast <extension_ech_outer_extensions_t *> (extension.get())->extensions;
-										*/
 									} break;
 									// Если тип расширения соответствует encrypted_client_hello
 									case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
@@ -9158,24 +8730,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										const locker_t <recursive_mutex> lock(member->mtx);
 										// Активируем генерацию ложного ключа EncryptedClientHello (ECH)
 										::SSL_set_enable_ech_grease(member->ssl, 1);
-									} break;
-									// Если тип расширения соответствует renegotiation_info
-									case static_cast <uint8_t> (awh::tls::extension_type_t::RENEGOTIATION_INFO): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_renegotiation_info_t> ());
-										// Копируем данные расширения renegotiation_info из исходного расширения
-										awh_cast <extension_renegotiation_info_t *> (this->extensions.back().get())->data = awh_cast <extension_renegotiation_info_t *> (extension.get())->data;
-										*/
-									} break;
-									// Если тип расширения соответствует quic_transport_parameters_legacy
-									case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
-										/*
-										// Добавляем расширение в список
-										this->extensions.push_back(make_unique <extension_quic_transport_params_legacy_t> ());
-										// Копируем список параметров транспортного уровня QUIC из исходного расширения
-										awh_cast <extension_quic_transport_params_legacy_t *> (this->extensions.back().get())->params = awh_cast <extension_quic_transport_params_legacy_t *> (extension.get())->params;
-										*/
 									} break;
 								}
 							}
@@ -9472,6 +9026,28 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 									// Добавляем в буфер название протокола
 									buffer.insert(buffer.end(), item.protocol.begin(), item.protocol.end());
 								}
+								// Итерируем по буферу ALPN (формат: len + bytes)
+								if(!buffer.empty()){
+									// Смещение для итерации по буферу ALPN
+									size_t offset = 0;
+									// Длина названия протокола
+									uint8_t length = 0;
+									/**
+									 * Итерируем по буферу ALPN, регистрируя ALPS для каждого протокола с пустыми настройками
+									 */
+									while(offset < buffer.size()){
+										// Получаем длину названия протокола
+										length = buffer[offset];
+										// Проверяем, что смещение и длина названия протокола не выходят за пределы буфера ALPN
+										if(static_cast <size_t> (offset + length + 1) > buffer.size())
+											// Выходим из цикла, если данные некорректные
+											break;
+										// Регистрируем ALPS для протокола с пустыми настройками
+										::SSL_add_application_settings(member->ssl, &buffer[0] + (offset + 1), length, nullptr, 0);
+										// Увеличиваем смещение на длину названия протокола и байт длины
+										offset += static_cast <size_t> (length + 1);
+									}
+								}
 								/**
 								 * В зависимости от стандарта, который поддерживает клиент, используем соответствующий codepoint для регистрации ALPS-протоколов
 								 */
@@ -9486,28 +9062,6 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 										// Используем старый codepoint (application_settings_old = 0x4469 = 17513)
 										::SSL_set_alps_use_new_codepoint(member->ssl, 0);
 									break;
-								}
-								// Итерируем по буферу ALPN (формат: len + bytes)
-								if(!buffer.empty()){
-									// Смещение для итерации по буферу ALPN
-									size_t offset = 0;
-									// Длина названия протокола
-									uint8_t length = 0;
-									/**
-									 * Итерируем по буферу ALPN, регистрируя ALPS для каждого протокола с пустыми настройками
-									 */
-									while(offset < buffer.size()){
-										// Получаем длину названия протокола
-										length = buffer[offset];
-										// Проверяем, что смещение и длина названия протокола не выходят за пределы буфера ALPN
-										if(static_cast <size_t> (offset + 1 + length) > buffer.size())
-											// Выходим из цикла, если данные некорректные
-											break;
-										// Регистрируем ALPS для протокола с пустыми настройками
-										::SSL_add_application_settings(member->ssl, &buffer[0] + (offset + 1), length, nullptr, 0);
-										// Увеличиваем смещение на длину названия протокола и байт длины
-										offset += static_cast <size_t> (length + 1);
-									}
 								}
 							// Если узел является сервером
 							} else {
