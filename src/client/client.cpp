@@ -350,7 +350,7 @@ void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::erro
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::CRITICAL, message.c_str());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, message.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -727,13 +727,13 @@ void awh::Client::threadSafety(const bool mode) noexcept {
 void awh::Client::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на событие получение данных от сервера
 	this->_callback.set("read", callback);
-	// Выполняем установку функции обратного вызова при отправке данных клиентом
+	// Выполняем установку функции обратного вызова при отправке данных на сервер
 	this->_callback.set("write", callback);
 	// Выполняем установку функции обратного вызова на событие готовности клиента к работе
 	this->_callback.set("ready", callback);
 	// Выполняем установку функции обратного вызова при изменении состояния клиента
 	this->_callback.set("state", callback);
-	// Выполняем установку функции обратного вызова на событие неотправленных данных клиента
+	// Выполняем установку функции обратного вызова на событие неотправленных данных клиентом
 	this->_callback.set("spool", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибок
 	this->_callback.set("error", callback);
@@ -938,6 +938,8 @@ bool awh::Client::setTarget(string_view target) noexcept {
 	 * Определяем тип полученного IP-адреса
 	 */
 	switch(static_cast <uint8_t> (this->_addr.host(target))){
+		// Для типа Unix Domain Socket
+		case static_cast <uint8_t> (net_addr_t::type_t::FS):
 		// Для типа IPv4
 		case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 		// Для типа IPv6

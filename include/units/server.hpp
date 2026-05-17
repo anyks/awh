@@ -202,6 +202,14 @@ namespace awh {
 				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept;
 			public:
 				/**
+				 * @brief Метод проверки актуальности события
+				 *
+				 * @param eid идентификатор события
+				 * @return    результат проверки актуальности события
+				 */
+				bool isActual(const event::id_t eid) const noexcept;
+			public:
+				/**
 				 * @brief Метод очистки чёрного списка события
 				 *
 				 * @param eid идентификатор события
@@ -282,16 +290,16 @@ namespace awh {
 				bool launch(const event::id_t eid) noexcept;
 			public:
 				/**
-				 * @brief Метод приостановки работы сервера
+				 * @brief Метод приостановки работы клиента
 				 *
-				 * @param eid идентификатор события сервера
+				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения приостановки работы
 				 */
 				bool pause(const event::id_t eid) noexcept;
 				/**
-				 * @brief Метод возобновления работы сервера
+				 * @brief Метод возобновления работы клиента
 				 *
-				 * @param eid идентификатор события сервера
+				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения возобновления работы
 				 */
 				bool resume(const event::id_t eid) noexcept;
@@ -306,19 +314,19 @@ namespace awh {
 				bool listen(const event::id_t eid, const uint16_t max) noexcept;
 			public:
 				/**
-				 * @brief Метод получения данных от сервера
+				 * @brief Метод получения данных от клиента
 				 *
-				 * @param eid идентификатор события сервера
+				 * @param eid идентификатор события клиента
 				 * @return    результат получения данных
 				 */
 				bool recv(const event::id_t eid) noexcept;
 				/**
-				 * @brief Метод отправки данных серверу
+				 * @brief Метод отправки данных клиенту
 				 *
-				 * @param eid    идентификатор события сервера
+				 * @param eid    идентификатор события клиента
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер данных для отправки
-				 * @return       количество байт данных, отправленных серверу
+				 * @return       количество байт данных, отправленных клиенту
 				 */
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 			public:
