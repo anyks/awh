@@ -1646,7 +1646,7 @@ namespace cookie {
 			// Выполняем произвольно генерацию байт в буфере cookie
 			if(!(member->cookie.initialized = ::RAND_bytes(member->cookie.buffer, sizeof(member->cookie.buffer)))){
 				// Выполняем получение идентификатора контекста TLS
-				const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
+				const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 				// Если функция обратного вызова состояния установлена
 				if(member->callback.state != nullptr)
 					// Вызываем функцию обратного вызова состояния
@@ -1688,7 +1688,7 @@ namespace cookie {
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
 			// Выполняем получение идентификатора контекста TLS
-			const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
+			const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
@@ -1801,7 +1801,7 @@ namespace cookie {
 		// Если память для буфера данных не выделена
 		if(buffer == nullptr){
 			// Выполняем получение идентификатора контекста TLS
-			const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
+			const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
@@ -2035,7 +2035,7 @@ namespace verify {
 		// Если SNI не получен
 		} else {
 			// Выполняем получение идентификатора контекста TLS
-			const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
+			const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 			// Если функция обратного вызова состояния установлена
 			if(member->callback.state != nullptr)
 				// Вызываем функцию обратного вызова состояния
@@ -2284,7 +2284,7 @@ namespace verify {
 					// Если данные сертификата не получены
 					if(x509 == nullptr){
 						// Выполняем получение идентификатора контекста TLS
-						const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
+						const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
@@ -2320,7 +2320,7 @@ namespace verify {
 						// Если имя эмитента не получено
 						if(name == nullptr){
 							// Выполняем получение идентификатора контекста TLS
-							const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
+							const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
@@ -2409,7 +2409,7 @@ namespace verify {
 									default: ::snprintf(result, 4, "%s", "WTF");
 								}
 								// Выполняем получение идентификатора контекста TLS
-								const id_t id = static_cast <id_t> (reinterpret_cast <uintptr_t> (member));
+								const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 								// Получаем объект фреймворка
 								awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[5]));
 								// Если функция обратного вызова состояния установлена

@@ -183,6 +183,8 @@ int32_t main(int32_t argc, char * argv[]){
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект клиента
 	client_t client(&unit, &dns, &coder, &fmk, &log);
+	// Устанавливаем список поддерживаемых DNS-серверов
+	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события

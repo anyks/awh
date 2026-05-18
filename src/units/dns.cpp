@@ -2103,13 +2103,146 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						#if DEBUG_MODE
 							// Выводим начальный разделитель
 							cout << "------------------------------------------------------------" << endl << endl << flush;
-						#endif
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
 							// Выводим заголовок
 							cout << "DNS RESPONSE:" << endl << endl << flush;
+							// Если мы получили A-записи в ответе
+							if(!result.a.empty()){
+								/**
+								 * Перебираем все A-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.a){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выполняем блокировку потока для парсинга IP-адреса
+									const locker_t <> lock(::__awh_mtx__);
+									// Устанавливаем IPv4-адрес в объекте адреса
+									this->_addr.v4(answer.ip);
+									// Выводим IPv4-адрес
+									::printf("IPv4: %s\n", static_cast <string> (this->_addr).c_str());
+								}
+							}
+							// Если мы получили AAAA-записи в ответе
+							if(!result.aaaa.empty()){
+								/**
+								 * Перебираем все AAAA-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.aaaa){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выполняем блокировку потока для парсинга IP-адреса
+									const locker_t <> lock(::__awh_mtx__);
+									// Устанавливаем IPv6-адрес в объекте адреса
+									this->_addr.v6(answer.ip);
+									// Выводим IPv6-адрес
+									::printf("IPv6: %s\n", static_cast <string> (this->_addr).c_str());
+								}
+							}
+							// Если мы получили NS-записи в ответе
+							if(!result.ns.empty()){
+								/**
+								 * Перебираем все NS-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.ns){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим сервер имён
+									::printf("NS: %s\n", answer.server.c_str());
+								}
+							}
+							// Если мы получили CNAME-записи в ответе
+							if(!result.cname.empty()){
+								/**
+								 * Перебираем все CNAME-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.cname){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим каноническое имя
+									::printf("CNAME: %s\n", answer.canonical.c_str());
+								}
+							}
+							// Если мы получили MX-записи в ответе
+							if(!result.mx.empty()){
+								/**
+								 * Перебираем все MX-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.mx){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим сервер почты
+									::printf("MX: %s\n", answer.server.c_str());
+									// Выводим приоритет MX-записи
+									::printf("PREFERENCE: %u\n", answer.preference);
+								}
+							}
+							// Если мы получили TEXT-записи в ответе
+							if(!result.txt.empty()){
+								/**
+								 * Перебираем все TEXT-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.txt){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									/**
+									 * Вывод текстовых данных из TXT-записи
+									 */
+									for(auto & text : answer.texts)
+										// Выводим текст записи
+										::printf("TXT: %s\n", text.c_str());
+								}
+							}
+							// Если мы получили PTR-записи в ответе
+							if(!result.ptr.empty()){
+								/**
+								 * Перебираем все PTR-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.ptr){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим PTR-запись
+									::printf("PTR: %s\n", answer.domain.c_str());
+								}
+							}
+							// Если мы получили SOA-записи в ответе
+							if(!result.soa.empty()){
+								/**
+								 * Перебираем все SOA-записи в ответе от DNS-сервера
+								 */
+								for(auto & answer : result.soa){
+									// Выводим название записи
+									::printf("\nNAME: %s\n", answer.name.c_str());
+									// Выводим TTL записи
+									::printf("TTL: %u\n", answer.ttl);
+									// Выводим SOA-запись
+									::printf("SOA: %s\n", answer.mname.c_str());
+									// Выводим административный контакт
+									::printf("RNAME: %s\n", answer.rname.c_str());
+									// Выводим серийный номер зоны
+									::printf("SERIAL: %u\n", answer.serial);
+									// Выводим время обновления зоны
+									::printf("REFRESH: %u\n", answer.refresh);
+									// Выводим время повторной попытки обновления зоны
+									::printf("RETRY: %u\n", answer.retry);
+									// Выводим время истечения срока действия зоны
+									::printf("EXPIRE: %u\n", answer.expire);
+								}
+							}
+							// Выводим начальный разделитель
+							cout << endl << "------------------------------------------------------------" << endl << endl << flush;
 						#endif
 						// Если мы получили A-записи в ответе
 						if(!result.a.empty()){
@@ -2117,23 +2250,6 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							 * Перебираем все A-записи в ответе от DNS-сервера
 							 */
 							for(auto & answer : result.a){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									{
-										// Выводим название записи
-										::printf("\nNAME: %s\n", answer.name.c_str());
-										// Выводим TTL записи
-										::printf("TTL: %u\n", answer.ttl);
-										// Выполняем блокировку потока для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем IPv4-адрес в объекте адреса
-										this->_addr.v4(answer.ip);
-										// Выводим IPv4-адрес
-										::printf("IPv4: %s\n", static_cast <string> (this->_addr).c_str());
-									}
-								#endif
 								// Выполняем инициализацию объекта IP-адреса
 								unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
 								// Устанавливаем IP-адрес
@@ -2167,23 +2283,6 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							 * Перебираем все AAAA-записи в ответе от DNS-сервера
 							 */
 							for(auto & answer : result.aaaa){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									{
-										// Выводим название записи
-										::printf("\nNAME: %s\n", answer.name.c_str());
-										// Выводим TTL записи
-										::printf("TTL: %u\n", answer.ttl);
-										// Выполняем блокировку потока для парсинга IP-адреса
-										const locker_t <> lock(::__awh_mtx__);
-										// Устанавливаем IPv6-адрес в объекте адреса
-										this->_addr.v6(answer.ip);
-										// Выводим IPv6-адрес
-										::printf("IPv6: %s\n", static_cast <string> (this->_addr).c_str());
-									}
-								#endif
 								// Выполняем инициализацию объекта IP-адреса
 								unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем IP-адрес
@@ -2220,21 +2319,9 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							/**
 							 * Перебираем все NS-записи в ответе от DNS-сервера
 							 */
-							for(auto & answer : result.ns){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим название записи
-									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
-									::printf("TTL: %u\n", answer.ttl);
-									// Выводим сервер имён
-									::printf("NS: %s\n", answer.server.c_str());
-								#endif
+							for(auto & answer : result.ns)
 								// Добавляем запись в контейнер серверов имён
 								ns.emplace(answer.name, answer.server);
-							}
 							// Если функция обратного вызова установлена для получения сервера имён
 							if(!ns.empty() && this->_callback.is("ns"))
 								// Выполняем функцию обратного вызова
@@ -2249,21 +2336,9 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							/**
 							 * Перебираем все CNAME-записи в ответе от DNS-сервера
 							 */
-							for(auto & answer : result.cname){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим название записи
-									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
-									::printf("TTL: %u\n", answer.ttl);
-									// Выводим каноническое имя
-									::printf("CNAME: %s\n", answer.canonical.c_str());
-								#endif
+							for(auto & answer : result.cname)
 								// Добавляем запись в контейнер канонических имён
 								cname.emplace(answer.name, answer.canonical);
-							}
 							// Если функция обратного вызова установлена для получения канонического имени
 							if(!cname.empty() && this->_callback.is("cname"))
 								// Выполняем функцию обратного вызова
@@ -2278,23 +2353,9 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							/**
 							 * Перебираем все MX-записи в ответе от DNS-сервера
 							 */
-							for(auto & answer : result.mx){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим название записи
-									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
-									::printf("TTL: %u\n", answer.ttl);
-									// Выводим сервер почты
-									::printf("MX: %s\n", answer.server.c_str());
-									// Выводим приоритет MX-записи
-									::printf("PREFERENCE: %u\n", answer.preference);
-								#endif
+							for(auto & answer : result.mx)
 								// Добавляем запись в контейнер MX-записей
 								mx.emplace(answer.name, ::make_pair(answer.server, answer.preference));
-							}
 							// Если функция обратного вызова установлена для получения MX-записей
 							if(!mx.empty() && this->_callback.is("mx"))
 								// Выполняем функцию обратного вызова
@@ -2310,21 +2371,6 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							 * Перебираем все TEXT-записи в ответе от DNS-сервера
 							 */
 							for(auto & answer : result.txt){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим название записи
-									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
-									::printf("TTL: %u\n", answer.ttl);
-									/**
-									 * Вывод текстовых данных из TXT-записи
-									 */
-									for(auto & text : answer.texts)
-										// Выводим текст записи
-										::printf("TXT: %s\n", text.c_str());
-								#endif
 								/**
 								 * Вывод текстовых данных из TXT-записи
 								 */
@@ -2343,17 +2389,6 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							 * Перебираем все PTR-записи в ответе от DNS-сервера
 							 */
 							for(auto & answer : result.ptr){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим название записи
-									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
-									::printf("TTL: %u\n", answer.ttl);
-									// Выводим PTR-запись
-									::printf("PTR: %s\n", answer.domain.c_str());
-								#endif
 								// IP-адрес для кэширования
 								unique_ptr <net::addr_t> address = nullptr;
 								{
@@ -2412,27 +2447,6 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							 * Перебираем все SOA-записи в ответе от DNS-сервера
 							 */
 							for(auto & answer : result.soa){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим название записи
-									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
-									::printf("TTL: %u\n", answer.ttl);
-									// Выводим SOA-запись
-									::printf("SOA: %s\n", answer.mname.c_str());
-									// Выводим административный контакт
-									::printf("RNAME: %s\n", answer.rname.c_str());
-									// Выводим серийный номер зоны
-									::printf("SERIAL: %u\n", answer.serial);
-									// Выводим время обновления зоны
-									::printf("REFRESH: %u\n", answer.refresh);
-									// Выводим время повторной попытки обновления зоны
-									::printf("RETRY: %u\n", answer.retry);
-									// Выводим время истечения срока действия зоны
-									::printf("EXPIRE: %u\n", answer.expire);
-								#endif
 								// Если функция обратного вызова установлена для получения SOA-записей
 								if(this->_callback.is("soa"))
 									// Выполняем функцию обратного вызова
@@ -2443,13 +2457,6 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									this->_callback.call <void (const id_t, string_view, string_view)> ("rname", id, answer.name, answer.rname);
 							}
 						}
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим начальный разделитель
-							cout << endl << "------------------------------------------------------------" << endl << endl << flush;
-						#endif
 					}
 				} break;
 				// Если сервер DNS не смог интерпретировать запрос

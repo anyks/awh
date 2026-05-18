@@ -225,14 +225,14 @@ int32_t main(int32_t argc, char * argv[]){
 	coder.mode(cts2, tls::coder_t::mode_t::MULTICERT);
 	// Устанавливаем ALPN протоколы TLS базового шаблона TLS
 	coder.alpn(cts1, {
-		{0,"http/1.1"},
-		{1,"h2"}
+		{0,"h2"},
+		{1,"http/1.1"}
 	});
 	// Устанавливаем ALPN протоколы TLS для шаблона TLS с точным доменным именем
 	coder.alpn(cts2, {
-		{0,"http/1.1"},
-		{1,"h2"},
-		{1,"h3"}
+		{0,"h2"},
+		{1,"h3"},
+		{2,"http/1.1"}
 	});
 	// Устанавливаем файл центра сертификации TLS для базового шаблона TLS
 	coder.ca(cts1, "../sh/certificates", "ca.pem");

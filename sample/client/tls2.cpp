@@ -183,6 +183,8 @@ int32_t main(int32_t argc, char * argv[]){
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект клиента
 	client_t client(&unit, &dns, &coder, &fmk, &log);
+	// Устанавливаем список поддерживаемых DNS-серверов
+	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
@@ -193,8 +195,6 @@ int32_t main(int32_t argc, char * argv[]){
 	else cout << " Ошибка установки опций события!" << endl;
 	// Регистрируем объект транспортного уровня безопасности
 	const tls::coder_t::id_t cts = coder.context(event::node_t::CLIENT, event::protocol_t::TCP);
-	// Устанавливаем хост сервера для подключения клиента
-	const string host = "anyks.com";
 	// Устанавливаем ALPN протоколы TLS
 	coder.alpn(cts, {
 		{0,"http/1.1"},
@@ -226,10 +226,10 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	// Устанавливаем файл центра сертификации TLS
 	coder.ca(cts, "../sh/certificates", "ca.pem");
-	// Включаем проверку имени хоста TLS
-	coder.validateServerNameIndication(cts, true);
 	// Устанавливаем имя хоста TLS
-	coder.serverNameIndication(cts, host);
+	coder.serverNameIndication(cts, "anyks.net");
+	// Включаем проверку имени хоста TLS
+	coder.validateServerNameIndication(cts, false);
 	// Создаём идентификатор транспортного уровня TLS
 	const tls::coder_t::id_t ctl = coder.transport(cts);
 	// Устанавливаем идентификатор события клиента

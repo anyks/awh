@@ -191,8 +191,6 @@ int32_t main(int32_t argc, char * argv[]){
 	else cout << " Ошибка установки опций события!" << endl;
 	// Регистрируем объект транспортного уровня безопасности
 	const tls::coder_t::id_t cts = coder.context(event::node_t::CLIENT, event::protocol_t::TCP);
-	// Устанавливаем хост сервера для подключения клиента
-	const string host = "anyks.com";
 	// Устанавливаем ALPN протоколы TLS
 	coder.alpn(cts, {
 		{0,"http/1.1"},
@@ -224,10 +222,10 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	// Устанавливаем файл центра сертификации TLS
 	coder.ca(cts, "../sh/certificates", "ca.pem");
-	// Включаем проверку имени хоста TLS
-	coder.validateServerNameIndication(cts, true);
 	// Устанавливаем имя хоста TLS
-	coder.serverNameIndication(cts, host);
+	coder.serverNameIndication(cts, "anyks.com");
+	// Включаем проверку имени хоста TLS
+	coder.validateServerNameIndication(cts, false);
 	// Создаём идентификатор транспортного уровня TLS
 	const tls::coder_t::id_t ctl = coder.transport(cts);
 	// Устанавливаем идентификатор события клиента

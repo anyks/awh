@@ -203,6 +203,8 @@ int32_t main(int32_t argc, char * argv[]){
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект сервера
 	server_t server(&unit, &dns, &coder, &fmk, &log);
+	// Устанавливаем список поддерживаемых DNS-серверов
+	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие сервера и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
@@ -215,8 +217,8 @@ int32_t main(int32_t argc, char * argv[]){
 	const tls::coder_t::id_t cts = coder.context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
 	coder.alpn(cts, {
-		{0,"http/1.1"},
-		{1,"h2"}
+		{0,"h3"},
+		{1,"http/1.1"}
 	});
 	// Устанавливаем файл центра сертификации TLS
 	coder.ca(cts, "../sh/certificates", "ca.pem");

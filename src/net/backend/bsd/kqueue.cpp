@@ -31504,8 +31504,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 														// Обнуляем серверную структуру
 														::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
+														// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
+														const bool isLoopback = ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F);
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+														if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -31725,8 +31727,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 																		// Обнуляем серверную структуру
 																		::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
+																		// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
+																		const bool isLoopback = ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F);
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																		if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -31839,8 +31843,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																// Обнуляем серверную структуру
 																::memset(&(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero), 0, sizeof(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_zero));
+																// Определяем, является ли адрес клиента адресом обратной петли (127.0.0.0/8)
+																const bool isLoopback = ((ntohl(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr) >> 24) == 0x7F);
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
@@ -32052,8 +32058,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 														// Устанавливаем адрес для удаленного подключения
 														::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+														// Определяем, является ли адрес клиента адресом обратной петли (::1)
+														const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
 														// Выполняем бинд сокета клиента на адрес целевой машины
-														if(!(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+														if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
 															// Если установлена функция обратного вызова
 															if(client->callbacks.status != nullptr)
 																// Вызываем функцию обратного вызова об ошибке отказа
@@ -32271,8 +32279,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
 																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+																		// Определяем, является ли адрес клиента адресом обратной петли (::1)
+																		const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
 																		// Выполняем бинд сокета клиента на адрес целевой машины
-																		if(!(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																		if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
 																			// Если установлена функция обратного вызова
 																			if(client->callbacks.status != nullptr)
 																				// Вызываем функцию обратного вызова об ошибке отказа
@@ -32385,8 +32395,10 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																// Устанавливаем адрес для удаленного подключения целевой машины
 																::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+																// Определяем, является ли адрес клиента адресом обратной петли (::1)
+																const bool isLoopback = IN6_IS_ADDR_LOOPBACK(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr);
 																// Выполняем бинд сокета клиента на адрес целевой машины
-																if(!(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
+																if(!isLoopback && !(result = (::bind(client->transfer.fd, &::trust_cast <struct sockaddr> (client->endpoint.client), client->endpoint.size) == 0))){
 																	// Если установлена функция обратного вызова
 																	if(client->callbacks.status != nullptr)
 																		// Вызываем функцию обратного вызова об ошибке отказа
