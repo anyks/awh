@@ -135,9 +135,9 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
  */
 void awh::unit::Server::rebase(const pid_t old, const pid_t pid) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterRebase"))
+	if(this->_callback.is("cluster_rebase"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const pid_t)> ("clusterRebase", old, pid);
+		this->_callback.call <void (const pid_t, const pid_t)> ("cluster_rebase", old, pid);
 }
 /**
  * @brief Метод получения события завершения работы процесса
@@ -147,9 +147,9 @@ void awh::unit::Server::rebase(const pid_t old, const pid_t pid) noexcept {
  */
 void awh::unit::Server::exit(const pid_t pid, const int32_t signal) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterExit"))
+	if(this->_callback.is("cluster_exit"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const int32_t)> ("clusterExit", pid, signal);
+		this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, signal);
 }
 /**
  * @brief Метод обработки события отправки сообщения процессу кластера
@@ -159,9 +159,9 @@ void awh::unit::Server::exit(const pid_t pid, const int32_t signal) noexcept {
  */
 void awh::unit::Server::sending(const pid_t pid, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterSending"))
+	if(this->_callback.is("cluster_sending"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const size_t)> ("clusterSending", pid, size);
+		this->_callback.call <void (const pid_t, const size_t)> ("cluster_sending", pid, size);
 }
 /**
  * @brief Метод обработки событий записи данных сервером
@@ -229,9 +229,9 @@ void awh::unit::Server::action(const event::id_t eid, const event::action_t acti
  */
 void awh::unit::Server::status(const pid_t pid, const event::status_t status) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterState"))
+	if(this->_callback.is("cluster_state"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::status_t)> ("clusterState", pid, status);
+		this->_callback.call <void (const pid_t, const event::status_t)> ("cluster_state", pid, status);
 }
 /**
  * @brief Метод обработки событий изменения статуса сервера
@@ -300,9 +300,9 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 		} break;
 	}
 	// Если функция получения событий кластера установлена
-	if(this->_callback.is("clusterEvents"))
+	if(this->_callback.is("cluster_events"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("clusterEvents", pid, event);
+		this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", pid, event);
 }
 /**
  * @brief Метод обработки события получения сообщения от процесса кластера
@@ -313,9 +313,9 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
  */
 void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterMessage"))
+	if(this->_callback.is("cluster_message"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("clusterMessage", pid, data, size);
+		this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
 }
 /**
  * @brief Метод обработки событий получения данных сервером
@@ -339,9 +339,9 @@ void awh::unit::Server::read(const event::id_t eid, const uint8_t * data, const 
  */
 void awh::unit::Server::available(const pid_t pid, const event::status_t status, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterAvailable"))
+	if(this->_callback.is("cluster_available"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("clusterAvailable", pid, status, size);
+		this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", pid, status, size);
 }
 /**
  * @brief Метод обработки события доступности/недоступности очереди исходящих данных сервера
@@ -381,9 +381,9 @@ bool awh::unit::Server::timeout(const event::id_t eid, const event::action_t act
  */
 void awh::unit::Server::error(const pid_t pid, const event::error_t error, const string & description) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterError"))
+	if(this->_callback.is("cluster_error"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("clusterError", pid, error, description);
+		this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("cluster_error", pid, error, description);
 }
 /**
  * @brief Метод обработки событий ошибок сервера
@@ -1369,21 +1369,21 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова при получении событий доступности/недоступности очереди исходящих данных сервера
 	this->_callback.set("available", callback);
 	// Выполняем установку функции обратного вызова при завершении работы процесса кластера
-	this->_callback.set("clusterExit", callback);
+	this->_callback.set("cluster_exit", callback);
 	// Выполняем установку функции обратного вызова при получении ошибок кластера
-	this->_callback.set("clusterError", callback);
+	this->_callback.set("cluster_error", callback);
 	// Выполняем установку функции обратного вызова при получении состояния процесса кластера
-	this->_callback.set("clusterState", callback);
+	this->_callback.set("cluster_state", callback);
 	// Выполняем установку функции обратного вызова при пересоздании процесса кластера
-	this->_callback.set("clusterRebase", callback);
+	this->_callback.set("cluster_rebase", callback);
 	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКЕ процесса кластера
-	this->_callback.set("clusterEvents", callback);
+	this->_callback.set("cluster_events", callback);
 	// Выполняем установку функции обратного вызова при отправке сообщения кластера
-	this->_callback.set("clusterSending", callback);
+	this->_callback.set("cluster_sending", callback);
 	// Выполняем установку функции обратного вызова при получении сообщения кластера
-	this->_callback.set("clusterMessage", callback);
+	this->_callback.set("cluster_message", callback);
 	// Выполняем установку функции обратного вызова при получении доступности размера очереди сообщений кластера
-	this->_callback.set("clusterAvailable", callback);
+	this->_callback.set("cluster_available", callback);
 }
 /**
  * @brief Метод уничтожения события сервера
@@ -1429,8 +1429,6 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие записи данных
 		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3)));
 		// Устанавливаем функцию обратного вызова на событие разрешения подключения
 		this->_io->on(result, static_cast <engine::callback::accept_t> (std::bind(&server_t::accept, this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
@@ -1439,8 +1437,6 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t)> (&server_t::status), this, _1, _2)));
 		// Устанавливаем функцию обратного вызова на событие получения ошибок
 		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных сервера
-		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3)));
 		// Добавляем идентификатор события сервера в список событий сервера
 		this->_events.emplace(result);
 	/**

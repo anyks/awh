@@ -177,7 +177,7 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 		// Если рукопожатие TLS не выполнено
 		if(!this->_coder->handshake(ctl)){
 			// Если функция обратного вызова не установлена
-			if(!this->_callback.is("errorTLS")){
+			if(!this->_callback.is("error_tls")){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -276,7 +276,7 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 				// Если данные не расшифрованы
 				if(!this->_coder->decrypt(i->second, buffer, size)){
 					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("errorTLS")){
+					if(!this->_callback.is("error_tls")){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -378,9 +378,9 @@ void awh::Server::spool(const event::id_t eid, const event::send_error_t error, 
  */
 void awh::Server::rebaseCluster(const pid_t old, const pid_t pid) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterRebase"))
+	if(this->_callback.is("cluster_rebase"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const pid_t)> ("clusterRebase", old, pid);
+		this->_callback.call <void (const pid_t, const pid_t)> ("cluster_rebase", old, pid);
 }
 /**
  * @brief Метод получения события завершения работы процесса
@@ -390,9 +390,9 @@ void awh::Server::rebaseCluster(const pid_t old, const pid_t pid) noexcept {
  */
 void awh::Server::exitCluster(const pid_t pid, const int32_t signal) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterExit"))
+	if(this->_callback.is("cluster_exit"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const int32_t)> ("clusterExit", pid, signal);
+		this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, signal);
 }
 /**
  * @brief Метод обработки события отправки сообщения процессу кластера
@@ -402,9 +402,9 @@ void awh::Server::exitCluster(const pid_t pid, const int32_t signal) noexcept {
  */
 void awh::Server::sendingCluster(const pid_t pid, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterSending"))
+	if(this->_callback.is("cluster_sending"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const size_t)> ("clusterSending", pid, size);
+		this->_callback.call <void (const pid_t, const size_t)> ("cluster_sending", pid, size);
 }
 /**
  * @brief Метод обработки событий изменения статуса кластера
@@ -414,9 +414,9 @@ void awh::Server::sendingCluster(const pid_t pid, const size_t size) noexcept {
  */
 void awh::Server::stateCluster(const pid_t pid, const event::status_t status) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterState"))
+	if(this->_callback.is("cluster_state"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::status_t)> ("clusterState", pid, status);
+		this->_callback.call <void (const pid_t, const event::status_t)> ("cluster_state", pid, status);
 }
 /**
  * @brief Метод получения событий активации/деактивации кластера
@@ -426,9 +426,9 @@ void awh::Server::stateCluster(const pid_t pid, const event::status_t status) no
  */
 void awh::Server::eventsCluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept {
 	// Если функция получения событий кластера установлена
-	if(this->_callback.is("clusterEvents"))
+	if(this->_callback.is("cluster_events"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("clusterEvents", pid, event);
+		this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", pid, event);
 }
 /**
  * @brief Метод обработки события получения сообщения от процесса кластера
@@ -439,9 +439,9 @@ void awh::Server::eventsCluster(const pid_t pid, const unit::cluster_t::event_t 
  */
 void awh::Server::messageCluster(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterMessage"))
+	if(this->_callback.is("cluster_message"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("clusterMessage", pid, data, size);
+		this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
 }
 /**
  * @brief Метод обработки события доступности/недоступности очереди исходящих сообщений кластера
@@ -452,9 +452,9 @@ void awh::Server::messageCluster(const pid_t pid, const uint8_t * data, const si
  */
 void awh::Server::availableCluster(const pid_t pid, const event::status_t status, const size_t size) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterAvailable"))
+	if(this->_callback.is("cluster_available"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("clusterAvailable", pid, status, size);
+		this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", pid, status, size);
 }
 /**
  * @brief Метод обработки событий ошибок кластера
@@ -465,9 +465,9 @@ void awh::Server::availableCluster(const pid_t pid, const event::status_t status
  */
 void awh::Server::errorCluster(const pid_t pid, const event::error_t error, const string & description) noexcept {
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("clusterError"))
+	if(this->_callback.is("cluster_error"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("clusterError", pid, error, description);
+		this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("cluster_error", pid, error, description);
 }
 /**
  * @brief Метод получения состояния TLS
@@ -480,9 +480,9 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("stateTLS"))
+		if(this->_callback.is("state_tls"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::state_t)> ("stateTLS", id, eid, state);
+			this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::state_t)> ("state_tls", id, eid, state);
 		/**
 		 * Обрабатываем входящие состояния DTLS
 		 */
@@ -490,7 +490,7 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 			// Если состояние ошибки транспортного уровня
 			case static_cast <uint8_t> (tls::coder_t::state_t::FAILED): {
 				// Если функция обратного вызова не установлена
-				if(!this->_callback.is("errorTLS")){
+				if(!this->_callback.is("error_tls")){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -534,9 +534,9 @@ void awh::Server::fingerprintTLS(const tls::coder_t::id_t id, const event::id_t 
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("fingerprintTLS"))
+		if(this->_callback.is("fingerprint_tls"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprintTLS", id, eid, browser);
+			this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", id, eid, browser);
 	}
 }
 /**
@@ -551,7 +551,7 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
 		// Если функция обратного вызова не установлена
-		if(!this->_callback.is("errorTLS")){
+		if(!this->_callback.is("error_tls")){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -566,7 +566,7 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 				this->_log->print("%s", log_t::flag_t::CRITICAL, message.c_str());
 			#endif
 		// Выполняем функцию обратного вызова
-		} else this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::error_t, const string &)> ("errorTLS", id, eid, error, message);
+		} else this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::error_t, const string &)> ("error_tls", id, eid, error, message);
 	}
 }
 /**
@@ -924,27 +924,27 @@ void awh::Server::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 	this->_callback.set("available", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибок TLS
-	this->_callback.set("errorTLS", callback);
+	this->_callback.set("error_tls", callback);
 	// Выполняем установку функции обратного вызова на событие получения состояния TLS
-	this->_callback.set("stateTLS", callback);
+	this->_callback.set("state_tls", callback);
 	// Выполняем установку функции обратного вызова на событие получения отпечатка ClientHello TLS
-	this->_callback.set("fingerprintTLS", callback);
+	this->_callback.set("fingerprint_tls", callback);
 	// Выполняем установку функции обратного вызова при завершении работы процесса кластера
-	this->_callback.set("clusterExit", callback);
+	this->_callback.set("cluster_exit", callback);
 	// Выполняем установку функции обратного вызова при получении ошибок кластера
-	this->_callback.set("clusterError", callback);
+	this->_callback.set("cluster_error", callback);
 	// Выполняем установку функции обратного вызова при получении состояния процесса кластера
-	this->_callback.set("clusterState", callback);
+	this->_callback.set("cluster_state", callback);
 	// Выполняем установку функции обратного вызова при пересоздании процесса кластера
-	this->_callback.set("clusterRebase", callback);
+	this->_callback.set("cluster_rebase", callback);
 	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКЕ процесса кластера
-	this->_callback.set("clusterEvents", callback);
+	this->_callback.set("cluster_events", callback);
 	// Выполняем установку функции обратного вызова при отправке сообщения кластера
-	this->_callback.set("clusterSending", callback);
+	this->_callback.set("cluster_sending", callback);
 	// Выполняем установку функции обратного вызова при получении сообщения кластера
-	this->_callback.set("clusterMessage", callback);
+	this->_callback.set("cluster_message", callback);
 	// Выполняем установку функции обратного вызова при получении доступности размера очереди сообщений кластера
-	this->_callback.set("clusterAvailable", callback);
+	this->_callback.set("cluster_available", callback);
 }
 /**
  * @brief Метод получения сетевого интерфейса сервера
@@ -2236,21 +2236,21 @@ awh::Server::Server(unit::server_t * server, const fmk_t * fmk, const log_t * lo
 		// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
 		this->_server->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 		// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
-		this->_server->on <void (const pid_t, const int32_t)> ("clusterExit", &server_t::exitCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие пересоздания процесса кластера
-		this->_server->on <void (const pid_t, const pid_t)> ("clusterRebase", &server_t::rebaseCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const pid_t)> ("cluster_rebase", &server_t::rebaseCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие отправки сообщения процессу кластера
-		this->_server->on <void (const pid_t, const size_t)> ("clusterSending", &server_t::sendingCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const size_t)> ("cluster_sending", &server_t::sendingCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения статуса процесса кластера
-		this->_server->on <void (const pid_t, const event::status_t)> ("clusterState", &server_t::stateCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const event::status_t)> ("cluster_state", &server_t::stateCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие активации/деактивации процесса кластера
-		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("clusterEvents", &server_t::eventsCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("cluster_events", &server_t::eventsCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие получения сообщения от процесса кластера
-		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("clusterMessage", &server_t::messageCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server_t::messageCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие ошибки процесса кластера
-		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("clusterError", &server_t::errorCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("cluster_error", &server_t::errorCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих сообщений кластера
-		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("clusterAvailable", &server_t::availableCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", &server_t::availableCluster, this, _1, _2, _3);
 	// Если объект сервера не установлен
 	} else {
 		/**
@@ -2322,21 +2322,21 @@ awh::Server::Server(unit::server_t * server, tls::coder_t * coder, const fmk_t *
 		// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
 		this->_server->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 		// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
-		this->_server->on <void (const pid_t, const int32_t)> ("clusterExit", &server_t::exitCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие пересоздания процесса кластера
-		this->_server->on <void (const pid_t, const pid_t)> ("clusterRebase", &server_t::rebaseCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const pid_t)> ("cluster_rebase", &server_t::rebaseCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие отправки сообщения процессу кластера
-		this->_server->on <void (const pid_t, const size_t)> ("clusterSending", &server_t::sendingCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const size_t)> ("cluster_sending", &server_t::sendingCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения статуса процесса кластера
-		this->_server->on <void (const pid_t, const event::status_t)> ("clusterState", &server_t::stateCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const event::status_t)> ("cluster_state", &server_t::stateCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие активации/деактивации процесса кластера
-		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("clusterEvents", &server_t::eventsCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("cluster_events", &server_t::eventsCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие получения сообщения от процесса кластера
-		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("clusterMessage", &server_t::messageCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server_t::messageCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие ошибки процесса кластера
-		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("clusterError", &server_t::errorCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("cluster_error", &server_t::errorCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих сообщений кластера
-		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("clusterAvailable", &server_t::availableCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", &server_t::availableCluster, this, _1, _2, _3);
 	// Если объект клиента не установлен
 	} else {
 		/**
@@ -2390,21 +2390,21 @@ awh::Server::Server(unit::server_t * server, unit::dns_t * dns, const fmk_t * fm
 		// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
 		this->_server->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 		// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
-		this->_server->on <void (const pid_t, const int32_t)> ("clusterExit", &server_t::exitCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие пересоздания процесса кластера
-		this->_server->on <void (const pid_t, const pid_t)> ("clusterRebase", &server_t::rebaseCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const pid_t)> ("cluster_rebase", &server_t::rebaseCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие отправки сообщения процессу кластера
-		this->_server->on <void (const pid_t, const size_t)> ("clusterSending", &server_t::sendingCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const size_t)> ("cluster_sending", &server_t::sendingCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения статуса процесса кластера
-		this->_server->on <void (const pid_t, const event::status_t)> ("clusterState", &server_t::stateCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const event::status_t)> ("cluster_state", &server_t::stateCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие активации/деактивации процесса кластера
-		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("clusterEvents", &server_t::eventsCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("cluster_events", &server_t::eventsCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие получения сообщения от процесса кластера
-		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("clusterMessage", &server_t::messageCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server_t::messageCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие ошибки процесса кластера
-		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("clusterError", &server_t::errorCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("cluster_error", &server_t::errorCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих сообщений кластера
-		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("clusterAvailable", &server_t::availableCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", &server_t::availableCluster, this, _1, _2, _3);
 		// Если объект DNS-резолвера установлен
 		if(this->_dns != nullptr){
 			// Устанавливаем функции обратного вызова для обработки событий статуса DNS-резолвера
@@ -2503,21 +2503,21 @@ awh::Server::Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * c
 		// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
 		this->_server->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 		// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
-		this->_server->on <void (const pid_t, const int32_t)> ("clusterExit", &server_t::exitCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие пересоздания процесса кластера
-		this->_server->on <void (const pid_t, const pid_t)> ("clusterRebase", &server_t::rebaseCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const pid_t)> ("cluster_rebase", &server_t::rebaseCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие отправки сообщения процессу кластера
-		this->_server->on <void (const pid_t, const size_t)> ("clusterSending", &server_t::sendingCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const size_t)> ("cluster_sending", &server_t::sendingCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие изменения статуса процесса кластера
-		this->_server->on <void (const pid_t, const event::status_t)> ("clusterState", &server_t::stateCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const event::status_t)> ("cluster_state", &server_t::stateCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие активации/деактивации процесса кластера
-		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("clusterEvents", &server_t::eventsCluster, this, _1, _2);
+		this->_server->on <void (const pid_t, const unit::cluster_t::event_t)> ("cluster_events", &server_t::eventsCluster, this, _1, _2);
 		// Устанавливаем функцию обратного вызова на событие получения сообщения от процесса кластера
-		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("clusterMessage", &server_t::messageCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server_t::messageCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие ошибки процесса кластера
-		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("clusterError", &server_t::errorCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::error_t, const string &)> ("cluster_error", &server_t::errorCluster, this, _1, _2, _3);
 		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих сообщений кластера
-		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("clusterAvailable", &server_t::availableCluster, this, _1, _2, _3);
+		this->_server->on <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", &server_t::availableCluster, this, _1, _2, _3);
 		// Если объект DNS-резолвера установлен
 		if(this->_dns != nullptr){
 			// Устанавливаем функции обратного вызова для обработки событий статуса DNS-резолвера

@@ -42990,6 +42990,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Возвращаем результат работы функции
 										return result;
 									}
+									// Устанавливаем переданный IP-адрес
+									this->_addr.source(value, net_addr_t::endian_t::LITTLE);
 									// Определяем принадлежность сетевого адреса
 									const net_addr_t::own_t own = this->_addr.own();
 									// Временный объект для извлечения сетевого интерфейса
@@ -43096,6 +43098,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										}
 									// Если адрес не равен нулю
 									} else {
+										// Устанавливаем переданный IP-адрес
+										this->_addr.source(value, net_addr_t::endian_t::LITTLE);
 										// Определяем принадлежность сетевого адреса
 										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса
@@ -43320,6 +43324,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Возвращаем результат работы функции
 										return result;
 									}
+									// Устанавливаем переданный IP-адрес
+									this->_addr.source(value, net_addr_t::endian_t::LITTLE);
 									// Определяем принадлежность сетевого адреса
 									const net_addr_t::own_t own = this->_addr.own();
 									// Временный объект для извлечения сетевого интерфейса
@@ -43426,6 +43432,8 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										}
 									// Если адрес не равен нулю
 									} else {
+										// Устанавливаем переданный IP-адрес
+										this->_addr.source(value, net_addr_t::endian_t::LITTLE);
 										// Определяем принадлежность сетевого адреса
 										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса

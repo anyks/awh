@@ -1,6 +1,6 @@
 /**
- * @file: tls-web.cpp
- * @date: 2026-04-06
+ * @file: tls2.cpp
+ * @date: 2026-05-18
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -196,7 +196,34 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем хост сервера для подключения клиента
 	const string host = "anyks.com";
 	// Устанавливаем ALPN протоколы TLS
-	coder.alpn(cts, {{0,"http/1.1"}});
+	coder.alpn(cts, {
+		{0,"http/1.1"},
+		{1,"h2"}
+	});
+	// Устанавливаем список доступных шифров TLS
+	coder.ciphers(cts, {
+		tls::cipher_t::TLS_AES_128_GCM_SHA256,
+		tls::cipher_t::TLS_AES_256_GCM_SHA384,
+		tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
+		tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256,
+		tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256,
+		tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384,
+		tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384,
+		tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305,
+		tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305,
+		tls::cipher_t::ECDHE_RSA_AES128_SHA,
+		tls::cipher_t::ECDHE_RSA_AES256_SHA,
+		tls::cipher_t::AES128_GCM_SHA256,
+		tls::cipher_t::AES256_GCM_SHA384,
+		tls::cipher_t::AES128_SHA,
+		tls::cipher_t::AES256_SHA
+	});
+	// Устанавливаем компрессор для транспортного уровня TLS
+	coder.compressors(cts, {
+		compressor_t::method_t::ZLIB,
+		compressor_t::method_t::ZSTD,
+		compressor_t::method_t::BROTLI
+	});
 	// Устанавливаем файл центра сертификации TLS
 	coder.ca(cts, "../sh/certificates", "ca.pem");
 	// Включаем проверку имени хоста TLS
@@ -209,8 +236,8 @@ int32_t main(int32_t argc, char * argv[]){
 	client.setEventId(eid);
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(ctl);
-	// Устанавливаем порт и целевой хост для клиента
-	if(client.setPort(443) && client.setTarget(host)){
+	// Устанавливаем порт и целевой хост сервера
+	if(client.setPort(2222) && client.setTarget("localhost")){
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд
 		client.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса клиента

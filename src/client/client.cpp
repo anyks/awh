@@ -123,7 +123,7 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 				// Если рукопожатие TLS не выполнено
 				if(!this->_coder->handshake(this->_tid)){
 					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("errorTLS")){
+					if(!this->_callback.is("error_tls")){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -218,7 +218,7 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
 			// Если данные не расшифрованы
 			if(!this->_coder->decrypt(this->_tid, buffer, size)){
 				// Если функция обратного вызова не установлена
-				if(!this->_callback.is("errorTLS")){
+				if(!this->_callback.is("error_tls")){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -321,9 +321,9 @@ void awh::Client::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::stat
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("stateTLS"))
+		if(this->_callback.is("state_tls"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::state_t)> ("stateTLS", id, state);
+			this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::state_t)> ("state_tls", id, state);
 		// Если состояние рукопожатия успешно завершено
 		if(state == tls::coder_t::state_t::HANDSHAKED){
 			// Если функция обратного вызова установлена
@@ -344,7 +344,7 @@ void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::erro
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова не установлена
-		if(!this->_callback.is("errorTLS")){
+		if(!this->_callback.is("error_tls")){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -359,7 +359,7 @@ void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::erro
 				this->_log->print("%s", log_t::flag_t::CRITICAL, message.c_str());
 			#endif
 		// Выполняем функцию обратного вызова
-		} else this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::error_t, const string &)> ("errorTLS", id, error, message);
+		} else this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::error_t, const string &)> ("error_tls", id, error, message);
 	}
 }
 /**
@@ -420,9 +420,9 @@ void awh::Client::attemptsDNS([[maybe_unused]] const unit::dns_t::id_t id, const
 	// Если DNS-резолвер находится в рабочем состоянии
 	if(this->_dns->working()){
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("attemptsDNS"))
+		if(this->_callback.is("attempts_dns"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const string &, const uint8_t)> ("attemptsDNS", domain, attempts);
+			this->_callback.call <void (const string &, const uint8_t)> ("attempts_dns", domain, attempts);
 	}
 }
 /**
@@ -748,11 +748,11 @@ void awh::Client::callback(const callback_t & callback) noexcept {
 	// Выполняем установку функции обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 	this->_callback.set("available", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибок TLS
-	this->_callback.set("errorTLS", callback);
+	this->_callback.set("error_tls", callback);
 	// Выполняем установку функции обратного вызова на событие получения состояния TLS
-	this->_callback.set("stateTLS", callback);
+	this->_callback.set("state_tls", callback);
 	// Выполняем установку функции обратного вызова на событие завершения попыток резолвинга доменного имени DNS-резолвером
-	this->_callback.set("attemptsDNS", callback);
+	this->_callback.set("attempts_dns", callback);
 }
 /**
  * @brief Метод отправки данных серверу

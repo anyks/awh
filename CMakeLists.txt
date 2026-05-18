@@ -583,10 +583,21 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указывает каталог для ВСЕХ исполняемых файлов
     SET(CMAKE_RUNTIME_OUTPUT_DIRECTORY ${CMAKE_BINARY_DIR}/samples)
 
+    # Устанавливаем имя приложения работы с клиентом TLS
+    SET(CLIENT_APP_TLS_NAME client-tls)
+    # Устанавливаем имя приложения работы с клиентом TLS версии 2
+    SET(CLIENT_APP_TLS-2_NAME client-tls-2)
     # Устанавливаем имя приложения работы с клиентом TLS-Web
     SET(CLIENT_APP_TLS-WEB_NAME client-tls-web)
     # Указываем что нужно собрать приложение работы с клиентом
     option(CMAKE_BUILD_CLIENT_APP_SAMPLE "Build client app sample" ON)
+
+    # Устанавливаем имя приложения работы с сервером TLS
+    SET(SERVER_APP_TLS_NAME server-tls)
+    # Устанавливаем имя приложения работы с сервером TLS мультисертификатным
+    SET(SERVER_APP_TLS-MULTICERT_NAME server-tls-multicert)
+    # Указываем что нужно собрать приложение работы с сервером
+    option(CMAKE_BUILD_SERVER_APP_SAMPLE "Build server app sample" ON)
 
     # Устанавливаем имя приложения работы с юнитом файловой системы
     SET(UNIT_APP_FS_NAME unit-fs)
@@ -884,6 +895,10 @@ if (${CMAKE_BUILD_SAMPLES})
     if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample CLIENT: Yes\n")
+        # Выполняем создание приложения работы с клиентом TLS
+        add_sample(${CLIENT_APP_TLS_NAME} sample/client/tls.cpp client)
+        # Выполняем создание приложения работы с клиентом TLS версии 2
+        add_sample(${CLIENT_APP_TLS-2_NAME} sample/client/tls2.cpp client)
         # Выполняем создание приложения работы с клиентом TLS-Web
         add_sample(${CLIENT_APP_TLS-WEB_NAME} sample/client/tls-web.cpp client)
     # Если не нужно собирать семплы для работы с клиентом
@@ -891,6 +906,20 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample CLIENT: No\n")
     endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с сервером
+    if (${CMAKE_BUILD_SERVER_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SERVER: Yes\n")
+        # Выполняем создание приложения работы с сервером TLS
+        add_sample(${SERVER_APP_TLS_NAME} sample/server/tls.cpp server)
+        # Выполняем создание приложения работы с сервером TLS мультисертификатным
+        add_sample(${SERVER_APP_TLS-MULTICERT_NAME} sample/server/tls-multicert.cpp server)
+    # Если не нужно собирать семплы для работы с сервером
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SERVER: No\n")
+    endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом файловой системы
     if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -1371,6 +1400,22 @@ if (CMAKE_SHARED_BUILD_LIB)
     if (${CMAKE_BUILD_SAMPLES})
         # Если нужно собрать семплы для работы с клиентом
         if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+            # Выполняем сборку приложения работы с клиентом TLS
+            target_link_libraries(
+                ${CLIENT_APP_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с клиентом TLS версии 2
+            target_link_libraries(
+                ${CLIENT_APP_TLS-2_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с клиентом TLS-Web
             target_link_libraries(
                 ${CLIENT_APP_TLS-WEB_NAME}
@@ -1379,6 +1424,25 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с сервером
+        if (${CMAKE_BUILD_SERVER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с сервером TLS
+            target_link_libraries(
+                ${SERVER_APP_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером TLS мультисертификатным
+            target_link_libraries(
+                ${SERVER_APP_TLS-MULTICERT_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
     
         # Если нужно собрать семплы для работы с юнитом файловой системы
         if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -1974,6 +2038,24 @@ else (CMAKE_SHARED_BUILD_LIB)
     if (${CMAKE_BUILD_SAMPLES})
         # Если нужно собрать семплы для работы с клиентом
         if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+            # Выполняем сборку приложения работы с клиентом TLS
+            target_link_libraries(
+                ${CLIENT_APP_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с клиентом TLS версии 2
+            target_link_libraries(
+                ${CLIENT_APP_TLS-2_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с клиентом TLS-Web
             target_link_libraries(
                 ${CLIENT_APP_TLS-WEB_NAME}
@@ -1983,6 +2065,27 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с сервером
+        if (${CMAKE_BUILD_SERVER_APP_SAMPLE})
+            # Выполняем сборку приложения работы с сервером TLS
+            target_link_libraries(
+                ${SERVER_APP_TLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером TLS мультисертификатным
+            target_link_libraries(
+                ${SERVER_APP_TLS-MULTICERT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом файловой системы
         if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -2647,6 +2750,20 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать семплы для работы с клиентом
             if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+                # Выполняем сборку приложения работы с клиентом TLS
+                add_custom_command(TARGET "${CLIENT_APP_TLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_TLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с клиентом TLS версии 2
+                add_custom_command(TARGET "${CLIENT_APP_TLS-2_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS-2_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_TLS-2_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            
                 # Выполняем сборку приложения работы с клиентом TLS-Web
                 add_custom_command(TARGET "${CLIENT_APP_TLS-WEB_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS-WEB_NAME}>" "${entitlements_file}"
@@ -2654,6 +2771,23 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с сервером
+            if (${CMAKE_BUILD_SERVER_APP_SAMPLE})
+                # Выполняем сборку приложения работы с сервером TLS
+                add_custom_command(TARGET "${SERVER_APP_TLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_TLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с сервером TLS мультисертификатным
+                add_custom_command(TARGET "${SERVER_APP_TLS-MULTICERT_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TLS-MULTICERT_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_TLS-MULTICERT_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с юнитом файловой системы
             if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -3111,9 +3245,21 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать семплы для работы с клиентом
             if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+                # Выполняем анализ приложения работы с клиентом TLS
+                pvs_studio_add_target(TARGET ${CLIENT_APP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с клиентом TLS версия 2
+                pvs_studio_add_target(TARGET ${CLIENT_APP_TLS-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с клиентом TLS-Web
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TLS-WEB_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS-WEB_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с сервером
+            if (${CMAKE_BUILD_SERVER_APP_SAMPLE})
+                # Выполняем анализ приложения работы с сервером TLS
+                pvs_studio_add_target(TARGET ${SERVER_APP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с сервером TLS мультисертификатным
+                pvs_studio_add_target(TARGET ${SERVER_APP_TLS-MULTICERT_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_TLS-MULTICERT_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+            endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с юнитом файловой системы
             if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -3456,9 +3602,21 @@ install(FILES ${TCMALLOC_LIBRARIES} DESTINATION "${CMAKE_INSTALL_PREFIX}/lib")
 if (${CMAKE_BUILD_SAMPLES})
     # Если нужно собрать семплы для работы с клиентом
     if (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+        # Устанавливаем приложение работы с клиентом TLS
+        install(TARGETS ${CLIENT_APP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с клиентом TLS версии 2
+        install(TARGETS ${CLIENT_APP_TLS-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с клиентом TLS-Web
         install(TARGETS ${CLIENT_APP_TLS-WEB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с сервером
+    if (${CMAKE_BUILD_SERVER_APP_SAMPLE})
+        # Устанавливаем приложение работы с сервером TLS
+        install(TARGETS ${SERVER_APP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с сервером TLS мультисертификатным
+        install(TARGETS ${SERVER_APP_TLS-MULTICERT_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом файловой системы
     if (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
