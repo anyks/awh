@@ -24143,29 +24143,32 @@ namespace io {
 						#endif
 						// Если сокет не создан тогда выходим
 						if(sock == net::invalid_socket_t){
-							// Если установлена функция обратного вызова
-							if(server->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова об ошибке отказа
-								server->callbacks.status(server->id, event::status_t::FAILURE);
-							// Если установлена функция обратного вызова
-							if(server->callbacks.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки события
-								server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
-							// Если сокет не создан
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, ::strerror(errno));
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-								#endif
+							// Если процесс является основным процессом
+							if(::__awh_pid__ == ::getpid()){
+								// Если установлена функция обратного вызова
+								if(server->callbacks.status != nullptr)
+									// Вызываем функцию обратного вызова об ошибке отказа
+									server->callbacks.status(server->id, event::status_t::FAILURE);
+								// Если установлена функция обратного вызова
+								if(server->callbacks.error != nullptr)
+									// Вызываем функцию обратного вызова ошибки события
+									server->callbacks.error(server->id, event::error_t::EVENT_FAIL, ::strerror(errno));
+								// Если сокет не создан
+								else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, ::strerror(errno));
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+									#endif
+								}
 							}
 							// Выходим из функции
 							return false;
@@ -57442,10 +57445,28 @@ bool awh::engine::IO::reinitialize() noexcept {
 		}
 		// Устанавливаем флаг автозакрытия файлового дескриптора
 		::fcntl(::__awh_kq__, F_SETFD, FD_CLOEXEC);
-		// Создаём объект события для Kqueue
+		// Создаём пользовательское событие
 		struct kevent event{};
 		// Устанавливаем пользовательское событие
 		EV_SET(&event, 0, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, nullptr);
+		// Активируем пользовательское событие Kqueue
+		if(!(result = (::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) != net::invalid_socket_t))){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+			#endif
+			// Выходим из приложения
+			::exit(EXIT_FAILURE);
+		}
 		// Добавляем новое событие в список изменений
 		::events::add(::move(event));
 		// Выполняем перебор всех активных узлов
@@ -57737,7 +57758,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Активируем событие на чтение для серверного сокета
-							EV_SET(&event, i->first, EVFILT_READ, EV_ENABLE, 0, 0, tunnel);
+							EV_SET(&event, tunnel->fd, EVFILT_READ, EV_ENABLE, 0, 0, tunnel);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 						}
@@ -57775,12 +57796,6 @@ bool awh::engine::IO::reinitialize() noexcept {
 						if((client->state.status == event::status_t::LAUNCHED) ||
 						   (client->state.status == event::status_t::CONNECTED) ||
 						   (client->state.status == event::status_t::RESUMED)){
-							// Создаём объект события для Kqueue
-							struct kevent event{};
-							// Активируем событие на чтение для серверного сокета
-							EV_SET(&event, i->first, EVFILT_READ, EV_ENABLE, 0, 0, client);
-							// Добавляем новое событие в список изменений
-							::events::add(::move(event));
 							// Если событие чтения из сокета разрешено
 							if(client->transfer.actions & ::action::READ){
 								// Создаём объект события для Kqueue
@@ -57883,12 +57898,6 @@ bool awh::engine::IO::reinitialize() noexcept {
 						if((server->state.status == event::status_t::LAUNCHED) ||
 						   (server->state.status == event::status_t::LISTENING) ||
 						   (server->state.status == event::status_t::RESUMED)){
-							// Создаём объект события для Kqueue
-							struct kevent event{};
-							// Активируем событие на чтение для серверного сокета
-							EV_SET(&event, i->first, EVFILT_READ, EV_ENABLE, 0, 0, server);
-							// Добавляем новое событие в список изменений
-							::events::add(::move(event));
 							// Если событие чтения из сокета разрешено
 							if(server->actions & ::action::READ){
 								// Создаём объект события для Kqueue

@@ -2009,6 +2009,8 @@ namespace verify {
 		::local::guard_t guard(member);
 		// Если SNI получен
 		if(sni != nullptr){
+			// Сохраняем полученное имя хоста
+			member->host.name = sni;
 			// Если установлен режим работы с несколькими сертификатами TLS
 			if(member->state & state::MULTICERT_MODE){
 				// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
@@ -2017,21 +2019,14 @@ namespace verify {
 				if(i != ::__awh_ssl_splice_map__.end()){
 					// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
 					if(::__awh_ssl_ids__.find(i->second) != ::__awh_ssl_ids__.end()){
-						// Сохраняем полученное имя хоста
-						member->host.name = sni;
 						// Выполняем подмену сертификата на основной
 						::SSL_set_SSL_CTX(ssl, reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (i->second))->ctx);
 						// Устанавливаем результат обработки
 						result = SSL_TLSEXT_ERR_OK;
 					}
 				}
-			// Если режим работы с несколькими сертификатами TLS не установлен
-			} else {
-				// Сохраняем полученное имя хоста
-				member->host.name = sni;
-				// Устанавливаем результат обработки
-				result = SSL_TLSEXT_ERR_OK;
-			}
+			// Устанавливаем результат обработки
+			} else result = SSL_TLSEXT_ERR_OK;
 		// Если SNI не получен
 		} else {
 			// Выполняем получение идентификатора контекста TLS

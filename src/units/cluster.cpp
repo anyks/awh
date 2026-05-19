@@ -182,19 +182,8 @@ void awh::unit::Cluster::create() noexcept {
 							auto ret = this->_workers.emplace(worker->pid, ::move(worker));
 							// Выполняем фиксацию и запуск работы события
 							if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об успешном запуске события
-									this->_log->debug("Cluster worker process [%d] has been started successfully", __PRETTY_FUNCTION__, {}, log_t::flag_t::INFO, ret.first->first);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об успешном запуске события
-									this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
-								#endif
+								// Выводим сообщение об успешном запуске события
+								this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("events"))
 									// Выполняем функцию обратного вызова
@@ -439,19 +428,8 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						auto ret = this->_workers.emplace(worker->pid, ::move(worker));
 						// Выполняем фиксацию и запуск работы события
 						if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об успешном запуске события
-								this->_log->debug("Cluster worker process [%d] has been started successfully", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::INFO, ret.first->first);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об успешном запуске события
-								this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
-							#endif
+							// Выводим сообщение об успешном запуске события
+							this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("events"))
 								// Выполняем функцию обратного вызова

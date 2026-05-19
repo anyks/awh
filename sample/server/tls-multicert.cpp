@@ -200,7 +200,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект юнита сервера
 	unit::server_t unit(&fmk, &log);
 	// Создаём объект сервера
-	server_t server(&unit, &coder, &fmk, &log);
+	// server_t server(&unit, &coder, &fmk, &log);
+	// Создаём объект DNS-резолвера
+	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
+	// Создаём объект сервера
+	server_t server(&unit, &dns, &coder, &fmk, &log);
+	// Устанавливаем список поддерживаемых DNS-серверов
+	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Устанавливаем имя кластера для сервера
 	unit.clusterName("ANYKS");
 	// Устанавливаем количество вокеров кластера для сервера
@@ -305,7 +311,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для сервера
 	server.setSecurityId(cts1);
 	// Устанавливаем порт и хост сервера
-	if(server.setPort(2222) && server.setHost("127.0.0.1")){
+	// if(server.setPort(2222) && server.setHost("127.0.0.1")){
+	if(server.setPort(2222) && server.setHost("localhost")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд
 		server.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера

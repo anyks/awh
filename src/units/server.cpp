@@ -44,9 +44,9 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			 */
 			#if _WIN32 || _WIN64
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("serverStatus"))
+				if(this->_callback.is("server_status"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::status_t)> ("serverStatus", status);
+					this->_callback.call <void (const event::status_t)> ("server_status", status);
 			/**
 			 * Для операционной системы Linux или FreeBSD
 			 */
@@ -54,9 +54,9 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				// Если кластер в работе не используется или если процесс является дочерним
 				if((this->_clusterMode == event::mode_t::DISABLED) || !this->_cluster.master()){
 					// Если функция обратного вызова установлена
-					if(this->_callback.is("serverStatus"))
+					if(this->_callback.is("server_status"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::status_t)> ("serverStatus", status);
+						this->_callback.call <void (const event::status_t)> ("server_status", status);
 				}
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
@@ -90,9 +90,9 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 					// Если активировать кластер не требуется
 					case static_cast <uint8_t> (event::mode_t::DISABLED): {
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("serverStatus"))
+						if(this->_callback.is("server_status"))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::status_t)> ("serverStatus", status);
+							this->_callback.call <void (const event::status_t)> ("server_status", status);
 					} break;
 				}
 			#endif
@@ -109,11 +109,11 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 					this->_io->destroy(eid);
 			}
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("serverStatus")){
+			if(this->_callback.is("server_status")){
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("serverStatus", status);
+				this->_callback.call <void (const event::status_t)> ("server_status", status);
 				// Выполняем получение функции обратного вызова
-				this->_callback.set("serverStatus", "status", this->_callback);
+				this->_callback.set("server_status", "status", this->_callback);
 			}
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
@@ -267,7 +267,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("status"))
 						// Выполняем получение функции обратного вызова
-						this->_callback.set("status", "serverStatus", this->_callback);
+						this->_callback.set("status", "server_status", this->_callback);
 					// Устанавливаем функцию обратного вызова на запуск системы
 					this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 					// Выполняем запуск работы основного юнита
@@ -280,9 +280,9 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 				// Если процесс является дочерним
 				if(!this->_cluster.master()){
 					// Если функция обратного вызова установлена
-					if(this->_callback.is("serverStatus"))
+					if(this->_callback.is("server_status"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::status_t)> ("serverStatus", event::status_t::LAUNCHED);
+						this->_callback.call <void (const event::status_t)> ("server_status", event::status_t::LAUNCHED);
 				}
 			#endif
 		} break;
@@ -1264,7 +1264,7 @@ void awh::unit::Server::start() noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("status"))
 				// Выполняем получение функции обратного вызова
-				this->_callback.set("status", "serverStatus", this->_callback);
+				this->_callback.set("status", "server_status", this->_callback);
 			// Устанавливаем функцию обратного вызова на запуск системы
 			this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 			// Выполняем запуск работы основного юнита
@@ -1303,7 +1303,7 @@ void awh::unit::Server::start() noexcept {
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("status"))
 						// Выполняем получение функции обратного вызова
-						this->_callback.set("status", "serverStatus", this->_callback);
+						this->_callback.set("status", "server_status", this->_callback);
 					// Устанавливаем функцию обратного вызова на запуск системы
 					this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 					// Выполняем запуск работы основного юнита
@@ -1317,7 +1317,7 @@ void awh::unit::Server::start() noexcept {
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("status"))
 				// Выполняем получение функции обратного вызова
-				this->_callback.set("status", "serverStatus", this->_callback);
+				this->_callback.set("status", "server_status", this->_callback);
 			// Устанавливаем функцию обратного вызова на запуск системы
 			this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 			// Выполняем запуск работы основного юнита

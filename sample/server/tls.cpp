@@ -199,12 +199,16 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t coder(&fgp, &fmk, &log);
 	// Создаём объект юнита сервера
 	unit::server_t unit(&fmk, &log);
+	/*
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект сервера
 	server_t server(&unit, &dns, &coder, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
+	*/
+	// Создаём объект сервера
+	server_t server(&unit, &coder, &fmk, &log);
 	// Создаём событие сервера и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
@@ -257,7 +261,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для сервера
 	server.setSecurityId(cts);
 	// Устанавливаем порт и хост сервера
-	if(server.setPort(2222) && server.setHost("localhost")){
+	// if(server.setPort(2222) && server.setHost("localhost")){
+	if(server.setPort(2222) && server.setHost("127.0.0.1")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд
 		server.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
