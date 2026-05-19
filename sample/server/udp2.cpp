@@ -1,5 +1,5 @@
 /**
- * @file: tcp2.cpp
+ * @file: udp2.cpp
  * @date: 2026-05-19
  * @license: GPL-3.0
  *
@@ -80,14 +80,10 @@ class Executor {
 			 */
 			switch(static_cast <uint8_t> (status)){
 				// Если событие сервера запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-					// Выполняем прослушивание сервера на порту
-					if(!server->listen(100))
-						// Выводим сообщение об ошибке
-						this->_log->print("Failed to listen on port %d", log_t::flag_t::WARNING, server->getPort());
-					// Если подключение выполнено, то выводим сообщение об успешном прослушивании порта
-					else this->_log->print("Successfully listening on port %d", log_t::flag_t::INFO, server->getPort());
-				} break;
+				case static_cast <uint8_t> (event::status_t::LAUNCHED):
+					// Выводим сообщение об успешном запуске события сервера
+					this->_log->print("Событие сервера было успешно запущено на порту %d", log_t::flag_t::INFO, server->getPort());
+				break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Выводим сообщение об остановке события сервера
@@ -171,7 +167,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Включаем режим кластера для сервера
 	unit.clusterMode(event::mode_t::ENABLED);
 	// Создаём событие сервера и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события

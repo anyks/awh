@@ -64,6 +64,12 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 							this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_eid);
 						#endif
 					}
+				// Если клиент запущен удачно
+				} else {
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("launch"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_client->getTarget(this->_eid), this->_client->getPort(this->_eid));
 				}
 			}
 		} break;
@@ -741,6 +747,8 @@ void awh::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова на событие изменения состояния клиента
 	this->_callback.set("action", callback);
+	// Выполняем установку функции обратного вызова на событие запуска клиента
+	this->_callback.set("launch", callback);
 	// Выполняем установку функции обратного вызова на событие истечения таймаута клиента
 	this->_callback.set("timeout", callback);
 	// Выполняем установку функции обратного вызова при подключении клиента к удалённому серверу

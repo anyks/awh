@@ -1,5 +1,5 @@
 /**
- * @file: tcp2.cpp
+ * @file: udp.cpp
  * @date: 2026-05-19
  * @license: GPL-3.0
  *
@@ -60,7 +60,7 @@ class Executor {
 			// Если данные получены
 			if(size > 0)
 				// Выводим данные в лог
-				this->_log->print("PID=%zu\n%s", log_t::flag_t::INFO, ::getpid(), string(reinterpret_cast <const char *> (data), size).c_str());
+				this->_log->print("%s", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
 			else this->_log->print("No data received", log_t::flag_t::WARNING);
 			// Отправляем данные обратно клиенту
@@ -80,14 +80,10 @@ class Executor {
 			 */
 			switch(static_cast <uint8_t> (status)){
 				// Если событие сервера запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-					// Выполняем прослушивание сервера на порту
-					if(!server->listen(100))
-						// Выводим сообщение об ошибке
-						this->_log->print("Failed to listen on port %d", log_t::flag_t::WARNING, server->getPort());
-					// Если подключение выполнено, то выводим сообщение об успешном прослушивании порта
-					else this->_log->print("Successfully listening on port %d", log_t::flag_t::INFO, server->getPort());
-				} break;
+				case static_cast <uint8_t> (event::status_t::LAUNCHED):
+					// Выводим сообщение об успешном запуске события сервера
+					this->_log->print("Событие сервера было успешно запущено на порту %d", log_t::flag_t::INFO, server->getPort());
+				break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Выводим сообщение об остановке события сервера
@@ -108,6 +104,17 @@ class Executor {
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE))
 				// Выводим сообщение об успешной установке опций события
 				cout << " Выполнено подключение: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
+		}
+		/**
+		 * @brief Метод обработки событий запуска сервера
+		 *
+		 * @param address адрес сервера
+		 * @param port    порт сервера
+		 * @param server  объект сервера
+		 */
+		void launch(const string & address, const uint16_t port, server_t * server) noexcept {
+			// Выводим сообщение о запуске сервера
+			this->_log->print("Server is launching to %s:%d", log_t::flag_t::INFO, address.c_str(), port);
 		}
 		/**
 		 * @brief Метод обработки событий готовности сервера к работе
@@ -158,20 +165,10 @@ int32_t main(int32_t argc, char * argv[]){
 	Executor executor(&fmk, &log);
 	// Создаём объект юнита сервера
 	unit::server_t unit(&fmk, &log);
-	// Создаём объект DNS-резолвера
-	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект сервера
-	server_t server(&unit, &dns, &fmk, &log);
-	// Устанавливаем список поддерживаемых DNS-серверов
-	dns.setServers({"77.88.8.8", "77.88.8.1"});
-	// Устанавливаем имя кластера для сервера
-	unit.clusterName("ANYKS");
-	// Устанавливаем количество вокеров кластера для сервера
-	unit.clusterCount(0);
-	// Включаем режим кластера для сервера
-	unit.clusterMode(event::mode_t::ENABLED);
+	server_t server(&unit, &fmk, &log);
 	// Создаём событие сервера и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
@@ -181,13 +178,15 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор события сервера
 	server.setEventId(eid);
 	// Устанавливаем порт и хост сервера
-	if(server.setPort(2222) && server.setHost("localhost")){
+	if(server.setPort(2222) && server.setHost("127.0.0.1")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд
 		server.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
 		server.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &server);
 		// Регистрируем функцию обратного вызова на событие записи данных сервером
 		server.on <void (const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2);
+		// Регистрируем функцию обратного вызова на событие запуска сервера
+		server.on <void (const string &, const uint16_t)> ("launch", &Executor::launch, &executor, _1, _2, &server);
 		// Регистрируем функцию обратного вызова на событие чтения данных сервером
 		server.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::read, &executor, _1, _2, _3, &server);
 		// Регистрируем функцию обратного вызова на событие ошибок сервера

@@ -587,6 +587,10 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CLIENT_APP_TCP_NAME client-tcp)
     # Устанавливаем имя приложения работы с клиентом TCP версии 2
     SET(CLIENT_APP_TCP-2_NAME client-tcp-2)
+    # Устанавливаем имя приложения работы с клиентом UDP
+    SET(CLIENT_APP_UDP_NAME client-udp)
+    # Устанавливаем имя приложения работы с клиентом UDP версии 2
+    SET(CLIENT_APP_UDP-2_NAME client-udp-2)
     # Устанавливаем имя приложения работы с клиентом TLS
     SET(CLIENT_APP_TLS_NAME client-tls)
     # Устанавливаем имя приложения работы с клиентом TLS версии 2
@@ -600,6 +604,10 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(SERVER_APP_TCP_NAME server-tcp)
     # Устанавливаем имя приложения работы с сервером TCP версии 2
     SET(SERVER_APP_TCP-2_NAME server-tcp-2)
+    # Устанавливаем имя приложения работы с сервером UDP
+    SET(SERVER_APP_UDP_NAME server-udp)
+    # Устанавливаем имя приложения работы с сервером UDP версии 2
+    SET(SERVER_APP_UDP-2_NAME server-udp-2)
     # Устанавливаем имя приложения работы с сервером TLS
     SET(SERVER_APP_TLS_NAME server-tls)
     # Устанавливаем имя приложения работы с сервером TLS мультисертификатным
@@ -907,6 +915,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_TCP_NAME} sample/client/tcp.cpp client)
         # Выполняем создание приложения работы с клиентом TCP версии 2
         add_sample(${CLIENT_APP_TCP-2_NAME} sample/client/tcp2.cpp client)
+        # Выполняем создание приложения работы с клиентом UDP
+        add_sample(${CLIENT_APP_UDP_NAME} sample/client/udp.cpp client)
+        # Выполняем создание приложения работы с клиентом UDP версии 2
+        add_sample(${CLIENT_APP_UDP-2_NAME} sample/client/udp2.cpp client)
         # Выполняем создание приложения работы с клиентом TLS
         add_sample(${CLIENT_APP_TLS_NAME} sample/client/tls.cpp client)
         # Выполняем создание приложения работы с клиентом TLS версии 2
@@ -927,6 +939,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${SERVER_APP_TCP_NAME} sample/server/tcp.cpp server)
         # Выполняем создание приложения работы с сервером TCP версии 2
         add_sample(${SERVER_APP_TCP-2_NAME} sample/server/tcp2.cpp server)
+        # Выполняем создание приложения работы с сервером UDP
+        add_sample(${SERVER_APP_UDP_NAME} sample/server/udp.cpp server)
+        # Выполняем создание приложения работы с сервером UDP версии 2
+        add_sample(${SERVER_APP_UDP-2_NAME} sample/server/udp2.cpp server)
         # Выполняем создание приложения работы с сервером TLS
         add_sample(${SERVER_APP_TLS_NAME} sample/server/tls.cpp server)
         # Выполняем создание приложения работы с сервером TLS мультисертификатным
@@ -1431,7 +1447,23 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        
+
+            # Выполняем сборку приложения работы с клиентом UDP
+            target_link_libraries(
+                ${CLIENT_APP_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с клиентом UDP версии 2
+            target_link_libraries(
+                ${CLIENT_APP_UDP-2_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с клиентом TLS
             target_link_libraries(
                 ${CLIENT_APP_TLS_NAME}
@@ -1474,7 +1506,23 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        
+
+            # Выполняем сборку приложения работы с сервером UDP
+            target_link_libraries(
+                ${SERVER_APP_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером UDP версии 2
+            target_link_libraries(
+                ${SERVER_APP_UDP-2_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с сервером TLS
             target_link_libraries(
                 ${SERVER_APP_TLS_NAME}
@@ -2103,7 +2151,25 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        
+
+            # Выполняем сборку приложения работы с клиентом UDP
+            target_link_libraries(
+                ${CLIENT_APP_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с клиентом UDP версии 2
+            target_link_libraries(
+                ${CLIENT_APP_UDP-2_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с клиентом TLS
             target_link_libraries(
                 ${CLIENT_APP_TLS_NAME}
@@ -2151,7 +2217,25 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
-        
+
+            # Выполняем сборку приложения работы с сервером UDP
+            target_link_libraries(
+                ${SERVER_APP_UDP_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером UDP версии 2
+            target_link_libraries(
+                ${SERVER_APP_UDP-2_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с сервером TLS
             target_link_libraries(
                 ${SERVER_APP_TLS_NAME}
@@ -2847,7 +2931,21 @@ if (${CMAKE_BUILD_SAMPLES})
                     COMMENT "Sign target \"${CLIENT_APP_TCP-2_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
-            
+
+                # Выполняем сборку приложения работы с клиентом UDP
+                add_custom_command(TARGET "${CLIENT_APP_UDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_UDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_UDP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с клиентом UDP версии 2
+                add_custom_command(TARGET "${CLIENT_APP_UDP-2_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_UDP-2_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_UDP-2_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
                 # Выполняем сборку приложения работы с клиентом TLS
                 add_custom_command(TARGET "${CLIENT_APP_TLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS_NAME}>" "${entitlements_file}"
@@ -2885,7 +2983,21 @@ if (${CMAKE_BUILD_SAMPLES})
                     COMMENT "Sign target \"${SERVER_APP_TCP-2_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
-            
+
+                # Выполняем сборку приложения работы с сервером UDP
+                add_custom_command(TARGET "${SERVER_APP_UDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_UDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_UDP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с сервером UDP версии 2
+                add_custom_command(TARGET "${SERVER_APP_UDP-2_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_UDP-2_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_UDP-2_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
                 # Выполняем сборку приложения работы с сервером TLS
                 add_custom_command(TARGET "${SERVER_APP_TLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TLS_NAME}>" "${entitlements_file}"
@@ -3361,6 +3473,10 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TCP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TCP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с клиентом TCP версия 2
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TCP-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TCP-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с клиентом UDP
+                pvs_studio_add_target(TARGET ${CLIENT_APP_UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с клиентом UDP версия 2
+                pvs_studio_add_target(TARGET ${CLIENT_APP_UDP-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_UDP-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с клиентом TLS
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с клиентом TLS версия 2
@@ -3375,6 +3491,10 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${SERVER_APP_TCP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_TCP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с сервером TCP версия 2
                 pvs_studio_add_target(TARGET ${SERVER_APP_TCP-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_TCP-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с сервером UDP
+                pvs_studio_add_target(TARGET ${SERVER_APP_UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с сервером UDP версия 2
+                pvs_studio_add_target(TARGET ${SERVER_APP_UDP-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_UDP-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с сервером TLS
                 pvs_studio_add_target(TARGET ${SERVER_APP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с сервером TLS мультисертификатным
@@ -3726,6 +3846,10 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${CLIENT_APP_TCP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с клиентом TCP версии 2
         install(TARGETS ${CLIENT_APP_TCP-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с клиентом UDP
+        install(TARGETS ${CLIENT_APP_UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с клиентом UDP версии 2
+        install(TARGETS ${CLIENT_APP_UDP-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с клиентом TLS
         install(TARGETS ${CLIENT_APP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с клиентом TLS версии 2
@@ -3740,6 +3864,10 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${SERVER_APP_TCP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с сервером TCP версии 2
         install(TARGETS ${SERVER_APP_TCP-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с сервером UDP
+        install(TARGETS ${SERVER_APP_UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с сервером UDP версии 2
+        install(TARGETS ${SERVER_APP_UDP-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с сервером TLS
         install(TARGETS ${SERVER_APP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с сервером TLS мультисертификатным

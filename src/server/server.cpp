@@ -64,6 +64,26 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 							this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, this->_eid);
 						#endif
 					}
+				// Если сервер запущен удачно
+				} else {
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("launch")){
+						/**
+						 * Определяем семейство адресов с которым работает сервер
+						 */
+						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+							// Если сервер работает с адресами IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(this->_eid, event::address_t::IPV4), this->_server->getPort(this->_eid));
+							break;
+							// Если сервер работает с адресами IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(this->_eid, event::address_t::IPV6), this->_server->getPort(this->_eid));
+							break;
+						}
+					}
 				}
 			}
 		} break;
@@ -977,6 +997,8 @@ void awh::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова на событие изменения состояния сервера
 	this->_callback.set("action", callback);
+	// Выполняем установку функции обратного вызова на событие запуска сервера
+	this->_callback.set("launch", callback);
 	// Выполняем установку функции обратного вызова при принятии входящего соединения от клиента
 	this->_callback.set("accept", callback);
 	// Выполняем установку функции обратного вызова на событие истечения таймаута клиента
