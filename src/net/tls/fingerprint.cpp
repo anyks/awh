@@ -6137,20 +6137,27 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				);
 			}
 			// Если запись рукопожатия не соответствует ClientHello
-			if(buffer[recordSize] != 0x01){
+			if(buffer[recordSize] != 0x01){ 
 				/**
-				 * Если включён режим отладки
+				 * Если это не DTLS, то выводим предупреждение,
+				 * что запись рукопожатия не соответствует ClientHello,
+				 * так как в DTLS могут быть фрагменты, и мы не можем однозначно определить тип сообщения по первому байту.
 				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Handshake entry does not match the ClientHello", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Handshake entry does not match the ClientHello", log_t::flag_t::WARNING);
-				#endif
+				if(!isDTLS){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Handshake entry does not match the ClientHello", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Handshake entry does not match the ClientHello", log_t::flag_t::WARNING);
+					#endif
+				}
 				// Выводим результат по умолчанию
 				return result;
 			}

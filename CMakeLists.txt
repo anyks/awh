@@ -595,6 +595,10 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CLIENT_APP_TLS_NAME client-tls)
     # Устанавливаем имя приложения работы с клиентом TLS версии 2
     SET(CLIENT_APP_TLS-2_NAME client-tls-2)
+    # Устанавливаем имя приложения работы с клиентом DTLS
+    SET(CLIENT_APP_DTLS_NAME client-dtls)
+    # Устанавливаем имя приложения работы с клиентом DTLS версии 2
+    SET(CLIENT_APP_DTLS-2_NAME client-dtls-2)
     # Устанавливаем имя приложения работы с клиентом TLS-Web
     SET(CLIENT_APP_TLS-WEB_NAME client-tls-web)
     # Указываем что нужно собрать приложение работы с клиентом
@@ -612,6 +616,10 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(SERVER_APP_TLS_NAME server-tls)
     # Устанавливаем имя приложения работы с сервером TLS мультисертификатным
     SET(SERVER_APP_TLS-MULTICERT_NAME server-tls-multicert)
+    # Устанавливаем имя приложения работы с сервером DTLS
+    SET(SERVER_APP_DTLS_NAME server-dtls)
+    # Устанавливаем имя приложения работы с сервером DTLS мультисертификатным
+    SET(SERVER_APP_DTLS-MULTICERT_NAME server-dtls-multicert)
     # Указываем что нужно собрать приложение работы с сервером
     option(CMAKE_BUILD_SERVER_APP_SAMPLE "Build server app sample" ON)
 
@@ -923,6 +931,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_TLS_NAME} sample/client/tls.cpp client)
         # Выполняем создание приложения работы с клиентом TLS версии 2
         add_sample(${CLIENT_APP_TLS-2_NAME} sample/client/tls2.cpp client)
+        # Выполняем создание приложения работы с клиентом DTLS
+        add_sample(${CLIENT_APP_DTLS_NAME} sample/client/dtls.cpp client)
+        # Выполняем создание приложения работы с клиентом DTLS версии 2
+        add_sample(${CLIENT_APP_DTLS-2_NAME} sample/client/dtls2.cpp client)
         # Выполняем создание приложения работы с клиентом TLS-Web
         add_sample(${CLIENT_APP_TLS-WEB_NAME} sample/client/tls-web.cpp client)
     # Если не нужно собирать семплы для работы с клиентом
@@ -947,6 +959,10 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${SERVER_APP_TLS_NAME} sample/server/tls.cpp server)
         # Выполняем создание приложения работы с сервером TLS мультисертификатным
         add_sample(${SERVER_APP_TLS-MULTICERT_NAME} sample/server/tls-multicert.cpp server)
+        # Выполняем создание приложения работы с сервером DTLS
+        add_sample(${SERVER_APP_DTLS_NAME} sample/server/dtls.cpp server)
+        # Выполняем создание приложения работы с сервером DTLS мультисертификатным
+        add_sample(${SERVER_APP_DTLS-MULTICERT_NAME} sample/server/dtls-multicert.cpp server)
     # Если не нужно собирать семплы для работы с сервером
     else()
         # Выводим сообщение о сборке семпла
@@ -1480,6 +1496,22 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
 
+            # Выполняем сборку приложения работы с клиентом DTLS
+            target_link_libraries(
+                ${CLIENT_APP_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с клиентом DTLS версии 2
+            target_link_libraries(
+                ${CLIENT_APP_DTLS-2_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с клиентом TLS-Web
             target_link_libraries(
                 ${CLIENT_APP_TLS-WEB_NAME}
@@ -1534,6 +1566,22 @@ if (CMAKE_SHARED_BUILD_LIB)
             # Выполняем сборку приложения работы с сервером TLS мультисертификатным
             target_link_libraries(
                 ${SERVER_APP_TLS-MULTICERT_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером DTLS
+            target_link_libraries(
+                ${SERVER_APP_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером DTLS мультисертификатным
+            target_link_libraries(
+                ${SERVER_APP_DTLS-MULTICERT_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
@@ -2188,6 +2236,24 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
 
+            # Выполняем сборку приложения работы с клиентом DTLS
+            target_link_libraries(
+                ${CLIENT_APP_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с клиентом DTLS версии 2
+            target_link_libraries(
+                ${CLIENT_APP_DTLS-2_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
             # Выполняем сборку приложения работы с клиентом TLS-Web
             target_link_libraries(
                 ${CLIENT_APP_TLS-WEB_NAME}
@@ -2248,6 +2314,24 @@ else (CMAKE_SHARED_BUILD_LIB)
             # Выполняем сборку приложения работы с сервером TLS мультисертификатным
             target_link_libraries(
                 ${SERVER_APP_TLS-MULTICERT_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером DTLS
+            target_link_libraries(
+                ${SERVER_APP_DTLS_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с сервером DTLS мультисертификатным
+            target_link_libraries(
+                ${SERVER_APP_DTLS-MULTICERT_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
@@ -2959,6 +3043,20 @@ if (${CMAKE_BUILD_SAMPLES})
                     COMMENT "Sign target \"${CLIENT_APP_TLS-2_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
+
+                # Выполняем сборку приложения работы с клиентом DTLS
+                add_custom_command(TARGET "${CLIENT_APP_DTLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_DTLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_DTLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с клиентом DTLS версии 2
+                add_custom_command(TARGET "${CLIENT_APP_DTLS-2_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_DTLS-2_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_DTLS-2_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
             
                 # Выполняем сборку приложения работы с клиентом TLS-Web
                 add_custom_command(TARGET "${CLIENT_APP_TLS-WEB_NAME}" POST_BUILD
@@ -3009,6 +3107,20 @@ if (${CMAKE_BUILD_SAMPLES})
                 add_custom_command(TARGET "${SERVER_APP_TLS-MULTICERT_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TLS-MULTICERT_NAME}>" "${entitlements_file}"
                     COMMENT "Sign target \"${SERVER_APP_TLS-MULTICERT_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с сервером DTLS
+                add_custom_command(TARGET "${SERVER_APP_DTLS_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_DTLS_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_DTLS_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с сервером DTLS мультисертификатным
+                add_custom_command(TARGET "${SERVER_APP_DTLS-MULTICERT_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_DTLS-MULTICERT_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SERVER_APP_DTLS-MULTICERT_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
@@ -3481,6 +3593,10 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с клиентом TLS версия 2
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TLS-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с клиентом DTLS
+                pvs_studio_add_target(TARGET ${CLIENT_APP_DTLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_DTLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с клиентом DTLS версия 2
+                pvs_studio_add_target(TARGET ${CLIENT_APP_DTLS-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_DTLS-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с клиентом TLS-Web
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TLS-WEB_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS-WEB_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
@@ -3499,6 +3615,10 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${SERVER_APP_TLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_TLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с сервером TLS мультисертификатным
                 pvs_studio_add_target(TARGET ${SERVER_APP_TLS-MULTICERT_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_TLS-MULTICERT_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с сервером DTLS
+                pvs_studio_add_target(TARGET ${SERVER_APP_DTLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_DTLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с сервером DTLS мультисертификатным
+                pvs_studio_add_target(TARGET ${SERVER_APP_DTLS-MULTICERT_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_DTLS-MULTICERT_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с юнитом файловой системы
@@ -3854,6 +3974,10 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${CLIENT_APP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с клиентом TLS версии 2
         install(TARGETS ${CLIENT_APP_TLS-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с клиентом DTLS
+        install(TARGETS ${CLIENT_APP_DTLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с клиентом DTLS версии 2
+        install(TARGETS ${CLIENT_APP_DTLS-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с клиентом TLS-Web
         install(TARGETS ${CLIENT_APP_TLS-WEB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
@@ -3872,6 +3996,10 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${SERVER_APP_TLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с сервером TLS мультисертификатным
         install(TARGETS ${SERVER_APP_TLS-MULTICERT_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с сервером DTLS
+        install(TARGETS ${SERVER_APP_DTLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с сервером DTLS мультисертификатным
+        install(TARGETS ${SERVER_APP_DTLS-MULTICERT_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом файловой системы
