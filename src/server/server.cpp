@@ -864,6 +864,11 @@ void awh::Server::start() noexcept {
 							 * Определяем семейство адресов с которым работает сервер
 							 */
 							switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+								// Если сервер работает с адресами Unix Domain Socket
+								case static_cast <uint8_t> (event::family_t::UDS):
+									// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
+									host = ::move(this->_server->getAddress(this->_eid, event::address_t::UDS));
+								break;
 								// Если сервер работает с адресами IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4):
 									// Извлекаем адрес хоста текущей машины для адресов IPv4
