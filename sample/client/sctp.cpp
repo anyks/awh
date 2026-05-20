@@ -303,8 +303,12 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t coder(&fmk, &log);
 	// Создаём объект юнита клиента
 	unit::client_t unit(&fmk, &log);
+	// Создаём объект DNS-резолвера
+	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект клиента
-	client_t client(&unit, &coder, &fmk, &log);
+	client_t client(&unit, &dns, &coder, &fmk, &log);
+	// Устанавливаем список поддерживаемых DNS-серверов
+	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устананавливаем опции события
@@ -364,7 +368,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(ctl);
 	// Устанавливаем порт и целевой хост для клиента
-	if(client.setPort(2222) && client.setTarget("127.0.0.1")){
+	if(client.setPort(2222) && client.setTarget("localhost")){
 		// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
 		sctp.on(eid, static_cast <engine::callback::sctp::minfo_t> (std::bind(&Executor::minfo, &executor, _1, _2)));
 		// Устанавливаем функцию обратного вызова на создание события
