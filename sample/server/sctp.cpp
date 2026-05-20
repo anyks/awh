@@ -349,7 +349,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие сервера и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
