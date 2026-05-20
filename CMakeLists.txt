@@ -605,6 +605,13 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(CLIENT_APP_DTLS-2_NAME client-dtls-2)
     # Устанавливаем имя приложения работы с клиентом TLS-Web
     SET(CLIENT_APP_TLS-WEB_NAME client-tls-web)
+    # Если сборка производится под операционную систему FreeBSD или Linux
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+        # Устанавливаем имя приложения работы с клиентом SCTP
+        SET(CLIENT_APP_SCTP_NAME client-sctp)
+        # Устанавливаем имя приложения работы с клиентом SCTP версии 2
+        SET(CLIENT_APP_SCTP-2_NAME client-sctp-2)
+    endif()
     # Указываем что нужно собрать приложение работы с клиентом
     option(CMAKE_BUILD_CLIENT_APP_SAMPLE "Build client app sample" ON)
 
@@ -628,6 +635,13 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(SERVER_APP_DTLS_NAME server-dtls)
     # Устанавливаем имя приложения работы с сервером DTLS мультисертификатным
     SET(SERVER_APP_DTLS-MULTICERT_NAME server-dtls-multicert)
+    # Если сборка производится под операционную систему FreeBSD или Linux
+    if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+        # Устанавливаем имя приложения работы с сервером SCTP
+        SET(SERVER_APP_SCTP_NAME server-sctp)
+        # Устанавливаем имя приложения работы с сервером SCTP версии 2
+        SET(SERVER_APP_SCTP-2_NAME server-sctp-2)
+    endif()
     # Указываем что нужно собрать приложение работы с сервером
     option(CMAKE_BUILD_SERVER_APP_SAMPLE "Build server app sample" ON)
 
@@ -949,6 +963,13 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${CLIENT_APP_DTLS-2_NAME} sample/client/dtls2.cpp client)
         # Выполняем создание приложения работы с клиентом TLS-Web
         add_sample(${CLIENT_APP_TLS-WEB_NAME} sample/client/tls-web.cpp client)
+        # Если сборка производится под операционную систему FreeBSD или Linux
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            # Выполняем создание приложения работы с клиентом SCTP
+            add_sample(${CLIENT_APP_SCTP_NAME} sample/client/sctp.cpp client)
+            # Выполняем создание приложения работы с клиентом SCTP версии 2
+            add_sample(${CLIENT_APP_SCTP-2_NAME} sample/client/sctp2.cpp client)
+        endif()
     # Если не нужно собирать семплы для работы с клиентом
     else()
         # Выводим сообщение о сборке семпла
@@ -979,6 +1000,13 @@ if (${CMAKE_BUILD_SAMPLES})
         add_sample(${SERVER_APP_DTLS_NAME} sample/server/dtls.cpp server)
         # Выполняем создание приложения работы с сервером DTLS мультисертификатным
         add_sample(${SERVER_APP_DTLS-MULTICERT_NAME} sample/server/dtls-multicert.cpp server)
+        # Если сборка производится под операционную систему FreeBSD или Linux
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            # Выполняем создание приложения работы с сервером SCTP
+            add_sample(${SERVER_APP_SCTP_NAME} sample/server/sctp.cpp server)
+            # Выполняем создание приложения работы с сервером SCTP версии 2
+            add_sample(${SERVER_APP_SCTP-2_NAME} sample/server/sctp2.cpp server)
+        endif()
     # Если не нужно собирать семплы для работы с сервером
     else()
         # Выводим сообщение о сборке семпла
@@ -1551,6 +1579,25 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
+
+            # Если сборка производится под операционную систему FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Выполняем сборку приложения работы с клиентом SCTP
+                target_link_libraries(
+                    ${CLIENT_APP_SCTP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+
+                # Выполняем сборку приложения работы с клиентом SCTP версии 2
+                target_link_libraries(
+                    ${CLIENT_APP_SCTP-2_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+            endif()
         endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с сервером
@@ -1634,6 +1681,25 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
+
+            # Если сборка производится под операционную систему FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Выполняем сборку приложения работы с сервером SCTP
+                target_link_libraries(
+                    ${SERVER_APP_SCTP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+
+                # Выполняем сборку приложения работы с сервером SCTP версии 2
+                target_link_libraries(
+                    ${SERVER_APP_SCTP-2_NAME}
+                    ${AWH_LIB_NAME}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+            endif()
         endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
     
         # Если нужно собрать семплы для работы с юнитом файловой системы
@@ -2328,6 +2394,27 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
+
+            # Если сборка производится под операционную систему FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Выполняем сборку приложения работы с клиентом SCTP
+                target_link_libraries(
+                    ${CLIENT_APP_SCTP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+
+                # Выполняем сборку приложения работы с клиентом SCTP версии 2
+                target_link_libraries(
+                    ${CLIENT_APP_SCTP-2_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+            endif()
         endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с сервером
@@ -2421,6 +2508,27 @@ else (CMAKE_SHARED_BUILD_LIB)
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
             )
+
+            # Если сборка производится под операционную систему FreeBSD или Linux
+            if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                # Выполняем сборку приложения работы с сервером SCTP
+                target_link_libraries(
+                    ${SERVER_APP_SCTP_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+
+                # Выполняем сборку приложения работы с сервером SCTP версии 2
+                target_link_libraries(
+                    ${SERVER_APP_SCTP-2_NAME}
+                    ${AWH_LIB_NAME}
+                    ${DEPEND_LIBRARY}
+                    ${TCMALLOC_LIBRARIES}
+                    ${AWH_FLAGS}
+                )
+            endif()
         endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с юнитом файловой системы
@@ -3162,6 +3270,23 @@ if (${CMAKE_BUILD_SAMPLES})
                     COMMENT "Sign target \"${CLIENT_APP_TLS-WEB_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
+
+                # Если сборка производится под операционную систему FreeBSD или Linux
+                if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                    # Выполняем сборку приложения работы с клиентом SCTP
+                    add_custom_command(TARGET "${CLIENT_APP_SCTP_NAME}" POST_BUILD
+                        COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SCTP_NAME}>" "${entitlements_file}"
+                        COMMENT "Sign target \"${CLIENT_APP_SCTP_NAME}\" to enable core dump on MacOS X"
+                        VERBATIM
+                    )
+
+                    # Выполняем сборку приложения работы с клиентом SCTP версии 2
+                    add_custom_command(TARGET "${CLIENT_APP_SCTP-2_NAME}" POST_BUILD
+                        COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SCTP-2_NAME}>" "${entitlements_file}"
+                        COMMENT "Sign target \"${CLIENT_APP_SCTP-2_NAME}\" to enable core dump on MacOS X"
+                        VERBATIM
+                    )
+                endif()
             endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с сервером
@@ -3235,6 +3360,23 @@ if (${CMAKE_BUILD_SAMPLES})
                     COMMENT "Sign target \"${SERVER_APP_DTLS-MULTICERT_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
+
+                # Если сборка производится под операционную систему FreeBSD или Linux
+                if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                    # Выполняем сборку приложения работы с сервером SCTP
+                    add_custom_command(TARGET "${SERVER_APP_SCTP_NAME}" POST_BUILD
+                        COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_SCTP_NAME}>" "${entitlements_file}"
+                        COMMENT "Sign target \"${SERVER_APP_SCTP_NAME}\" to enable core dump on MacOS X"
+                        VERBATIM
+                    )
+
+                    # Выполняем сборку приложения работы с сервером SCTP версии 2
+                    add_custom_command(TARGET "${SERVER_APP_SCTP-2_NAME}" POST_BUILD
+                        COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_SCTP-2_NAME}>" "${entitlements_file}"
+                        COMMENT "Sign target \"${SERVER_APP_SCTP-2_NAME}\" to enable core dump on MacOS X"
+                        VERBATIM
+                    )
+                endif()
             endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с юнитом файловой системы
@@ -3715,6 +3857,13 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${CLIENT_APP_DTLS-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_DTLS-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с клиентом TLS-Web
                 pvs_studio_add_target(TARGET ${CLIENT_APP_TLS-WEB_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_TLS-WEB_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Если сборка производится под операционную систему FreeBSD или Linux
+                if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                    # Выполняем анализ приложения работы с клиентом SCTP
+                    pvs_studio_add_target(TARGET ${CLIENT_APP_SCTP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_SCTP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с клиентом SCTP версия 2
+                    pvs_studio_add_target(TARGET ${CLIENT_APP_SCTP-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_SCTP-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                endif()
             endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с сервером
@@ -3739,6 +3888,13 @@ if (${CMAKE_BUILD_SAMPLES})
                 pvs_studio_add_target(TARGET ${SERVER_APP_DTLS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_DTLS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с сервером DTLS мультисертификатным
                 pvs_studio_add_target(TARGET ${SERVER_APP_DTLS-MULTICERT_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_DTLS-MULTICERT_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Если сборка производится под операционную систему FreeBSD или Linux
+                if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+                    # Выполняем анализ приложения работы с сервером SCTP
+                    pvs_studio_add_target(TARGET ${SERVER_APP_SCTP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_SCTP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                    # Выполняем анализ приложения работы с сервером SCTP версия 2
+                    pvs_studio_add_target(TARGET ${SERVER_APP_SCTP-2_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_SCTP-2_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                endif()
             endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с юнитом файловой системы
@@ -4104,6 +4260,13 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${CLIENT_APP_DTLS-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с клиентом TLS-Web
         install(TARGETS ${CLIENT_APP_TLS-WEB_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Если сборка производится под операционную систему FreeBSD или Linux
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            # Устанавливаем приложение работы с клиентом SCTP
+            install(TARGETS ${CLIENT_APP_SCTP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение работы с клиентом SCTP версии 2
+            install(TARGETS ${CLIENT_APP_SCTP-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        endif()
     endif (${CMAKE_BUILD_CLIENT_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с сервером
@@ -4128,6 +4291,13 @@ if (${CMAKE_BUILD_SAMPLES})
         install(TARGETS ${SERVER_APP_DTLS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с сервером DTLS мультисертификатным
         install(TARGETS ${SERVER_APP_DTLS-MULTICERT_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Если сборка производится под операционную систему FreeBSD или Linux
+        if (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "Linux")
+            # Устанавливаем приложение работы с сервером SCTP
+            install(TARGETS ${SERVER_APP_SCTP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+            # Устанавливаем приложение работы с сервером SCTP версии 2
+            install(TARGETS ${SERVER_APP_SCTP-2_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        endif()
     endif (${CMAKE_BUILD_SERVER_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с юнитом файловой системы

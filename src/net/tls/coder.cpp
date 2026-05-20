@@ -6082,8 +6082,6 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
 					case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP):
 						// Устанавливаем режим клиента для контекста DTLS
 						member->ctx = ::SSL_CTX_new(::DTLS_client_method());
 					break;
@@ -6154,9 +6152,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 */
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP): {
+					case static_cast <uint8_t> (event::protocol_t::UDP): {
 						// Устанавливаем минимально-возможную версию DTLS
 						::SSL_CTX_set_min_proto_version(member->ctx, DTLS1_VERSION);
 						// Устанавливаем максимально-возможную версию DTLS
@@ -6276,8 +6272,6 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
 					case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP):
 						// Устанавливаем, что мы не можем читать больше байтов чем необходимо
 						::SSL_CTX_set_read_ahead(member->ctx, 0);
 					break;
@@ -6312,8 +6306,6 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
 					case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP):
 						// Устанавливаем режим клиента для контекста TLS
 						member->ctx = ::SSL_CTX_new(::DTLS_server_method());
 					break;
@@ -6395,9 +6387,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 */
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP): {
+					case static_cast <uint8_t> (event::protocol_t::UDP): {
 						// Устанавливаем минимально-возможную версию DTLS
 						::SSL_CTX_set_min_proto_version(member->ctx, DTLS1_VERSION);
 						// Устанавливаем максимально-возможную версию DTLS
@@ -6573,8 +6563,6 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
 					case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP):
 						// Устанавливаем, что мы не можем читать больше байтов чем необходимо
 						::SSL_CTX_set_read_ahead(member->ctx, 0);
 					break;
@@ -6601,9 +6589,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 */
 				switch(static_cast <uint8_t> (proto)){
 					// Если протокол подключения UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Если протокол подключения SCTP
-					case static_cast <uint8_t> (event::protocol_t::SCTP): {
+					case static_cast <uint8_t> (event::protocol_t::UDP): {
 						/**
 						 * BoringSSL не поддерживает DTLS HelloVerifyRequest cookie callbacks
 						 * (SSL_CTX_set_cookie_generate_cb / SSL_CTX_set_cookie_verify_cb).
