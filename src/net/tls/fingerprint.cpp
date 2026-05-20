@@ -6318,12 +6318,15 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				// Выводим результат по умолчанию
 				return result;
 			}
-			// Выделяем память для идентификатора сессии
-			browser.session.resize(length, 0);
-			// Копируем данные идентификатора сессии из буфера
-			::memcpy(&browser.session[0], buffer + offset, length);
-			// Увеличиваем смещение на длину session_id
-			offset += length;
+			// Если длина session_id больше 0, то извлекаем session_id
+			if(length > 0){
+				// Выделяем память для идентификатора сессии
+				browser.session.resize(length, 0);
+				// Копируем данные идентификатора сессии из буфера
+				::memcpy(&browser.session[0], buffer + offset, length);
+				// Увеличиваем смещение на длину session_id
+				offset += length;
+			}
 			// Если DTLS: cookie (только для DTLS ClientHello, RFC 6347 §4.2.1)
 			if(isDTLS){
 				// Если размер данных меньше смещения + 1 байт для cookie_len, то это означает, что данные обрезаны
