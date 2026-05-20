@@ -454,18 +454,24 @@ void awh::unit::NTP::create(const event::family_t family) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для создания события NTP-клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Добавляем новое событие клиента UDP
-		this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
-		// Если опции события не установлены
-		if(!this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
-			// Удаляем событие NTP-клиента
-			this->_io->destroy(this->_client.eid);
+		// Результат установки опций события и его запуска
+		bool result = false;
+		{
+			// Выполняем блокировку потока для создания события NTP-клиента
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Добавляем новое событие клиента UDP
+			this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&ntp_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие чтения данных
+			this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&ntp_t::response, this, _1, _2, _3)));
+			// Если опции события не установлены
+			if(!(result = this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)))
+				// Удаляем событие NTP-клиента
+				this->_io->destroy(this->_client.eid);
+		}
+		// Если установка опций события и его запуск не удалась
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -614,20 +620,37 @@ bool awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action
 			// Сохраняем версию протокола NTP для текущего запроса
 			const version_t version = packet->version;
 			{
-				// Выполняем блокировку потока для работы с контейнером активных пакетов
-				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Выполняем поиск активного пакета в контейнере активных пакетов
-				auto i = this->_transfer.waiting.find(eid);
-				// Если активный пакет найден в контейнере активных пакетов
-				if(i != this->_transfer.waiting.end())
-					// Удаляем активный пакет из контейнера активных пакетов
-					this->_transfer.waiting.erase(i);
-				// Добавляем новый пакет в контейнер ожидания выполнения запроса для отслеживания его выполнения
-				auto ret = this->_transfer.waiting.emplace(this->_client.eid, packet_t());
-				// Если пакет уже существует для данного идентификатора NTP-клиента
-				if(!ret.second){
-					// Формируем текст выводимой ошибки NTP-клиента
-					const string error = "NTP request is still in progress, please wait for the result";
+				// Текст ошибки для вывода
+				string error = "";
+				{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Выполняем поиск активного пакета в контейнере активных пакетов
+					auto i = this->_transfer.waiting.find(eid);
+					// Если активный пакет найден в контейнере активных пакетов
+					if(i != this->_transfer.waiting.end())
+						// Удаляем активный пакет из контейнера активных пакетов
+						this->_transfer.waiting.erase(i);
+					// Добавляем новый пакет в контейнер ожидания выполнения запроса для отслеживания его выполнения
+					auto ret = this->_transfer.waiting.emplace(this->_client.eid, packet_t());
+					// Если пакет уже существует для данного идентификатора NTP-клиента
+					if(!ret.second)
+						// Формируем текст выводимой ошибки NTP-клиента
+						error = "NTP request is still in progress, please wait for the result";
+					// Если пакет успешно добавлен для данного идентификатора NTP-клиента
+					else {
+						// Выполняем блокировку потока для выполнения запроса NTP-клиента
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Устанавливаем версию протокола NTP для выполнения запроса
+						ret.first->second.version = version;
+						// Устанавливаем количество попыток получения ответа от NTP-сервера
+						ret.first->second.attempt = (attempt + 1);
+						// Устанавливаем обработчик события клиента для обработки таймаута при ожидании ответа от NTP-клиента
+						this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(&ntp_t::timeout, this, _1, _2, _3, &ret.first->second)));
+					}
+				}
+				// Если текст ошибки не пустой
+				if(!error.empty()){
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
@@ -650,16 +673,6 @@ bool awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action
 					}
 					// Завершаем работу клиента после истечения таймаута, так-как мы создали нового
 					return true;
-				// Если пакет успешно добавлен для данного идентификатора NTP-клиента
-				} else {
-					// Выполняем блокировку потока для выполнения запроса NTP-клиента
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Устанавливаем версию протокола NTP для выполнения запроса
-					ret.first->second.version = version;
-					// Устанавливаем количество попыток получения ответа от NTP-сервера
-					ret.first->second.attempt = (attempt + 1);
-					// Устанавливаем обработчик события клиента для обработки таймаута при ожидании ответа от NTP-клиента
-					this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(&ntp_t::timeout, this, _1, _2, _3, &ret.first->second)));
 				}
 			}
 			// Создаём объект пакета запроса
@@ -810,73 +823,77 @@ bool awh::unit::NTP::commit() noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для установки IP-адреса события
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Устанавливаем порт события
-		this->_io->setPort(this->_client.eid, this->_client.port);
-		// Получаем семейство IP-адресов текущего события NTP-клиента
-		const event::family_t family = this->_io->family(this->_client.eid);
-		/**
-		 * Определяем семейство события
-		 */
-		switch(static_cast <uint8_t> (family)){
-			// Для семейства IPv4
-			case static_cast <uint8_t> (event::family_t::IPV4): {
-				// Если префикс для переменных окружения установлен
-				if(!this->_client.prefix.empty()){
-					// Получаем значение переменной
-					const char * env = ::getenv(this->_fmk->format("%s_NTP_IPV4_SERVER", this->_client.prefix.c_str()).c_str());
-					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr){
-						// Устанавливаем адрес сервера назначения
-						this->_io->setTarget(this->_client.eid, env);
-						// Выходим из условия
-						break;
-					}
-				}
-				// Устанавливаем адрес сервера назначения
-				this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
-			} break;
-			// Для семейства IPv6
-			case static_cast <uint8_t> (event::family_t::IPV6): {
-				// Если префикс для переменных окружения установлен
-				if(!this->_client.prefix.empty()){
-					// Получаем значение переменной
-					const char * env = ::getenv(this->_fmk->format("%s_NTP_IPV6_SERVER", this->_client.prefix.c_str()).c_str());
-					// Если IP-адрес из переменной окружения получен
-					if(env != nullptr){
-						// Устанавливаем адрес сервера назначения
-						this->_io->setTarget(this->_client.eid, env);
-						// Выходим из условия
-						break;
-					}
-				}
-				// Устанавливаем адрес сервера назначения
-				this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
-			} break;
-		}
-		// Если адрес сети для выполнения запроса установлен
-		if(this->_client.source != nullptr){
+		{
+			// Выполняем блокировку потока для установки IP-адреса события
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Устанавливаем порт события
+			this->_io->setPort(this->_client.eid, this->_client.port);
+			// Получаем семейство IP-адресов текущего события NTP-клиента
+			const event::family_t family = this->_io->family(this->_client.eid);
 			/**
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-					// Устанавливаем IP-адрес события
-					this->_io->setAddress(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
-				break;
+				case static_cast <uint8_t> (event::family_t::IPV4): {
+					// Если префикс для переменных окружения установлен
+					if(!this->_client.prefix.empty()){
+						// Получаем значение переменной
+						const char * env = ::getenv(this->_fmk->format("%s_NTP_IPV4_SERVER", this->_client.prefix.c_str()).c_str());
+						// Если IP-адрес из переменной окружения получен
+						if(env != nullptr){
+							// Устанавливаем адрес сервера назначения
+							this->_io->setTarget(this->_client.eid, env);
+							// Выходим из условия
+							break;
+						}
+					}
+					// Устанавливаем адрес сервера назначения
+					this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
+				} break;
 				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6):
-					// Устанавливаем IP-адрес события
-					this->_io->setAddress(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
-				break;
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Если префикс для переменных окружения установлен
+					if(!this->_client.prefix.empty()){
+						// Получаем значение переменной
+						const char * env = ::getenv(this->_fmk->format("%s_NTP_IPV6_SERVER", this->_client.prefix.c_str()).c_str());
+						// Если IP-адрес из переменной окружения получен
+						if(env != nullptr){
+							// Устанавливаем адрес сервера назначения
+							this->_io->setTarget(this->_client.eid, env);
+							// Выходим из условия
+							break;
+						}
+					}
+					// Устанавливаем адрес сервера назначения
+					this->_io->setTarget(this->_client.eid, this->_client.servers.get(family));
+				} break;
 			}
+			// Если адрес сети для выполнения запроса установлен
+			if(this->_client.source != nullptr){
+				/**
+				 * Определяем семейство события
+				 */
+				switch(static_cast <uint8_t> (family)){
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Устанавливаем IP-адрес события
+						this->_io->setAddress(this->_client.eid, event::address_t::IPV4, this->_client.source.get());
+					break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Устанавливаем IP-адрес события
+						this->_io->setAddress(this->_client.eid, event::address_t::IPV6, this->_client.source.get());
+					break;
+				}
+			}
+			// Выполняем фиксацию параметров события и его запуск
+			if(!(result = this->_io->commit(this->_client.eid) && this->_io->launch(this->_client.eid)))
+				// Удаляем событие NTP-клиента
+				this->_io->destroy(this->_client.eid);
 		}
-		// Выполняем фиксацию параметров события и его запуск
-		if(!(result = this->_io->commit(this->_client.eid) && this->_io->launch(this->_client.eid))){
-			// Удаляем событие NTP-клиента
-			this->_io->destroy(this->_client.eid);
+		// Если установка параметров события и его запуск не удались
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -884,7 +901,7 @@ bool awh::unit::NTP::commit() noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Failed to launch NTP-client", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
+					this->_log->debug("Failed to launch NTP-client", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1844,14 +1861,29 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
 		if(this->_callback.is("timestamp")){
 			{
-				// Выполняем блокировку потока для работы с контейнером активных пакетов
-				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем новый активный пакет для ожидания выполнения запроса к NTP-серверу в контейнер активных пакетов
-				auto ret = this->_transfer.waiting.emplace(this->_client.eid, packet_t());
-				// Если активный пакет уже существует для данного идентификатора NTP-клиента
-				if(!ret.second){
-					// Формируем текст выводимой ошибки NTP-клиента
-					const string error = "NTP request is still in progress, please wait for the result";
+				// Текст выводимой ошибки NTP-клиента
+				string error = "";
+				{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем новый активный пакет для ожидания выполнения запроса к NTP-серверу в контейнер активных пакетов
+					auto ret = this->_transfer.waiting.emplace(this->_client.eid, packet_t());
+					// Если активный пакет уже существует для данного идентификатора NTP-клиента
+					if(!ret.second)
+						// Формируем текст выводимой ошибки NTP-клиента
+						error = "NTP request is still in progress, please wait for the result";
+					// Если таймаут успешно добавлен для данного идентификатора NTP-клиента
+					else {
+						// Выполняем блокировку потока для выполнения запроса NTP-клиента
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Устанавливаем версию протокола NTP для выполнения запроса
+						ret.first->second.version = version;
+						// Устанавливаем обработчик события клиента для обработки таймаута при ожидании ответа от NTP-клиента
+						this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(&ntp_t::timeout, this, _1, _2, _3, &ret.first->second)));
+					}
+				}
+				// Если текст выводимой ошибки NTP-клиента не пустой
+				if(!error.empty()){
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
@@ -1874,14 +1906,6 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 					}
 					// Выводим результат по умолчанию
 					return false;
-				// Если таймаут успешно добавлен для данного идентификатора NTP-клиента
-				} else {
-					// Выполняем блокировку потока для выполнения запроса NTP-клиента
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Устанавливаем версию протокола NTP для выполнения запроса
-					ret.first->second.version = version;
-					// Устанавливаем обработчик события клиента для обработки таймаута при ожидании ответа от NTP-клиента
-					this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (std::bind(&ntp_t::timeout, this, _1, _2, _3, &ret.first->second)));
 				}
 			}
 			// Создаём объект пакета запроса

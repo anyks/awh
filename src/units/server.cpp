@@ -537,31 +537,36 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием сервера
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		/**
-		 * Для операционной системы Linux или FreeBSD
-		 */
-		#if __linux__ || __FreeBSD__
-			// Если кластер активен, значит нам необходимо проверить опции сервера
-			if(this->_clusterMode == event::mode_t::ENABLED){
-				// Если не установлена опция переиспользования портов
-				if(!(this->_io->getOptions(eid) & event::options::REUSE_PORT))
-					// Выполняем установку опции для события сервера
-					this->_io->setOption(eid, event::options::REUSE_PORT, true);
+		{
+			// Выполняем блокировку потока для работы с событием сервера
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			/**
+			 * Для операционной системы Linux или FreeBSD
+			 */
+			#if __linux__ || __FreeBSD__
+				// Если кластер активен, значит нам необходимо проверить опции сервера
+				if(this->_clusterMode == event::mode_t::ENABLED){
+					// Если не установлена опция переиспользования портов
+					if(!(this->_io->getOptions(eid) & event::options::REUSE_PORT))
+						// Выполняем установку опции для события сервера
+						this->_io->setOption(eid, event::options::REUSE_PORT, true);
+				}
+			#endif
+			// Выполняем фиксацию параметров события
+			if(!(result = this->_io->commit(eid))){
+				// Выполняем поиск идентификатора события сервера в списке событий сервера
+				auto i = this->_events.find(eid);
+				// Если идентификатор события сервера найден в списке событий сервера
+				if(i != this->_events.end()){
+					// Удаляем событие сервера
+					this->_io->destroy(* i);
+					// Удаляем идентификатор события сервера из списка событий сервера
+					this->_events.erase(i);
+				}
 			}
-		#endif
-		// Выполняем фиксацию параметров события
-		if(!(result = this->_io->commit(eid))){
-			// Выполняем поиск идентификатора события сервера в списке событий сервера
-			auto i = this->_events.find(eid);
-			// Если идентификатор события сервера найден в списке событий сервера
-			if(i != this->_events.end()){
-				// Удаляем событие сервера
-				this->_io->destroy(* i);
-				// Удаляем идентификатор события сервера из списка событий сервера
-				this->_events.erase(i);
-			}
+		}
+		// Если фиксация параметров события не удалась
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -613,10 +618,14 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием сервера
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем запуск работы сервера
-		if(!(result = this->_io->launch(eid))){
+		{
+			// Выполняем блокировку потока для работы с событием сервера
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем запуск работы сервера
+			result = this->_io->launch(eid);
+		}
+		// Если запуск работы сервера не удался
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -693,19 +702,24 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint16_t max) noexce
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием сервера
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем прослушивание порта сервера для получения входящих подключений
-		if(!(result = this->_io->listen(eid, max))){
-			// Выполняем поиск идентификатора события сервера в списке событий сервера
-			auto i = this->_events.find(eid);
-			// Если идентификатор события сервера найден в списке событий сервера
-			if(i != this->_events.end()){
-				// Удаляем событие сервера
-				this->_io->destroy(* i);
-				// Удаляем идентификатор события сервера из списка событий сервера
-				this->_events.erase(i);
+		{
+			// Выполняем блокировку потока для работы с событием сервера
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем прослушивание порта сервера для получения входящих подключений
+			if(!(result = this->_io->listen(eid, max))){
+				// Выполняем поиск идентификатора события сервера в списке событий сервера
+				auto i = this->_events.find(eid);
+				// Если идентификатор события сервера найден в списке событий сервера
+				if(i != this->_events.end()){
+					// Удаляем событие сервера
+					this->_io->destroy(* i);
+					// Удаляем идентификатор события сервера из списка событий сервера
+					this->_events.erase(i);
+				}
 			}
+		}
+		// Если прослушивание порта сервера для получения входящих подключений не удалось
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**

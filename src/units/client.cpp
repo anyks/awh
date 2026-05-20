@@ -195,19 +195,24 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем фиксацию параметров события
-		if(!(result = this->_io->commit(eid))){
-			// Выполняем поиск идентификатора события клиента в списке событий клиента
-			auto i = this->_events.find(eid);
-			// Если идентификатор события клиента найден в списке событий клиента
-			if(i != this->_events.end()){
-				// Удаляем событие клиента
-				this->_io->destroy(* i);
-				// Удаляем идентификатор события клиента из списка событий клиента
-				this->_events.erase(i);
+		{
+			// Выполняем блокировку потока для работы с событием клиента
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем фиксацию параметров события
+			if(!(result = this->_io->commit(eid))){
+				// Выполняем поиск идентификатора события клиента в списке событий клиента
+				auto i = this->_events.find(eid);
+				// Если идентификатор события клиента найден в списке событий клиента
+				if(i != this->_events.end()){
+					// Удаляем событие клиента
+					this->_io->destroy(* i);
+					// Удаляем идентификатор события клиента из списка событий клиента
+					this->_events.erase(i);
+				}
 			}
+		}
+		// Если результат фиксации параметров события не успешный
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -259,10 +264,14 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем запуск работы клиента
-		if(!(result = this->_io->launch(eid))){
+		{
+			// Выполняем блокировку потока для работы с событием клиента
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем запуск работы клиента
+			result = this->_io->launch(eid);
+		}
+		// Если результат запуска работы клиента не успешный
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**

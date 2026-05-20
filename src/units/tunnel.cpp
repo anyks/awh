@@ -92,19 +92,27 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием туннеля
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем фиксацию параметров события и его запуск
-		if(!(result = this->_io->commit(eid) && this->_io->launch(eid))){
-			// Выполняем поиск идентификатора события туннеля в списке событий туннеля
-			auto i = this->_events.find(eid);
-			// Если идентификатор события туннеля найден в списке событий туннеля
-			if(i != this->_events.end()){
-				// Удаляем событие туннеля
-				this->_io->destroy(* i);
-				// Удаляем идентификатор события туннеля из списка событий туннеля
-				this->_events.erase(i);
-			}
+		{
+			// Выполняем блокировку потока для работы с событием туннеля
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем фиксацию параметров события и его запуск
+			if(!(result = this->_io->commit(eid) && this->_io->launch(eid))){
+				// Выполняем поиск идентификатора события туннеля в списке событий туннеля
+				auto i = this->_events.find(eid);
+				// Если идентификатор события туннеля найден в списке событий туннеля
+				if(i != this->_events.end()){
+					// Удаляем событие туннеля
+					this->_io->destroy(* i);
+					// Удаляем идентификатор события туннеля из списка событий туннеля
+					this->_events.erase(i);
+				}
+			// Если функция обратного вызова установлена
+			} else if(this->_callback.is("info"))
+				// Устанавливаем функцию обратного вызова на событие получения информации о пакетах в туннеле
+				this->_io->on(eid, static_cast <engine::callback::tuninfo_t> (std::bind(&tunnel_t::info, this, _1, _2, _3, _4)));
+		}
+		// Если фиксация параметров события и его запуск не удались
+		if(!result){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -121,10 +129,7 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 					this->_log->print("Failed to launch tunnel", log_t::flag_t::CRITICAL);
 				#endif
 			}
-		// Если функция обратного вызова установлена
-		} else if(this->_callback.is("info"))
-			// Устанавливаем функцию обратного вызова на событие получения информации о пакетах в туннеле
-			this->_io->on(eid, static_cast <engine::callback::tuninfo_t> (std::bind(&tunnel_t::info, this, _1, _2, _3, _4)));
+		}
 	/**
 	 * Если возникает ошибка
 	 */

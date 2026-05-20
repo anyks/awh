@@ -107,21 +107,21 @@ namespace awh {
 			/**
 			 * @brief Метод обработки событий изменения состояния сервера
 			 *
-			 * @param eid    идентификатор сервера
+			 * @param eid    идентификатор клиента
 			 * @param status новый статус сервера
 			 */
 			void state(const event::id_t eid, const event::status_t status) noexcept;
 			/**
 			 * @brief Метод обработки действий сервера
 			 *
-			 * @param eid    идентификатор сервера
+			 * @param eid    идентификатор клиента
 			 * @param action действие сервера
 			 */
 			void action(const event::id_t eid, const event::action_t action) noexcept;
 			/**
 			 * @brief Метод обработки событий получения данных сервером
 			 *
-			 * @param eid    идентификатор сервера
+			 * @param eid    идентификатор клиента
 			 * @param buffer буфер данных сервера
 			 * @param size   размер данных сервера
 			 */
