@@ -6326,12 +6326,6 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				::memcpy(&browser.session[0], buffer + offset, length);
 				// Увеличиваем смещение на длину session_id
 				offset += length;
-			// Если длина session_id равна 0
-			} else {
-				// Сбрасываем данные снимка брайзера
-				browser = browser_t {};
-				// Выводим результат по умолчанию
-				return result;
 			}
 			// Если DTLS: cookie (только для DTLS ClientHello, RFC 6347 §4.2.1)
 			if(isDTLS){
@@ -6373,12 +6367,15 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					// Выводим результат по умолчанию
 					return result;
 				}
-				// Выделяем память для cookie
-				browser.cookie.resize(length, 0);
-				// Копируем данные cookie из буфера
-				::memcpy(&browser.cookie[0], buffer + offset, length);
-				// Увеличиваем смещение на длину cookie
-				offset += length;
+				// Если длина cookie больше 0, то извлекаем cookie
+				if(length > 0){
+					// Выделяем память для cookie
+					browser.cookie.resize(length, 0);
+					// Копируем данные cookie из буфера
+					::memcpy(&browser.cookie[0], buffer + offset, length);
+					// Увеличиваем смещение на длину cookie
+					offset += length;
+				}
 			}
 			// Если размер данных меньше смещения + 2 байт для cipher_suites_len, то это означает, что данные обрезаны
 			if((offset + 2) > size){
