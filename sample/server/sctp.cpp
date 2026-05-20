@@ -71,28 +71,16 @@ class Executor {
 		/**
 		 * @brief Метод обработки событий изменения статуса сервера
 		 *
-		 * @param eid    идентификатор сервера
 		 * @param status новый статус сервера
 		 * @param server объект сервера
-		 * @param sctp   объект SCTP протокола
 		 */
-		void status(const event::id_t eid, const event::status_t status, server_t * server, engine::sctp_t * sctp) noexcept {
+		void status(const event::status_t status, server_t * server) noexcept {
 			/**
 			 * Определяем состояние сервера
 			 */
 			switch(static_cast <uint8_t> (status)){
 				// Если событие сервера запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-					// Текст инициализационных сообщений SCTP
-					net::sctp::initmsg_t initmsg;
-					// Устанавливаем количество попыток подключения SCTP
-					initmsg.attempts = 4;
-					// Устанавливаем количество исходящих потоков SCTP
-					initmsg.ostreams = 5;
-					// Устанавливаем количество входящих потоков SCTP
-					initmsg.istreams = 5;
-					// Инициализируем сообщения SCTP
-					sctp->initMessages(eid, initmsg);
 					// Выполняем прослушивание сервера на порту
 					if(!server->listen(100))
 						// Выводим сообщение об ошибке
@@ -411,7 +399,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд
 		server.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
-		server.on <void (const event::status_t)> ("status", &Executor::status, &executor, eid, _1, &server, &sctp);
+		server.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &server);
 		// Регистрируем функцию обратного вызова на событие записи данных сервером
 		server.on <void (const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие чтения данных сервером
