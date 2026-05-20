@@ -445,13 +445,13 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				io.on(eid, static_cast <engine::callback::connect_t> ([ctl, &tls, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
+				io.on(eid, static_cast <engine::callback::connect_t> ([ctl, &coder, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
 					// Выводим сообщение о принятии события
 					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 					// Если подключение успешно
 					if(ok){
 						// Если рукопожатие TLS успешно
-						if(tls.handshake(ctl))
+						if(coder.handshake(ctl))
 							// Выводим сообщение о начале рукопожатия TLS
 							log.print("Начинаем процесс рукопожатия: ID=%u", log_t::flag_t::INFO, ctl);
 						// Если рукопожатие TLS не выполнено
