@@ -670,6 +670,8 @@ awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
 	::__awh_count_refs__.fetch_add(1, memory_order_relaxed);
 	// Запоминаем объект базы событий
 	this->_io = ::__awh_event_base__.get();
+	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
+	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Деструктор

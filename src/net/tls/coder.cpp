@@ -7162,6 +7162,10 @@ void awh::tls::Coder::threadSafety(const id_t id, const bool mode) noexcept {
 	try {
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Если у нас есть объект фреймворка
+			if(this->_fgp != nullptr)
+				// Вызываем метод установки режима безопасности работы потоков у объекта фреймворка
+				const_cast <fgp_t *> (this->_fgp)->threadSafety(mode);
 			// Устанавливаем режим безопасности работы потоков
 			::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
 			// Устанавливаем глобальный режим безопасности потоков

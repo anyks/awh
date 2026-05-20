@@ -2302,6 +2302,8 @@ awh::Server::Server(unit::server_t * server, const fmk_t * fmk, const log_t * lo
  _dns(nullptr), _coder(nullptr), _server(server), _fmk(fmk), _log(log)  {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
+		// Деактивируем мьютекс на время инициализации
+		this->_mtx.enabled = false;
 		// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
 		this->_server->on <void (const event::status_t)> ("status", &server_t::status, this, _1, state_t::SERVER);
 		// Устанавливаем функцию обратного вызова на событие записи данных!
@@ -2388,6 +2390,8 @@ awh::Server::Server(unit::server_t * server, tls::coder_t * coder, const fmk_t *
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
+		// Деактивируем мьютекс на время инициализации
+		this->_mtx.enabled = false;
 		// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
 		this->_server->on <void (const event::status_t)> ("status", &server_t::status, this, _1, state_t::SERVER);
 		// Устанавливаем функцию обратного вызова на событие записи данных!
@@ -2456,6 +2460,8 @@ awh::Server::Server(unit::server_t * server, unit::dns_t * dns, const fmk_t * fm
  _dns(dns), _coder(nullptr), _server(server), _fmk(fmk), _log(log)  {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
+		// Деактивируем мьютекс на время инициализации
+		this->_mtx.enabled = false;
 		// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
 		this->_server->on <void (const event::status_t)> ("status", &server_t::status, this, _1, state_t::SERVER);
 		// Устанавливаем функцию обратного вызова на событие записи данных!
@@ -2569,6 +2575,8 @@ awh::Server::Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * c
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
+		// Деактивируем мьютекс на время инициализации
+		this->_mtx.enabled = false;
 		// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
 		this->_server->on <void (const event::status_t)> ("status", &server_t::status, this, _1, state_t::SERVER);
 		// Устанавливаем функцию обратного вызова на событие записи данных!

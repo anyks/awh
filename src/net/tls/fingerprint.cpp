@@ -10367,7 +10367,10 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & f
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
+}
 /**
  * @brief Деструктор
  *
