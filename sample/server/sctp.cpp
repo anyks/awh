@@ -407,7 +407,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для сервера
 	server.setSecurityId(cts);
 	// Устанавливаем порт и хост сервера
-	if(server.setPort(2222) && server.setHost("localhost")){
+	if(server.setPort(3333) && server.setHost("localhost")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд
 		server.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
