@@ -1570,14 +1570,17 @@ namespace fingerprint {
 	 * @param browser объект для хранения распарсенных данных цифрового отпечатка браузера
 	 */
 	static void parseSessionTicket(const uint8_t * buffer, const size_t size, awh::tls::fgp_t::browser_t & browser) noexcept {
-		// Определяем размер данных расширения session_ticket (не более 32 байта)
-		const size_t bytes = ::min <size_t> (32, size);
 		// Добавляем расширение session_ticket в список расширений браузера
 		browser.extensions.push_back(make_unique <awh::tls::fgp_t::extension_session_ticket_t> ());
-		// Забиваем данные расширения нулями, чтобы гарантировать наличие данных в случае, если расширение session_ticket пустое
-		awh_cast <awh::tls::fgp_t::extension_session_ticket_t *> (browser.extensions.back().get())->data.resize(bytes, 0);
-		// Копируем данные расширения session_ticket из буфера в блок данных расширения session_ticket
-		::memcpy(&awh_cast <awh::tls::fgp_t::extension_session_ticket_t *> (browser.extensions.back().get())->data[0], buffer, bytes);
+		// Определяем размер данных расширения session_ticket (не более 32 байта)
+		const size_t bytes = ::min <size_t> (32, size);
+		// Если размер данных расширения session_ticket больше 0, то продолжаем парсинг
+		if(bytes > 0){
+			// Забиваем данные расширения нулями, чтобы гарантировать наличие данных в случае, если расширение session_ticket пустое
+			awh_cast <awh::tls::fgp_t::extension_session_ticket_t *> (browser.extensions.back().get())->data.resize(bytes, 0);
+			// Копируем данные расширения session_ticket из буфера в блок данных расширения session_ticket
+			::memcpy(&awh_cast <awh::tls::fgp_t::extension_session_ticket_t *> (browser.extensions.back().get())->data[0], buffer, bytes);
+		}
 	}
 
 	/**
