@@ -78,6 +78,17 @@ void awh::unit::Mediator::error(const event::id_t eid, const event::error_t erro
 		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::unit::Mediator::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для родительского юнита
+	unit_t::threadSafety(mode);
+	// Устанавливаем режим безопасности работы потоков для объекта блокировки
+	this->_mtx.enabled = mode;
+}
+/**
  * @brief Метод фиксации настроек посредника
  *
  * @param eid идентификатор события посредника
@@ -94,20 +105,25 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 			// Выполняем блокировку потока для работы с событием посредника
 			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем фиксацию параметров события посредника
-			if(!(result = this->_io->commit(eid))){
-				// Выполняем поиск идентификатора события посредника в списке событий посредника
-				auto i = this->_events.find(eid);
-				// Если идентификатор события посредника найден в списке событий посредника
-				if(i != this->_events.end()){
-					// Удаляем событие посредника
-					this->_io->destroy(* i);
-					// Удаляем идентификатор события посредника из списка событий посредника
-					this->_events.erase(i);
-				}
-			}
+			result = this->_io->commit(eid);
 		}
 		// Если результат фиксации параметров события посредника не успешный
 		if(!result){
+			{
+				// Выполняем блокировку потока для работы с событием посредника
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Удаляем событие посредника
+				this->_io->destroy(eid);
+			}{
+				// Выполняем блокировку потока для работы временным списком событий посредника
+				const locker_t <> lock(this->_mtx);
+				// Выполняем поиск идентификатора события посредника в списке событий посредника
+				auto i = this->_events.find(eid);
+				// Если идентификатор события посредника найден в списке событий посредника
+				if(i != this->_events.end())
+					// Удаляем идентификатор события посредника из списка событий посредника
+					this->_events.erase(i);
+			}
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -300,19 +316,22 @@ void awh::unit::Mediator::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Mediator::destroy(const event::id_t eid) noexcept {
-	// Если в списке событий посредника есть события
-	if(!this->_events.empty()){
+	{
 		// Выполняем блокировку потока для уничтожения события посредника
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Удаляем событие посредника
+		this->_io->destroy(eid);
+	}
+	// Если в списке событий посредника есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для работы временным списком событий посредника
+		const locker_t <> lock(this->_mtx);
 		// Выполняем поиск идентификатора события посредника в списке событий посредника
 		auto i = this->_events.find(eid);
 		// Если идентификатор события посредника найден в списке событий посредника
-		if(i != this->_events.end()){
-			// Удаляем событие посредника
-			this->_io->destroy(* i);
+		if(i != this->_events.end())
 			// Удаляем идентификатор события посредника из списка событий посредника
 			this->_events.erase(i);
-		}
 	}
 }
 /**
@@ -328,18 +347,22 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием посредника
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Добавляем новое событие посредника для перехвата пакетов тоннеля
-		result = this->_io->event(event::node_t::MEDIATOR, family);
-		// Устанавливаем функцию обратного вызова на событие изменения действий посредника
-		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&mediator_t::action, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&mediator_t::read, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения статуса посредника
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&mediator_t::status, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&mediator_t::error, this, _1, _2, _3)));
+		{
+			// Выполняем блокировку потока для работы с событием посредника
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Добавляем новое событие посредника для перехвата пакетов тоннеля
+			result = this->_io->event(event::node_t::MEDIATOR, family);
+			// Устанавливаем функцию обратного вызова на событие изменения действий посредника
+			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&mediator_t::action, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие чтения данных
+			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&mediator_t::read, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие изменения статуса посредника
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&mediator_t::status, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&mediator_t::error, this, _1, _2, _3)));
+		}
+		// Выполняем блокировку потока для работы временным списком событий посредника
+		const locker_t <> lock(this->_mtx);
 		// Добавляем идентификатор события посредника в список событий посредника
 		this->_events.emplace(result);
 	/**
@@ -369,7 +392,10 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Mediator::Mediator(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Mediator::Mediator(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
+}
 /**
  * @brief Деструктор
  *
@@ -377,11 +403,14 @@ awh::unit::Mediator::Mediator(const fmk_t * fmk, const log_t * log) noexcept : u
 awh::unit::Mediator::~Mediator() noexcept {
 	// Если в списке событий посредника есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для уничтожения событий
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем блокировку потока для работы временным списком событий посредника
+		const locker_t <> lock(this->_mtx);
 		// Выполняем удаление всех событий посредника
-		for(const auto & eid : this->_events)
+		for(const auto & eid : this->_events){
+			// Выполняем блокировку потока для уничтожения событий
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Удаляем событие посредника
 			this->_io->destroy(eid);
+		}
 	}
 }

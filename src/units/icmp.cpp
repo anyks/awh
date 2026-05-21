@@ -1650,10 +1650,10 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
  */
 awh::unit::ICMP::ICMP(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _addr(fmk, log) {
-	// Активируем работу мьютекса блокировки потока при работе с активными пакетами
-	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с IP-адресами
 	::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с активными пакетами
+	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	/**
 	 * Выполняем создание события ICMP-клиента для указанного семейства IP-адресов
 	 */

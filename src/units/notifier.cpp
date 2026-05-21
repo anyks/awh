@@ -131,8 +131,13 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 				// Выводим сообщение об ошибке запуска события
 				this->_log->print("Notifier event could not be launched", log_t::flag_t::WARNING);
 			#endif
-		// Добавляем идентификатор события уведомителя в список событий уведомителя
-		} else this->_events.emplace(result);
+		// Если фиксация настроек события уведомителя не может быть выполнена
+		} else {
+			// Выполняем блокировку потока для работы временным списком событий уведомителя
+			const locker_t <> lock(this->_mtx);
+			// Добавляем идентификатор события уведомителя в список событий уведомителя
+			this->_events.emplace(result);
+		}
 	// Если событие уведомителя не может быть создано
 	} else {
 		// Удаляем событие уведомителя
@@ -157,24 +162,38 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 	return result;
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::unit::Notifier::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для родительского юнита
+	unit_t::threadSafety(mode);
+	// Устанавливаем режим безопасности работы потоков для объекта блокировки
+	this->_mtx.enabled = mode;
+}
+/**
  * @brief Метод уничтожения события уведомителя
  *
  * @param eid идентификатор события уведомителя
  */
 void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
-	// Если в списке событий уведомителя есть события
-	if(!this->_events.empty()){
+	{
 		// Выполняем блокировку потока для удаления события уведомителя
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Удаляем событие уведомителя
+		this->_io->destroy(eid);
+	}
+	// Если в списке событий уведомителя есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для работы временным списком событий уведомителя
+		const locker_t <> lock(this->_mtx);
 		// Выполняем поиск идентификатора события уведомителя в списке событий уведомителя
 		auto i = this->_events.find(eid);
 		// Если идентификатор события уведомителя найден в списке событий уведомителя
-		if(i != this->_events.end()){
-			// Удаляем событие уведомителя
-			this->_io->destroy(* i);
+		if(i != this->_events.end())
 			// Удаляем идентификатор события уведомителя из списка событий уведомителя
 			this->_events.erase(i);
-		}
 	}
 }
 /**
@@ -214,7 +233,10 @@ size_t awh::unit::Notifier::trigger(const event::id_t eid, const void * buffer, 
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
+}
 /**
  * @brief Деструктор
  *
@@ -222,11 +244,14 @@ awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : u
 awh::unit::Notifier::~Notifier() noexcept {
 	// Если в списке событий уведомителя есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для удаления всех событий уведомителя
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем блокировку потока для работы временным списком событий уведомителя
+		const locker_t <> lock(this->_mtx);
 		// Выполняем удаление всех событий уведомителя
-		for(const auto & eid : this->_events)
+		for(const auto & eid : this->_events){
+			// Выполняем блокировку потока для удаления всех событий уведомителя
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Удаляем событие уведомителя
 			this->_io->destroy(eid);
+		}
 	}
 }

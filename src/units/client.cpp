@@ -48,12 +48,15 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если в списке событий клиента есть события
 			if(!this->_events.empty()){
-				// Выполняем блокировку потока для уничтожения событий
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем блокировку потока для работы временным списком событий клиента
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 				// Выполняем удаление всех событий клиента
-				for(const auto & eid : this->_events)
+				for(const auto & eid : this->_events){
+					// Выполняем блокировку потока для уничтожения событий
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Удаляем событие клиента
 					this->_io->destroy(eid);
+				}
 			}
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("clientStatus")){
@@ -183,6 +186,17 @@ void awh::unit::Client::spool(const event::id_t eid, const event::send_error_t e
 		this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, data, size);
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::unit::Client::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для родительского юнита
+	unit_t::threadSafety(mode);
+	// Устанавливаем режим безопасности работы потоков для объекта блокировки
+	this->_mtx.enabled = mode;
+}
+/**
  * @brief Метод фиксации настроек клиента
  *
  * @param eid идентификатор события клиента
@@ -199,20 +213,25 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 			// Выполняем блокировку потока для работы с событием клиента
 			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем фиксацию параметров события
-			if(!(result = this->_io->commit(eid))){
-				// Выполняем поиск идентификатора события клиента в списке событий клиента
-				auto i = this->_events.find(eid);
-				// Если идентификатор события клиента найден в списке событий клиента
-				if(i != this->_events.end()){
-					// Удаляем событие клиента
-					this->_io->destroy(* i);
-					// Удаляем идентификатор события клиента из списка событий клиента
-					this->_events.erase(i);
-				}
-			}
+			result = this->_io->commit(eid);
 		}
 		// Если результат фиксации параметров события не успешный
 		if(!result){
+			{
+				// Выполняем блокировку потока для работы с событием клиента
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Удаляем событие клиента
+				this->_io->destroy(eid);
+			}{
+				// Выполняем блокировку потока для работы временным списком событий клиента
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем поиск идентификатора события клиента в списке событий клиента
+				auto i = this->_events.find(eid);
+				// Если идентификатор события клиента найден в списке событий клиента
+				if(i != this->_events.end())
+					// Удаляем идентификатор события клиента из списка событий клиента
+					this->_events.erase(i);
+			}
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -915,19 +934,22 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Client::destroy(const event::id_t eid) noexcept {
-	// Если в списке событий клиента есть события
-	if(!this->_events.empty()){
+	{
 		// Выполняем блокировку потока для уничтожения события клиента
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Удаляем событие клиента
+		this->_io->destroy(eid);
+	}
+	// Если в списке событий клиента есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для работы временным списком событий клиента
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск идентификатора события клиента в списке событий клиента
 		auto i = this->_events.find(eid);
 		// Если идентификатор события клиента найден в списке событий клиента
-		if(i != this->_events.end()){
-			// Удаляем событие клиента
-			this->_io->destroy(* i);
+		if(i != this->_events.end())
 			// Удаляем идентификатор события клиента из списка событий клиента
 			this->_events.erase(i);
-		}
 	}
 }
 /**
@@ -945,28 +967,32 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Добавляем новое событие клиента
-		result = this->_io->event(event::node_t::CLIENT, family, type, protocol);
-		// Устанавливаем функцию обратного вызова на событие записи данных
-		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-		this->_io->on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-		this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-		this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
+		{
+			// Выполняем блокировку потока для работы с событием клиента
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Добавляем новое событие клиента
+			result = this->_io->event(event::node_t::CLIENT, family, type, protocol);
+			// Устанавливаем функцию обратного вызова на событие записи данных
+			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие чтения данных
+			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие изменения действий клиента
+			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+			this->_io->on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
+			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+			this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
+		}
+		// Выполняем блокировку потока для работы временным списком событий клиента
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Добавляем идентификатор события клиента в список событий клиента
 		this->_events.emplace(result);
 	/**
@@ -996,7 +1022,10 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
+}
 /**
  * @brief Деструктор
  *
@@ -1004,11 +1033,14 @@ awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_
 awh::unit::Client::~Client() noexcept {
 	// Если в списке событий клиента есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для уничтожения событий
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем блокировку потока для работы временным списком событий клиента
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем удаление всех событий клиента
-		for(const auto & eid : this->_events)
+		for(const auto & eid : this->_events){
+			// Выполняем блокировку потока для уничтожения событий
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Удаляем событие клиента
 			this->_io->destroy(eid);
+		}
 	}
 }

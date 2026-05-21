@@ -43,6 +43,9 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Notifier : public unit_t {
 			private:
+				// Мютекс для блокировки потоков
+				lock_state_t <std::mutex> _mtx;
+			private:
 				// Список идентификаторов событий файловой системы
 				unordered_set <event::id_t> _events;
 			private:
@@ -94,6 +97,13 @@ namespace awh {
 				 * @return идентификатор события уведомителя
 				 */
 				event::id_t create() noexcept;
+			public:
+				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод уничтожения события уведомителя

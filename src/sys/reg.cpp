@@ -128,7 +128,9 @@ const string & awh::Regular_Expressions::error() const noexcept {
  * @param mode флаг режима безопасности потоков
  */
 void awh::Regular_Expressions::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности потоков
+	/** 
+	 * Активируем или деактивируем мьютексы в зависимости от переданного флага
+	 */
 	this->_mtx.match.enabled = mode;
 	this->_mtx.cache.enabled = mode;
 }
@@ -701,7 +703,32 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 void awh::Regular_Expressions::setLogger(const log_t * log) noexcept {
 	// Выполняем установку объекта логирования
 	this->_log = log;
-	// Отключаем режим безопасности потоков
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Regular_Expressions::Regular_Expressions() noexcept : _error{""}, _log(nullptr) {
+	/**
+	 * Деактивируем мьютексы на время инициализации
+	 */
 	this->_mtx.match.enabled = false;
 	this->_mtx.cache.enabled = false;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param log объект работы с логами
+ */
+awh::Regular_Expressions::Regular_Expressions(const log_t * log) noexcept : _error{""}, _log(log) {
+	/**
+	 * Деактивируем мьютексы на время инициализации
+	 */
+	this->_mtx.match.enabled = false;
+	this->_mtx.cache.enabled = false;
+}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Regular_Expressions::~Regular_Expressions() noexcept {}

@@ -195,18 +195,18 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Regular_Expressions() noexcept : _error{""}, _log(nullptr) {}
+			explicit Regular_Expressions() noexcept;
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param log объект работы с логами
 			 */
-			explicit Regular_Expressions(const Logging * log) noexcept : _error{""}, _log(log) {}
+			explicit Regular_Expressions(const Logging * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Regular_Expressions() noexcept {}
+			~Regular_Expressions() noexcept;
 	} regexp_t;
 };
 

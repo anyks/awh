@@ -43,6 +43,9 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Client : public unit_t {
 			private:
+				// Мютекс для блокировки потоков
+				lock_state_t <std::shared_mutex> _mtx;
+			private:
 				// Список идентификаторов событий клиента
 				unordered_set <event::id_t> _events;
 			private:
@@ -122,6 +125,13 @@ namespace awh {
 				 * @param size  размер данных, которые не получилось отправить
 				 */
 				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек клиента

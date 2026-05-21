@@ -80,6 +80,17 @@ void awh::unit::Tunnel::info(const event::id_t eid, const event::id_t mid, const
 		this->_callback.call <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)> ("info", eid, mid, action, info);
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::unit::Tunnel::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для родительского юнита
+	unit_t::threadSafety(mode);
+	// Устанавливаем режим безопасности работы потоков для объекта блокировки
+	this->_mtx.enabled = mode;
+}
+/**
  * @brief Метод фиксации настроек туннеля
  *
  * @param eid идентификатор события туннеля
@@ -96,23 +107,25 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 			// Выполняем блокировку потока для работы с событием туннеля
 			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем фиксацию параметров события и его запуск
-			if(!(result = this->_io->commit(eid) && this->_io->launch(eid))){
-				// Выполняем поиск идентификатора события туннеля в списке событий туннеля
-				auto i = this->_events.find(eid);
-				// Если идентификатор события туннеля найден в списке событий туннеля
-				if(i != this->_events.end()){
-					// Удаляем событие туннеля
-					this->_io->destroy(* i);
-					// Удаляем идентификатор события туннеля из списка событий туннеля
-					this->_events.erase(i);
-				}
-			// Если функция обратного вызова установлена
-			} else if(this->_callback.is("info"))
-				// Устанавливаем функцию обратного вызова на событие получения информации о пакетах в туннеле
-				this->_io->on(eid, static_cast <engine::callback::tuninfo_t> (std::bind(&tunnel_t::info, this, _1, _2, _3, _4)));
+			result = (this->_io->commit(eid) && this->_io->launch(eid));
 		}
 		// Если фиксация параметров события и его запуск не удались
 		if(!result){
+			{
+				// Выполняем блокировку потока для работы с событием туннеля
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Удаляем событие туннеля
+				this->_io->destroy(eid);
+			}{
+				// Выполняем блокировку потока для работы временным списком событий туннеля
+				const locker_t <> lock(this->_mtx);
+				// Выполняем поиск идентификатора события туннеля в списке событий туннеля
+				auto i = this->_events.find(eid);
+				// Если идентификатор события туннеля найден в списке событий туннеля
+				if(i != this->_events.end())
+					// Удаляем идентификатор события туннеля из списка событий туннеля
+					this->_events.erase(i);
+			}
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -129,7 +142,10 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 					this->_log->print("Failed to launch tunnel", log_t::flag_t::CRITICAL);
 				#endif
 			}
-		}
+		// Если функция обратного вызова установлена
+		} else if(this->_callback.is("info"))
+			// Устанавливаем функцию обратного вызова на событие получения информации о пакетах в туннеле
+			this->_io->on(eid, static_cast <engine::callback::tuninfo_t> (std::bind(&tunnel_t::info, this, _1, _2, _3, _4)));
 	/**
 	 * Если возникает ошибка
 	 */
@@ -381,19 +397,22 @@ void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
-	// Если в списке событий туннеля есть события
-	if(!this->_events.empty()){
+	{
 		// Выполняем блокировку потока для уничтожения события туннеля
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Удаляем событие туннеля
+		this->_io->destroy(eid);
+	}
+	// Если в списке событий туннеля есть события
+	if(!this->_events.empty()){
+		// Выполняем блокировку потока для работы временным списком событий туннеля
+		const locker_t <> lock(this->_mtx);
 		// Выполняем поиск идентификатора события туннеля в списке событий туннеля
 		auto i = this->_events.find(eid);
 		// Если идентификатор события туннеля найден в списке событий туннеля
-		if(i != this->_events.end()){
-			// Удаляем событие туннеля
-			this->_io->destroy(* i);
+		if(i != this->_events.end())
 			// Удаляем идентификатор события туннеля из списка событий туннеля
 			this->_events.erase(i);
-		}
 	}
 }
 /**
@@ -409,16 +428,20 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с событием туннеля
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Добавляем новое событие туннеля
-		result = this->_io->event(event::node_t::TUNNEL, family);
-		// Устанавливаем функцию обратного вызова на событие изменения статуса туннеля
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
-		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
+		{
+			// Выполняем блокировку потока для работы с событием туннеля
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Добавляем новое событие туннеля
+			result = this->_io->event(event::node_t::TUNNEL, family);
+			// Устанавливаем функцию обратного вызова на событие изменения статуса туннеля
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
+			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
+		}
+		// Выполняем блокировку потока для работы временным списком событий туннеля
+		const locker_t <> lock(this->_mtx);
 		// Добавляем идентификатор события туннеля в список событий туннеля
 		this->_events.emplace(result);
 	/**
@@ -448,7 +471,10 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
+awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
+}
 /**
  * @brief Деструктор
  *
@@ -456,11 +482,14 @@ awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_
 awh::unit::Tunnel::~Tunnel() noexcept {
 	// Если в списке событий туннеля есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для уничтожения событий
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем блокировку потока для работы временным списком событий туннеля
+		const locker_t <> lock(this->_mtx);
 		// Выполняем удаление всех событий туннеля
-		for(const auto & eid : this->_events)
+		for(const auto & eid : this->_events){
+			// Выполняем блокировку потока для уничтожения событий
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Удаляем событие туннеля
 			this->_io->destroy(eid);
+		}
 	}
 }

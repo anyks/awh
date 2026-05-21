@@ -428,6 +428,13 @@ namespace awh {
 			 *
 			 */
 			void clear() noexcept;
+		public:
+			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode флаг режима безопасности потоков
+			 */
+			void threadSafety(const bool mode) noexcept;
 		private:
 			/**
 			 * @brief Метод получения штампа времени из объекта даты

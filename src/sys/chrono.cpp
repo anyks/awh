@@ -161,6 +161,19 @@ void awh::Chrono::clear() noexcept {
 	}
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::Chrono::threadSafety(const bool mode) noexcept {
+	/** 
+	 * Активируем или деактивируем мьютексы в зависимости от переданного флага
+	 */
+	this->_mtx.tz.enabled    = mode;
+	this->_mtx.date.enabled  = mode;
+	this->_mtx.parse.enabled = mode;
+}
+/**
  * @brief Метод получения штампа времени из объекта даты
  *
  * @param dt объект даты из которой необходимо получить штамп времени
@@ -11094,6 +11107,12 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
  * @param log объект работы с логами
  */
 awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+	/**
+	 * Деактивируем мьютексы на время инициализации
+	 */
+	this->_mtx.tz.enabled    = false;
+	this->_mtx.date.enabled  = false;
+	this->_mtx.parse.enabled = false;
 	// Выполняем инициализацию локального объекта даты и времени
 	this->clear();
 	// Выполняем компиляцию регулярных выражений
