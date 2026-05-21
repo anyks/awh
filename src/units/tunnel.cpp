@@ -403,10 +403,10 @@ void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
 		// Удаляем событие туннеля
 		this->_io->destroy(eid);
 	}
+	// Выполняем блокировку потока для работы временным списком событий туннеля
+	const locker_t <> lock(this->_mtx);
 	// Если в списке событий туннеля есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для работы временным списком событий туннеля
-		const locker_t <> lock(this->_mtx);
 		// Выполняем поиск идентификатора события туннеля в списке событий туннеля
 		auto i = this->_events.find(eid);
 		// Если идентификатор события туннеля найден в списке событий туннеля
@@ -480,10 +480,10 @@ awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_
  *
  */
 awh::unit::Tunnel::~Tunnel() noexcept {
+	// Выполняем блокировку потока для работы временным списком событий туннеля
+	const locker_t <> lock(this->_mtx);
 	// Если в списке событий туннеля есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для работы временным списком событий туннеля
-		const locker_t <> lock(this->_mtx);
 		// Выполняем удаление всех событий туннеля
 		for(const auto & eid : this->_events){
 			// Выполняем блокировку потока для уничтожения событий

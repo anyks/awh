@@ -99,16 +99,18 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 		} break;
 		// Если работа кластера подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
-			// Если в списке событий сервера есть события
-			if(!this->_events.empty()){
+			{
 				// Выполняем блокировку потока для работы временным списком событий сервера
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-				// Выполняем удаление всех событий сервера
-				for(const auto & eid : this->_events){
-					// Выполняем блокировку потока для уничтожения событий
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Удаляем событие сервера
-					this->_io->destroy(eid);
+				// Если в списке событий сервера есть события
+				if(!this->_events.empty()){
+					// Выполняем удаление всех событий сервера
+					for(const auto & eid : this->_events){
+						// Выполняем блокировку потока для уничтожения событий
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Удаляем событие сервера
+						this->_io->destroy(eid);
+					}
 				}
 			}
 			// Если функция обратного вызова установлена
@@ -1438,10 +1440,10 @@ void awh::unit::Server::destroy(const event::id_t eid) noexcept {
 		// Удаляем событие сервера
 		this->_io->destroy(eid);
 	}
+	// Выполняем блокировку потока для работы временным списком событий сервера
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Если в списке событий сервера есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для работы временным списком событий сервера
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск идентификатора события сервера в списке событий сервера
 		auto i = this->_events.find(eid);
 		// Если идентификатор события сервера найден в списке событий сервера
@@ -1717,10 +1719,10 @@ awh::unit::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::unit::Server::~Server() noexcept {
+	// Выполняем блокировку потока для работы временным списком событий сервера
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Если в списке событий сервера есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для работы временным списком событий сервера
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем удаление всех событий сервера
 		for(const auto & eid : this->_events){
 			// Выполняем блокировку потока для уничтожения событий

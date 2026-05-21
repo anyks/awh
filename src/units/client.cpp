@@ -46,16 +46,18 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 		} break;
 		// Если работа клиента подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
-			// Если в списке событий клиента есть события
-			if(!this->_events.empty()){
+			{
 				// Выполняем блокировку потока для работы временным списком событий клиента
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-				// Выполняем удаление всех событий клиента
-				for(const auto & eid : this->_events){
-					// Выполняем блокировку потока для уничтожения событий
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Удаляем событие клиента
-					this->_io->destroy(eid);
+				// Если в списке событий клиента есть события
+				if(!this->_events.empty()){
+					// Выполняем удаление всех событий клиента
+					for(const auto & eid : this->_events){
+						// Выполняем блокировку потока для уничтожения событий
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Удаляем событие клиента
+						this->_io->destroy(eid);
+					}
 				}
 			}
 			// Если функция обратного вызова установлена
@@ -940,10 +942,10 @@ void awh::unit::Client::destroy(const event::id_t eid) noexcept {
 		// Удаляем событие клиента
 		this->_io->destroy(eid);
 	}
+	// Выполняем блокировку потока для работы временным списком событий клиента
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Если в списке событий клиента есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для работы временным списком событий клиента
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Выполняем поиск идентификатора события клиента в списке событий клиента
 		auto i = this->_events.find(eid);
 		// Если идентификатор события клиента найден в списке событий клиента
@@ -1031,10 +1033,10 @@ awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_
  *
  */
 awh::unit::Client::~Client() noexcept {
+	// Выполняем блокировку потока для работы временным списком событий клиента
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Если в списке событий клиента есть события
 	if(!this->_events.empty()){
-		// Выполняем блокировку потока для работы временным списком событий клиента
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем удаление всех событий клиента
 		for(const auto & eid : this->_events){
 			// Выполняем блокировку потока для уничтожения событий
