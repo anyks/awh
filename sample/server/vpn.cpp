@@ -144,11 +144,12 @@ class Executor {
 		/**
 		 * @brief Метод обработки событий чтения данных туннеля
 		 *
-		 * @param eid  идентификатор события туннеля
-		 * @param data бинарный буфер данных
-		 * @param size размер данных
+		 * @param eid    идентификатор клиента
+		 * @param data   бинарный буфер данных
+		 * @param size   размер данных
+		 * @param server объект сервера
 		 */
-		void readVPN(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
+		void readVPN(const event::id_t eid, const uint8_t * data, const size_t size, server_t * server) noexcept {
 			// Если данные получены
 			if((data != nullptr) && (size > 0)){
 				// Объект отправляемых данных
@@ -164,7 +165,7 @@ class Executor {
 				// Добавляем в ответ полезную нагрузку
 				response.insert(response.end(), data, data + size);
 				// Отправляем данные обратно клиенту
-				if(this->_mediator->send(eid, &response[0], response.size()) == 0)
+				if(server->send(eid, &response[0], response.size()) == 0)
 					// Выводим сообщение об ошибке отправки данных клиентом на сервер
 					this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
 			}
@@ -431,7 +432,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие изменения статуса посредника
 		mediator.on <void (const event::id_t, const event::status_t)> ("status", &Executor::statusVPN, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие чтения данных посредником
-		mediator.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::readVPN, &executor, _1, _2, _3);
+		mediator.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::readVPN, &executor, _1, _2, _3, &server);
 		// Регистрируем функцию обратного вызова на событие ошибок посредника
 		mediator.on <void (const event::id_t, const event::error_t, const string &)> ("error", &Executor::errorVPN, &executor, _1, _2, _3);
 		// Выполняем фиксацию параметров туннеля
@@ -462,6 +463,8 @@ int32_t main(int32_t argc, char * argv[]){
 				// sudo ipfw add 100 allow udp from any to me 3333 in
 				// Удаление старого сетевого интерфейса тоннеля в FreeBSD
 				// sudo ifconfig tun3 destroy
+				// На сервере, чтобы получить ответ на пинг, нужно добавить роутинг, где (10.0.0.2 - адрес клиента)
+				// sudo route add 10.0.0.2 -interface tun0
 				// Запускаем событие сервера
 				server.start();
 			}

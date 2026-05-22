@@ -111,12 +111,12 @@ class Executor {
 		/**
 		 * @brief Метод обработки событий чтения данных туннеля
 		 *
-		 * @param eid    идентификатор события туннеля
+		 * @param eid    идентификатор клиента
 		 * @param data   бинарный буфер данных
 		 * @param size   размер данных
 		 * @param client объект клиента
 		 */
-		void readVPN(const event::id_t eid, const uint8_t * data, const size_t size, client_t * client) noexcept {
+		void readVPN([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, client_t * client) noexcept {
 			// Если данные получены
 			if((data != nullptr) && (size > 0)){
 				// Объект отправляемых данных

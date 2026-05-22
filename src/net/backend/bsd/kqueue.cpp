@@ -7035,7 +7035,7 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
-													mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
+													mediator->callbacks.read(mediator->dest, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
 												else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
@@ -7242,7 +7242,7 @@ namespace io {
 												// Если функция обратного вызова для вывода прочитанных данных установлена
 												if(mediator->callbacks.read != nullptr)
 													// Вызываем функцию обратного вызова для вывода полученных данных
-													mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
+													mediator->callbacks.read(mediator->dest, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
 												// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
 												else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 											}
@@ -7563,9 +7563,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
 												// Вызываем функцию обратного вызова для вывода полученных данных
-												mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
+												mediator->callbacks.read(mediator->dest, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else const_cast <engine::io_t *> (io)->send(mediator->id, ::__awh_buffer__, static_cast <size_t> (size));
+											else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
 								// Если адрес сервера не совпадает с настройками туннеля
@@ -7770,9 +7770,9 @@ namespace io {
 											// Если функция обратного вызова для вывода прочитанных данных установлена
 											if(mediator->callbacks.read != nullptr)
 												// Вызываем функцию обратного вызова для вывода полученных данных
-												mediator->callbacks.read(mediator->id, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
+												mediator->callbacks.read(mediator->dest, reinterpret_cast <const uint8_t *> (::__awh_buffer__), static_cast <size_t> (size));
 											// Если функция обратного вызова для вывода прочитанных данных не установлена, то отправляем данные в указанный объект
-											else const_cast <engine::io_t *> (io)->send(mediator->id, ::__awh_buffer__, static_cast <size_t> (size));
+											else const_cast <engine::io_t *> (io)->send(mediator->dest, ::__awh_buffer__, static_cast <size_t> (size));
 										}
 									}
 								// Если адрес сервера не совпадает с настройками туннеля
