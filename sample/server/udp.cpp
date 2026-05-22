@@ -33,9 +33,9 @@ using namespace placeholders;
  */
 class Executor {
 	private:
-		// Создаём объект фреймворка
+		// Объект фреймворка
 		const fmk_t * _fmk;
-		// Создаём объект работы с логами
+		// Объект работы с логами
 		const log_t * _log;
 	public:
 		/**
