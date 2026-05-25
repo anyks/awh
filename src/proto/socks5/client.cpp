@@ -196,10 +196,12 @@ namespace {
 	 * @param data данные для добавления в буфер
 	 */
 	void addPayload(const T & data) noexcept {
+		// Получаем размер данных для добавления в буфер
+		const size_t size = sizeof(data);
 		// Устанавливаем первый октет
-		::memcpy(::__awh_buffer__ + ::__awh_size__, &data, sizeof(data));
+		::memcpy(::__awh_buffer__ + ::__awh_size__, &data, size);
 		// Выводим размер смещения
-		::__awh_size__ += sizeof(data);
+		::__awh_size__ += size;
 	}
 	/**
 	 * @brief Функция добавления полезной нагрузки в буфер
