@@ -1,0 +1,230 @@
+/**
+ * @file: socks5.hpp
+ * @date: 2026-05-24
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Экранируем повторную инициализацию модуля
+ */
+#ifndef __AWH_PROTO_SOCKS5__
+#define __AWH_PROTO_SOCKS5__
+
+/**
+ * Стандартные модули
+ */
+#include <string>
+
+/**
+ * Наши модуля
+ */
+#include "../../net/net.hpp"
+#include "../../sys/fmk.hpp"
+#include "../../sys/log.hpp"
+
+/**
+ * @brief основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * Подписываемся на стандартное пространство имён
+	 */
+	using namespace std;
+	/**
+	 * @brief Пространство имён протоколов
+	 *
+	 */
+	namespace proto {
+		/**
+		 * @brief Класс для работы с протоколом SOCKS5
+		 *
+		 */
+		typedef class __AWH_SHARED_EXPORT__ Socks5 {
+			public:
+				/**
+				 * @brief Комманды запроса клиента
+				 *
+				 */
+				enum class command_t : uint8_t {
+					NONE    = 0x00, // Команда не определена
+					CONNECT = 0x01, // Метод подключения
+					BIND    = 0x02, // Метод обратного подключения (сервера к клиенту)
+					UDP     = 0x03  // Работа с UDP протоколом
+				};
+				/**
+				 * @brief Типы адресации
+				 *
+				 */
+				enum class addr_type_t : uint8_t {
+					NONE = 0x00, // Тип адреса не определён
+					IPV4 = 0x01, // Поддерживается IPv4 IP адрес
+					FQDN = 0x03, // Поддерживается доменное имя
+					IPV6 = 0x04  // Поддерживается IPv6 IP адрес
+				};
+				/**
+				 * @brief Стейты работы модуля
+				 *
+				 */
+				enum class state_t : uint8_t {
+					NONE      = 0x00, // Состояние не определено
+					AUTH      = 0x01, // Состояние ожидания получения метода аутентификации
+					BROKEN    = 0x02, // Состояние бракованных данных
+					CONNECT   = 0x03, // Состояние ожидания получения команды подключения
+					SUCCESS   = 0x04, // Состояние успешного получения запроса
+					REQUEST   = 0x05, // Состояние ожидания получения запроса
+					RESPONSE  = 0x06, // Состояние ожидания получения ответа
+					HANDSHAKE = 0x07  // Состояние выполненного рукопожатия
+				};
+				/**
+				 * @brief Коды статусов ответа сервера
+				 *
+				 */
+				enum class status_t : uint8_t {
+					SUCCESS   = 0x00, // Подключение успешное
+					SOCKSERR  = 0x01, // Ошибка SOCKS-сервера
+					FORBIDDEN = 0x02, // Соединение запрещено набором правил
+					UNAVNET   = 0x03, // Сеть недоступна
+					UNAVHOST  = 0x04, // Хост недоступен
+					DENIED    = 0x05, // Отказ в соединении
+					TIMETTL   = 0x06, // Истечение TTL
+					NOCOMMAND = 0x07, // Команда не поддерживается
+					NOADDR    = 0x08, // Тип адреса не поддерживается
+					NOSUPPORT = 0x09, // До X'FF' не определены
+					NOSTATUS  = 0xFF, // Статус не определён
+				};
+			public:
+				/**
+				 * @brief Структура UDP заголовка
+				 *
+				 */
+				typedef struct UDP_Header {
+					// Номер фрагмента (0x00 = нет фрагментации)
+					uint8_t frag;
+					// Хост конечного получателя
+					unique_ptr <net::attr_t> host;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit UDP_Header() noexcept :
+					 frag(0x00), host(nullptr) {}
+				} udp_head_t;
+				/**
+				 * @brief Структура промежуточного контекста
+				 *
+				 */
+				typedef struct Context {
+					// Текущее состояние
+					state_t state;
+					// Текущее значение статуса
+					status_t status;
+					// Запрошенная команда подключения
+					command_t command;
+					// Параметры адреса хоста
+					unique_ptr <net::attr_t> host;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Context() noexcept :
+					 state(state_t::NONE),
+					 status(status_t::NOSTATUS),
+					 command(command_t::NONE),
+					 host(nullptr) {}
+				} ctx_t;
+			protected:
+				// Параметры адреса хоста для подключения
+				unique_ptr <net::attr_t> _host;
+			protected:
+				// Объект фреймворка
+				const fmk_t * _fmk;
+				// Объект для работы с логами
+				const log_t * _log;
+			public:
+				/**
+				 * @brief Метод установки адреса хоста для подключения
+				 *
+				 * @param host параметры адреса хоста для подключения
+				 * @return     результат установки адреса хоста для подключения
+				 */
+				bool setHost(const net::attr_t * host) noexcept;
+				/**
+				 * @brief Метод получения адреса хоста для подключения
+				 *
+				 * @param host указатель на объект для извлечения параметров адреса хоста для подключения
+				 * @return     результат извлечения параметров адреса хоста для подключения
+				 */
+				bool getHost(net::attr_t ** host) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения сообщения
+				 *
+				 * @param code код статуса
+				 * @return     текстовое значение кода статуса
+				 */
+				string statusMessage(const status_t code) const noexcept;
+			public:
+				/**
+				 * @brief Метод парсинга входящих данных
+				 *
+				 * @param buffer бинарный буфер входящих данных
+				 * @param size   размер бинарного буфера входящих данных
+				 * @param ctx    объект для извлечения параметров сообщения
+				 * @return       результат парсинга входящих данных
+				 */
+				virtual bool parse(const void * buffer, const size_t size, ctx_t & ctx) noexcept = 0;
+				/**
+				 * @brief Метод парсинга входящих данных
+				 *
+				 * @param buffer бинарный буфер входящих данных
+				 * @param size   размер бинарного буфера входящих данных
+				 * @param udp    объект для извлечения параметров UDP заголовка
+				 * @return       результат парсинга входящих данных
+				 */
+				virtual bool parse(const void * buffer, const size_t size, udp_head_t & udp) noexcept = 0;
+			public:
+				/**
+				 * @brief Метод извлечения буфера запроса/ответа
+				 *
+				 * @param buffer указатель на буфер для извлечения данных
+				 * @param size   ссылка на размер буфера для извлечения данных
+				 * @param ctx    объект для установки параметров сообщения
+				 * @return 	     результат извлечения данных в буфер
+				 */
+				virtual bool buffer(uint8_t ** buffer, size_t & size, ctx_t & ctx) const noexcept = 0;
+				/**
+				 * @brief Метод извлечения буфера запроса/ответа
+				 *
+				 * @param buffer указатель на буфер для извлечения данных
+				 * @param size   ссылка на размер буфера для извлечения данных
+				 * @param udp    объект для установки параметров UDP заголовка
+				 * @return 	     результат извлечения данных в буфер
+				 */
+				virtual bool buffer(uint8_t ** buffer, size_t & size, udp_head_t & udp) const noexcept = 0;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Деструктор
+				 *
+				 */
+				virtual ~Socks5() noexcept;
+		} socks5_t;
+	};
+};
+
+#endif // __AWH_PROTO_SOCKS5__

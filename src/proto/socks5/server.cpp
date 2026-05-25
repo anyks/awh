@@ -1,0 +1,879 @@
+/**
+ * @file: server.cpp
+ * @date: 2026-05-24
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ */
+
+/**
+ * Подключаем стандартные модули
+ */
+#include <array>
+
+/**
+ * Подключаем заголовочный файл
+ */
+#include <proto/socks5/server.hpp>
+
+/**
+ * Подписываемся на стандартное пространство имён
+ */
+using namespace std;
+
+/**
+ * Инкапсулируем статические параметры в пространство имён
+ */
+namespace {
+	/**
+	 * @brief Основные методы
+	 *
+	 */
+	enum class method_t : uint8_t {
+		NOAUTH   = 0x00, // Аутентификация не требуется
+		GSSAPI   = 0x01, // Аутентификация по GSSAPI
+		PASSWD   = 0x02, // Аутентификация по USERNAME/PASSWORD
+		IANA     = 0x03, // До X'7F' зарезервировано IANA
+		RESERVE  = 0x80, // До X'FE' преднозначено для частных методов
+		NOMETHOD = 0xFF  // Нет применимых методов
+	};
+
+	/**
+	 * @brief Структура заголовка пакета для UDP протокола
+	 *
+	 */
+	typedef struct UDP {
+		// Зарезервировано, всегда 0x0000
+		uint16_t rsv;
+		// Номер фрагмента (0x00 = нет фрагментации)
+		uint8_t frag;
+		// Тип адреса
+		uint8_t atyp;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit UDP() noexcept :
+		 rsv(0x0000), frag(0x00), atyp(0x00) {}
+	} __attribute__((packed)) udp_t;
+
+	/**
+	 * @brief Структура заголовка авторизации
+	 *
+	 */
+	typedef struct Auth {
+		// Версия прокси-протокола
+		uint8_t ver;
+		// Статус авторизации на сервере
+		uint8_t status;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Auth() noexcept :
+		 ver(0x00), status(0x00) {}
+	} __attribute__((packed)) auth_t;
+
+	/**
+	 * @brief Структура заголовка пакета
+	 *
+	 */
+	typedef struct Header {
+		// Версия прокси-протокола
+		uint8_t ver;
+		// Выбранный метод сервера
+		uint8_t method;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Header() noexcept :
+		 ver(0x00), method(0x00) {}
+	} __attribute__((packed)) header_t;
+
+	/**
+	 * @brief Структура ip адреса сервера
+	 *
+	 */
+	typedef struct IPv4 {
+		// Хост сервера
+		uint32_t host;
+		// Порт сервера
+		uint16_t port;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		IPv4() noexcept : host(0), port(0) {}
+	} __attribute__((packed)) ip4_t;
+
+	/**
+	 * @brief Структура ip адреса сервера
+	 *
+	 */
+	typedef struct IPv6 {
+		// Хост сервера
+		array <uint8_t, 16> host;
+		// Порт сервера
+		uint16_t port;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		IPv6() noexcept : host{0}, port(0) {}
+	} __attribute__((packed)) ip6_t;
+
+	/**
+	 * @brief Структура запроса
+	 *
+	 */
+	typedef struct Request {
+		uint8_t ver;  // Версия прокси-протокола
+		uint8_t cmd;  // Код запроса у прокси-сервера
+		uint8_t rsv;  // Зарезервированный октет
+		uint8_t type; // Тип подключения
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Request() noexcept :
+		 ver(0x00), cmd(0x00),
+		 rsv(0x00), type(0x00) {}
+	} __attribute__((packed)) request_t;
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён
+ */
+namespace {
+	/**
+	 * @brief Размер данных в буфере
+	 *
+	 */
+	thread_local size_t __awh_size__ = 0;
+
+	/**
+	 * @brief Буфер временного хранения данных
+	 *
+	 */
+	thread_local uint8_t __awh_buffer__[0x106] = {0};
+
+	/**
+	 * @brief Шаблон функции добавления полезной нагрузки в буфер
+	 *
+	 * @tparam T тип данных для добавления в буфер
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция добавления полезной нагрузки в буфер
+	 *
+	 * @param data данные для добавления в буфер
+	 */
+	void addPayload(const T & data) noexcept {
+		// Устанавливаем первый октет
+		::memcpy(::__awh_buffer__ + ::__awh_size__, &data, sizeof(data));
+		// Выводим размер смещения
+		::__awh_size__ += sizeof(data);
+	}
+	/**
+	 * @brief Функция добавления полезной нагрузки в буфер
+	 *
+	 * @param data данные для добавления в буфер
+	 */
+	void addPayload(const string & data) noexcept {
+		// Устанавливаем первый октет
+		::memcpy(::__awh_buffer__ + ::__awh_size__, data.c_str(), data.length());
+		// Выводим размер смещения
+		::__awh_size__ += data.length();
+	}
+};
+
+/**
+ * @brief Метод парсинга входящих данных
+ *
+ * @param buffer бинарный буфер входящих данных
+ * @param size   размер бинарного буфера входящих данных
+ * @param ctx    объект для извлечения параметров сообщения
+ * @return       результат парсинга входящих данных
+ */
+bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ctx_t & ctx) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если данные буфера переданы
+		if((buffer != nullptr) && (size > 0)){
+			/**
+			 * Определяем текущее состояние сервера
+			 */
+			switch(static_cast <uint8_t> (ctx.state)){
+				// Если текущее состояние ещё не определено
+				case static_cast <uint8_t> (state_t::NONE): {
+					// Если данных достаточно для получения ответа
+					if(size > sizeof(uint16_t)){
+						// Версия прокси-протокола
+						uint8_t version = 0x00;
+						// Выполняем чтение версии протокола
+						::memcpy(&version, buffer, sizeof(version));
+						// Если версия протокола соответствует
+						if(version == 0x05){
+							// Количество методов авторизации
+							uint8_t count = 0x00;
+							// Формируем смещение в буфере
+							size_t offset = sizeof(version);
+							// Выполняем чтение количество методов авторизации
+							::memcpy(&count, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(count));
+							// Увеличиваем размер смещения на размер количества методов авторизации
+							offset += sizeof(count);
+							// Если количество методов авторизации получено
+							if((count > 0) && (size >= (sizeof(uint16_t) + (sizeof(uint8_t) * count)))){
+								// Устанавливаем статус ожидания ответа на авторизацию
+								ctx.state = state_t::AUTH;
+								// Устанавливаем статус ошибки
+								ctx.status = proto::socks5_t::status_t::DENIED;
+								// Временное значение метода для извлечения
+								method_t method = method_t::NOMETHOD;
+								// Переходим по всем методам авторизации
+								for(uint8_t i = 0; i < count; i++){
+									// Получаем метод авторизации
+									::memcpy(&method, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(method));
+									// Увеличиваем размер смещения на размер метода авторизации
+									offset += sizeof(method);
+									// Если поддерживается метод аутентификации по USERNAME/PASSWORD
+									if(method == method_t::PASSWD){
+										// Если функция обратного вызова для обработки авторизации установлена
+										if(this->_callback != nullptr){
+											// Устанавливаем статус ожидания ответа авторизации
+											ctx.status = proto::socks5_t::status_t::FORBIDDEN;
+											// Выходим из цикла обработки методов авторизации
+											break;
+										}
+									// Если поддерживается метод аутентификации "без аутентификации"
+									} else if(method == method_t::NOAUTH) {
+										// Если функция обратного вызова для обработки авторизации не установлена
+										if(this->_callback == nullptr){
+											// Устанавливаем статус разрешающего подключения
+											ctx.status = proto::socks5_t::status_t::SUCCESS;
+											// Выходим из цикла обработки методов авторизации
+											break;
+										}
+									}
+								}
+							}
+						// Если версия прокси-сервера не соответствует
+						} else {
+							// Устанавливаем состояние клиента как "сломанный"
+							ctx.state = state_t::BROKEN;
+							// Устанавливаем статус ошибки
+							ctx.status = proto::socks5_t::status_t::SOCKSERR;
+						}
+					}
+				} break;
+				// Если текущее состояние соответствует этапу аутентификации
+				case static_cast <uint8_t> (state_t::AUTH): {
+					// Если данных достаточно для получения ответа
+					if(size > sizeof(uint16_t)){
+						// Версия прокси-протокола
+						uint8_t version = 0x00;
+						// Получаем смещение в буфере
+						size_t offset = sizeof(version);
+						// Выполняем чтение версии соглашения авторизации
+						::memcpy(&version, buffer, offset);
+						// Если версия соглашения авторизации соответствует
+						if(version == 0x01){
+							// Размер логина пользователя
+							uint8_t length = 0x00;
+							// Выполняем получение длины логина пользователя
+							::memcpy(&length, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(length));
+							// Увеличиваем размер смещения на размер длины логина пользователя
+							offset += sizeof(length);
+							// Если количество байт достаточно, чтобы получить логин пользователя
+							if(size >= (offset + length)){
+								// Устанавливаем статус отправки ответа
+								ctx.state = state_t::RESPONSE;
+								// Устанавливаем статус запрета на подключение
+								ctx.status = proto::socks5_t::status_t::DENIED;
+								// Если логин пользователя для авторизации на сервере получен
+								if(length > 0){
+									// Получаем логин пользователя для авторизации на сервере
+									const string username(reinterpret_cast <const char *> (buffer) + offset, length);
+									// Увеличиваем размер смещения на размер логина пользователя для авторизации на сервере
+									offset += length;
+									// Если данных достаточно, чтобы получить размер пароля пользователя для авторизации на сервере
+									if(size >= (offset + sizeof(uint8_t))){
+										// Выполняем получение длины пароля пользователя
+										::memcpy(&length, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(length));
+										// Увеличиваем размер смещения на размер длины пароля пользователя
+										offset += sizeof(length);
+										// Если пароль пользователя для авторизации на сервере получен
+										if(length > 0){
+											// Если данных достаточно, чтобы получить пароль пользователя для авторизации на сервере
+											if(size >= (offset + length)){
+												// Получаем пароль пользователя для авторизации на сервере
+												const string password(reinterpret_cast <const char *> (buffer) + offset, length);
+												// Увеличиваем размер смещения на размер пароля пользователя для авторизации на сервере
+												offset += length;
+												// Если функция обратного вызова для обработки авторизации установлена
+												if(this->_callback != nullptr){
+													// Если авторизация на сервере прошла успешно
+													if(!this->_callback(username, password))
+														// Устанавливаем статус ошибки
+														ctx.status = proto::socks5_t::status_t::FORBIDDEN;
+													// Если авторизация на сервере прошла успешно, устанавливаем статус успеха
+													else ctx.status = proto::socks5_t::status_t::SUCCESS;
+												}
+											}
+										}
+									}
+								}
+							}
+						// Если версия прокси-сервера не соответствует
+						} else {
+							// Устанавливаем состояние клиента как "сломанный"
+							ctx.state = state_t::BROKEN;
+							// Устанавливаем статус ошибки
+							ctx.status = proto::socks5_t::status_t::SOCKSERR;
+						}
+					}
+				} break;
+				// Если текущее состояние соответствует ожиданию выполнения подключения
+				case static_cast <uint8_t> (state_t::CONNECT): {
+					// Если данных достаточно для получения запроса
+					if(size > sizeof(request_t)){
+						// Создаём объект данных запроса
+						request_t request;
+						// Выполняем чтение данных
+						::memcpy(&request, buffer, sizeof(request));
+						// Если версия протокола соответствует
+						if(request.ver == 0x05){
+							// Устанавливаем стейт рукопожатия
+							ctx.state = state_t::HANDSHAKE;
+							// Устанавливаем статус запрета на подключение
+							ctx.status = proto::socks5_t::status_t::DENIED;
+							// Устанавливаем тип команды "команда подключения"
+							ctx.command = static_cast <command_t> (request.cmd);
+							/**
+							 * Определяем запрошенную команду подключения
+							 */
+							switch(request.cmd){
+								// Если запрошенная команда соответствует работе с UDP протоколом
+								case static_cast <uint8_t> (command_t::UDP):
+								// Если запрошенная команда соответствует методу обратного подключения (сервера к клиенту)
+								case static_cast <uint8_t> (command_t::BIND):
+								// Если запрошенная команда соответствует методу подключения
+								case static_cast <uint8_t> (command_t::CONNECT): {
+									/**
+									 * Определяем тип адреса
+									 */
+									switch(request.type){
+										// Если тип адреса соответствует доменному имени
+										case static_cast <uint8_t> (addr_type_t::FQDN): {
+											// Если буфер пришел достаточного размера
+											if((result = (size >= (sizeof(request_t) + 3)))){
+												// Размер доменного имени для подключения
+												uint8_t length = 0;
+												// Формируем смещение в буфере
+												size_t offset = sizeof(request_t);
+												// Копируем в буфер размер доменного имени для подключения
+												::memcpy(&length, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(length));
+												// Увеличиваем смещение на размер доменного имени для подключения
+												offset += sizeof(length);
+												// Если буфер пришел достаточного размера для извлечения доменного имени
+												if((result = ((offset + (static_cast <uint16_t> (length) + 2)) <= size))){
+													// Выполняем инициализацию объекта хоста
+													ctx.host = make_unique <net::attr_fqdn_t> ();
+													// Устанавливаем тип адреса события
+													ctx.host->type = net::type_t::FQDN;
+													// Если доменное имя для подключения не пустое
+													if(length > 0){
+														// Выделяем память для доменного имени хоста для подключения
+														awh_cast <net::attr_fqdn_t *> (ctx.host.get())->domain.resize(length, 0);
+														// Копируем в буфер доменное имя хоста для подключения
+														::memcpy(&awh_cast <net::attr_fqdn_t *> (ctx.host.get())->domain[0], reinterpret_cast <const uint8_t *> (buffer) + offset, length);
+														// Увеличиваем смещение на размер доменного имени для подключения
+														offset += length;
+													}
+													// Порт хоста для подключения
+													uint16_t port = 0;
+													// Извлекаем порт хоста для подключения
+													::memcpy(&port, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(port));
+													// Увеличиваем смещение на размер порта хоста для подключения
+													offset += sizeof(port);
+													// Устанавливаем порт хоста для подключения
+													awh_cast <net::attr_fqdn_t *> (ctx.host.get())->port = ntohs(port);
+													// Устанавливаем статус успеха
+													ctx.status = proto::socks5_t::status_t::SUCCESS;
+												}
+											}
+										} break;
+										// Если тип адреса соответствует IPv4 IP адресу
+										case static_cast <uint8_t> (addr_type_t::IPV4): {
+											// Если буфер пришел достаточного размера
+											if((result = (size >= (sizeof(request_t) + sizeof(ip4_t))))){
+												// Создаём объект данных сервера
+												ip4_t server{};
+												// Копируем в буфер наши данные IP адреса
+												::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + sizeof(request_t), sizeof(server));
+												// Выполняем инициализацию объекта хоста
+												ctx.host = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип адреса события
+												ctx.host->type = net::type_t::IPV4;
+												// Устанавливаем порт хоста для подключения
+												awh_cast <net::attr_net_t *> (ctx.host.get())->port = ntohs(server.port);
+												// Устанавливаем IP-адрес хоста для подключения
+												awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address = server.host;
+												// Устанавливаем статус успеха
+												ctx.status = proto::socks5_t::status_t::SUCCESS;
+											}
+										} break;
+										// Если тип адреса соответствует IPv6 IP адресу
+										case static_cast <uint8_t> (addr_type_t::IPV6): {
+											// Если буфер пришел достаточного размера
+											if((result = (size >= (sizeof(request_t) + sizeof(ip6_t))))){
+												// Создаём объект данных сервера
+												ip6_t server{};
+												// Копируем в буфер наши данные IP адреса
+												::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + sizeof(request_t), sizeof(server));
+												// Выполняем инициализацию объекта хоста
+												ctx.host = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип адреса события
+												ctx.host->type = net::type_t::IPV6;
+												// Устанавливаем порт хоста для подключения
+												awh_cast <net::attr_net_t *> (ctx.host.get())->port = ntohs(server.port);
+												// Устанавливаем IP-адрес хоста для подключения
+												awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address = ::move(server.host);
+												// Устанавливаем статус успеха
+												ctx.status = proto::socks5_t::status_t::SUCCESS;
+											}
+										} break;
+									}
+								} break;
+								// Если запрошенная команда не соответствует поддерживаемым командам
+								default:
+									// Если авторизация не пройдена, устанавливаем статус ошибки
+									ctx.status = proto::socks5_t::status_t::NOCOMMAND;
+							}
+						// Если версия прокси-сервера не соответствует
+						} else {
+							// Устанавливаем состояние клиента как "сломанный"
+							ctx.state = state_t::BROKEN;
+							// Устанавливаем статус ошибки
+							ctx.status = proto::socks5_t::status_t::SOCKSERR;
+						}
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод парсинга входящих данных
+ *
+ * @param buffer бинарный буфер входящих данных
+ * @param size   размер бинарного буфера входящих данных
+ * @param udp    объект для извлечения параметров UDP заголовка
+ * @return       результат парсинга входящих данных
+ */
+bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, udp_head_t & udp) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если данные буфера переданы
+		if((buffer != nullptr) && (size > sizeof(udp_t))){
+			// Инициализируем объект заголовка пакета
+			udp_t header{};
+			// Выполняем чтение данных заголовка пакета из буфера входящих данных
+			::memcpy(&header, buffer, sizeof(header));
+			// Если зарезервированный октет в заголовке пакета соответствует установленному значению
+			if(header.rsv == 0x0000){
+				// Устанавливаем фрагментацию в объекте UDP заголовка
+				udp.frag = header.frag;
+				/**
+				 * Определяем тип адреса
+				 */
+				switch(header.atyp){
+					// Если тип адреса соответствует FQDN
+					case static_cast <uint8_t> (addr_type_t::FQDN): {
+						// Если буфер пришел достаточного размера
+						if((result = (size >= (sizeof(udp_t) + 3)))){
+							// Размер доменного имени для подключения
+							uint8_t length = 0;
+							// Формируем смещение в буфере
+							size_t offset = sizeof(udp_t);
+							// Копируем в буфер размер доменного имени для подключения
+							::memcpy(&length, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(length));
+							// Увеличиваем смещение на размер доменного имени для подключения
+							offset += sizeof(length);
+							// Если буфер пришел достаточного размера для извлечения доменного имени
+							if((result = ((offset + (static_cast <uint16_t> (length) + 2)) <= size))){
+								// Выполняем инициализацию объекта хоста
+								udp.host = make_unique <net::attr_fqdn_t> ();
+								// Устанавливаем тип адреса события
+								udp.host->type = net::type_t::FQDN;
+								// Если доменное имя для подключения не пустое
+								if(length > 0){
+									// Выделяем память для доменного имени хоста для подключения
+									awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain.resize(length, 0);
+									// Копируем в буфер доменное имя хоста для подключения
+									::memcpy(&awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain[0], reinterpret_cast <const uint8_t *> (buffer) + offset, length);
+									// Увеличиваем смещение на размер доменного имени для подключения
+									offset += length;
+								}
+								// Порт хоста для подключения
+								uint16_t port = 0;
+								// Извлекаем порт хоста для подключения
+								::memcpy(&port, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(port));
+								// Увеличиваем смещение на размер порта хоста для подключения
+								offset += sizeof(port);
+								// Устанавливаем порт хоста для подключения
+								awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = ntohs(port);
+							}
+						}
+					} break;
+					// Если тип адреса соответствует IPv4
+					case static_cast <uint8_t> (addr_type_t::IPV4): {
+						// Если буфер пришел достаточного размера
+						if((result = (size >= (sizeof(udp_t) + sizeof(ip4_t))))){
+							// Создаём объект данных сервера
+							ip4_t server{};
+							// Копируем в буфер наши данные IP адреса
+							::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + sizeof(udp_t), sizeof(server));
+							// Выполняем инициализацию объекта хоста
+							udp.host = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип адреса события
+							udp.host->type = net::type_t::IPV4;
+							// Устанавливаем порт хоста для подключения
+							awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(server.port);
+							// Устанавливаем IP-адрес хоста для подключения
+							awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = server.host;
+						}
+					} break;
+					// Если тип адреса соответствует IPv6
+					case static_cast <uint8_t> (addr_type_t::IPV6): {
+						// Если буфер пришел достаточного размера
+						if((result = (size >= (sizeof(udp_t) + sizeof(ip6_t))))){
+							// Создаём объект данных сервера
+							ip6_t server{};
+							// Копируем в буфер наши данные IP адреса
+							::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + sizeof(udp_t), sizeof(server));
+							// Выполняем инициализацию объекта хоста
+							udp.host = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип адреса события
+							udp.host->type = net::type_t::IPV6;
+							// Устанавливаем порт хоста для подключения
+							awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(server.port);
+							// Устанавливаем IP-адрес хоста для подключения
+							awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = ::move(server.host);
+						}
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод извлечения буфера запроса/ответа
+ *
+ * @param buffer указатель на буфер для извлечения данных
+ * @param size   ссылка на размер буфера для извлечения данных
+ * @param ctx    объект для установки параметров сообщения
+ * @return 	     результат извлечения данных в буфер
+ */
+bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t & ctx) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Обнуляем размер буфера для отправки данных
+		::__awh_size__ = 0;
+		/**
+		 * Определяем текущее состояние сервера
+		 */
+		switch(static_cast <uint8_t> (ctx.state)){
+			// Если текущее состояние соответствует этапу аутентификации
+			case static_cast <uint8_t> (state_t::AUTH): {
+				// Устанавливаем результат для отправки данных
+				result = true;
+				// Формируем объект заголовка
+				header_t header{};
+				// Устанавливаем версию прокси-протокола
+				header.ver = 0x05;
+				/**
+				 * Определяем статус разрешающего подключения к серверу
+				 */
+				switch(static_cast <uint8_t> (ctx.status)){
+					// Если статус соответствует разрешающему подключение к серверу
+					case static_cast <uint8_t> (proto::socks5_t::status_t::SUCCESS): {
+						// Устанавливаем статус запроса ожидания подключения к серверу
+						ctx.state = state_t::CONNECT;
+						// Устанавливаем статус разрешающего подключения к серверу
+						header.method = static_cast <uint8_t> (method_t::NOAUTH);
+					} break;
+					// Если статус соответствует ожиданию авторизации на сервере
+					case static_cast <uint8_t> (proto::socks5_t::status_t::FORBIDDEN):
+						// Устанавливаем статус ожидания авторизации на сервере
+						header.method = static_cast <uint8_t> (method_t::PASSWD);
+					break;
+					// Если статус соответствует запрету на подключение к серверу
+					case static_cast <uint8_t> (proto::socks5_t::status_t::DENIED): {
+						// Устанавливаем статус запроса повторить попытку подключения к серверу
+						ctx.state = state_t::NONE;
+						// Устанавливаем статус запрета на подключение к серверу
+						header.method = static_cast <uint8_t> (method_t::NOMETHOD);
+					} break;
+				}
+				// Добавляем параметры аутентификации в буфер для отправки данных
+				::addPayload(header);
+			} break;
+			// Если текущее состояние соответствует этапу ответа
+			case static_cast <uint8_t> (state_t::RESPONSE): {
+				// Устанавливаем результат для отправки данных
+				result = true;
+				// Формируем объект заголовка
+				auth_t auth{};
+				// Устанавливаем версию соглашения авторизации
+				auth.ver = 0x01;
+				// Устанавливаем статус успешной авторизации на сервере
+				auth.status = static_cast <uint8_t> (ctx.status);
+				// Добавляем параметры авторизации в буфер для отправки данных
+				::addPayload(auth);
+				// Если статус не соответствует разрешающему подключение к серверу
+				if(ctx.status != proto::socks5_t::status_t::SUCCESS)
+					// Устанавливаем статус ожидания ответа на авторизацию
+					ctx.state = state_t::AUTH;
+				// Устанавливаем статус запроса
+				else ctx.state = state_t::CONNECT;
+			} break;
+			// Если текущее состояние соответствует этапу рукопожатия
+			case static_cast <uint8_t> (state_t::HANDSHAKE): {
+				// Добавляем версию прокси-протокола в буфер для отправки данных
+				::addPayload(static_cast <uint8_t> (0x05));
+				// Добавляем статус разрешающего подключение к серверу в буфер для отправки данных
+				::addPayload(ctx.status);
+				// Добавляем зарезервированный октет в буфер для отправки данных
+				::addPayload(static_cast <uint8_t> (0x00));
+				// Если статус не соответствует разрешающему подключение к серверу
+				if(ctx.status != proto::socks5_t::status_t::SUCCESS)
+					// Устанавливаем статус запроса ожидания подключения к серверу
+					ctx.state = state_t::CONNECT;
+				// Если хост для подключения установлен
+				if((result = (this->_host != nullptr))){
+					/**
+					 * Определяем тип адреса хоста для подключения
+					 */
+					switch(static_cast <uint8_t> (this->_host->type)){
+						// Если тип адреса соответствует FQDN
+						case static_cast <uint8_t> (net::type_t::FQDN): {
+							// Добавляем тип адреса "доменные имена" в буфер для отправки данных
+							::addPayload(addr_type_t::FQDN);
+							// Извлекаем доменное имя хоста для подключения
+							const string & fqdn = awh_cast <net::attr_fqdn_t *> (this->_host.get())->domain;
+							// Добавляем размер доменного имени хоста для подключения в буфер для отправки данных
+							::addPayload(static_cast <uint8_t> (fqdn.length()));
+							// Устанавливаем доменное имя хоста для подключения в буфер для отправки данных
+							::addPayload(fqdn);
+							// Добавляем порт хоста для подключения в буфер для отправки данных
+							::addPayload(htons(awh_cast <net::attr_fqdn_t *> (this->_host.get())->port));
+						} break;
+						// Если тип адреса соответствует IPv4
+						case static_cast <uint8_t> (net::type_t::IPV4): {
+							// Добавляем тип адреса "IPv4" в буфер для отправки данных
+							::addPayload(addr_type_t::IPV4);
+							// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+							::addPayload(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_host.get())->ip.get())->address);
+							// Добавляем порт хоста для подключения в буфер для отправки данных
+							::addPayload(htons(awh_cast <net::attr_net_t *> (this->_host.get())->port));
+						} break;
+						// Если тип адреса соответствует IPv6
+						case static_cast <uint8_t> (net::type_t::IPV6): {
+							// Добавляем тип адреса "IPv6" в буфер для отправки данных
+							::addPayload(addr_type_t::IPV6);
+							// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+							::addPayload(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_host.get())->ip.get())->address);
+							// Добавляем порт хоста для подключения в буфер для отправки данных
+							::addPayload(htons(awh_cast <net::attr_net_t *> (this->_host.get())->port));
+						} break;
+					}
+				}
+			} break;
+		}
+		// Устанавливаем результат для отправки размера данных
+		size = ::__awh_size__;
+		// Устанавливаем результат для отправки данных
+		(* buffer) = ::__awh_buffer__;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод извлечения буфера запроса/ответа
+ *
+ * @param buffer указатель на буфер для извлечения данных
+ * @param size   ссылка на размер буфера для извлечения данных
+ * @param udp    объект для установки параметров UDP заголовка
+ * @return 	     результат извлечения данных в буфер
+ */
+bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, udp_head_t & udp) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Обнуляем размер буфера для отправки данных
+		::__awh_size__ = 0;
+		// Добавляем зарезервированный октет в буфер для отправки данных
+		::addPayload(static_cast <uint16_t> (0x0000));
+		// Добавляем фрагментацию в буфер для отправки данных
+		::addPayload(udp.frag);
+		/**
+		 * Определяем тип адреса хоста для подключения
+		 */
+		switch(static_cast <uint8_t> (udp.host->type)){
+			// Если тип адреса соответствует FQDN
+			case static_cast <uint8_t> (net::type_t::FQDN): {
+				// Добавляем тип адреса "доменные имена" в буфер для отправки данных
+				::addPayload(addr_type_t::FQDN);
+				// Извлекаем доменное имя хоста для подключения
+				const string & fqdn = awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain;
+				// Добавляем размер доменного имени хоста для подключения в буфер для отправки данных
+				::addPayload(static_cast <uint8_t> (fqdn.length()));
+				// Устанавливаем доменное имя хоста для подключения в буфер для отправки данных
+				::addPayload(fqdn);
+				// Добавляем порт хоста для подключения в буфер для отправки данных
+				::addPayload(htons(awh_cast <net::attr_fqdn_t *> (udp.host.get())->port));
+			} break;
+			// Если тип адреса соответствует IPv4
+			case static_cast <uint8_t> (net::type_t::IPV4): {
+				// Добавляем тип адреса "IPv4" в буфер для отправки данных
+				::addPayload(addr_type_t::IPV4);
+				// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+				::addPayload(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address);
+				// Добавляем порт хоста для подключения в буфер для отправки данных
+				::addPayload(htons(awh_cast <net::attr_net_t *> (udp.host.get())->port));
+			} break;
+			// Если тип адреса соответствует IPv6
+			case static_cast <uint8_t> (net::type_t::IPV6): {
+				// Добавляем тип адреса "IPv6" в буфер для отправки данных
+				::addPayload(addr_type_t::IPV6);
+				// Добавляем IP адрес хоста для подключения в буфер для отправки данных
+				::addPayload(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address);
+				// Добавляем порт хоста для подключения в буфер для отправки данных
+				::addPayload(htons(awh_cast <net::attr_net_t *> (udp.host.get())->port));
+			} break;
+		}
+		// Устанавливаем результат для отправки размера данных
+		size = ::__awh_size__;
+		// Устанавливаем результат для отправки данных
+		(* buffer) = ::__awh_buffer__;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод добавления функции обработки авторизации
+ *
+ * @param callback функция обратного вызова для обработки авторизации
+ */
+void awh::proto::Server_Socks5::on(function <bool (const string &, const string &)> callback) noexcept {
+	// Устанавливаем функцию обратного вызова для обработки авторизации
+	this->_callback = ::move(callback);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::proto::Server_Socks5::Server_Socks5(const fmk_t * fmk, const log_t * log) noexcept :
+ socks5_t(fmk, log), _callback(nullptr) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::proto::Server_Socks5::~Server_Socks5() noexcept {}
