@@ -37,6 +37,17 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Типы адресации
+	 *
+	 */
+	enum class addr_type_t : uint8_t {
+		NONE = 0x00, // Тип адреса не определён
+		IPV4 = 0x01, // Поддерживается IPv4 IP адрес
+		FQDN = 0x03, // Поддерживается доменное имя
+		IPV6 = 0x04  // Поддерживается IPv6 IP адрес
+	};
+
+	/**
 	 * @brief Основные методы
 	 *
 	 */
@@ -725,7 +736,7 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
  * @param udp    объект для установки параметров UDP заголовка
  * @return 	     результат извлечения данных в буфер
  */
-bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, udp_head_t & udp) const noexcept {
+bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, const udp_head_t & udp) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**

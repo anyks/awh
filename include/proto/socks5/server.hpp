@@ -84,7 +84,7 @@ namespace awh {
 				 * @param udp    объект для установки параметров UDP заголовка
 				 * @return 	     результат извлечения данных в буфер
 				 */
-				bool buffer(uint8_t ** buffer, size_t & size, udp_head_t & udp) const noexcept;
+				bool buffer(uint8_t ** buffer, size_t & size, const udp_head_t & udp) const noexcept;
 			public:
 				/**
 				 * @brief Метод добавления функции обработки авторизации
