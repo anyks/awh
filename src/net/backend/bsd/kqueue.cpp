@@ -49395,6 +49395,8 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						switch(static_cast <uint8_t> (client->state.type)){
 							// Если событие принадлежит к типу RAW
 							case static_cast <uint8_t> (event::type_t::RAW):
+							// Если событие принадлежит к типу STREAM
+							case static_cast <uint8_t> (event::type_t::STREAM):
 							// Если событие принадлежит к типу DATAGRAM
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET

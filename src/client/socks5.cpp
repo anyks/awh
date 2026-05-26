@@ -189,6 +189,638 @@ size_t awh::Socks5::Origin_Hash::operator()(const origin_t & id) const noexcept 
 }
 
 /**
+ * @brief Метод изменения статуса клиента
+ *
+ * @param status новый статус клиента
+ * @param state  новое временное состояние клиента
+ */
+void awh::Socks5::status(const event::status_t status, const state_t state) noexcept {
+	/**
+	 * Временное состояние клиента
+	 */
+	switch(static_cast <uint8_t> (state)){
+		// Если мы получили статус события клиента
+		case static_cast <uint8_t> (state_t::CLIENT): {
+			/**
+			 * Определяем состояние клиента
+			 */
+			switch(static_cast <uint8_t> (status)){
+				// Если событие клиента запущено
+				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+					// Выполняем подключение клиента к удалённому серверу
+					if(!this->_client->connect(this->_eid)){
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Failed to connect to remote server", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
+							#endif
+						}
+					// Если подключение выполнено
+					} else {
+						// Выполняем запуск работы клиента, если клиент не запущен
+						if(!this->_client->launch(this->_eid)){
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_eid);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_eid);
+								#endif
+							}
+						// Если клиент запущен удачно
+						} else {
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("launch"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_client->getTarget(this->_eid), this->_client->getPort(this->_eid));
+						}
+					}
+				} break;
+				// Если событие клиента остановлено
+				case static_cast <uint8_t> (event::status_t::DESTROYED): {
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("status"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::status_t)> ("status", status);
+				} break;
+			}
+		} break;
+		// Если мы получили статус события DNS-резолвера
+		case static_cast <uint8_t> (state_t::RESOLVER): {
+			/**
+			 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
+			 */
+			switch(static_cast <uint8_t> (status)){
+				// Если событие DNS-резолвера запущено
+				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+					// Выполняем резолвинг доменного имени
+					if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_client)->family(this->_eid), this->_host, this->_timeoutDNS.load(std::memory_order_acquire))){
+						// Создаём текст ошибки резолвинга доменного имени
+						const string error = this->_fmk->format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						// Выполняем функцию обратного вызова
+						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_eid, event::error_t::NOT_FOUND, error);
+					}
+				} break;
+				// Если событие DNS-резолвера остановлено
+				case static_cast <uint8_t> (event::status_t::DESTROYED):
+					// Останавливаем клиента
+					this->_client->stop();
+				break;
+			}
+		} break;
+	}
+}
+/**
+ * @brief Метод обработки событий подключения клиента к удалённому серверу
+ *
+ * @param eid идентификатор клиента
+ * @param ok  результат подключения
+ */
+void awh::Socks5::connect(const event::id_t eid, const bool ok) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Размер буфера данных
+		size_t size = 0;
+		// Буфер данных запроса
+		uint8_t * buffer = nullptr;
+		// Если извлечение буфера данных запроса выполнено успешно
+		if(this->_socks5.buffer(&buffer, size, this->_ctx)){
+			// Если отправка запроса на прокси-сервер не выполнена
+			if(this->_client->send(this->_eid, buffer, size) != size){
+				// Если функция обратного вызова не установлена
+				if(!this->_callback.is("error")){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	}
+}
+/**
+ * @brief Метод обработки событий изменения состояния клиента
+ *
+ * @param eid    идентификатор клиента
+ * @param status новый статус клиента
+ */
+void awh::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("state"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+		// Если статус клиента изменился на "уничтожен"
+		if((eid == this->_eid) && (status == event::status_t::DESTROYED)){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr)
+				// Останавливаем событие DNS-резолвера
+				this->_dns->stop();
+			// Останавливаем событие клиента
+			else this->_client->stop();
+		}
+	}
+}
+/**
+ * @brief Метод обработки событий получения данных клиентом
+ *
+ * @param eid    идентификатор клиента
+ * @param buffer буфер данных клиента
+ * @param size   размер данных клиента
+ */
+void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если событие принадлежит прокси-клиенту
+		if(eid == this->_eid){
+			// Если парсинг данных от прокси-сервера выполнен успешно
+			if(this->_socks5.parse(buffer, size, this->_ctx)){
+				/**
+				 * Определяем состояние парсинга данных от прокси-сервера
+				 */
+				switch(static_cast <uint8_t> (this->_ctx.state)){
+					// Если текущее состояние соответствует ошибке работе с прокси-сервером
+					case static_cast <uint8_t> (proto::client_socks5_t::state_t::BROKEN): {
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status));
+							#endif
+						// Выполняем функцию обратного вызова
+						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(this->_ctx.status));
+					} break;
+					// Если текущее состояние соответствует ожиданию выполнения подключения
+					case static_cast <uint8_t> (proto::client_socks5_t::state_t::CONNECT): {
+						// Идентификатор инициатора запроса
+						const origin_t * origin = nullptr;
+						{
+							// Выполняем блокировку потока для работы с TLS
+							const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+							// Если активные сессии клиентов, работающих через прокси, не пусты
+							if(!this->_sessions.empty())
+								// Извлекаем идентификатор события клиента, работающего через прокси
+								origin = &this->_sessions.begin()->first;
+						}
+						// Если идентификатор инициатора запроса получен успешно
+						if(origin != nullptr){
+							/**
+							 * Определяем тип данных сесии клиента, работающего через прокси
+							 */
+							switch(static_cast <uint8_t> (origin->type)){
+								// Если тип данных соответствует FQDN
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Выполняем инициализацию объекта хоста
+									this->_ctx.host = make_unique <net::attr_fqdn_t> ();
+									// Устанавливаем тип адреса события
+									this->_ctx.host->type = net::type_t::FQDN;
+									// Устанавливаем порт хоста для подключения
+									awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port = ntohs(origin->fqdn.port);
+									// Устанавливаем доменное имя хоста для подключения
+									awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain = origin->fqdn.data;
+								} break;
+								// Если тип данных соответствует IPv4
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Выполняем инициализацию объекта хоста
+									this->_ctx.host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса события
+									this->_ctx.host->type = net::type_t::IPV4;
+									// Устанавливаем порт хоста для подключения
+									awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = ntohs(origin->ip4.port);
+									// Устанавливаем IP-адрес хоста для подключения
+									awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address = origin->ip4.address;
+								} break;
+								// Если тип данных соответствует IPv6
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Выполняем инициализацию объекта хоста
+									this->_ctx.host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса события
+									this->_ctx.host->type = net::type_t::IPV6;
+									// Устанавливаем порт хоста для подключения
+									awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = ntohs(origin->ip6.port);
+									// Устанавливаем IP-адрес хоста для подключения
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address[0], &origin->ip6.address[0], 16);
+								} break;
+							}
+							// Размер буфера данных
+							size_t size = 0;
+							// Буфер данных запроса
+							uint8_t * buffer = nullptr;
+							// Если извлечение буфера данных запроса выполнено успешно
+							if(this->_socks5.buffer(&buffer, size, this->_ctx)){
+								// Если отправка запроса на прокси-сервер не выполнена
+								if(this->_client->send(this->_eid, buffer, size) != size){
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+										#endif
+									}
+								}
+							}
+						}
+					} break;
+					// Если текущее состояние соответствует выполненному рукопожатию
+					case static_cast <uint8_t> (proto::client_socks5_t::state_t::HANDSHAKE): {
+						// Идентификатор события клиента, работающего через прокси
+						event::id_t eid = 0;
+						{
+							// Выполняем блокировку потока для работы с TLS
+							const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+							// Если активные сессии клиентов, работающих через прокси, не пусты
+							if(!this->_sessions.empty())
+								// Извлекаем идентификатор события клиента, работающего через прокси
+								eid = this->_sessions.begin()->second;
+						}
+						// Если идентификатор события клиента, получен успешно
+						if(eid > 0){
+							// Если событие клиента не запущено, запускаем его
+							if(this->_client->commit(eid)){
+								// Порт хоста для подключения к удалённому серверу
+								uint16_t port = 0;
+								// Адрес хоста для подключения к удалённому серверу
+								string target = "";
+								// Идентификатор инициатора запроса
+								const origin_t * origin = nullptr;
+								{
+									// Выполняем блокировку потока для работы с TLS
+									const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+									// Если активные сессии клиентов, работающих через прокси, не пусты
+									if(!this->_sessions.empty())
+										// Извлекаем идентификатор события клиента, работающего через прокси
+										origin = &this->_sessions.begin()->first;
+								}
+								// Если идентификатор инициатора запроса получен успешно
+								if(origin != nullptr){
+									/**
+									 * Определяем тип данных сесии клиента, работающего через прокси
+									 */
+									switch(static_cast <uint8_t> (origin->type)){
+										// Если тип данных соответствует FQDN
+										case static_cast <uint8_t> (net::type_t::FQDN): {
+											// Устанавливаем доменное имя хоста для дальнейшего использования
+											target = origin->fqdn.data;
+											// Устанавливаем порт хоста для дальнейшего использования
+											port = ntohs(origin->fqdn.port);
+										} break;
+										// Если тип данных соответствует IPv4
+										case static_cast <uint8_t> (net::type_t::IPV4): {
+											// Устанавливаем IP-адрес хоста для дальнейшего использования
+											this->_addr.v4(origin->ip4.address);
+											// Устанавливаем IP-адрес хоста для дальнейшего использования
+											target = ::move(static_cast <string> (this->_addr));
+											// Устанавливаем порт хоста для дальнейшего использования
+											port = ntohs(origin->ip4.port);
+										} break;
+										// Если тип данных соответствует IPv6
+										case static_cast <uint8_t> (net::type_t::IPV6): {
+											// Устанавливаем IP-адрес хоста для дальнейшего использования
+											this->_addr.v6(origin->ip6.address);
+											// Устанавливаем IP-адрес хоста для дальнейшего использования
+											target = ::move(static_cast <string> (this->_addr));
+											// Устанавливаем порт хоста для дальнейшего использования
+											port = ntohs(origin->ip6.port);
+										} break;
+									}
+								}
+								// Если адрес хоста для подключения к удалённому серверу получен успешно
+								if(!target.empty()){
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("ready"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_client->family(eid), target, target);
+									// Выполняем запуск работы клиента, если клиент не запущен
+									if(!this->_client->launch(eid)){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+											#endif
+										}
+									// Если клиент запущен удачно
+									} else {
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("launch"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
+										// Если объект транспортного уровня безопасности установлен
+										if((this->_coder != nullptr) && (this->_tid > 0)){
+											// Если рукопожатие TLS не выполнено
+											if(!this->_coder->handshake(this->_tid)){
+												// Если функция обратного вызова не установлена
+												if(!this->_callback.is("error_tls")){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("TLS handshake is failed", log_t::flag_t::WARNING);
+													#endif
+												}
+											}
+										// Если объект транспортного уровня безопасности не установлен
+										} else {
+											// Если функция обратного вызова установлена
+											if(this->_callback.is("connect"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, true);
+										}
+									}
+								// Если адрес хоста для подключения к удалённому серверу не получен
+								} else {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
+										#endif
+									// Выполняем функцию обратного вызова
+									} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, "Client event ID not found");
+								}
+							}
+						}
+					} break;
+					// В остальных случаях, проходим процедуру общения с сервером в автоматическом режиме
+					default: {
+						// Размер буфера данных
+						size_t size = 0;
+						// Буфер данных запроса
+						uint8_t * buffer = nullptr;
+						// Если извлечение буфера данных запроса выполнено успешно
+						if(this->_socks5.buffer(&buffer, size, this->_ctx)){
+							// Если отправка запроса на прокси-сервер не выполнена
+							if(this->_client->send(this->_eid, buffer, size) != size){
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+									#endif
+								}
+							}
+						}
+					}
+				}
+			// Если парсинг данных от прокси-сервера не выполнен
+			} else {
+				// Если функция обратного вызова не установлена
+				if(!this->_callback.is("error")){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Failed to parse data from proxy server", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Failed to parse data from proxy server", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		// Если событие принадлежит клиенту
+		} else {
+			// Если объект транспортного уровня безопасности установлен
+			if((this->_coder != nullptr) && (this->_tid > 0)){
+				// Если данные не расшифрованы
+				if(!this->_coder->decrypt(this->_tid, buffer, size)){
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error_tls")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("TLS decryption data is failed", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			// Если объект транспортного уровня безопасности не установлен
+			} else {
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("read"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+			}
+		}
+	}
+}
+/**
+ * @brief Метод получения состояния TLS
+ *
+ * @param id    идентификатор TLS
+ * @param state состояние TLS
+ */
+void awh::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("state_tls"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::state_t)> ("state_tls", id, state);
+		// Если состояние рукопожатия успешно завершено
+		if(state == tls::coder_t::state_t::HANDSHAKED){
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("connect")){
+				// Идентификатор события клиента
+				event::id_t eid = 0;
+				{
+					// Выполняем блокировку потока для работы с TLS
+					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Если активные сессии клиентов, работающих через прокси, не пусты
+					if(!this->_sessions.empty())
+						// Извлекаем идентификатор события клиента, работающего через прокси
+						eid = this->_sessions.begin()->second;
+				}
+				// Если идентификатор события клиента получен
+				if(eid > 0)
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, true);
+				// Если идентификатор события клиента не получен
+				else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (state)), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	}
+}
+/**
+ * @brief Метод получения событий шифрования/дешифрования данных TLS
+ *
+ * @param id     идентификатор TLS
+ * @param event  тип события TLS
+ * @param size   размер данных для события шифрования/дешифрования TLS
+ * @param buffer буфер данных для события шифрования/дешифрования TLS
+ */
+void awh::Socks5::processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Идентификатор события клиента
+		event::id_t eid = 0;
+		{
+			// Выполняем блокировку потока для работы с TLS
+			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Если активные сессии клиентов, работающих через прокси, не пусты
+			if(!this->_sessions.empty())
+				// Извлекаем идентификатор события клиента, работающего через прокси
+				eid = this->_sessions.begin()->second;
+		}
+		// Если идентификатор события клиента получен
+		if(eid > 0){
+			/**
+			 * Обрабатываем тип события TLS
+			 */
+			switch(static_cast <uint8_t> (event)){
+				// Если событие шифрования данных TLS
+				case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
+					// Отправляем данные обратно клиенту, которые были зашифрованы TLS
+					if(!this->_client->send(eid, reinterpret_cast <const char *> (buffer), size)){
+						// Если функция обратного вызова не установлена
+						if(!this->_callback.is("error")){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Если событие дешифрования данных TLS
+				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("read"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+				} break;
+			}
+		}
+	}
+}
+/**
  * @brief Метод очистки активных сессий клиентов, работающих через прокси
  *
  */
@@ -219,14 +851,6 @@ void awh::Socks5::threadSafety(const bool mode) noexcept {
 	this->_mtx.enabled = mode;
 	// Устанавливаем режим безопасности работы потоков для объекта клиента
 	client_t::threadSafety(mode);
-}
-/**
- * @brief Метод установки функций обратного вызова
- *
- * @param callback функции обратного вызова
- */
-void awh::Socks5::callback(const callback_t & callback) noexcept {
-
 }
 /**
  * @brief Метод отправки данных серверу
@@ -293,7 +917,7 @@ size_t awh::Socks5::send(const void * buffer, const size_t size) noexcept {
  */
 bool awh::Socks5::recv(const event::id_t eid) noexcept {
 	// Если идентификатор клиента передан корректно
-	if(eid > 0)
+	if(eid != this->_eid)
 		// Получаем данные от сервера
 		return this->_client->recv(eid);
 	// Если идентификатор клиента не передан корректно
@@ -324,17 +948,37 @@ bool awh::Socks5::recv(const event::id_t eid) noexcept {
  * @return       количество байт данных, отправленных клиенту
  */
 size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
-	// Если идентификатор TLS и объект TLS установлены
-	if((this->_tid > 0) && (this->_coder != nullptr)){
-		// Если шифрование данных TLS выполнено успешно
-		if(this->_coder->encrypt(this->_tid, buffer, size))
-			// Возвращаем размер отправленных данных
-			return size;
-		// Выводим результат по умолчанию
-		return 0;
+	// Если идентификатор клиента передан корректно
+	if(eid != this->_eid){
+		// Если идентификатор TLS и объект TLS установлены
+		if((this->_tid > 0) && (this->_coder != nullptr)){
+			// Если шифрование данных TLS выполнено успешно
+			if(this->_coder->encrypt(this->_tid, buffer, size))
+				// Возвращаем размер отправленных данных
+				return size;
+			// Выводим результат по умолчанию
+			return 0;
+		}
+		// Выполняем отправку данных серверу
+		return this->_client->send(eid, buffer, size);
+	// Если идентификатор клиента не передан корректно
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
+		#endif
 	}
-	// Выполняем отправку данных серверу
-	return this->_client->send(eid, buffer, size);
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод установки параметров авторизации
@@ -776,7 +1420,7 @@ awh::Socks5::Socks5(const route_t route, unit::client_t * client, tls::coder_t *
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(const route_t route, unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept : 
+awh::Socks5::Socks5(const route_t route, unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(client, dns, fmk, log), _route(route), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;

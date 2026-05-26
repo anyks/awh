@@ -154,11 +154,63 @@ namespace awh {
 			// Объект для работы с протоколом SOCKS5
 			proto::client_socks5_t _socks5;
 		private:
+			// Контекст для хранения параметров сообщений
+			proto::client_socks5_t::ctx_t _ctx;
+		private:
 			// Мютекс для блокировки потоков при работе с TLS
 			lock_state_t <std::shared_mutex> _mtx;
 		private:
 			// Активные сессии клиентов, работающих через прокси
 			unordered_map <origin_t, event::id_t, origin_hash_t> _sessions;
+		private:
+			/**
+			 * @brief Метод изменения статуса клиента
+			 *
+			 * @param status новый статус клиента
+			 * @param state  новое временное состояние клиента
+			 */
+			void status(const event::status_t status, const state_t state) noexcept;
+		private:
+			/**
+			 * @brief Метод обработки событий подключения клиента к удалённому серверу
+			 *
+			 * @param eid идентификатор клиента
+			 * @param ok  результат подключения
+			 */
+			void connect(const event::id_t eid, const bool ok) noexcept;
+			/**
+			 * @brief Метод обработки событий изменения состояния клиента
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param status новый статус клиента
+			 */
+			void state(const event::id_t eid, const event::status_t status) noexcept;
+			/**
+			 * @brief Метод обработки событий получения данных клиентом
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param buffer буфер данных клиента
+			 * @param size   размер данных клиента
+			 * @param who    флаг определение принадлежности события
+			 */
+			void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+		private:
+			/**
+			 * @brief Метод получения состояния TLS
+			 *
+			 * @param id    идентификатор TLS
+			 * @param state состояние TLS
+			 */
+			void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
+			/**
+			 * @brief Метод получения событий шифрования/дешифрования данных TLS
+			 *
+			 * @param id     идентификатор TLS
+			 * @param event  тип события TLS
+			 * @param size   размер данных для события шифрования/дешифрования TLS
+			 * @param buffer буфер данных для события шифрования/дешифрования TLS
+			 */
+			void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод очистки активных сессий клиентов, работающих через прокси
@@ -179,13 +231,6 @@ namespace awh {
 			 * @param mode флаг режима безопасности потоков
 			 */
 			void threadSafety(const bool mode) noexcept;
-		public:
-			/**
-			 * @brief Метод установки функций обратного вызова
-			 *
-			 * @param callback функции обратного вызова
-			 */
-			void callback(const callback_t & callback) noexcept;
 		public:
 			/**
 			 * @brief Метод отправки данных серверу
