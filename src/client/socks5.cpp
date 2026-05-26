@@ -496,134 +496,106 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 						}
 						// Если идентификатор события клиента, получен успешно
 						if(eid > 0){
-							// Если событие клиента не запущено, запускаем его
-							if(this->_client->commit(eid)){
-								// Порт хоста для подключения к удалённому серверу
-								uint16_t port = 0;
-								// Адрес хоста для подключения к удалённому серверу
-								string target = "";
-								// Идентификатор инициатора запроса
-								const origin_t * origin = nullptr;
-								{
-									// Выполняем блокировку потока для работы с TLS
-									const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-									// Если активные сессии клиентов, работающих через прокси, не пусты
-									if(!this->_sessions.empty())
-										// Извлекаем идентификатор события клиента, работающего через прокси
-										origin = &this->_sessions.begin()->first;
+							// Порт хоста для подключения к удалённому серверу
+							uint16_t port = 0;
+							// Адрес хоста для подключения к удалённому серверу
+							string target = "";
+							// Идентификатор инициатора запроса
+							const origin_t * origin = nullptr;
+							{
+								// Выполняем блокировку потока для работы с TLS
+								const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+								// Если активные сессии клиентов, работающих через прокси, не пусты
+								if(!this->_sessions.empty())
+									// Извлекаем идентификатор события клиента, работающего через прокси
+									origin = &this->_sessions.begin()->first;
+							}
+							// Если идентификатор инициатора запроса получен успешно
+							if(origin != nullptr){
+								/**
+								 * Определяем тип данных сесии клиента, работающего через прокси
+								 */
+								switch(static_cast <uint8_t> (origin->type)){
+									// Если тип данных соответствует FQDN
+									case static_cast <uint8_t> (net::type_t::FQDN): {
+										// Устанавливаем доменное имя хоста для дальнейшего использования
+										target = origin->fqdn.data;
+										// Устанавливаем порт хоста для дальнейшего использования
+										port = ntohs(origin->fqdn.port);
+									} break;
+									// Если тип данных соответствует IPv4
+									case static_cast <uint8_t> (net::type_t::IPV4): {
+										// Устанавливаем IP-адрес хоста для дальнейшего использования
+										this->_addr.v4(origin->ip4.address);
+										// Устанавливаем IP-адрес хоста для дальнейшего использования
+										target = ::move(static_cast <string> (this->_addr));
+										// Устанавливаем порт хоста для дальнейшего использования
+										port = ntohs(origin->ip4.port);
+									} break;
+									// Если тип данных соответствует IPv6
+									case static_cast <uint8_t> (net::type_t::IPV6): {
+										// Устанавливаем IP-адрес хоста для дальнейшего использования
+										this->_addr.v6(origin->ip6.address);
+										// Устанавливаем IP-адрес хоста для дальнейшего использования
+										target = ::move(static_cast <string> (this->_addr));
+										// Устанавливаем порт хоста для дальнейшего использования
+										port = ntohs(origin->ip6.port);
+									} break;
 								}
-								// Если идентификатор инициатора запроса получен успешно
-								if(origin != nullptr){
-									/**
-									 * Определяем тип данных сесии клиента, работающего через прокси
-									 */
-									switch(static_cast <uint8_t> (origin->type)){
-										// Если тип данных соответствует FQDN
-										case static_cast <uint8_t> (net::type_t::FQDN): {
-											// Устанавливаем доменное имя хоста для дальнейшего использования
-											target = origin->fqdn.data;
-											// Устанавливаем порт хоста для дальнейшего использования
-											port = ntohs(origin->fqdn.port);
-										} break;
-										// Если тип данных соответствует IPv4
-										case static_cast <uint8_t> (net::type_t::IPV4): {
-											// Устанавливаем IP-адрес хоста для дальнейшего использования
-											this->_addr.v4(origin->ip4.address);
-											// Устанавливаем IP-адрес хоста для дальнейшего использования
-											target = ::move(static_cast <string> (this->_addr));
-											// Устанавливаем порт хоста для дальнейшего использования
-											port = ntohs(origin->ip4.port);
-										} break;
-										// Если тип данных соответствует IPv6
-										case static_cast <uint8_t> (net::type_t::IPV6): {
-											// Устанавливаем IP-адрес хоста для дальнейшего использования
-											this->_addr.v6(origin->ip6.address);
-											// Устанавливаем IP-адрес хоста для дальнейшего использования
-											target = ::move(static_cast <string> (this->_addr));
-											// Устанавливаем порт хоста для дальнейшего использования
-											port = ntohs(origin->ip6.port);
-										} break;
-									}
-								}
-								// Если адрес хоста для подключения к удалённому серверу получен успешно
-								if(!target.empty()){
-									// Если функция обратного вызова установлена
-									if(this->_callback.is("ready"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_client->family(eid), target, target);
-									// Выполняем запуск работы клиента, если клиент не запущен
-									if(!this->_client->launch(eid)){
+							}
+							// Если адрес хоста для подключения к удалённому серверу получен успешно
+							if(!target.empty()){
+								// Если функция обратного вызова установлена
+								if(this->_callback.is("ready"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_client->family(eid), target, target);
+								// Если функция обратного вызова установлена
+								if(this->_callback.is("launch"))
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
+								// Если объект транспортного уровня безопасности установлен
+								if((this->_coder != nullptr) && (this->_tid > 0)){
+									// Если рукопожатие TLS не выполнено
+									if(!this->_coder->handshake(this->_tid)){
 										// Если функция обратного вызова не установлена
-										if(!this->_callback.is("error")){
+										if(!this->_callback.is("error_tls")){
 											/**
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+												this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
 												// Выводим сообщение об ошибке
-												this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+												this->_log->print("TLS handshake is failed", log_t::flag_t::WARNING);
 											#endif
 										}
-									// Если клиент запущен удачно
-									} else {
-										// Если функция обратного вызова установлена
-										if(this->_callback.is("launch"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
-										// Если объект транспортного уровня безопасности установлен
-										if((this->_coder != nullptr) && (this->_tid > 0)){
-											// Если рукопожатие TLS не выполнено
-											if(!this->_coder->handshake(this->_tid)){
-												// Если функция обратного вызова не установлена
-												if(!this->_callback.is("error_tls")){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("TLS handshake is failed", log_t::flag_t::WARNING);
-													#endif
-												}
-											}
-										// Если объект транспортного уровня безопасности не установлен
-										} else {
-											// Если функция обратного вызова установлена
-											if(this->_callback.is("connect"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, true);
-										}
 									}
-								// Если адрес хоста для подключения к удалённому серверу не получен
+								// Если объект транспортного уровня безопасности не установлен
 								} else {
-									// Если функция обратного вызова не установлена
-									if(!this->_callback.is("error")){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
-										#endif
-									// Выполняем функцию обратного вызова
-									} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, "Client event ID not found");
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("connect"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, true);
 								}
+							// Если адрес хоста для подключения к удалённому серверу не получен
+							} else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
+								#endif
 							}
 						}
 					} break;
@@ -702,9 +674,38 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 			// Если объект транспортного уровня безопасности не установлен
 			} else {
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("read"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+				if(this->_callback.is("read")){
+					// Идентификатор события клиента, работающего через прокси
+					event::id_t eid = 0;
+					{
+						// Выполняем блокировку потока для работы с TLS
+						const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Если активные сессии клиентов, работающих через прокси, не пусты
+						if(!this->_sessions.empty())
+							// Извлекаем идентификатор события клиента, работающего через прокси
+							eid = this->_sessions.begin()->second;
+					}
+					// Если идентификатор события клиента, получен успешно
+					if(eid > 0)
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+					// Если адрес хоста для подключения к удалённому серверу не получен
+					else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
 			}
 		}
 	}
@@ -771,52 +772,67 @@ void awh::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::stat
 void awh::Socks5::processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
-		// Идентификатор события клиента
-		event::id_t eid = 0;
-		{
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-			// Если активные сессии клиентов, работающих через прокси, не пусты
-			if(!this->_sessions.empty())
-				// Извлекаем идентификатор события клиента, работающего через прокси
-				eid = this->_sessions.begin()->second;
-		}
-		// Если идентификатор события клиента получен
-		if(eid > 0){
-			/**
-			 * Обрабатываем тип события TLS
-			 */
-			switch(static_cast <uint8_t> (event)){
-				// Если событие шифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
-					// Отправляем данные обратно клиенту, которые были зашифрованы TLS
-					if(!this->_client->send(eid, reinterpret_cast <const char *> (buffer), size)){
-						// Если функция обратного вызова не установлена
-						if(!this->_callback.is("error")){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
-							#endif
-						}
+		/**
+		 * Обрабатываем тип события TLS
+		 */
+		switch(static_cast <uint8_t> (event)){
+			// Если событие шифрования данных TLS
+			case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
+				// Отправляем данные обратно клиенту, которые были зашифрованы TLS
+				if(!this->_client->send(this->_eid, reinterpret_cast <const char *> (buffer), size)){
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
+						#endif
 					}
-				} break;
-				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
+				}
+			} break;
+			// Если событие дешифрования данных TLS
+			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
+				// Идентификатор события клиента
+				event::id_t eid = 0;
+				{
+					// Выполняем блокировку потока для работы с TLS
+					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Если активные сессии клиентов, работающих через прокси, не пусты
+					if(!this->_sessions.empty())
+						// Извлекаем идентификатор события клиента, работающего через прокси
+						eid = this->_sessions.begin()->second;
+				}
+				// Если идентификатор события клиента получен
+				if(eid > 0){
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("read"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
-				} break;
-			}
+				// Если идентификатор события клиента не получен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
 		}
 	}
 }
@@ -864,30 +880,17 @@ size_t awh::Socks5::send(const void * buffer, const size_t size) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Идентификатор события клиента для отправки данных
-		event::id_t eid = 0;
-		{
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-			// Если есть активные сессии клиентов, работающих через прокси
-			if(!this->_sessions.empty())
-				// Получаем идентификатор события клиента для первой активной сессии
-				eid = this->_sessions.begin()->second;
+		// Если идентификатор TLS и объект TLS установлены
+		if((this->_tid > 0) && (this->_coder != nullptr)){
+			// Если шифрование данных TLS выполнено успешно
+			if(this->_coder->encrypt(this->_tid, buffer, size))
+				// Возвращаем размер отправленных данных
+				return size;
+			// Выводим результат по умолчанию
+			return 0;
 		}
-		// Если идентификатор события клиента для отправки данных получен
-		if(eid > 0){
-			// Если идентификатор TLS и объект TLS установлены
-			if((this->_tid > 0) && (this->_coder != nullptr)){
-				// Если шифрование данных TLS выполнено успешно
-				if(this->_coder->encrypt(this->_tid, buffer, size))
-					// Возвращаем размер отправленных данных
-					return size;
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			// Выполняем отправку данных серверу
-			return this->_client->send(eid, buffer, size);
-		}
+		// Выполняем отправку данных серверу
+		return this->_client->send(this->_eid, buffer, size);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -917,9 +920,9 @@ size_t awh::Socks5::send(const void * buffer, const size_t size) noexcept {
  */
 bool awh::Socks5::recv(const event::id_t eid) noexcept {
 	// Если идентификатор клиента передан корректно
-	if(eid != this->_eid)
+	if(eid == this->_eid)
 		// Получаем данные от сервера
-		return this->_client->recv(eid);
+		return this->_client->recv(this->_eid);
 	// Если идентификатор клиента не передан корректно
 	else {
 		/**
@@ -949,7 +952,7 @@ bool awh::Socks5::recv(const event::id_t eid) noexcept {
  */
 size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Если идентификатор клиента передан корректно
-	if(eid != this->_eid){
+	if(eid == this->_eid){
 		// Если идентификатор TLS и объект TLS установлены
 		if((this->_tid > 0) && (this->_coder != nullptr)){
 			// Если шифрование данных TLS выполнено успешно
@@ -960,7 +963,7 @@ size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_
 			return 0;
 		}
 		// Выполняем отправку данных серверу
-		return this->_client->send(eid, buffer, size);
+		return this->_client->send(this->_eid, buffer, size);
 	// Если идентификатор клиента не передан корректно
 	} else {
 		/**
