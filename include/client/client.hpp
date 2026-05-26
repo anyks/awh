@@ -85,7 +85,7 @@ namespace awh {
 			 * @param status новый статус клиента
 			 * @param state  новое временное состояние клиента
 			 */
-			void status(const event::status_t status, const state_t state) noexcept;
+			virtual void status(const event::status_t status, const state_t state) noexcept;
 		private:
 			/**
 			 * @brief Метод обработки событий подключения клиента к удалённому серверу
@@ -93,28 +93,28 @@ namespace awh {
 			 * @param eid идентификатор клиента
 			 * @param ok  результат подключения
 			 */
-			void connect(const event::id_t eid, const bool ok) noexcept;
+			virtual void connect(const event::id_t eid, const bool ok) noexcept;
 			/**
 			 * @brief Метод обработки событий записи данных клиентом
 			 *
 			 * @param eid  идентификатор клиента
 			 * @param size размер данных для записи
 			 */
-			void write(const event::id_t eid, const size_t size) noexcept;
+			virtual void write(const event::id_t eid, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки событий изменения состояния клиента
 			 *
 			 * @param eid    идентификатор клиента
 			 * @param status новый статус клиента
 			 */
-			void state(const event::id_t eid, const event::status_t status) noexcept;
+			virtual void state(const event::id_t eid, const event::status_t status) noexcept;
 			/**
 			 * @brief Метод обработки действий клиента
 			 *
 			 * @param eid    идентификатор клиента
 			 * @param action действие клиента
 			 */
-			void action(const event::id_t eid, const event::action_t action) noexcept;
+			virtual void action(const event::id_t eid, const event::action_t action) noexcept;
 			/**
 			 * @brief Метод обработки событий получения данных клиентом
 			 *
@@ -122,7 +122,7 @@ namespace awh {
 			 * @param buffer буфер данных клиента
 			 * @param size   размер данных клиента
 			 */
-			void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			/**
 			 * @brief Метод получения события ошибок
 			 *
@@ -130,7 +130,7 @@ namespace awh {
 			 * @param error   код ошибки
 			 * @param message сообщение об ошибке
 			 */
-			void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
+			virtual void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
 			/**
 			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
 			 *
@@ -138,7 +138,7 @@ namespace awh {
 			 * @param status статус доступности очереди
 			 * @param size   размер доступных данных очереди
 			 */
-			void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
+			virtual void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки событий истечения таймаута клиента
 			 *
@@ -147,7 +147,7 @@ namespace awh {
 			 * @param delay  задержка таймаута в миллисекундах
 			 * @return       нужно ли завершить клиента после истечения таймаута
 			 */
-			bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			/**
 			 * @brief Метод обработки события неотправленных данных клиента
 			 *
@@ -156,7 +156,7 @@ namespace awh {
 			 * @param data  данные, которые не получилось отправить
 			 * @param size  размер данных, которые не получилось отправить
 			 */
-			void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
 		private:
 			/**
 			 * @brief Метод получения состояния TLS
@@ -164,7 +164,7 @@ namespace awh {
 			 * @param id    идентификатор TLS
 			 * @param state состояние TLS
 			 */
-			void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
+			virtual void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
 			/**
 			 * @brief Метод получения ошибок TLS
 			 *
@@ -172,7 +172,7 @@ namespace awh {
 			 * @param error   код ошибки TLS
 			 * @param message сообщение об ошибке TLS
 			 */
-			void errorTLS(const tls::coder_t::id_t id, const tls::coder_t::error_t error, const string & message) noexcept;
+			virtual void errorTLS(const tls::coder_t::id_t id, const tls::coder_t::error_t error, const string & message) noexcept;
 			/**
 			 * @brief Метод получения событий шифрования/дешифрования данных TLS
 			 *
@@ -181,7 +181,7 @@ namespace awh {
 			 * @param size   размер данных для события шифрования/дешифрования TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 */
-			void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		private:
 			/**
 			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
@@ -190,7 +190,7 @@ namespace awh {
 			 * @param domain   доменное имя для резолвинга
 			 * @param attempts количество попыток подключения
 			 */
-			void attemptsDNS(const unit::dns_t::id_t id, const string & domain, const uint8_t attempts) noexcept;
+			virtual void attemptsDNS(const unit::dns_t::id_t id, const string & domain, const uint8_t attempts) noexcept;
 			/**
 			 * @brief Метод резолвинга доменного имени в сетевой адрес
 			 *
@@ -199,7 +199,7 @@ namespace awh {
 			 * @param domain доменное имя для резолвинга
 			 * @param addr   указатель на структуру для хранения результата резолвинга
 			 */
-			void resolveDNS(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+			virtual void resolveDNS(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 		public:
 			/**
 			 * @brief Метод остановки клиента
@@ -544,14 +544,14 @@ namespace awh {
 			 *
 			 * @param eid идентификатор события для установки
 			 */
-			void setEventId(const event::id_t eid) noexcept;
+			virtual void setEventId(const event::id_t eid) noexcept;
 		public:
 			/**
 			 * @brief Метод установки идентификатора TLS
 			 *
 			 * @param tid идентификатор TLS для установки
 			 */
-			void setSecurityId(const tls::coder_t::id_t tid) noexcept;
+			virtual void setSecurityId(const tls::coder_t::id_t tid) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -606,7 +606,7 @@ namespace awh {
 			 * @brief Деструктор
 			 *
 			 */
-			~Client() noexcept;
+			virtual ~Client() noexcept;
 	} client_t;
 };
 

@@ -58595,6 +58595,44 @@ awh::event::status_t awh::engine::IO::status(const event::id_t id) const noexcep
 	return event::status_t::NONE;
 }
 /**
+ * @brief Метод получения протокола события
+ *
+ * @param id идентификатор события
+ * @return   протокол события
+ */
+awh::event::protocol_t awh::engine::IO::protocol(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end())
+			// Возвращаем протокол события
+			return i->second->state.protocol;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::protocol_t::NONE;
+}
+/**
  * @brief Метод опроса событий
  *
  * @param timeout таймаут опроса в миллисекундах

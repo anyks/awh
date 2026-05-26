@@ -859,6 +859,13 @@ namespace awh {
 				 * @return   статус события
 				 */
 				event::status_t status(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод получения протокола события
+				 *
+				 * @param id идентификатор события
+				 * @return   протокол события
+				 */
+				event::protocol_t protocol(const event::id_t id) const noexcept;
 			public:
 				/**
 				 * @brief Метод опроса событий

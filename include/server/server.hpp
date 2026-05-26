@@ -88,7 +88,7 @@ namespace awh {
 			 * @param status новый статус сервера
 			 * @param state  новое временное состояние сервера
 			 */
-			void status(const event::status_t status, const state_t state) noexcept;
+			virtual void status(const event::status_t status, const state_t state) noexcept;
 		private:
 			/**
 			 * @brief Метод обработки событий записи данных клиентом
@@ -96,28 +96,28 @@ namespace awh {
 			 * @param eid  идентификатор клиента
 			 * @param size размер данных для записи
 			 */
-			void write(const event::id_t eid, const size_t size) noexcept;
+			virtual void write(const event::id_t eid, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки события разрешения подключения
 			 *
 			 * @param eid идентификатор сервера
 			 * @param cid идентификатор клиента
 			 */
-			void accept(const event::id_t eid, const event::id_t cid) noexcept;
+			virtual void accept(const event::id_t eid, const event::id_t cid) noexcept;
 			/**
 			 * @brief Метод обработки событий изменения состояния сервера
 			 *
 			 * @param eid    идентификатор клиента
 			 * @param status новый статус сервера
 			 */
-			void state(const event::id_t eid, const event::status_t status) noexcept;
+			virtual void state(const event::id_t eid, const event::status_t status) noexcept;
 			/**
 			 * @brief Метод обработки действий сервера
 			 *
 			 * @param eid    идентификатор клиента
 			 * @param action действие сервера
 			 */
-			void action(const event::id_t eid, const event::action_t action) noexcept;
+			virtual void action(const event::id_t eid, const event::action_t action) noexcept;
 			/**
 			 * @brief Метод обработки событий получения данных сервером
 			 *
@@ -125,7 +125,7 @@ namespace awh {
 			 * @param buffer буфер данных сервера
 			 * @param size   размер данных сервера
 			 */
-			void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			/**
 			 * @brief Метод получения события ошибок
 			 *
@@ -133,7 +133,7 @@ namespace awh {
 			 * @param error   код ошибки
 			 * @param message сообщение об ошибке
 			 */
-			void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
+			virtual void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
 			/**
 			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
 			 *
@@ -141,7 +141,7 @@ namespace awh {
 			 * @param status статус доступности очереди
 			 * @param size   размер доступных данных очереди
 			 */
-			void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
+			virtual void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки событий истечения таймаута клиента
 			 *
@@ -150,7 +150,7 @@ namespace awh {
 			 * @param delay  задержка таймаута в миллисекундах
 			 * @return       нужно ли завершить клиента после истечения таймаута
 			 */
-			bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			/**
 			 * @brief Метод обработки события неотправленных данных клиенту
 			 *
@@ -159,7 +159,7 @@ namespace awh {
 			 * @param data  данные, которые не получилось отправить
 			 * @param size  размер данных, которые не получилось отправить
 			 */
-			void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
 		private:
 			/**
 			 * @brief Метод обработки события пересоздания процесса
@@ -167,35 +167,35 @@ namespace awh {
 			 * @param old старый идентификатор процесса
 			 * @param pid текущий идентификатор процесса
 			 */
-			void rebaseCluster(const pid_t old, const pid_t pid) noexcept;
+			virtual void rebaseCluster(const pid_t old, const pid_t pid) noexcept;
 			/**
 			 * @brief Метод получения события завершения работы процесса
 			 *
 			 * @param pid    идентификатор процесса
 			 * @param signal сигнал с которым завершился процесс
 			 */
-			void exitCluster(const pid_t pid, const int32_t signal) noexcept;
+			virtual void exitCluster(const pid_t pid, const int32_t signal) noexcept;
 			/**
 			 * @brief Метод обработки события отправки сообщения процессу кластера
 			 *
 			 * @param pid  идентификатор процесса
 			 * @param size размер отправленного сообщения
 			 */
-			void sendingCluster(const pid_t pid, const size_t size) noexcept;
+			virtual void sendingCluster(const pid_t pid, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки событий изменения статуса кластера
 			 *
 			 * @param pid    идентификатор события
 			 * @param status новый статус кластера
 			 */
-			void stateCluster(const pid_t pid, const event::status_t status) noexcept;
+			virtual void stateCluster(const pid_t pid, const event::status_t status) noexcept;
 			/**
 			 * @brief Метод получения событий активации/деактивации кластера
 			 *
 			 * @param pid   идентификатор процесса
 			 * @param event флаг события кластера
 			 */
-			void eventsCluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept;
+			virtual void eventsCluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept;
 			/**
 			 * @brief Метод обработки события получения сообщения от процесса кластера
 			 *
@@ -203,7 +203,7 @@ namespace awh {
 			 * @param data данные полученного сообщения
 			 * @param size размер данных полученного сообщения
 			 */
-			void messageCluster(const pid_t pid, const uint8_t * data, const size_t size) noexcept;
+			virtual void messageCluster(const pid_t pid, const uint8_t * data, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки события доступности/недоступности очереди исходящих сообщений кластера
 			 *
@@ -211,7 +211,7 @@ namespace awh {
 			 * @param status статус доступности очереди
 			 * @param size   размер доступных данных очереди
 			 */
-			void availableCluster(const pid_t pid, const event::status_t status, const size_t size) noexcept;
+			virtual void availableCluster(const pid_t pid, const event::status_t status, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки событий ошибок кластера
 			 *
@@ -219,7 +219,7 @@ namespace awh {
 			 * @param error       тип ошибки
 			 * @param description описание ошибки
 			 */
-			void errorCluster(const pid_t pid, const event::error_t error, const string & description) noexcept;
+			virtual void errorCluster(const pid_t pid, const event::error_t error, const string & description) noexcept;
 		private:
 			/**
 			 * @brief Метод получения состояния TLS
@@ -228,7 +228,7 @@ namespace awh {
 			 * @param eid   идентификатор клиента
 			 * @param state состояние TLS
 			 */
-			void stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept;
+			virtual void stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept;
 			/**
 			 * @brief Метод получения отпечатка TLS
 			 *
@@ -236,7 +236,7 @@ namespace awh {
 			 * @param eid     идентификатор клиента
 			 * @param browser информация о браузере для отпечатка TLS
 			 */
-			void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept;
+			virtual void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept;
 			/**
 			 * @brief Метод получения ошибок TLS
 			 *
@@ -245,7 +245,7 @@ namespace awh {
 			 * @param error   код ошибки TLS
 			 * @param message сообщение об ошибке TLS
 			 */
-			void errorTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::error_t error, const string & message) noexcept;
+			virtual void errorTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::error_t error, const string & message) noexcept;
 			/**
 			 * @brief Метод получения событий шифрования/дешифрования данных TLS
 			 *
@@ -255,7 +255,7 @@ namespace awh {
 			 * @param size   размер данных для события шифрования/дешифрования TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 */
-			void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		private:
 			/**
 			 * @brief Метод резолвинга доменного имени в сетевой адрес
@@ -265,7 +265,7 @@ namespace awh {
 			 * @param domain доменное имя для резолвинга
 			 * @param addr   указатель на структуру для хранения результата резолвинга
 			 */
-			void resolveDNS(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+			virtual void resolveDNS(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 		public:
 			/**
 			 * @brief Метод остановки сервера
@@ -434,14 +434,14 @@ namespace awh {
 			 *
 			 * @return адрес хоста текущей машины
 			 */
-			string getHost() const noexcept;
+			virtual string getHost() const noexcept;
 			/**
 			 * @brief Метод установки адреса хоста текущей машины
 			 *
 			 * @param host адрес хоста текущей машины
 			 * @return     результат выполнения установки
 			 */
-			bool setHost(string_view host) noexcept;
+			virtual bool setHost(string_view host) noexcept;
 		public:
 			/**
 			 * @brief Метод получения адреса сервера
@@ -717,14 +717,14 @@ namespace awh {
 			 *
 			 * @param eid идентификатор события для установки
 			 */
-			void setEventId(const event::id_t eid) noexcept;
+			virtual void setEventId(const event::id_t eid) noexcept;
 		public:
 			/**
 			 * @brief Метод установки идентификатора TLS шаблона
 			 *
 			 * @param tid идентификатор TLS шаблона для установки
 			 */
-			void setSecurityId(const tls::coder_t::id_t tid) noexcept;
+			virtual void setSecurityId(const tls::coder_t::id_t tid) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -779,7 +779,7 @@ namespace awh {
 			 * @brief Деструктор
 			 *
 			 */
-			~Server() noexcept;
+			virtual ~Server() noexcept;
 	} server_t;
 };
 

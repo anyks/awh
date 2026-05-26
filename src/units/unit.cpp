@@ -546,6 +546,18 @@ awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexce
 	return ::__awh_event_base__->status(eid);
 }
 /**
+ * @brief Метод получения протокола события
+ *
+ * @param id идентификатор события
+ * @return   протокол события
+ */
+awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noexcept {
+	// Выполняем блокировку потока для работы с базой событий
+	const locker_t <std::shared_mutex> lock(::__awh_mtx__, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим протокол события
+	return ::__awh_event_base__->protocol(id);
+}
+/**
  * @brief Метод получения типа внутренних таймеров
  *
  * @return тип таймера для событий сетевого движка

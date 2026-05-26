@@ -515,6 +515,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/units/mediator.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/notifier.cpp"
     "${CMAKE_SOURCE_DIR}/src/client/client.cpp"
+    "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/client.cpp"
