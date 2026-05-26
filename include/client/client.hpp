@@ -78,7 +78,7 @@ namespace awh {
 			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
-		private:
+		protected:
 			/**
 			 * @brief Метод изменения статуса клиента
 			 *
@@ -86,7 +86,7 @@ namespace awh {
 			 * @param state  новое временное состояние клиента
 			 */
 			virtual void status(const event::status_t status, const state_t state) noexcept;
-		private:
+		protected:
 			/**
 			 * @brief Метод обработки событий подключения клиента к удалённому серверу
 			 *
@@ -157,7 +157,7 @@ namespace awh {
 			 * @param size  размер данных, которые не получилось отправить
 			 */
 			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
-		private:
+		protected:
 			/**
 			 * @brief Метод получения состояния TLS
 			 *
@@ -182,7 +182,7 @@ namespace awh {
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 */
 			virtual void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
-		private:
+		protected:
 			/**
 			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
 			 *

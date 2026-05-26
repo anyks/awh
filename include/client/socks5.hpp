@@ -161,7 +161,7 @@ namespace awh {
 			lock_state_t <std::shared_mutex> _mtx;
 		private:
 			// Активные сессии клиентов, работающих через прокси
-			unordered_map <origin_t, event::id_t, origin_hash_t> _sessions;
+			unordered_map <origin_t, pair <event::id_t, tls::coder_t::id_t>, origin_hash_t> _sessions;
 		private:
 			/**
 			 * @brief Метод изменения статуса клиента
@@ -276,12 +276,51 @@ namespace awh {
 			/**
 			 * @brief Метод добавления идентификатора события клиента для конечной точки
 			 *
+			 * @param eid идентификатор события для добавления
+			 * @param tid идентификатор TLS для добавления
+			 * @return    результат выполнения добавления идентификатора события клиента для конечной точки
+			 */
+			bool addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid) noexcept;
+		public:
+			/**
+			 * @brief Метод добавления идентификатора события клиента для конечной точки
+			 *
 			 * @param eid  идентификатор события для добавления
 			 * @param addr адрес хоста для добавления
 			 * @param port порт хоста для добавления
 			 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
 			 */
 			bool addEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept;
+			/**
+			 * @brief Метод добавления идентификатора события клиента для конечной точки
+			 *
+			 * @param eid  идентификатор события для добавления
+			 * @param tid  идентификатор TLS для добавления
+			 * @param addr адрес хоста для добавления
+			 * @param port порт хоста для добавления
+			 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
+			 */
+			bool addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, string_view addr, const uint16_t port) noexcept;
+		public:
+			/**
+			 * @brief Метод добавления идентификатора события клиента для конечной точки
+			 *
+			 * @param eid  идентификатор события для добавления
+			 * @param addr адрес хоста для добавления
+			 * @param port порт хоста для добавления
+			 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
+			 */
+			bool addEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept;
+			/**
+			 * @brief Метод добавления идентификатора события клиента для конечной точки
+			 *
+			 * @param eid  идентификатор события для добавления
+			 * @param tid  идентификатор TLS для добавления
+			 * @param addr адрес хоста для добавления
+			 * @param port порт хоста для добавления
+			 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
+			 */
+			bool addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, const net::addr_t * addr, const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод удаления идентификатора события клиента для конечной точки
@@ -299,6 +338,15 @@ namespace awh {
 			 * @return     результат выполнения удаления идентификатора события клиента для конечной точки
 			 */
 			bool delEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept;
+			/**
+			 * @brief Метод удаления идентификатора события клиента для конечной точки
+			 *
+			 * @param eid  идентификатор события для удаления
+			 * @param addr адрес хоста для удаления
+			 * @param port порт хоста для удаления
+			 * @return     результат выполнения удаления идентификатора события клиента для конечной точки
+			 */
+			bool delEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод проверки наличия идентификатора события клиента для конечной точки
@@ -316,6 +364,15 @@ namespace awh {
 			 * @return     результат проверки наличия идентификатора события клиента для конечной точки
 			 */
 			bool isEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) const noexcept;
+			/**
+			 * @brief Метод проверки наличия идентификатора события клиента для конечной точки
+			 *
+			 * @param eid  идентификатор события для проверки
+			 * @param addr адрес хоста для проверки
+			 * @param port порт хоста для проверки
+			 * @return     результат проверки наличия идентификатора события клиента для конечной точки
+			 */
+			bool isEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) const noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
