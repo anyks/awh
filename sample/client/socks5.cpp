@@ -207,10 +207,10 @@ int32_t main(int32_t argc, char * argv[]){
 	client.setSecurityId(ctl);
 	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
 	if(client.setPort(11613) && client.setTarget("217.29.53.105") && client.addEventIdEndpoint(did, host, 443)){
-		// Устанавливаем таймаут клиента на чтение данных 6 секунд
-		client.setTimeout(event::action_t::READ, 6000);
 		// Устанавливаем параметры авторизации для клиента
 		client.setUser("8J0sHd", "G4DfSK");
+		// Устанавливаем таймаут клиента на чтение данных 6 секунд
+		client.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса клиента
 		client.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &client);
 		// Регистрируем функцию обратного вызова на событие записи данных клиентом

@@ -21,7 +21,6 @@
 /**
  * Стандартные модули
  */
-#include <net/event.hpp>
 #include <string>
 #include <unordered_map>
 
@@ -160,6 +159,8 @@ namespace awh {
 			// Мютекс для блокировки потоков при работе с TLS
 			lock_state_t <std::shared_mutex> _mtx;
 		private:
+			// Отображение идентификаторов событий клиентов для конечных точек
+			unordered_map <event::id_t, pair <const origin_t *, tls::coder_t::id_t>> _mapping;
 			// Активные сессии клиентов, работающих через прокси
 			unordered_map <origin_t, pair <event::id_t, tls::coder_t::id_t>, origin_hash_t> _sessions;
 		private:
@@ -191,7 +192,6 @@ namespace awh {
 			 * @param eid    идентификатор клиента
 			 * @param buffer буфер данных клиента
 			 * @param size   размер данных клиента
-			 * @param who    флаг определение принадлежности события
 			 */
 			void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 		private:
@@ -199,18 +199,20 @@ namespace awh {
 			 * @brief Метод получения состояния TLS
 			 *
 			 * @param id    идентификатор TLS
+			 * @param eid   идентификатор клиента
 			 * @param state состояние TLS
 			 */
-			void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
+			void stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept;
 			/**
 			 * @brief Метод получения событий шифрования/дешифрования данных TLS
 			 *
 			 * @param id     идентификатор TLS
+			 * @param eid    идентификатор клиента
 			 * @param event  тип события TLS
 			 * @param size   размер данных для события шифрования/дешифрования TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 */
-			void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+			void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Метод очистки активных сессий клиентов, работающих через прокси
@@ -265,6 +267,14 @@ namespace awh {
 			 * @param password пароль пользователя для авторизации на сервере
 			 */
 			void setUser(const string & username, const string & password) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки наличия идентификатора события клиента для конечной точки
+			 *
+			 * @param eid идентификатор события для проверки
+			 * @return    результат проверки наличия идентификатора события клиента для конечной точки
+			 */
+			bool isEventIdEndpoint(const event::id_t eid) const noexcept;
 		public:
 			/**
 			 * @brief Метод добавления идентификатора события клиента для конечной точки
@@ -349,30 +359,11 @@ namespace awh {
 			bool delEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept;
 		public:
 			/**
-			 * @brief Метод проверки наличия идентификатора события клиента для конечной точки
+			 * @brief Метод установки идентификатора TLS
 			 *
-			 * @param eid идентификатор события для проверки
-			 * @return    результат проверки наличия идентификатора события клиента для конечной точки
+			 * @param tid идентификатор TLS для установки
 			 */
-			bool isEventIdEndpoint(const event::id_t eid) const noexcept;
-			/**
-			 * @brief Метод проверки наличия идентификатора события клиента для конечной точки
-			 *
-			 * @param eid  идентификатор события для проверки
-			 * @param addr адрес хоста для проверки
-			 * @param port порт хоста для проверки
-			 * @return     результат проверки наличия идентификатора события клиента для конечной точки
-			 */
-			bool isEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) const noexcept;
-			/**
-			 * @brief Метод проверки наличия идентификатора события клиента для конечной точки
-			 *
-			 * @param eid  идентификатор события для проверки
-			 * @param addr адрес хоста для проверки
-			 * @param port порт хоста для проверки
-			 * @return     результат проверки наличия идентификатора события клиента для конечной точки
-			 */
-			bool isEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) const noexcept;
+			void setSecurityId(const tls::coder_t::id_t tid) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)

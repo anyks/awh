@@ -538,6 +538,8 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 			if(header.rsv == 0x0000){
 				// Устанавливаем фрагментацию в объекте UDP заголовка
 				udp.frag = header.frag;
+				// Устанавливаем размер данных в объекте UDP заголовка
+				udp.size = sizeof(udp_t);
 				/**
 				 * Определяем тип адреса
 				 */
@@ -545,17 +547,15 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 					// Если тип адреса соответствует FQDN
 					case static_cast <uint8_t> (addr_type_t::FQDN): {
 						// Если буфер пришел достаточного размера
-						if((result = (size >= (sizeof(udp_t) + 3)))){
+						if((result = (size >= (udp.size + 3)))){
 							// Размер доменного имени для подключения
 							uint8_t length = 0;
-							// Формируем смещение в буфере
-							size_t offset = sizeof(udp_t);
 							// Копируем в буфер размер доменного имени для подключения
-							::memcpy(&length, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(length));
+							::memcpy(&length, reinterpret_cast <const uint8_t *> (buffer) + udp.size, sizeof(length));
 							// Увеличиваем смещение на размер доменного имени для подключения
-							offset += sizeof(length);
+							udp.size += sizeof(length);
 							// Если буфер пришел достаточного размера для извлечения доменного имени
-							if((result = ((offset + (static_cast <uint16_t> (length) + 2)) <= size))){
+							if((result = ((udp.size + (static_cast <uint16_t> (length) + 2)) <= size))){
 								// Выполняем инициализацию объекта хоста
 								udp.host = make_unique <net::attr_fqdn_t> ();
 								// Устанавливаем тип адреса события
@@ -565,16 +565,16 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 									// Выделяем память для доменного имени хоста для подключения
 									awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain.resize(length, 0);
 									// Копируем в буфер доменное имя хоста для подключения
-									::memcpy(&awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain[0], reinterpret_cast <const uint8_t *> (buffer) + offset, length);
+									::memcpy(&awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain[0], reinterpret_cast <const uint8_t *> (buffer) + udp.size, length);
 									// Увеличиваем смещение на размер доменного имени для подключения
-									offset += length;
+									udp.size += length;
 								}
 								// Порт хоста для подключения
 								uint16_t port = 0;
 								// Извлекаем порт хоста для подключения
-								::memcpy(&port, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(port));
+								::memcpy(&port, reinterpret_cast <const uint8_t *> (buffer) + udp.size, sizeof(port));
 								// Увеличиваем смещение на размер порта хоста для подключения
-								offset += sizeof(port);
+								udp.size += sizeof(port);
 								// Устанавливаем порт хоста для подключения
 								awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = ntohs(port);
 							}
@@ -583,11 +583,11 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 					// Если тип адреса соответствует IPv4
 					case static_cast <uint8_t> (addr_type_t::IPV4): {
 						// Если буфер пришел достаточного размера
-						if((result = (size >= (sizeof(udp_t) + sizeof(ip4_t))))){
+						if((result = (size >= (udp.size + sizeof(ip4_t))))){
 							// Создаём объект данных сервера
 							ip4_t server{};
 							// Копируем в буфер наши данные IP адреса
-							::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + sizeof(udp_t), sizeof(server));
+							::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + udp.size, sizeof(server));
 							// Выполняем инициализацию объекта хоста
 							udp.host = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип адреса события
@@ -596,16 +596,18 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 							awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(server.port);
 							// Устанавливаем IP-адрес хоста для подключения
 							awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = server.host;
+							// Увеличиваем размер данных в объекте UDP заголовка
+							udp.size += sizeof(server);
 						}
 					} break;
 					// Если тип адреса соответствует IPv6
 					case static_cast <uint8_t> (addr_type_t::IPV6): {
 						// Если буфер пришел достаточного размера
-						if((result = (size >= (sizeof(udp_t) + sizeof(ip6_t))))){
+						if((result = (size >= (udp.size + sizeof(ip6_t))))){
 							// Создаём объект данных сервера
 							ip6_t server{};
 							// Копируем в буфер наши данные IP адреса
-							::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + sizeof(udp_t), sizeof(server));
+							::memcpy(&server, reinterpret_cast <const uint8_t *> (buffer) + udp.size, sizeof(server));
 							// Выполняем инициализацию объекта хоста
 							udp.host = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип адреса события
@@ -616,6 +618,8 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 							awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 							// Устанавливаем IP-адрес хоста для подключения
 							awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = ::move(server.host);
+							// Увеличиваем размер данных в объекте UDP заголовка
+							udp.size += sizeof(server);
 						}
 					} break;
 				}

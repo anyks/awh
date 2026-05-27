@@ -100,6 +100,8 @@ namespace awh {
 				typedef struct UDP_Header {
 					// Номер фрагмента (0x00 = нет фрагментации)
 					uint8_t frag;
+					// Размер данных UDP пакета
+					size_t size;
 					// Хост конечного получателя
 					unique_ptr <net::attr_t> host;
 					/**
@@ -107,7 +109,7 @@ namespace awh {
 					 *
 					 */
 					explicit UDP_Header() noexcept :
-					 frag(0x00), host(nullptr) {}
+					 frag(0x00), size(0), host(nullptr) {}
 				} udp_head_t;
 				/**
 				 * @brief Структура промежуточного контекста
