@@ -1,6 +1,6 @@
 /**
- * @file: dtls.cpp
- * @date: 2026-05-20
+ * @file: socks5.cpp
+ * @date: 2026-05-27
  * @license: GPL-3.0
  *
  * @telegram: @forman
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файл проекта
  */
-#include <client/client.hpp>
+#include <client/socks5.hpp>
 
 /**
  * Подписываемся на пространство имён AWH
@@ -56,7 +56,7 @@ class Executor {
 		 * @param size   размер данных
 		 * @param client объект клиента
 		 */
-		void read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, client_t * client) noexcept {
+		void read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, socks5_t * client) noexcept {
 			// Если данные получены
 			if(size > 0)
 				// Выводим данные в лог
@@ -72,24 +72,20 @@ class Executor {
 		 * @param status новый статус клиента
 		 * @param client объект клиента
 		 */
-		void status(const event::status_t status, client_t * client) noexcept {
+		void status(const event::status_t status, socks5_t * client) noexcept {
 			/**
 			 * Определяем состояние клиента
 			 */
 			switch(static_cast <uint8_t> (status)){
 				// Если событие клиента запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-					// Выполняем подключение клиента к удалённому серверу
-					if(!client->connect())
-						// Выводим сообщение об ошибке
-						this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
+				case static_cast <uint8_t> (event::status_t::LAUNCHED):
 					// Если подключение выполнено, то выводим сообщение об успешном подключении клиента к удалённому серверу
-					else this->_log->print("Successfully connected to remote server", log_t::flag_t::INFO);
-				} break;
+					this->_log->print("Successfully launched socks5 client", log_t::flag_t::INFO);
+				break;
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Выводим сообщение об остановке события клиента
-					this->_log->print("DTLS client destroyed", log_t::flag_t::INFO);
+					this->_log->print("Socks5 client destroyed", log_t::flag_t::INFO);
 				break;
 			}
 		}
@@ -100,7 +96,7 @@ class Executor {
 		 * @param ok     результат подключения
 		 * @param client объект клиента
 		 */
-		void connect([[maybe_unused]] const event::id_t eid, const bool ok, client_t * client) noexcept {
+		void connect([[maybe_unused]] const event::id_t eid, const bool ok, socks5_t * client) noexcept {
 			// Если подключение выполнено
 			if(ok){
 				// Текст запроса к серверу
@@ -180,9 +176,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект юнита клиента
 	unit::client_t unit(&fmk, &log);
 	// Создаём объект клиента
-	client_t client(&unit, &coder, &fmk, &log);
+	socks5_t client(socks5_t::route_t::PROXY, &unit, &coder, &fmk, &log);
 	// Создаём событие клиента и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	// Создаём событие событие для клиентской точки назначения
+	const event::id_t did = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
@@ -190,52 +188,29 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = coder.context(event::node_t::CLIENT, event::protocol_t::UDP);
+	const tls::coder_t::id_t cts = coder.context(event::node_t::CLIENT, event::protocol_t::TCP);
+	// Устанавливаем хост сервера для подключения клиента
+	const string host = "anyks.com";
 	// Устанавливаем ALPN протоколы TLS
-	coder.alpn(cts, {
-		{0,"http/1.1"},
-		{1,"h2"}
-	});
-	// Устанавливаем список доступных шифров TLS
-	coder.ciphers(cts, {
-		tls::cipher_t::TLS_AES_128_GCM_SHA256,
-		tls::cipher_t::TLS_AES_256_GCM_SHA384,
-		tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
-		tls::cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256,
-		tls::cipher_t::ECDHE_RSA_AES128_GCM_SHA256,
-		tls::cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384,
-		tls::cipher_t::ECDHE_RSA_AES256_GCM_SHA384,
-		tls::cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305,
-		tls::cipher_t::ECDHE_RSA_CHACHA20_POLY1305,
-		tls::cipher_t::ECDHE_RSA_AES128_SHA,
-		tls::cipher_t::ECDHE_RSA_AES256_SHA,
-		tls::cipher_t::AES128_GCM_SHA256,
-		tls::cipher_t::AES256_GCM_SHA384,
-		tls::cipher_t::AES128_SHA,
-		tls::cipher_t::AES256_SHA
-	});
-	// Устанавливаем компрессор для транспортного уровня TLS
-	coder.compressors(cts, {
-		compressor_t::method_t::ZLIB,
-		compressor_t::method_t::ZSTD,
-		compressor_t::method_t::BROTLI
-	});
+	coder.alpn(cts, {{0,"http/1.1"}});
 	// Устанавливаем файл центра сертификации TLS
 	coder.ca(cts, "../sh/certificates", "ca.pem");
-	// Устанавливаем имя хоста TLS
-	coder.serverNameIndication(cts, "anyks.com");
 	// Включаем проверку имени хоста TLS
-	coder.validateServerNameIndication(cts, false);
+	coder.validateServerNameIndication(cts, true);
+	// Устанавливаем имя хоста TLS
+	coder.serverNameIndication(cts, host);
 	// Создаём идентификатор транспортного уровня TLS
 	const tls::coder_t::id_t ctl = coder.transport(cts);
 	// Устанавливаем идентификатор события клиента
 	client.setEventId(eid);
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(ctl);
-	// Устанавливаем порт и целевой хост для клиента
-	if(client.setPort(2222) && client.setTarget("127.0.0.1")){
+	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
+	if(client.setPort(11613) && client.setTarget("217.29.53.105") && client.addEventIdEndpoint(did, host, 443)){
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд
 		client.setTimeout(event::action_t::READ, 6000);
+		// Устанавливаем параметры авторизации для клиента
+		client.setUser("8J0sHd", "G4DfSK");
 		// Регистрируем функцию обратного вызова на событие изменения статуса клиента
 		client.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &client);
 		// Регистрируем функцию обратного вызова на событие записи данных клиентом

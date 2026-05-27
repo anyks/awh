@@ -23,99 +23,6 @@
 using namespace std;
 
 /**
- * @brief Метод установки адреса хоста для подключения
- *
- * @param host параметры адреса хоста для подключения
- * @return     результат установки адреса хоста для подключения
- */
-bool awh::proto::Socks5::setHost(const net::attr_t * host) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если хост для подключения передан
-	if((result = (host != nullptr))){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			/**
-			 * Определяем тип адреса хоста для подключения
-			 */
-			switch(static_cast <uint8_t> (host->type)){
-				// Если тип адреса соответствует FQDN
-				case static_cast <uint8_t> (net::type_t::FQDN): {
-					// Выполняем инициализацию объекта хоста
-					this->_host = make_unique <net::attr_fqdn_t> ();
-					// Устанавливаем тип адреса события
-					this->_host->type = host->type;
-					// Устанавливаем порт хоста для подключения
-					awh_cast <net::attr_fqdn_t *> (this->_host.get())->port = awh_cast <const net::attr_fqdn_t *> (host)->port;
-					// Устанавливаем доменное имя хоста для подключения
-					awh_cast <net::attr_fqdn_t *> (this->_host.get())->domain = awh_cast <const net::attr_fqdn_t *> (host)->domain;
-				} break;
-				// Если тип адреса соответствует IPv4
-				case static_cast <uint8_t> (net::type_t::IPV4): {
-					// Выполняем инициализацию объекта хоста
-					this->_host = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип адреса события
-					this->_host->type = host->type;
-					// Устанавливаем порт хоста для подключения
-					awh_cast <net::attr_net_t *> (this->_host.get())->port = awh_cast <const net::attr_net_t *> (host)->port;
-					// Устанавливаем IP-адрес хоста для подключения
-					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (host)->ip.get())->address;
-				} break;
-				// Если тип адреса соответствует IPv6
-				case static_cast <uint8_t> (net::type_t::IPV6): {
-					// Выполняем инициализацию объекта хоста
-					this->_host = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип адреса события
-					this->_host->type = host->type;
-					// Устанавливаем порт хоста для подключения
-					awh_cast <net::attr_net_t *> (this->_host.get())->port = awh_cast <const net::attr_net_t *> (host)->port;
-					// Устанавливаем IP-адрес хоста для подключения
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (host)->ip.get())->address[0], 16);
-				} break;
-				// Если тип адреса не соответствует ни одному из поддерживаемых типов, сбрасываем результат
-				default: result = false;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
- * @brief Метод получения адреса хоста для подключения
- *
- * @param host указатель на объект для извлечения параметров адреса хоста для подключения
- * @return     результат извлечения параметров адреса хоста для подключения
- */
-bool awh::proto::Socks5::getHost(net::attr_t ** host) const noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если хост для подключения установлен
-	if((result = (this->_host != nullptr)))
-		// Устанавливаем результат извлечения параметров адреса хоста для подключения
-		(* host) = this->_host.get();
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод получения сообщения
  *
  * @param code код статуса
@@ -213,8 +120,7 @@ string awh::proto::Socks5::statusMessage(const status_t code) const noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::proto::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
- _host(nullptr), _fmk(fmk), _log(log) {}
+awh::proto::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *

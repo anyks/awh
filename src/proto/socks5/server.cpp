@@ -466,6 +466,8 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
 												ctx.host->type = net::type_t::IPV6;
 												// Устанавливаем порт хоста для подключения
 												awh_cast <net::attr_net_t *> (ctx.host.get())->port = ntohs(server.port);
+												// Создаём новый объект адреса клиента IPv6
+												awh_cast <net::attr_net_t *> (ctx.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 												// Устанавливаем IP-адрес хоста для подключения
 												awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address = ::move(server.host);
 												// Устанавливаем статус успеха
@@ -610,6 +612,8 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 							udp.host->type = net::type_t::IPV6;
 							// Устанавливаем порт хоста для подключения
 							awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(server.port);
+							// Создаём новый объект адреса клиента IPv6
+							awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 							// Устанавливаем IP-адрес хоста для подключения
 							awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = ::move(server.host);
 						}
@@ -726,41 +730,41 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 					// Устанавливаем статус запроса ожидания подключения к серверу
 					ctx.state = state_t::CONNECT;
 				// Если хост для подключения установлен
-				if((result = (this->_host != nullptr))){
+				if((result = (ctx.host != nullptr))){
 					/**
 					 * Определяем тип адреса хоста для подключения
 					 */
-					switch(static_cast <uint8_t> (this->_host->type)){
+					switch(static_cast <uint8_t> (ctx.host->type)){
 						// Если тип адреса соответствует FQDN
 						case static_cast <uint8_t> (net::type_t::FQDN): {
 							// Добавляем тип адреса "доменные имена" в буфер для отправки данных
 							::addPayload(addr_type_t::FQDN);
 							// Извлекаем доменное имя хоста для подключения
-							const string & fqdn = awh_cast <net::attr_fqdn_t *> (this->_host.get())->domain;
+							const string & fqdn = awh_cast <net::attr_fqdn_t *> (ctx.host.get())->domain;
 							// Добавляем размер доменного имени хоста для подключения в буфер для отправки данных
 							::addPayload(static_cast <uint8_t> (fqdn.length()));
 							// Устанавливаем доменное имя хоста для подключения в буфер для отправки данных
 							::addPayload(fqdn);
 							// Добавляем порт хоста для подключения в буфер для отправки данных
-							::addPayload(htons(awh_cast <net::attr_fqdn_t *> (this->_host.get())->port));
+							::addPayload(htons(awh_cast <net::attr_fqdn_t *> (ctx.host.get())->port));
 						} break;
 						// Если тип адреса соответствует IPv4
 						case static_cast <uint8_t> (net::type_t::IPV4): {
 							// Добавляем тип адреса "IPv4" в буфер для отправки данных
 							::addPayload(addr_type_t::IPV4);
 							// Добавляем IP адрес хоста для подключения в буфер для отправки данных
-							::addPayload(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_host.get())->ip.get())->address);
+							::addPayload(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address);
 							// Добавляем порт хоста для подключения в буфер для отправки данных
-							::addPayload(htons(awh_cast <net::attr_net_t *> (this->_host.get())->port));
+							::addPayload(htons(awh_cast <net::attr_net_t *> (ctx.host.get())->port));
 						} break;
 						// Если тип адреса соответствует IPv6
 						case static_cast <uint8_t> (net::type_t::IPV6): {
 							// Добавляем тип адреса "IPv6" в буфер для отправки данных
 							::addPayload(addr_type_t::IPV6);
 							// Добавляем IP адрес хоста для подключения в буфер для отправки данных
-							::addPayload(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_host.get())->ip.get())->address);
+							::addPayload(awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (ctx.host.get())->ip.get())->address);
 							// Добавляем порт хоста для подключения в буфер для отправки данных
-							::addPayload(htons(awh_cast <net::attr_net_t *> (this->_host.get())->port));
+							::addPayload(htons(awh_cast <net::attr_net_t *> (ctx.host.get())->port));
 						} break;
 					}
 				}

@@ -94,17 +94,17 @@ class Executor {
 				// Если статус уничтожения
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Выводим сообщение об уничтожении события
-					this->_log->print("Событие туннеля подлежит уничтожению: ID=%u", log_t::flag_t::INFO, eid);
+					this->_log->print("Tunnel destroyed: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 				// Если статус инициализации
 				case static_cast <uint8_t> (event::status_t::INITIAL):
 					// Выводим сообщение об инициализации события
-					this->_log->print("Событие туннеля инициализировано: ID=%u", log_t::flag_t::INFO, eid);
+					this->_log->print("Tunnel initialized: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 				// Если статус запуска события
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
 					// Выводим сообщение о запуске события
-					this->_log->print("Событие туннеля запущено: ID=%u", log_t::flag_t::INFO, eid);
+					this->_log->print("Tunnel launched: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 			}
 		}
@@ -189,9 +189,9 @@ class Executor {
 								// Отправляем данные в туннель
 								if(this->_tunnel->send(this->_tun, data + offset, record.size))
 									// Если данные успешно отправлены
-									this->_log->print("Отправлено в туннель: ID=%u, %zu байт", log_t::flag_t::INFO, this->_tun, record.size);
+									this->_log->print("Sent to tunnel: ID=%u, %zu bytes", log_t::flag_t::INFO, this->_tun, record.size);
 								// Если данные не отправлены
-								else this->_log->print("Ошибка отправки в туннель: ID=%u", log_t::flag_t::CRITICAL, this->_tun);
+								else this->_log->print("Failed to send to tunnel: ID=%u", log_t::flag_t::CRITICAL, this->_tun);
 							}
 						} break;
 						// Если действие является рукопожатием
@@ -209,9 +209,9 @@ class Executor {
 							// Устананавливаем опции события туннеля
 							if(this->_tunnel->setOptions(this->_tun, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
 								// Выводим сообщение об успешной установке опций события
-								cout << " Успешно установлены опции события туннеля!" << endl;
+								cout << " Successfully set tunnel event options!" << endl;
 							// Выводим сообщение об ошибке установки опций события
-							else cout << " Ошибка установки опций события туннеля!" << endl;
+							else cout << " Failed to set tunnel event options!" << endl;
 							// Устанавливаем IP-адрес события туннеля и максимальный размер пакета для передачи данных по сети
 							if(this->_tunnel->setAddress(this->_tun, event::address_t::IPV4, this->_addr.source().get()) && this->_tunnel->setMaximumTransmissionUnit(this->_tun, 1400)){
 								// Создаём новый объект посредника между клиентом и туннелем
@@ -237,9 +237,9 @@ class Executor {
 										// Устанавливаем маршрут туннеля (sudo route -n add -net 10.0.0.0/24 -interface utun7)
 										if(this->_gateway.add(route))
 											// Выводим сообщение об успешной установке маршрута туннеля
-											cout << " Маршрут туннеля успешно установлен!" << endl;
+											cout << " Tunnel route successfully added!" << endl;
 										// Выводим сообщение об успешном запуске события
-										cout << " Событие сервера и туннеля успешно запущено!" << endl;
+										cout << " Server and tunnel event successfully launched!" << endl;
 									}
 								}
 							}
@@ -278,7 +278,7 @@ class Executor {
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Выводим сообщение об остановке события клиента
-					this->_log->print("Событие клиента было остановлено", log_t::flag_t::INFO);
+					this->_log->print("Client destroyed", log_t::flag_t::INFO);
 				break;
 			}
 		}
@@ -371,9 +371,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
-		cout << " Успешно установлены опции события!" << endl;
+		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
-	else cout << " Ошибка установки опций события!" << endl;
+	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем идентификатор события клиента
 	client.setEventId(eid);
 	// Устанавливаем порт и целевой хост для клиента

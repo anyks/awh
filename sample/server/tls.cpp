@@ -91,7 +91,7 @@ class Executor {
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Выводим сообщение об остановке события сервера
-					this->_log->print("Событие сервера было остановлено", log_t::flag_t::INFO);
+					this->_log->print("Server destroyed", log_t::flag_t::INFO);
 				break;
 			}
 		}
@@ -106,7 +106,7 @@ class Executor {
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * coder) noexcept {
 			// Выводим сообщение об успешной установке опций события
-			cout << " Выполнено подключение: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
+			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 			// Устананавливаем опции события
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
 				// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
@@ -114,13 +114,13 @@ class Executor {
 				cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) coder->alpn(tid) << endl;
 				cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << coder->serverNameIndication(tid) << endl << endl;
 				cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-				cout << "Версия OpenSSL: " << coder->version() << endl << endl;
+				cout << "OpenSSL version: " << coder->version() << endl << endl;
 				cout << "Cipher: " << coder->cipherInfo(tid) << endl << endl;
 				cout << "Certificate: " << coder->certificateInfo(tid) << endl << endl;
 				cout << "CRL Info: " << coder->certificateRevocationListInfo(tid) << endl << endl;
 				cout << "Certificate Validation: " << (coder->validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
 				// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-				this->_log->print("Рукопожатие TLS успешно завершено: ID=%" PRIu64 ", ALPN протокол=%d", log_t::flag_t::INFO, tid, coder->alpn(tid));
+				this->_log->print("TLS handshake complete: ID=%" PRIu64 ", ALPN protocol=%d", log_t::flag_t::INFO, tid, coder->alpn(tid));
 			}
 		}
 		/**
@@ -214,9 +214,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
-		cout << " Успешно установлены опции события!" << endl;
+		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
-	else cout << " Ошибка установки опций события!" << endl;
+	else cout << " Failed to set event options!" << endl;
 	// Регистрируем объект транспортного уровня безопасности
 	const tls::coder_t::id_t cts = coder.context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS

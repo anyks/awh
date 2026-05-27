@@ -270,8 +270,9 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
+			 * @param type тип адреса подключения
 			 */
-			explicit Attributes() noexcept : type(type_t::NONE) {}
+			explicit Attributes(const type_t type) noexcept : type(type) {}
 			/**
 			 * @brief Деструктор
 			 *
@@ -293,7 +294,7 @@ namespace awh {
 			 *
 			 */
 			explicit Attributes_FQDN() noexcept :
-			 port(0), domain{""} {}
+			 attr_t(type_t::FQDN), port(0), domain{""} {}
 		} attr_fqdn_t;
 
 		/**
@@ -310,7 +311,8 @@ namespace awh {
 			 *
 			 */
 			explicit Attributes_Network() noexcept :
-			 port(0), ip(make_unique <addr_net_ipv4_t> ()) {}
+			 attr_t(type_t::IPV4), port(0),
+			 ip(make_unique <addr_net_ipv4_t> ()) {}
 		} attr_net_t;
 
 		/**
@@ -325,7 +327,7 @@ namespace awh {
 			 *
 			 */
 			explicit Attributes_Unix_Domain_Socket() noexcept :
-			 path(make_unique <addr_fs_t> ()) {}
+			 attr_t(type_t::FS), path(make_unique <addr_fs_t> ()) {}
 		} attr_uds_t;
 
 		/**

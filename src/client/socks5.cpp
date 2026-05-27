@@ -374,8 +374,38 @@ void awh::Socks5::state(const event::id_t eid, const event::status_t status) noe
 void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
-		// Если событие принадлежит прокси-клиенту
-		if(eid == this->_eid){
+		// Если текущее состояние соответствует завершённому состоянию
+		if(this->_ctx.state == proto::client_socks5_t::state_t::COMPLETED){
+			// Если объект транспортного уровня безопасности установлен
+			if((this->_coder != nullptr) && (this->_tid > 0)){
+				// Если данные не расшифрованы
+				if(!this->_coder->decrypt(this->_tid, buffer, size)){
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error_tls")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("TLS decryption data is failed", log_t::flag_t::WARNING);
+						#endif
+					}
+				}
+			// Если объект транспортного уровня безопасности не установлен
+			} else {
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("read"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+			}
+		// Если текущее состояние находится ещё в процессе общения с socks5 прокси-сервером
+		} else {
 			// Если парсинг данных от прокси-сервера выполнен успешно
 			if(this->_socks5.parse(buffer, size, this->_ctx)){
 				/**
@@ -450,6 +480,8 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 									this->_ctx.host->type = net::type_t::IPV6;
 									// Устанавливаем порт хоста для подключения
 									awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = ntohs(origin->ip6.port);
+									// Создаём новый объект адреса клиента IPv6
+									awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 									// Устанавливаем IP-адрес хоста для подключения
 									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address[0], &origin->ip6.address[0], 16);
 								} break;
@@ -545,6 +577,8 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 							}
 							// Если адрес хоста для подключения к удалённому серверу получен успешно
 							if(!target.empty()){
+								// Устанавливаем состояние клиента как "завершённый"
+								this->_ctx.state = proto::client_socks5_t::state_t::COMPLETED;
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("ready"))
 									// Выполняем функцию обратного вызова
@@ -564,7 +598,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+												this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, std::make_tuple(this->_eid, buffer, size), log_t::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -579,7 +613,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 									// Если функция обратного вызова установлена
 									if(this->_callback.is("connect"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, true);
+										this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_eid, true);
 								}
 							// Если адрес хоста для подключения к удалённому серверу не получен
 							} else {
@@ -588,7 +622,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+									this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(this->_eid, buffer, size), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -648,65 +682,6 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 					#endif
 				}
 			}
-		// Если событие принадлежит клиенту
-		} else {
-			// Если объект транспортного уровня безопасности установлен
-			if((this->_coder != nullptr) && (this->_tid > 0)){
-				// Если данные не расшифрованы
-				if(!this->_coder->decrypt(this->_tid, buffer, size)){
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error_tls")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("TLS decryption data is failed", log_t::flag_t::WARNING);
-						#endif
-					}
-				}
-			// Если объект транспортного уровня безопасности не установлен
-			} else {
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("read")){
-					// Идентификатор события клиента, работающего через прокси
-					event::id_t eid = 0;
-					{
-						// Выполняем блокировку потока для работы с TLS
-						const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-						// Если активные сессии клиентов, работающих через прокси, не пусты
-						if(!this->_sessions.empty())
-							// Извлекаем идентификатор события клиента, работающего через прокси
-							eid = this->_sessions.begin()->second.first;
-					}
-					// Если идентификатор события клиента, получен успешно
-					if(eid > 0)
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
-					// Если адрес хоста для подключения к удалённому серверу не получен
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
-						#endif
-					}
-				}
-			}
 		}
 	}
 }
@@ -726,38 +701,9 @@ void awh::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::stat
 		// Если состояние рукопожатия успешно завершено
 		if(state == tls::coder_t::state_t::HANDSHAKED){
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("connect")){
-				// Идентификатор события клиента
-				event::id_t eid = 0;
-				{
-					// Выполняем блокировку потока для работы с TLS
-					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-					// Если активные сессии клиентов, работающих через прокси, не пусты
-					if(!this->_sessions.empty())
-						// Извлекаем идентификатор события клиента, работающего через прокси
-						eid = this->_sessions.begin()->second.first;
-				}
-				// Если идентификатор события клиента получен
-				if(eid > 0)
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, true);
-				// Если идентификатор события клиента не получен
-				else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (state)), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
+			if(this->_callback.is("connect"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_eid, true);
 		}
 	}
 }
@@ -800,38 +746,10 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const tls::coder_t::ev
 			} break;
 			// Если событие дешифрования данных TLS
 			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
-				// Идентификатор события клиента
-				event::id_t eid = 0;
-				{
-					// Выполняем блокировку потока для работы с TLS
-					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-					// Если активные сессии клиентов, работающих через прокси, не пусты
-					if(!this->_sessions.empty())
-						// Извлекаем идентификатор события клиента, работающего через прокси
-						eid = this->_sessions.begin()->second.first;
-				}
-				// Если идентификатор события клиента получен
-				if(eid > 0){
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("read"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
-				// Если идентификатор события клиента не получен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Client event ID not found", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
-					#endif
-				}
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("read"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_eid, buffer, size);
 			} break;
 		}
 	}
@@ -1012,6 +930,21 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
 		if(this->_client->getTarget(eid, target)){
 			// Создаём объект параметров подключения для идентификатора события клиента
 			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+			/**
+			 * Определяем тип полученного IP-адреса
+			 */
+			switch(target->size){
+				// Для типа IPv4
+				case 4:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+				break;
+				// Для типа IPv6
+				case 16:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+				break;
+			}
 			// Устанавливаем полученный IP-адрес
 			awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
 			// Устанавливаем полученный порт
@@ -1064,6 +997,21 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t t
 		if(this->_client->getTarget(eid, target)){
 			// Создаём объект параметров подключения для идентификатора события клиента
 			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+			/**
+			 * Определяем тип полученного IP-адреса
+			 */
+			switch(target->size){
+				// Для типа IPv4
+				case 4:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+				break;
+				// Для типа IPv6
+				case 16:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+				break;
+			}
 			// Устанавливаем полученный IP-адрес
 			awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
 			// Устанавливаем полученный порт
@@ -1136,25 +1084,42 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, string_view addr, co
 				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
 					// Устанавливаем полученный доменное имя хоста для подключения
 					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
 				} break;
 				// Для типа IPv4
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+					// Выполняем парсинг IP-адреса
+					this->_addr = addr;
+					// Создаём объект параметров подключения для идентификатора события клиента
+					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
+					// Устанавливаем полученный IP-адрес
+					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				} break;
 				// Для типа IPv6
 				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 					// Выполняем парсинг IP-адреса
 					this->_addr = addr;
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				} break;
 			}
 			// Если объект параметров подключения для идентификатора события клиента создан
 			if(attr != nullptr){
-				// Устанавливаем полученный порт
-				awh_cast <net::attr_net_t *> (attr.get())->port = port;
 				// Создаём идентификатор конечной точки для идентификатора события клиента
 				const origin_t endpoint = Origin().from(attr.get(), this->_client->protocol(eid));
 				// Добавляем идентификатор события клиента для конечной точки
@@ -1210,17 +1175,36 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t t
 				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
 					// Устанавливаем полученный доменное имя хоста для подключения
 					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
 				} break;
 				// Для типа IPv4
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+					// Выполняем парсинг IP-адреса
+					this->_addr = addr;
+					// Создаём объект параметров подключения для идентификатора события клиента
+					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
+					// Устанавливаем полученный IP-адрес
+					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				} break;
 				// Для типа IPv6
 				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 					// Выполняем парсинг IP-адреса
 					this->_addr = addr;
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				} break;
@@ -1238,8 +1222,6 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t t
 					// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
 					this->_coder->on(this->_tid, std::bind(&socks5_t::processTLS, this, _1, _2, _3, _4));
 				}
-				// Устанавливаем полученный порт
-				awh_cast <net::attr_net_t *> (attr.get())->port = port;
 				// Создаём идентификатор конечной точки для идентификатора события клиента
 				const origin_t endpoint = Origin().from(attr.get(), this->_client->protocol(eid));
 				// Добавляем идентификатор события клиента для конечной точки
@@ -1289,15 +1271,21 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, const net::addr_t * 
 			 */
 			switch(addr->size){
 				// Для типа IPv4
-				case 4:
+				case 4: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
-				break;
+				} break;
 				// Для типа IPv6
-				case 16:
+				case 16: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+					// Создаём новый объект адреса клиента IPv6
+					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем полученный IP-адрес
 					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
-				break;
+				} break;
 			}
 			// Устанавливаем полученный порт
 			awh_cast <net::attr_net_t *> (attr.get())->port = port;
@@ -1352,15 +1340,21 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t t
 			 */
 			switch(addr->size){
 				// Для типа IPv4
-				case 4:
+				case 4: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
-				break;
+				} break;
 				// Для типа IPv6
-				case 16:
+				case 16: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+					// Создаём новый объект адреса клиента IPv6
+					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем полученный IP-адрес
 					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
-				break;
+				} break;
 			}
 			// Устанавливаем полученный порт
 			awh_cast <net::attr_net_t *> (attr.get())->port = port;
@@ -1422,6 +1416,21 @@ bool awh::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
 		if(this->_client->getTarget(eid, target)){
 			// Создаём объект параметров подключения для идентификатора события клиента
 			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+			/**
+			 * Определяем тип полученного IP-адреса
+			 */
+			switch(target->size){
+				// Для типа IPv4
+				case 4:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+				break;
+				// Для типа IPv6
+				case 16:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+				break;
+			}
 			// Устанавливаем полученный IP-адрес
 			awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
 			// Устанавливаем полученный порт
@@ -1489,25 +1498,42 @@ bool awh::Socks5::delEventIdEndpoint(const event::id_t eid, string_view addr, co
 				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
 					// Устанавливаем полученный доменное имя хоста для подключения
 					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
 				} break;
 				// Для типа IPv4
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+					// Выполняем парсинг IP-адреса
+					this->_addr = addr;
+					// Создаём объект параметров подключения для идентификатора события клиента
+					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
+					// Устанавливаем полученный IP-адрес
+					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				} break;
 				// Для типа IPv6
 				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 					// Выполняем парсинг IP-адреса
 					this->_addr = addr;
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				} break;
 			}
 			// Если объект параметров подключения для идентификатора события клиента создан
 			if(attr != nullptr){
-				// Устанавливаем полученный порт
-				awh_cast <net::attr_net_t *> (attr.get())->port = port;
 				// Создаём идентификатор конечной точки для идентификатора события клиента
 				const origin_t endpoint = Origin().from(attr.get(), this->_client->protocol(eid));
 				// Выполняем поиск идентификатора события клиента для конечной точки
@@ -1563,15 +1589,21 @@ bool awh::Socks5::delEventIdEndpoint(const event::id_t eid, const net::addr_t * 
 			 */
 			switch(addr->size){
 				// Для типа IPv4
-				case 4:
+				case 4: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
-				break;
+				} break;
 				// Для типа IPv6
-				case 16:
+				case 16: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+					// Создаём новый объект адреса клиента IPv6
+					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем полученный IP-адрес
 					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
-				break;
+				} break;
 			}
 			// Устанавливаем полученный порт
 			awh_cast <net::attr_net_t *> (attr.get())->port = port;
@@ -1626,6 +1658,21 @@ bool awh::Socks5::isEventIdEndpoint(const event::id_t eid) const noexcept {
 		if(this->_client->getTarget(eid, target)){
 			// Создаём объект параметров подключения для идентификатора события клиента
 			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+			/**
+			 * Определяем тип полученного IP-адреса
+			 */
+			switch(target->size){
+				// Для типа IPv4
+				case 4:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+				break;
+				// Для типа IPv6
+				case 16:
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+				break;
+			}
 			// Устанавливаем полученный IP-адрес
 			awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
 			// Устанавливаем полученный порт
@@ -1689,25 +1736,42 @@ bool awh::Socks5::isEventIdEndpoint(const event::id_t eid, string_view addr, con
 				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
 					// Устанавливаем полученный доменное имя хоста для подключения
 					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
 				} break;
 				// Для типа IPv4
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+					// Создаём объект параметров подключения для идентификатора события клиента
+					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
+					// Выполняем парсинг IP-адреса
+					const_cast <socks5_t *> (this)->_addr = addr;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
+					// Устанавливаем полученный IP-адрес
+					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+				} break;
 				// Для типа IPv6
 				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 					// Создаём объект параметров подключения для идентификатора события клиента
 					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
 					// Выполняем парсинг IP-адреса
 					const_cast <socks5_t *> (this)->_addr = addr;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = port;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 				} break;
 			}
 			// Если объект параметров подключения для идентификатора события клиента создан
 			if(attr != nullptr){
-				// Устанавливаем полученный порт
-				awh_cast <net::attr_net_t *> (attr.get())->port = port;
 				// Создаём идентификатор конечной точки для идентификатора события клиента
 				const origin_t endpoint = Origin().from(attr.get(), this->_client->protocol(eid));
 				// Если идентификатор события клиента для конечной точки найден, устанавливаем результат
@@ -1759,15 +1823,21 @@ bool awh::Socks5::isEventIdEndpoint(const event::id_t eid, const net::addr_t * a
 			 */
 			switch(addr->size){
 				// Для типа IPv4
-				case 4:
+				case 4: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV4;
 					// Устанавливаем полученный IP-адрес
 					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
-				break;
+				} break;
 				// Для типа IPv6
-				case 16:
+				case 16: {
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::IPV6;
+					// Создаём новый объект адреса клиента IPv6
+					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем полученный IP-адрес
 					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
-				break;
+				} break;
 			}
 			// Устанавливаем полученный порт
 			awh_cast <net::attr_net_t *> (attr.get())->port = port;

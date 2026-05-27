@@ -91,7 +91,7 @@ class Executor {
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
 					// Выводим сообщение об остановке события сервера
-					this->_log->print("Событие сервера было остановлено", log_t::flag_t::INFO);
+					this->_log->print("Server destroyed", log_t::flag_t::INFO);
 				break;
 			}
 		}
@@ -107,7 +107,7 @@ class Executor {
 			// Устананавливаем опции события
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE))
 				// Выводим сообщение об успешной установке опций события
-				cout << " Выполнено подключение: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
+				cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 		}
 		/**
 		 * @brief Метод обработки событий готовности сервера к работе
@@ -175,9 +175,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
-		cout << " Успешно установлены опции события!" << endl;
+		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
-	else cout << " Ошибка установки опций события!" << endl;
+	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем идентификатор события сервера
 	server.setEventId(eid);
 	// Устанавливаем порт и хост сервера
