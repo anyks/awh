@@ -658,6 +658,8 @@ if (${CMAKE_BUILD_SAMPLES})
 
     # Устанавливаем имя приложения работы с SOCKS5 клиентом
     SET(CLIENT_APP_SOCKS5_NAME client-socks5)
+    # Устанавливаем имя приложения работы с SOCKS5 клиентом для UDP
+    SET(CLIENT_APP_SOCKS5-UDP_NAME client-socks5-udp)
     # Устанавливаем имя приложения работы с SOCKS5 сервером
     # SET(SERVER_APP_SOCKS5_NAME server-socks5)
     # Указываем что нужно собрать приложение работы с SOCKS5 клиентом и сервером
@@ -1051,6 +1053,8 @@ if (${CMAKE_BUILD_SAMPLES})
         message(STATUS "Build sample SOCKS5: Yes\n")
         # Выполняем создание приложения работы с SOCKS5 клиентом
         add_sample(${CLIENT_APP_SOCKS5_NAME} sample/client/socks5.cpp client)
+        # Выполняем создание приложения работы с SOCKS5 клиентом для UDP
+        add_sample(${CLIENT_APP_SOCKS5-UDP_NAME} sample/client/socks5-udp.cpp client)
         # Выполняем создание приложения работы с SOCKS5 сервером
         # add_sample(${SERVER_APP_SOCKS5_NAME} sample/server/socks5.cpp server)
     # Если не нужно собирать семплы для работы с SOCKS5
@@ -1772,6 +1776,14 @@ if (CMAKE_SHARED_BUILD_LIB)
             # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом
             target_link_libraries(
                 ${CLIENT_APP_SOCKS5_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом для UDP
+            target_link_libraries(
+                ${CLIENT_APP_SOCKS5-UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
@@ -2641,6 +2653,15 @@ else (CMAKE_SHARED_BUILD_LIB)
             # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом
             target_link_libraries(
                 ${CLIENT_APP_SOCKS5_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+
+            # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом для UDP
+            target_link_libraries(
+                ${CLIENT_APP_SOCKS5-UDP_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
@@ -3531,6 +3552,13 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
 
+                # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом для UDP
+                add_custom_command(TARGET "${CLIENT_APP_SOCKS5-UDP_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SOCKS5-UDP_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${CLIENT_APP_SOCKS5-UDP_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+
                 # Выполняем сборку приложения работы с юнитом SOCKS5 сервером
                 # add_custom_command(TARGET "${SERVER_APP_SOCKS5_NAME}" POST_BUILD
                 #     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_SOCKS5_NAME}>" "${entitlements_file}"
@@ -4086,6 +4114,8 @@ if (${CMAKE_BUILD_SAMPLES})
             if (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
                 # Выполняем анализ приложения работы с юнитом SOCKS5 клиентом
                 pvs_studio_add_target(TARGET ${CLIENT_APP_SOCKS5_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_SOCKS5_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения работы с юнитом SOCKS5 клиентом для UDP
+                pvs_studio_add_target(TARGET ${CLIENT_APP_SOCKS5-UDP_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${CLIENT_APP_SOCKS5-UDP_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
                 # Выполняем анализ приложения работы с юнитом SOCKS5 сервером
                 # pvs_studio_add_target(TARGET ${SERVER_APP_SOCKS5_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${SERVER_APP_SOCKS5_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
@@ -4505,6 +4535,8 @@ if (${CMAKE_BUILD_SAMPLES})
     if (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
         # Устанавливаем приложение работы с юнитом SOCKS5 клиентом
         install(TARGETS ${CLIENT_APP_SOCKS5_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с юнитом SOCKS5 клиентом для UDP
+        install(TARGETS ${CLIENT_APP_SOCKS5-UDP_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
         # Устанавливаем приложение работы с юнитом SOCKS5 сервером
         # install(TARGETS ${SERVER_APP_SOCKS5_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})

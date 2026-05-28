@@ -566,6 +566,8 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
 										// Устанавливаем команду для UDP протокола
 										this->_ctx.command = proto::client_socks5_t::command_t::UDP;
+										// Получаем порт клиента для подключения, работающего через прокси
+										uint16_t port = this->_client->getInternalPort(eid);
 										/**
 										 * Определяем тип данных сесии клиента, работающего через прокси
 										 */
@@ -576,8 +578,15 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 												this->_ctx.host = make_unique <net::attr_net_t> ();
 												// Устанавливаем тип адреса события
 												this->_ctx.host->type = net::type_t::IPV4;
-												// Устанавливаем IP-адрес хоста для подключения
+												// Устанавливаем внутренний IP-адрес клиента
 												this->_client->getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip);
+												// Если адрес клиента установлен а порт не установлен
+												if((awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address > 0) && (port == 0)){
+													// Получаем внутренний порт socks5-клиента
+													port = this->_client->getInternalPort(this->_eid);
+													// Устанавливаем внутренний порт клиента
+													this->_client->setInternalPort(eid, port);
+												}
 											} break;
 											// Если тип данных соответствует IPv6
 											case static_cast <uint8_t> (net::type_t::IPV6): {
@@ -585,12 +594,22 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 												this->_ctx.host = make_unique <net::attr_net_t> ();
 												// Устанавливаем тип адреса события
 												this->_ctx.host->type = net::type_t::IPV6;
-												// Устанавливаем IP-адрес хоста для подключения
+												// Устанавливаем внутренний IP-адрес клиента
 												this->_client->getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip);
+												// Если адрес клиента установлен а порт не установлен
+												if((::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address[0], (uint8_t[16]){0}, 16) != 0) && (port == 0)){
+													// Получаем внутренний порт socks5-клиента
+													port = this->_client->getInternalPort(this->_eid);
+													// Устанавливаем внутренний порт клиента
+													this->_client->setInternalPort(eid, port);
+												}
 											} break;
 										}
-										// Устанавливаем порт хоста для подключения
-										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = this->_client->getPort(eid);
+
+										cout << "Client " << eid << " is using UDP protocol with internal port " << port << endl;
+
+										// Устанавливаем внутренний порт клиента
+										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
 									} break;
 									// Если протокол соответствует TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP): {
@@ -1157,13 +1176,13 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Failed to parse data for UDP packet", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+										this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Выводим сообщение об ошибке
-										this->_log->print("Failed to parse data for UDP packet", log_t::flag_t::WARNING);
+										this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
 									#endif
 								}
 							}
@@ -1363,13 +1382,13 @@ size_t awh::Socks5::send(const void * buffer, const size_t size) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to parse data for UDP packet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("Failed to parse data for UDP packet", log_t::flag_t::WARNING);
+							this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
 						#endif
 					}
 				} break;
@@ -1611,13 +1630,13 @@ size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to parse data for UDP packet", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+						this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Failed to parse data for UDP packet", log_t::flag_t::WARNING);
+						this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
 					#endif
 				}
 			// Если инициатор запроса не найден для переданного идентификатора события клиента

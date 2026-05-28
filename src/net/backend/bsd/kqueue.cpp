@@ -1281,7 +1281,7 @@ namespace io {
 		// Обратные вызовы события
 		client_callbacks_t callbacks;
 		// Источник сетевых адресов
-		unique_ptr <net::addr_t> source;
+		unique_ptr <net::attr_t> source;
 		// Целевые параметры подключения
 		unique_ptr <net::attr_t> target;
 		/**
@@ -24260,17 +24260,17 @@ namespace io {
 								// Устанавливаем IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 								// Устанавливаем полученный IP-адрес во временный объект
-								awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+								awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 								// Выполняем извлечение сетевых параметров
-								eth->addr.fillSource(event::node_t::PEER, source);
+								eth->addr.fillSource(event::node_t::PEER, src);
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
 									// Если MAC-адрес успешно получен
-									if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
-										const_cast <net_addr_t *> (addr)->source(source.mac.get());
+										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
 										string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 										// Если адрес находится в чёрном списке
@@ -24420,7 +24420,7 @@ namespace io {
 									}
 								}
 								// Копируем MAC-адрес из временного объекта
-								peer->mac = ::move(source.mac);
+								peer->mac = ::move(src.mac);
 								/**
 								 * Если операционной системой является FreeBSD
 								 */
@@ -24446,17 +24446,17 @@ namespace io {
 								// Устанавливаем IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 								// Устанавливаем полученный IP-адрес во временный объект
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 								// Выполняем извлечение сетевых параметров
-								eth->addr.fillSource(event::node_t::PEER, source);
+								eth->addr.fillSource(event::node_t::PEER, src);
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
 									// Если MAC-адрес успешно получен
-									if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
-										const_cast <net_addr_t *> (addr)->source(source.mac.get());
+										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
 										string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 										// Если адрес находится в чёрном списке
@@ -24531,7 +24531,7 @@ namespace io {
 										}
 									}
 									// Устанавливаем полученный IP-адрес
-									const_cast <net_addr_t *> (addr)->source(source.ip.get(), net_addr_t::endian_t::LITTLE);
+									const_cast <net_addr_t *> (addr)->source(src.ip.get(), net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
 									string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 									// Если адрес находится в чёрном списке
@@ -24606,7 +24606,7 @@ namespace io {
 									}
 								}
 								// Копируем MAC-адрес из временного объекта
-								peer->mac = ::move(source.mac);
+								peer->mac = ::move(src.mac);
 								/**
 								 * Если операционной системой является FreeBSD
 								 */
@@ -25785,23 +25785,23 @@ namespace io {
 						// Устанавливаем IP-адрес
 						awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 						// Временный объект для извлечения сетевого интерфейса
-						net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+						net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 						// Устанавливаем полученный IP-адрес во временный объект
-						awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+						awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 						// Выполняем извлечение сетевых параметров
-						eth->addr.fillSource(event::node_t::PEER, source);
+						eth->addr.fillSource(event::node_t::PEER, src);
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Устанавливаем полученный IP-адрес во временный объект
-							awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+							awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
 							// Выполняем извлечение сетевых параметров
-							eth->addr.fillSource(event::node_t::PEER, source);
+							eth->addr.fillSource(event::node_t::PEER, src);
 							// Если MAC-адрес успешно получен
-							if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
-								const_cast <net_addr_t *> (addr)->source(source.mac.get());
+								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
 								string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 								// Если адрес находится в чёрном списке
@@ -25935,7 +25935,7 @@ namespace io {
 							}
 						}
 						// Копируем MAC-адрес из временного объекта
-						origin->mac = ::move(source.mac);
+						origin->mac = ::move(src.mac);
 					} break;
 					// Для семейства IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -25952,17 +25952,17 @@ namespace io {
 						// Устанавливаем IP-адрес
 						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 						// Временный объект для извлечения сетевого интерфейса
-						net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+						net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 						// Устанавливаем полученный IP-адрес во временный объект
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr, 16);
 						// Выполняем извлечение сетевых параметров
-						eth->addr.fillSource(event::node_t::PEER, source);
+						eth->addr.fillSource(event::node_t::PEER, src);
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
 							// Если MAC-адрес успешно получен
-							if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
-								const_cast <net_addr_t *> (addr)->source(source.mac.get());
+								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
 								string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 								// Если адрес находится в чёрном списке
@@ -26029,7 +26029,7 @@ namespace io {
 								}
 							}
 							// Устанавливаем полученный IP-адрес
-							const_cast <net_addr_t *> (addr)->source(source.ip.get(), net_addr_t::endian_t::LITTLE);
+							const_cast <net_addr_t *> (addr)->source(src.ip.get(), net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
 							string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 							// Если адрес находится в чёрном списке
@@ -26096,7 +26096,7 @@ namespace io {
 							}
 						}
 						// Копируем MAC-адрес из временного объекта
-						origin->mac = ::move(source.mac);
+						origin->mac = ::move(src.mac);
 					} break;
 				}
 				// Извлекаем параметры таймаутов для нового подключения
@@ -30972,10 +30972,12 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
 												::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
+												// Получаем объект источника сетевого адреса
+												net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 												// Если источник сетевого адреса установлен
-												if(client->source != nullptr)
+												if(source != nullptr)
 													// Устанавливаем адрес для локального подключения
-													::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
+													::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
 												else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
 												// Создаём объект события для Kqueue
@@ -31048,12 +31050,14 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 												::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
 												// Устанавливаем адрес для удаленного подключения целевой машины
 												::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
+												// Получаем объект источника сетевого адреса
+												net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 												// Если источник сетевого адреса установлен
-												if(client->source != nullptr)
+												if(source != nullptr)
 													// Устанавливаем адрес IPv6 для клиента
-													::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
+													::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 												// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-												else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
+												else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 												// Создаём объект события для Kqueue
 												struct kevent event{};
 												// Устанавливаем событие на чтение но отключаем его
@@ -31489,14 +31493,21 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_len = client->endpoint.size;
 														// Устанавливаем семейство IP-адресов у клиента
 														::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
-														// Устанавливаем произвольный порт для локального подключения
-														::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
+														// Получаем объект источника сетевого адреса
+														net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 														// Если источник сетевого адреса установлен
-														if(client->source != nullptr)
+														if(source != nullptr){
+															// Устанавливаем произвольный порт для локального подключения
+															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
 															// Устанавливаем адрес для локального подключения
-															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
-														// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-														else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+														// Если источник сетевого адреса не установлен
+														} else {
+															// Устанавливаем произвольный порт для локального подключения
+															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
+															// Устанавливаем адрес по умолчанию
+															::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+														}
 														// Получаем объект целевой машины
 														net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 														// Устанавливаем семейство IP-адресов у сервера
@@ -31716,16 +31727,23 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 																		// Устанавливаем семейство IP-адресов у сервера
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
-																		// Устанавливаем произвольный порт для локального подключения у клиента
-																		::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
 																		// Устанавливаем порт для локального подключения целевой машины
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(target->port);
+																		// Получаем объект источника сетевого адреса
+																		net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																		// Если источник сетевого адреса установлен
-																		if(client->source != nullptr)
-																			// Устанавливаем адресацию источника исходящего запроса
-																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
-																		// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-																		else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+																		if(source != nullptr){
+																			// Устанавливаем произвольный порт для локального подключения
+																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
+																			// Устанавливаем адрес для локального подключения
+																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+																		// Если источник сетевого адреса не установлен
+																		} else {
+																			// Устанавливаем произвольный порт для локального подключения
+																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
+																			// Устанавливаем адрес по умолчанию
+																			::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+																		}
 																		// Устанавливаем адрес для удаленного подключения
 																		::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (target->ip.get())->address;
 																		// Обнуляем серверную структуру
@@ -31832,16 +31850,23 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_family = AF_INET;
 																// Устанавливаем семейство IP-адресов у сервера
 																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_family = AF_INET;
-																// Устанавливаем произвольный порт для локального подключения у клиента
-																::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
 																// Устанавливаем порт для локального подключения целевой машины
 																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_port = htons(0);
+																// Получаем объект источника сетевого адреса
+																net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																// Если источник сетевого адреса установлен
-																if(client->source != nullptr)
-																	// Устанавливаем адресацию источника исходящего запроса
-																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
-																// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-																else ::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+																if(source != nullptr){
+																	// Устанавливаем произвольный порт для локального подключения
+																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(source->port);
+																	// Устанавливаем адрес для локального подключения
+																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (source->ip.get())->address;
+																// Если источник сетевого адреса не установлен
+																} else {
+																	// Устанавливаем произвольный порт для локального подключения
+																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_port = htons(0);
+																	// Устанавливаем адрес по умолчанию
+																	::trust_cast <struct sockaddr_in> (client->endpoint.client).sin_addr.s_addr = 0;
+																}
 																// Устанавливаем адрес для удаленного подключения целевой машины
 																::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address;
 																// Обнуляем серверную структуру
@@ -32045,14 +32070,21 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_len = client->endpoint.size;
 														// Устанавливаем семейство IP-адресов у клиента
 														::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
-														// Устанавливаем произвольный порт для локального подключения
-														::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
+														// Получаем объект источника сетевого адреса
+														net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 														// Если источник сетевого адреса установлен
-														if(client->source != nullptr)
+														if(source != nullptr){
+															// Устанавливаем произвольный порт для локального подключения
+															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 															// Устанавливаем адрес IPv6 для клиента
-															::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
-														// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-														else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
+															::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+														// Если источник сетевого адреса не установлен
+														} else {
+															// Устанавливаем произвольный порт для локального подключения
+															::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
+															// Устанавливаем адрес по умолчанию
+															::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+														}
 														// Получаем объект целевой машины
 														net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 														// Устанавливаем семейство IP-адресов у сервера
@@ -32270,16 +32302,23 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_family = AF_INET6;
 																		// Устанавливаем семейство IP-адресов у сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_family = AF_INET6;
-																		// Устанавливаем произвольный порт для локального подключения
-																		::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
 																		// Устанавливаем порт для локального подключения удаленного сервера
 																		::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(target->port);
+																		// Получаем объект источника сетевого адреса
+																		net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																		// Если источник сетевого адреса установлен
-																		if(client->source != nullptr)
+																		if(source != nullptr){
+																			// Устанавливаем произвольный порт для локального подключения
+																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(source->port);
 																			// Устанавливаем адрес IPv6 для клиента
-																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
-																		// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-																		else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
+																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
+																		// Если источник сетевого адреса не установлен
+																		} else {
+																			// Устанавливаем произвольный порт для локального подключения
+																			::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
+																			// Устанавливаем адрес по умолчанию
+																			::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
+																		}
 																		// Устанавливаем адрес для удаленного подключения целевой машины
 																		::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (target->ip.get())->address[0], 16);
 																		// Определяем, является ли адрес клиента адресом обратной петли (::1)
@@ -32388,12 +32427,14 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_port = htons(0);
 																// Устанавливаем порт для локального подключения удаленного сервера
 																::trust_cast <struct sockaddr_in6> (client->endpoint.server).sin6_port = htons(0);
+																// Получаем объект источника сетевого адреса
+																net::attr_net_t * source = awh_cast <net::attr_net_t *> (client->source.get());
 																// Если источник сетевого адреса установлен
-																if(client->source != nullptr)
+																if(source != nullptr)
 																	// Устанавливаем адрес IPv6 для клиента
-																	::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
+																	::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (source->ip.get())->address[0], 16);
 																// Если источник сетевого адреса не установлен, устанавливаем адрес по умолчанию
-																else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr, &in6addr_any, 16);
+																else ::memcpy(&::trust_cast <struct sockaddr_in6> (client->endpoint.client).sin6_addr.s6_addr, &in6addr_any, 16);
 																// Получаем объект целевой машины
 																net::attr_net_t * target = awh_cast <net::attr_net_t *> (client->target.get());
 																// Устанавливаем адрес для удаленного подключения целевой машины
@@ -33857,24 +33898,24 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 						/**
 						 * Определяем тип адреса
 						 */
-						switch(client->source->size){
+						switch(static_cast <uint8_t> (client->source->type)){
 							// Если адрес является IPv4
-							case 4: {
+							case static_cast <uint8_t> (net::type_t::IPV4): {
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(client->source.get(), source);
+								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
 								// Возвращаем название сетевого интерфейса
-								return source.iface;
+								return src.iface;
 							}
 							// Если адрес является IPv6
-							case 16: {
+							case static_cast <uint8_t> (net::type_t::IPV6): {
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(client->source.get(), source);
+								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
 								// Возвращаем название сетевого интерфейса
-								return source.iface;
+								return src.iface;
 							}
 						}
 					}
@@ -33890,7 +33931,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
@@ -33912,11 +33953,11 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(network.get(), source);
+									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.addr.fillSource(host->ip.get(), source);
+								} else this->_eth.addr.fillSource(host->ip.get(), src);
 								// Возвращаем название сетевого интерфейса
-								return source.iface;
+								return src.iface;
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -33950,7 +33991,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
@@ -33972,11 +34013,11 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(network.get(), source);
+									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.addr.fillSource(host->ip.get(), source);
+								} else this->_eth.addr.fillSource(host->ip.get(), src);
 								// Возвращаем название сетевого интерфейса
-								return source.iface;
+								return src.iface;
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -34076,17 +34117,24 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
+							src.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.addr.fillSource(source);
+							this->_eth.addr.fillSource(src.ip.get(), src);
 							// Если IP-адрес успешно получен
-							if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+							if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 								// Устанавливаем тип адреса
 								client->state.address = event::address_t::IPV4;
+								// Если объект источника сетевого адреса не инициализирован
+								if(client->source == nullptr){
+									// Выполняем инициализацию объекта источника сетевого адреса
+									client->source = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса в источник сетевого адреса для IPv4
+									client->source->type = net::type_t::IPV4;
+								}
 								// Устанавливаем IP-адрес в источник сетевого адреса
-								client->source = ::move(source.ip);
+								awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -34094,7 +34142,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -34120,17 +34168,24 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
+							src.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.addr.fillSource(source);
+							this->_eth.addr.fillSource(src);
 							// Если IP-адрес успешно получен
-							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 								// Устанавливаем тип адреса
 								client->state.address = event::address_t::IPV6;
+								// Если объект источника сетевого адреса не инициализирован
+								if(client->source == nullptr){
+									// Выполняем инициализацию объекта источника сетевого адреса
+									client->source = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса в источник сетевого адреса для IPv6
+									client->source->type = net::type_t::IPV6;
+								}
 								// Устанавливаем IP-адрес в источник сетевого адреса
-								client->source = ::move(source.ip);
+								awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 							// Если IP-адрес не получен
 							} else {
 								// Если установлена функция обратного вызова
@@ -34138,7 +34193,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									client->callbacks.status(client->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
 								// Если установлена функция обратного вызова
 								if(client->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -34174,17 +34229,17 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
+							src.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.addr.fillSource(source);
+							this->_eth.addr.fillSource(src);
 							// Если IP-адрес успешно получен
-							if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+							if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 								// Устанавливаем тип адреса
 								server->state.address = event::address_t::IPV4;
 								// Устанавливаем IP-адрес в хост сервера
-								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
@@ -34196,7 +34251,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -34222,17 +34277,17 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							source.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
+							src.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.addr.fillSource(source);
+							this->_eth.addr.fillSource(src);
 							// Если IP-адрес успешно получен
-							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 								// Устанавливаем тип адреса
 								server->state.address = event::address_t::IPV6;
 								// Устанавливаем IP-адрес в хост сервера
-								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+								awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 								// Если событие является мультикастовым
 								if(server->state.delivery == event::delivery_mode_t::MULTICAST)
 									// Устанавливаем интерфейс для мультикастовой передачи
@@ -34244,7 +34299,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									// Вызываем функцию обратного вызова об ошибке отказа
 									server->callbacks.status(server->id, event::status_t::FAILURE);
 								// Устанавливаем текст ошибки
-								const string error = this->_fmk->format("Network interface \"%s\" is not found", source.iface.c_str());
+								const string error = this->_fmk->format("Network interface \"%s\" is not found", src.iface.c_str());
 								// Если установлена функция обратного вызова
 								if(server->callbacks.error != nullptr)
 									// Вызываем функцию обратного вызова ошибки события
@@ -34376,7 +34431,36 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 							 */
 							switch(static_cast <uint8_t> (server->state.family)){
 								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4):
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									/**
+									 * Определяем тип сокета
+									 */
+									switch(static_cast <uint8_t> (server->state.type)){
+										/**
+										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 */
+										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
+											// Если событие принадлежит к типу SEQPACKET
+											case static_cast <uint8_t> (event::type_t::SEQPACKET):
+										#endif
+										// Если событие принадлежит к типу DATAGRAM
+										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
+											// Объект структуры адреса IPv4
+											struct sockaddr_in addr{0};
+											// Получаем размер структуры адреса IPv4
+											socklen_t length = sizeof(addr);
+											// Извлекаем внутренний порт из сокета клиента
+											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+												// Если внутренний порт предположительно подготовлен
+												if(addr.sin_port > 0)
+													// Возвращаем результат работы функции
+													return ntohs(addr.sin_port);
+											}
+										} break;
+									}
+									// Возвращаем результат работы функции
+									return awh_cast <net::attr_net_t *> (server->host.get())->port;
+								}
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
 									/**
@@ -34392,10 +34476,17 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 										#endif
 										// Если событие принадлежит к типу DATAGRAM
 										case static_cast <uint8_t> (event::type_t::DATAGRAM): {
-											// Если подключение к серверу предположительно подготовлено
-											if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0)
-												// Возвращаем результат работы функции
-												return ntohs(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port);
+											// Объект структуры адреса IPv6
+											struct sockaddr_in6 addr{0};
+											// Получаем размер структуры адреса IPv6
+											socklen_t length = sizeof(addr);
+											// Извлекаем внутренний порт из сокета клиента
+											if((server->fd != net::invalid_socket_t) && (::getsockname(server->fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+												// Если внутренний порт предположительно подготовлен
+												if(addr.sin6_port > 0)
+													// Возвращаем результат работы функции
+													return ntohs(addr.sin6_port);
+											}
 										} break;
 									}
 									// Возвращаем результат работы функции
@@ -34511,7 +34602,7 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 									} break;
 								}
 							}
-							// Получаем объект хоста клиента
+							// Устанавливаем порт клиента
 							awh_cast <net::attr_net_t *> (client->target.get())->port = port;
 							// Возвращаем результат работы функции
 							return true;
@@ -34544,7 +34635,7 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 									} break;
 								}
 							}
-							// Устанавливаем порт события
+							// Устанавливаем порт сервера
 							awh_cast <net::attr_net_t *> (server->host.get())->port = port;
 							// Возвращаем результат работы функции
 							return true;
@@ -34565,6 +34656,274 @@ bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcep
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("Port cannot be set for events that are not network related", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения внутреннего порта события
+ *
+ * @param id идентификатор события
+ * @return   внутренний порт события
+ */
+uint16_t awh::engine::IO::getInternalPort(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем семейство адресов
+			 */
+			switch(static_cast <uint8_t> (i->second->state.family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+							// Получаем объект посредника
+							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+							// Если идентификатор связанного события установлен
+							if(mediator->dest != 0)
+								// Извлекаем внутренний порт связанного события
+								return this->getInternalPort(mediator->dest);
+						} break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем объект клиента
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+							// Если объект внутреннего адреса клиента не инициализирован
+							if(client->source == nullptr)
+								// Прерываем выполнение
+								break;
+							/**
+							 * Определяем семейство адресов
+							 */
+							switch(static_cast <uint8_t> (client->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Объект структуры адреса IPv4
+									struct sockaddr_in addr{0};
+									// Получаем размер структуры адреса IPv4
+									socklen_t length = sizeof(addr);
+									// Извлекаем внутренний порт из сокета клиента
+									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+										// Если внутренний порт предположительно подготовлен
+										if(addr.sin_port > 0)
+											// Возвращаем результат работы функции
+											return ntohs(addr.sin_port);
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Объект структуры адреса IPv6
+									struct sockaddr_in6 addr{0};
+									// Получаем размер структуры адреса IPv6
+									socklen_t length = sizeof(addr);
+									// Извлекаем внутренний порт из сокета клиента
+									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+										// Если внутренний порт предположительно подготовлен
+										if(addr.sin6_port > 0)
+											// Возвращаем результат работы функции
+											return ntohs(addr.sin6_port);
+									}
+								} break;
+							}
+							// Возвращаем результат работы функции
+							return awh_cast <net::attr_net_t *> (client->source.get())->port;
+						}
+						// Если это какой-либо другой узел, связанный с сетью
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Unable to obtain an internal port for this network node", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Unable to obtain an internal port for this network node", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Для остальных семейств сокетов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Internal port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Internal port cannot be retrieved for events that are not network related", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки внутреннего порта события
+ *
+ * @param id   идентификатор события
+ * @param port внутренний порт события
+ * @return     результат выполнения установки
+ */
+bool awh::engine::IO::setInternalPort(const event::id_t id, const uint16_t port) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем семейство адресов
+			 */
+			switch(static_cast <uint8_t> (i->second->state.family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+							// Получаем объект посредника
+							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+							// Если идентификатор связанного события установлен
+							if(mediator->dest != 0)
+								// Устанавливаем внутренний порт связанного события рекурсивно
+								return this->setInternalPort(mediator->dest, port);
+						} break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем объект адреса удалённого узла
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+							// Если объект внутреннего адреса клиента не инициализирован
+							if(client->source == nullptr){
+								// Создаём новый объект внутреннего адреса клиента
+								client->source = make_unique <net::attr_net_t> ();
+								/**
+								 * Определяем семейство адресов
+								 */
+								switch(static_cast <uint8_t> (client->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Устанавливаем тип IP-пакета как IPv4
+										client->source->type = net::type_t::IPV4;
+										// Создаём новый объект адреса клиента IPv4
+										awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+									} break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Устанавливаем тип IP-пакета как IPv6
+										client->source->type = net::type_t::IPV6;
+										// Создаём новый объект адреса клиента IPv6
+										awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+									} break;
+								}
+							}
+							// Устанавливаем внутренний порт клиента
+							awh_cast <net::attr_net_t *> (client->source.get())->port = port;
+							// Возвращаем результат работы функции
+							return true;
+						}
+						// Если это какой-либо другой узел, связанный с сетью
+						default: {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Failed to set the internal port for this network node", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Failed to set the internal port for this network node", log_t::flag_t::WARNING);
+							#endif
+						}
+					}
+				} break;
+				// Для остальных семейств сокетов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Internal port cannot be set for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Internal port cannot be set for events that are not network related", log_t::flag_t::WARNING);
 					#endif
 				}
 			}
@@ -37088,36 +37447,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 							}
 						}
-					// Если типы адресов не соответствуют
-					} else {
-						// Получаем объект файловой системы
-						::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							fs->callbacks.status(fs->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Requested filesystem address does not match current address";
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
 					}
 				} break;
 				// Если тип адреса принадлежит к MAC-адресам
@@ -37145,15 +37474,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Если IP-адрес установлен и соответствует размеру IPv4
 									if(remote->ip->size == 4){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(peer->state.node, source);
+										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -37222,15 +37551,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Если IP-адрес установлен и соответствует размеру IPv6
 									if(remote->ip->size == 16){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(peer->state.node, source);
+										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -37342,15 +37671,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Если IP-адрес установлен и соответствует размеру IPv4
 									if(remote->ip->size == 4){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(origin->state.node, source);
+										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -37419,15 +37748,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Если IP-адрес установлен и соответствует размеру IPv6
 									if(remote->ip->size == 16){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(origin->state.node, source);
+										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -37544,17 +37873,17 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if((client->source != nullptr) && (client->source->size == 4)){
+									if((client->source != nullptr) && (client->source->type == net::type_t::IPV4)){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -37619,17 +37948,17 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if((client->source != nullptr) && (client->source->size == 16)){
+									if((client->source != nullptr) && (client->source->type == net::type_t::IPV6)){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -37752,15 +38081,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											// Если подключение к серверу предположительно подготовлено
 											if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+												awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(event::node_t::PEER, source);
+												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
-													this->_addr.source(source.mac.get());
+													this->_addr.source(src.mac.get());
 													// Выводим результат работы функции
 													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
@@ -37800,15 +38129,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Если IP-адрес установлен и соответствует размеру IPv4
 									if(host->ip->size == 4){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -37888,15 +38217,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											// Если подключение к серверу предположительно подготовлено
 											if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(event::node_t::PEER, source);
+												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
-													this->_addr.source(source.mac.get());
+													this->_addr.source(src.mac.get());
 													// Выводим результат работы функции
 													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
@@ -37936,15 +38265,15 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Если IP-адрес установлен и соответствует размеру IPv6
 									if(host->ip->size == 16){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
-											this->_addr.source(source.mac.get());
+											this->_addr.source(src.mac.get());
 											// Выводим результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
@@ -38092,59 +38421,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address;
 							}
 						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Функция обратного вызова ошибки события
-						 */
-						engine::callback::error_t callback = nullptr;
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
-							break;
-						}
-						// Устанавливаем текст ошибки
-						const string error = "Requested UDS-address does not match current address";
-						// Если установлена функция обратного вызова
-						if(callback != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
 					}
 				} break;
 				// Если тип адреса принадлежит к IPv4-адресам
@@ -38216,7 +38492,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv4-адрес
-								this->_addr.source(client->source.get(), net_addr_t::endian_t::LITTLE);
+								this->_addr.source(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
 								return static_cast <string> (this->_addr);
 							}
@@ -38263,69 +38539,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									}
 								}
 							} break;
-						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Функция обратного вызова ошибки события
-						 */
-						engine::callback::error_t callback = nullptr;
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является туннелем
-							case static_cast <uint8_t> (event::node_t::TUNNEL):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::tun_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является посредником
-							case static_cast <uint8_t> (event::node_t::MEDIATOR):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
-							break;
-						}
-						// Устанавливаем текст ошибки
-						const string error = "Requested IP-address does not match current IPv4-address";
-						// Если установлена функция обратного вызова
-						if(callback != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
 						}
 					}
 				} break;
@@ -38398,7 +38611,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									// Прерываем выполнение
 									break;
 								// Устанавливаем полученный IPv6-адрес
-								this->_addr.source(client->source.get(), net_addr_t::endian_t::LITTLE);
+								this->_addr.source(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), net_addr_t::endian_t::LITTLE);
 								// Выводим результат работы функции
 								return static_cast <string> (this->_addr);
 							}
@@ -38449,69 +38662,6 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									}
 								}
 							} break;
-						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Функция обратного вызова ошибки события
-						 */
-						engine::callback::error_t callback = nullptr;
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является туннелем
-							case static_cast <uint8_t> (event::node_t::TUNNEL):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::tun_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является посредником
-							case static_cast <uint8_t> (event::node_t::MEDIATOR):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
-							break;
-						}
-						// Устанавливаем текст ошибки
-						const string error = "Requested IP-address does not match current IPv6-address";
-						// Если установлена функция обратного вызова
-						if(callback != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
 						}
 					}
 				} break;
@@ -38845,13 +38995,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Для семейства IPv4
 												case static_cast <uint8_t> (event::family_t::IPV4): {
 													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													source.mac = ::move(this->_addr.source());
+													src.mac = ::move(this->_addr.source());
 													// Выполняем извлечение сетевых параметров
-													this->_eth.addr.fillSource(client->state.node, source);
+													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
-													if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+													if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 														// Устанавливаем тип адреса
 														client->state.address = event::address_t::IPV4;
 														// Если объект адреса клиента не инициализирован
@@ -38863,8 +39013,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															// Создаём новый объект адреса клиента IPv4
 															awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 														}
+														// Если объект источника адреса клиента не инициализирован
+														if(client->source == nullptr){
+															// Создаём новый объект источника адреса клиента
+															client->source = make_unique <net::attr_net_t> ();
+															// Устанавливаем тип IP-пакета как IPv4
+															client->source->type = net::type_t::IPV4;
+														}
 														// Устанавливаем IP-адрес в источник сетевого адреса клиента
-														client->source = ::move(source.ip);
+														awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -38898,13 +39055,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Для семейства IPv6
 												case static_cast <uint8_t> (event::family_t::IPV6): {
 													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													source.mac = ::move(this->_addr.source());
+													src.mac = ::move(this->_addr.source());
 													// Выполняем извлечение сетевых параметров
-													this->_eth.addr.fillSource(client->state.node, source);
+													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
-													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 														// Устанавливаем тип адреса
 														client->state.address = event::address_t::IPV6;
 														// Если объект адреса клиента не инициализирован
@@ -38916,8 +39073,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															// Создаём новый объект адреса клиента IPv6
 															awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 														}
+														// Если объект источника адреса клиента не инициализирован
+														if(client->source == nullptr){
+															// Создаём новый объект источника адреса клиента
+															client->source = make_unique <net::attr_net_t> ();
+															// Устанавливаем тип IP-пакета как IPv6
+															client->source->type = net::type_t::IPV6;
+														}
 														// Устанавливаем IP-адрес в источник сетевого адреса клиента
-														client->source = ::move(source.ip);
+														awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -38992,13 +39156,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Для семейства IPv4
 												case static_cast <uint8_t> (event::family_t::IPV4): {
 													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+													net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													source.mac = ::move(this->_addr.source());
+													src.mac = ::move(this->_addr.source());
 													// Выполняем извлечение сетевых параметров
-													this->_eth.addr.fillSource(server->state.node, source);
+													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
-													if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+													if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 														// Устанавливаем тип адреса
 														server->state.address = event::address_t::IPV4;
 														// Если объект адреса сервера не инициализирован
@@ -39009,11 +39173,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															server->host->type = net::type_t::IPV4;
 														}
 														// Устанавливаем IP-адрес в источник сетевого адреса сервера
-														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 														// Если событие является мультикастовым
-														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 															// Устанавливаем интерфейс для мультикастовой передачи
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -39047,13 +39211,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Для семейства IPv6
 												case static_cast <uint8_t> (event::family_t::IPV6): {
 													// Временный объект для извлечения сетевого интерфейса
-													net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+													net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 													// Устанавливаем полученный MAC-адрес во временный объект
-													source.mac = ::move(this->_addr.source());
+													src.mac = ::move(this->_addr.source());
 													// Выполняем извлечение сетевых параметров
-													this->_eth.addr.fillSource(server->state.node, source);
+													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
-													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 														// Устанавливаем тип адреса
 														server->state.address = event::address_t::IPV6;
 														// Если объект адреса сервера не инициализирован
@@ -39064,11 +39228,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															server->host->type = net::type_t::IPV6;
 														}
 														// Устанавливаем IP-адрес в источник сетевого адреса сервера
-														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+														awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 														// Если событие является мультикастовым
-														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+														if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 															// Устанавливаем интерфейс для мультикастовой передачи
-															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+															result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 													// Если IP-адрес не получен
 													} else {
 														// Если установлена функция обратного вызова
@@ -39475,22 +39639,29 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Создаём новый объект адреса клиента IPv4
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 											}
-											// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
-											client->source = make_unique <net::addr_net_ipv4_t> ();
+											// Если объект источника сетевого адреса не инициализирован
+											if(client->source == nullptr){
+												// Выполняем инициализацию объекта источника сетевого адреса
+												client->source = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип адреса в источник сетевого адреса как IPv4
+												client->source->type = net::type_t::IPV4;
+												// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
+												awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+											}
 											// Возвращаем результат работы функции
 											return result;
 										}
 										// Определяем принадлежность сетевого адреса
 										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = addr;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 											// Устанавливаем тип адреса
 											client->state.address = address;
 											// Если объект адреса клиента не инициализирован
@@ -39502,8 +39673,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Создаём новый объект адреса клиента IPv4
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 											}
+											// Если объект источника сетевого адреса не инициализирован
+											if(client->source == nullptr){
+												// Выполняем инициализацию объекта источника сетевого адреса
+												client->source = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип адреса в источник сетевого адреса как IPv4
+												client->source->type = net::type_t::IPV4;
+											}
 											// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
-											client->source = ::move(source.ip);
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -39620,14 +39798,14 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Определяем принадлежность сетевого адреса
 											const net_addr_t::own_t own = this->_addr.own();
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 											// Устанавливаем полученный IP-адрес во временный объект
-											awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
+											awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = addr;
 											// Выполняем извлечение сетевых параметров
-											this->_eth.addr.fillSource(server->state.node, source);
+											this->_eth.addr.fillSource(server->state.node, src);
 											// Если MAC-адрес успешно получен
 											if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-											   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 												// Устанавливаем тип адреса
 												server->state.address = address;
 												// Если объект адреса сервера не инициализирован
@@ -39638,11 +39816,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													server->host->type = net::type_t::IPV4;
 												}
 												// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
-												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -39921,22 +40099,29 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Создаём новый объект адреса клиента IPv6
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 											}
-											// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
-											client->source = make_unique <net::addr_net_ipv6_t> ();
+											// Если объект источника сетевого адреса не инициализирован
+											if(client->source == nullptr){
+												// Выполняем инициализацию объекта источника сетевого адреса
+												client->source = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип адреса в источник сетевого адреса как IPv6
+												client->source->type = net::type_t::IPV6;
+												// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
+												awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+											}
 											// Возвращаем результат работы функции
 											return result;
 										}
 										// Определяем принадлежность сетевого адреса
 										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
+										awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address = ::move(addr);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 											// Устанавливаем тип адреса
 											client->state.address = address;
 											// Если объект адреса клиента не инициализирован
@@ -39948,8 +40133,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Создаём новый объект адреса клиента IPv6
 												awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 											}
+											// Если объект источника сетевого адреса не инициализирован
+											if(client->source == nullptr){
+												// Выполняем инициализацию объекта источника сетевого адреса
+												client->source = make_unique <net::attr_net_t> ();
+												// Устанавливаем тип адреса в источник сетевого адреса как IPv6
+												client->source->type = net::type_t::IPV6;
+											}
 											// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
-											client->source = ::move(source.ip);
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -40066,14 +40258,14 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Определяем принадлежность сетевого адреса
 											const net_addr_t::own_t own = this->_addr.own();
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 											// Устанавливаем полученный IP-адрес во временный объект
-											awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
+											awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address = ::move(addr);
 											// Выполняем извлечение сетевых параметров
-											this->_eth.addr.fillSource(server->state.node, source);
+											this->_eth.addr.fillSource(server->state.node, src);
 											// Если MAC-адрес успешно получен
 											if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-											   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 												// Устанавливаем тип адреса
 												server->state.address = address;
 												// Если объект адреса сервера не инициализирован
@@ -40084,11 +40276,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													server->host->type = net::type_t::IPV6;
 												}
 												// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
-												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 											// Если MAC-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -40281,11 +40473,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Получаем значение IP-адреса сети
 											addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 											// Выполняем извлечение сетевых параметров
-											this->_eth.addr.fillSource(network.get(), source);
+											this->_eth.addr.fillSource(network.get(), src);
 											// Если IP-адрес успешно получен
-											if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+											if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 												// Устанавливаем тип адреса
 												client->state.address = event::address_t::IPV4;
 												// Если объект адреса клиента не инициализирован
@@ -40297,8 +40489,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Создаём новый объект адреса клиента IPv4
 													awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 												}
+												// Если объект источника сетевого адреса не инициализирован
+												if(client->source == nullptr){
+													// Выполняем инициализацию объекта источника сетевого адреса
+													client->source = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип адреса в источник сетевого адреса как IPv4
+													client->source->type = net::type_t::IPV4;
+												}
 												// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
-												client->source = ::move(source.ip);
+												awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -40381,11 +40580,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Получаем значение IP-адреса сети
 											addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 											// Выполняем извлечение сетевых параметров
-											this->_eth.addr.fillSource(network.get(), source);
+											this->_eth.addr.fillSource(network.get(), src);
 											// Если IP-адрес успешно получен
-											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 												// Устанавливаем тип адреса
 												client->state.address = event::address_t::IPV6;
 												// Если объект адреса клиента не инициализирован
@@ -40397,8 +40596,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Создаём новый объект адреса клиента IPv6
 													awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 												}
+												// Если объект источника сетевого адреса не инициализирован
+												if(client->source == nullptr){
+													// Выполняем инициализацию объекта источника сетевого адреса
+													client->source = make_unique <net::attr_net_t> ();
+													// Устанавливаем тип адреса в источник сетевого адреса как IPv6
+													client->source->type = net::type_t::IPV6;
+												}
 												// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
-												client->source = ::move(source.ip);
+												awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -40514,11 +40720,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Получаем значение IP-адреса сети
 											addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 											// Выполняем извлечение сетевых параметров
-											this->_eth.addr.fillSource(network.get(), source);
+											this->_eth.addr.fillSource(network.get(), src);
 											// Если IP-адрес успешно получен
-											if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+											if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 												// Устанавливаем тип адреса
 												server->state.address = event::address_t::IPV4;
 												// Если объект адреса сервера не инициализирован
@@ -40529,11 +40735,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													server->host->type = net::type_t::IPV4;
 												}
 												// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
-												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -40616,11 +40822,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Получаем значение IP-адреса сети
 											addr->address = this->_addr.v6(net_addr_t::endian_t::LITTLE);
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 											// Выполняем извлечение сетевых параметров
-											this->_eth.addr.fillSource(network.get(), source);
+											this->_eth.addr.fillSource(network.get(), src);
 											// Если IP-адрес успешно получен
-											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 												// Устанавливаем тип адреса
 												server->state.address = event::address_t::IPV6;
 												// Если объект адреса сервера не инициализирован
@@ -40631,11 +40837,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													server->host->type = net::type_t::IPV6;
 												}
 												// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
-												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+												awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 												// Если событие является мультикастовым
-												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+												if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 													// Устанавливаем интерфейс для мультикастовой передачи
-													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+													result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 											// Если IP-адрес не получен
 											} else {
 												// Если установлена функция обратного вызова
@@ -40819,36 +41025,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 							} break;
 						}
-					// Если типы адресов не соответствуют
-					} else {
-						// Получаем объект файловой системы
-						::io::dir_t * fs = awh_cast <::io::dir_t *> (i->second.get());
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.status != nullptr)
-							// Вызываем функцию обратного вызова об ошибке отказа
-							fs->callbacks.status(fs->id, event::status_t::FAILURE);
-						// Устанавливаем текст ошибки
-						const string error = "Requested filesystem address does not match current address";
-						// Если установлена функция обратного вызова
-						if(fs->callbacks.error != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							fs->callbacks.error(fs->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
 					}
 				} break;
 				// Если тип адреса принадлежит к MAC-адресам
@@ -40880,15 +41056,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Если IP-адрес установлен и соответствует размеру IPv4
 									if(remote->ip->size == 4){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(peer->state.node, source);
+										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -40955,15 +41131,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Если IP-адрес установлен и соответствует размеру IPv6
 									if(remote->ip->size == 16){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(peer->state.node, source);
+										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -41077,15 +41253,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Если IP-адрес установлен и соответствует размеру IPv4
 									if(remote->ip->size == 4){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(origin->state.node, source);
+										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -41152,15 +41328,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Если IP-адрес установлен и соответствует размеру IPv6
 									if(remote->ip->size == 16){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(origin->state.node, source);
+										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -41279,17 +41455,17 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Для семейства IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4): {
 									// Если IP-адрес установлен и соответствует размеру IPv4
-									if((client->source != nullptr) && (client->source->size == 4)){
+									if((client->source != nullptr) && (client->source->type == net::type_t::IPV4)){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -41352,17 +41528,17 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								// Для семейства IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6): {
 									// Если IP-адрес установлен и соответствует размеру IPv6
-									if((client->source != nullptr) && (client->source->size == 16)){
+									if((client->source != nullptr) && (client->source->type == net::type_t::IPV6)){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(client->state.node, source);
+										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -41487,15 +41663,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											// Если подключение к серверу предположительно подготовлено
 											if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
+												awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(event::node_t::PEER, source);
+												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 													// Устанавливаем полученный MAC-адрес в объект события
-													value = ::move(source.mac);
+													value = ::move(src.mac);
 												// Если MAC-адрес не получен
 												else {
 													// Если установлена функция обратного вызова
@@ -41533,15 +41709,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Если IP-адрес установлен и соответствует размеру IPv4
 									if(host->ip->size == 4){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (host->ip.get())->address;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -41619,15 +41795,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											// Если подключение к серверу предположительно подготовлено
 											if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 												// Устанавливаем полученный IP-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
+												::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(event::node_t::PEER, source);
+												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 													// Устанавливаем полученный MAC-адрес в объект события
-													value = ::move(source.mac);
+													value = ::move(src.mac);
 												// Если MAC-адрес не получен
 												else {
 													// Если установлена функция обратного вызова
@@ -41665,15 +41841,15 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Если IP-адрес установлен и соответствует размеру IPv6
 									if(host->ip->size == 16){
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (host->ip.get())->address[0], 16);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
-											value = ::move(source.mac);
+											value = ::move(src.mac);
 										// Если MAC-адрес не получен
 										else {
 											// Если установлена функция обратного вызова
@@ -41835,59 +42011,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 								awh_cast <net::addr_fs_t *> (value.get())->address = awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address;
 							} break;
 						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Функция обратного вызова ошибки события
-						 */
-						engine::callback::error_t callback = nullptr;
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
-							break;
-						}
-						// Устанавливаем текст ошибки
-						const string error = "Requested UDS-address does not match current address";
-						// Если установлена функция обратного вызова
-						if(callback != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
-						}
 					}
 				} break;
 				// Если тип адреса принадлежит к IPv4-адресам
@@ -41971,7 +42094,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Создаём новый объект IP-адреса
 									value = make_unique <net::addr_net_ipv4_t> ();
 								// Устанавливаем полученный IPv4-адрес
-								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (client->source.get())->address;
+								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address;
 							} break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -42018,69 +42141,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									} break;
 								}
 							} break;
-						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Функция обратного вызова ошибки события
-						 */
-						engine::callback::error_t callback = nullptr;
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является туннелем
-							case static_cast <uint8_t> (event::node_t::TUNNEL):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::tun_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является посредником
-							case static_cast <uint8_t> (event::node_t::MEDIATOR):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
-							break;
-						}
-						// Устанавливаем текст ошибки
-						const string error = "Requested IP-address does not match current IPv4-address";
-						// Если установлена функция обратного вызова
-						if(callback != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
 						}
 					}
 				} break;
@@ -42165,7 +42225,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									// Создаём новый объект IP-адреса
 									value = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем полученный IPv6-адрес
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (client->source.get())->address[0], 16);
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->source.get())->ip.get())->address[0], 16);
 							} break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -42212,69 +42272,6 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									} break;
 								}
 							} break;
-						}
-					// Если типы адресов не соответствуют
-					} else {
-						/**
-						 * Функция обратного вызова ошибки события
-						 */
-						engine::callback::error_t callback = nullptr;
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::peer_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является одноранговым узлом-источником
-							case static_cast <uint8_t> (event::node_t::ORIGIN):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::origin_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является туннелем
-							case static_cast <uint8_t> (event::node_t::TUNNEL):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::tun_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является посредником
-							case static_cast <uint8_t> (event::node_t::MEDIATOR):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::client_t *> (i->second.get())->callbacks.error;
-							break;
-							// Если узел является сервером
-							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Получаем функцию обратного вызова ошибки события
-								callback = awh_cast <::io::server_t *> (i->second.get())->callbacks.error;
-							break;
-						}
-						// Устанавливаем текст ошибки
-						const string error = "Requested IP-address does not match current IPv6-address";
-						// Если установлена функция обратного вызова
-						if(callback != nullptr)
-							// Вызываем функцию обратного вызова ошибки события
-							callback(i->second->id, event::error_t::INVALID_ADDRESS, error);
-						// Если функция обратного вызова для вывода события не установлена
-						else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-							#endif
 						}
 					}
 				} break;
@@ -42548,13 +42545,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Для семейства IPv4
 											case static_cast <uint8_t> (event::family_t::IPV4): {
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 												// Устанавливаем полученный MAC-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
+												::memcpy(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(client->state.node, source);
+												this->_eth.addr.fillSource(client->state.node, src);
 												// Если IP-адрес успешно получен
-												if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+												if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 													// Устанавливаем тип адреса
 													client->state.address = event::address_t::IPV4;
 													// Если объект адреса клиента не инициализирован
@@ -42566,8 +42563,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Создаём новый объект адреса клиента IPv4
 														awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 													}
-													// Устанавливаем IP-адрес в источник сетевого адреса клиента
-													client->source = ::move(source.ip);
+													// Если объект источника сетевого адреса не инициализирован
+													if(client->source == nullptr){
+														// Выполняем инициализацию объекта источника сетевого адреса
+														client->source = make_unique <net::attr_net_t> ();
+														// Устанавливаем тип адреса в источник сетевого адреса как IPv4
+														client->source->type = net::type_t::IPV4;
+													}
+													// Устанавливаем IP-адрес в источник сетевого адреса
+													awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -42601,13 +42605,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Для семейства IPv6
 											case static_cast <uint8_t> (event::family_t::IPV6): {
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 												// Устанавливаем полученный MAC-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
+												::memcpy(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(client->state.node, source);
+												this->_eth.addr.fillSource(client->state.node, src);
 												// Если IP-адрес успешно получен
-												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 													// Устанавливаем тип адреса
 													client->state.address = event::address_t::IPV6;
 													// Если объект адреса клиента не инициализирован
@@ -42619,8 +42623,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														// Создаём новый объект адреса клиента IPv6
 														awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 													}
-													// Устанавливаем IP-адрес в источник сетевого адреса клиента
-													client->source = ::move(source.ip);
+													// Если объект источника сетевого адреса не инициализирован
+													if(client->source == nullptr){
+														// Выполняем инициализацию объекта источника сетевого адреса
+														client->source = make_unique <net::attr_net_t> ();
+														// Устанавливаем тип адреса в источник сетевого адреса как IPv6
+														client->source->type = net::type_t::IPV6;
+													}
+													// Устанавливаем IP-адрес в источник сетевого адреса
+													awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -42664,13 +42675,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Для семейства IPv4
 											case static_cast <uint8_t> (event::family_t::IPV4): {
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 												// Устанавливаем полученный MAC-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
+												::memcpy(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(server->state.node, source);
+												this->_eth.addr.fillSource(server->state.node, src);
 												// Если IP-адрес успешно получен
-												if((result = (awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address > 0))){
+												if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 													// Устанавливаем тип адреса
 													server->state.address = event::address_t::IPV4;
 													// Если объект адреса сервера не инициализирован
@@ -42681,11 +42692,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														server->host->type = net::type_t::IPV4;
 													}
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
-													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 													// Если событие является мультикастовым
-													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -42719,13 +42730,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Для семейства IPv6
 											case static_cast <uint8_t> (event::family_t::IPV6): {
 												// Временный объект для извлечения сетевого интерфейса
-												net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+												net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 												// Устанавливаем полученный MAC-адрес во временный объект
-												::memcpy(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
+												::memcpy(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
 												// Выполняем извлечение сетевых параметров
-												this->_eth.addr.fillSource(server->state.node, source);
+												this->_eth.addr.fillSource(server->state.node, src);
 												// Если IP-адрес успешно получен
-												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
 													// Устанавливаем тип адреса
 													server->state.address = event::address_t::IPV6;
 													// Если объект адреса сервера не инициализирован
@@ -42736,11 +42747,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														server->host->type = net::type_t::IPV6;
 													}
 													// Устанавливаем IP-адрес в источник сетевого адреса сервера
-													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+													awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 													// Если событие является мультикастовым
-													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+													if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 														// Устанавливаем интерфейс для мультикастовой передачи
-														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+														result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 												// Если IP-адрес не получен
 												} else {
 													// Если установлена функция обратного вызова
@@ -43000,8 +43011,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Создаём новый объект адреса клиента IPv4
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										}
-										// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
-										client->source = make_unique <net::addr_net_ipv4_t> ();
+										// Если объект источника сетевого адреса не инициализирован
+										if(client->source == nullptr){
+											// Выполняем инициализацию объекта источника сетевого адреса
+											client->source = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип адреса в источник сетевого адреса как IPv4
+											client->source->type = net::type_t::IPV4;
+											// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+										}
 										// Возвращаем результат работы функции
 										return result;
 									}
@@ -43010,14 +43028,14 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									// Определяем принадлежность сетевого адреса
 									const net_addr_t::own_t own = this->_addr.own();
 									// Временный объект для извлечения сетевого интерфейса
-									net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+									net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 									// Устанавливаем полученный IP-адрес во временный объект
-									awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
+									awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = addr;
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(client->state.node, source);
+									this->_eth.addr.fillSource(client->state.node, src);
 									// Если MAC-адрес успешно получен
 									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+									   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 										// Устанавливаем тип адреса
 										client->state.address = address;
 										// Если объект адреса клиента не инициализирован
@@ -43029,8 +43047,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Создаём новый объект адреса клиента IPv4
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										}
+										// Если объект источника сетевого адреса не инициализирован
+										if(client->source == nullptr){
+											// Выполняем инициализацию объекта источника сетевого адреса
+											client->source = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип адреса в источник сетевого адреса как IPv4
+											client->source->type = net::type_t::IPV4;
+										}
 										// Устанавливаем IPv4-адрес в источник сетевого адреса клиента
-										client->source = ::move(source.ip);
+										awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 									// Если MAC-адрес не получен
 									} else {
 										// Если установлена функция обратного вызова
@@ -43118,14 +43143,14 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Определяем принадлежность сетевого адреса
 										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address = addr;
+										awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = addr;
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 											// Устанавливаем тип адреса
 											server->state.address = address;
 											// Если объект адреса сервера не инициализирован
@@ -43136,11 +43161,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												server->host->type = net::type_t::IPV4;
 											}
 											// Устанавливаем IPv4-адрес в хост сетевого адреса сервера
-											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 											// Если событие является мультикастовым
-											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -43334,8 +43359,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Создаём новый объект адреса клиента IPv6
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 										}
-										// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
-										client->source = make_unique <net::addr_net_ipv6_t> ();
+										// Если объект источника сетевого адреса не инициализирован
+										if(client->source == nullptr){
+											// Выполняем инициализацию объекта источника сетевого адреса
+											client->source = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип адреса в источник сетевого адреса как IPv6
+											client->source->type = net::type_t::IPV6;
+											// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+										}
 										// Возвращаем результат работы функции
 										return result;
 									}
@@ -43344,14 +43376,14 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									// Определяем принадлежность сетевого адреса
 									const net_addr_t::own_t own = this->_addr.own();
 									// Временный объект для извлечения сетевого интерфейса
-									net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+									net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 									// Устанавливаем полученный IP-адрес во временный объект
-									awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
+									awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address = ::move(addr);
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(client->state.node, source);
+									this->_eth.addr.fillSource(client->state.node, src);
 									// Если MAC-адрес успешно получен
 									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-									   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+									   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 										// Устанавливаем тип адреса
 										client->state.address = address;
 										// Если объект адреса клиента не инициализирован
@@ -43363,8 +43395,15 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Создаём новый объект адреса клиента IPv6
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 										}
+										// Если объект источника сетевого адреса не инициализирован
+										if(client->source == nullptr){
+											// Выполняем инициализацию объекта источника сетевого адреса
+											client->source = make_unique <net::attr_net_t> ();
+											// Устанавливаем тип адреса в источник сетевого адреса как IPv6
+											client->source->type = net::type_t::IPV6;
+										}
 										// Устанавливаем IPv6-адрес в источник сетевого адреса клиента
-										client->source = ::move(source.ip);
+										awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 									// Если MAC-адрес не получен
 									} else {
 										// Если установлена функция обратного вызова
@@ -43452,14 +43491,14 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Определяем принадлежность сетевого адреса
 										const net_addr_t::own_t own = this->_addr.own();
 										// Временный объект для извлечения сетевого интерфейса
-										net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+										net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 										// Устанавливаем полученный IP-адрес во временный объект
-										awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address = ::move(addr);
+										awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address = ::move(addr);
 										// Выполняем извлечение сетевых параметров
-										this->_eth.addr.fillSource(server->state.node, source);
+										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
 											// Устанавливаем тип адреса
 											server->state.address = address;
 											// Если объект адреса сервера не инициализирован
@@ -43470,11 +43509,11 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												server->host->type = net::type_t::IPV6;
 											}
 											// Устанавливаем IPv6-адрес в хост сетевого адреса сервера
-											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(source.ip);
+											awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(src.ip);
 											// Если событие является мультикастовым
-											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !source.iface.empty())
+											if((server->state.delivery == event::delivery_mode_t::MULTICAST) && !src.iface.empty())
 												// Устанавливаем интерфейс для мультикастовой передачи
-												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, source.iface);
+												result = this->_eth.socket.setMulticastIface(server->fd, server->state.family, src.iface);
 										// Если MAC-адрес не получен
 										} else {
 											// Если установлена функция обратного вызова
@@ -43670,24 +43709,24 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 						/**
 						 * Определяем тип адреса
 						 */
-						switch(client->source->size){
+						switch(static_cast <uint8_t> (client->source->type)){
 							// Если адрес является IPv4
-							case 4: {
+							case static_cast <uint8_t> (net::type_t::IPV4): {
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(client->source.get(), source);
+								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
 								// Возвращаем MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface);
+								return this->_eth.iface.mtu(src.iface);
 							}
 							// Если адрес является IPv6
-							case 16: {
+							case static_cast <uint8_t> (net::type_t::IPV6): {
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(client->source.get(), source);
+								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
 								// Возвращаем MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface);
+								return this->_eth.iface.mtu(src.iface);
 							}
 						}
 					}
@@ -43703,7 +43742,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
@@ -43725,11 +43764,11 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(network.get(), source);
+									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.addr.fillSource(host->ip.get(), source);
+								} else this->_eth.addr.fillSource(host->ip.get(), src);
 								// Возвращаем MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface);
+								return this->_eth.iface.mtu(src.iface);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -43763,7 +43802,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
@@ -43785,11 +43824,11 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(network.get(), source);
+									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.addr.fillSource(host->ip.get(), source);
+								} else this->_eth.addr.fillSource(host->ip.get(), src);
 								// Возвращаем MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface);
+								return this->_eth.iface.mtu(src.iface);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -43923,24 +43962,24 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 						/**
 						 * Определяем тип адреса
 						 */
-						switch(client->source->size){
+						switch(static_cast <uint8_t> (client->source->type)){
 							// Если адрес является IPv4
-							case 4: {
+							case static_cast <uint8_t> (net::type_t::IPV4): {
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(client->source.get(), source);
+								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
 								// Возвращаем результат установки MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface, mtu);
+								return this->_eth.iface.mtu(src.iface, mtu);
 							}
 							// Если адрес является IPv6
-							case 16: {
+							case static_cast <uint8_t> (net::type_t::IPV6): {
 								// Временный объект для извлечения сетевого интерфейса
-								net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+								net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 								// Выполняем извлечение сетевых параметров
-								this->_eth.addr.fillSource(client->source.get(), source);
+								this->_eth.addr.fillSource(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), src);
 								// Возвращаем результат установки MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface, mtu);
+								return this->_eth.iface.mtu(src.iface, mtu);
 							}
 						}
 					}
@@ -43956,7 +43995,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv4
@@ -43978,11 +44017,11 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(network.get(), source);
+									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.addr.fillSource(host->ip.get(), source);
+								} else this->_eth.addr.fillSource(host->ip.get(), src);
 								// Возвращаем результат установки MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface, mtu);
+								return this->_eth.iface.mtu(src.iface, mtu);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -44016,7 +44055,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
 							// Временный объект для извлечения сетевого интерфейса
-							net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Выполняем получение нужного нам атрибута подключения
 							net::attr_net_t * host = awh_cast <net::attr_net_t *> (server->host.get());
 							// Если IP-адрес установлен и соответствует размеру IPv6
@@ -44038,11 +44077,11 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									// Получаем значение IP-адреса сети в формате little-endian
 									addr->address = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 									// Выполняем извлечение сетевых параметров
-									this->_eth.addr.fillSource(network.get(), source);
+									this->_eth.addr.fillSource(network.get(), src);
 								// Выполняем извлечение сетевых параметров
-								} else this->_eth.addr.fillSource(host->ip.get(), source);
+								} else this->_eth.addr.fillSource(host->ip.get(), src);
 								// Возвращаем результат установки MTU сетевого интерфейса
-								return this->_eth.iface.mtu(source.iface, mtu);
+								return this->_eth.iface.mtu(src.iface, mtu);
 							// Если размер IP-адреса не соответствует IPv4
 							} else {
 								// Если установлена функция обратного вызова
@@ -46130,6 +46169,8 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								else {
 									// Выполняем инициализацию объекта хоста клиента
 									client->target = make_unique <net::attr_net_t> ();
+									// Выполняем инициализацию объекта IP-адреса клиента
+									client->source = make_unique <net::attr_net_t> ();
 									// Если событие принадлежит к типу STREAM
 									if(type == event::type_t::STREAM)
 										// Устанавливаем тип очереди туннеля
@@ -46142,17 +46183,25 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									switch(static_cast <uint8_t> (family)){
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4): {
-											 // Устанавливаем тип IP-пакета как IPv4
+											 // Устанавливаем тип IP-пакета как IPv4 для объекта назначения
 											client->target->type = net::type_t::IPV4;
-											// Выполняем инициализацию объекта IP-адреса клиента
+											// Устанавливаем тип IP-пакета как IPv4 для объекта источника
+											client->source->type = net::type_t::IPV4;
+											// Выполняем инициализацию объекта назначения IP-адреса клиента
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+											// Выполняем инициализацию объекта источника IP-адреса клиента
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv4_t> ();
 										} break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Устанавливаем тип IP-пакета как IPv6
+											// Устанавливаем тип IP-пакета как IPv6 для объекта назначения
 											client->target->type = net::type_t::IPV6;
-											// Выполняем инициализацию объекта IP-адреса клиента
+											// Устанавливаем тип IP-пакета как IPv6 для объекта источника
+											client->source->type = net::type_t::IPV6;
+											// Выполняем инициализацию объекта назначения IP-адреса клиента
 											awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+											// Выполняем инициализацию объекта источника IP-адреса клиента
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 										} break;
 									}
 									/**
@@ -46162,20 +46211,20 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 										// Для семейства IPv4
 										case static_cast <uint8_t> (event::family_t::IPV4): {
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv4_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.addr.fillSource(event::node_t::NONE, source);
+											this->_eth.addr.fillSource(event::node_t::NONE, src);
 											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 										} break;
 										// Для семейства IPv6
 										case static_cast <uint8_t> (event::family_t::IPV6): {
 											// Временный объект для извлечения сетевого интерфейса
-											net::src_t source(::make_unique <net::addr_net_ipv6_t> ());
+											net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 											// Выполняем извлечение сетевых параметров по умолчаинию
-											this->_eth.addr.fillSource(event::node_t::NONE, source);
+											this->_eth.addr.fillSource(event::node_t::NONE, src);
 											// Инициализируем источник сетевого адреса
-											client->source = ::move(source.ip);
+											awh_cast <net::attr_net_t *> (client->source.get())->ip = ::move(src.ip);
 										} break;
 									}
 									// Возвращаем идентификатор созданного события

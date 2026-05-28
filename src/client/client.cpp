@@ -901,6 +901,65 @@ bool awh::Client::setPort(const uint16_t port) noexcept {
 	return false;
 }
 /**
+ * @brief Метод получения внутреннего порта события
+ *
+ * @return внутренний порт события
+ */
+uint16_t awh::Client::getInternalPort() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Извлекаем внутренний порт события для клиента
+		return this->_client->getInternalPort(this->_eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки внутреннего порта события
+ *
+ * @param port внутренний порт события
+ * @return     результат выполнения установки
+ */
+bool awh::Client::setInternalPort(const uint16_t port) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Устанавливаем внутренний порт события для клиента
+		return this->_client->setInternalPort(this->_eid, port);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод получения адреса хоста целевой машины
  *
  * @return адрес хоста целевой машины

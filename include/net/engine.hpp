@@ -98,6 +98,22 @@ namespace awh {
 			virtual bool setPort(const event::id_t id, const uint16_t port) noexcept = 0;
 		public:
 			/**
+			 * @brief Метод получения внутреннего порта события
+			 *
+			 * @param id идентификатор события
+			 * @return   внутренний порт события
+			 */
+			virtual uint16_t getInternalPort(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки внутреннего порта события
+			 *
+			 * @param id   идентификатор события
+			 * @param port внутренний порт события
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setInternalPort(const event::id_t id, const uint16_t port) noexcept = 0;
+		public:
+			/**
 			 * @brief Метод получения адреса хоста целевой машины
 			 *
 			 * @param id идентификатор события

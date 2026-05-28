@@ -290,6 +290,20 @@ namespace awh {
 			virtual bool setPort(const uint16_t port) noexcept;
 		public:
 			/**
+			 * @brief Метод получения внутреннего порта события
+			 *
+			 * @return внутренний порт события
+			 */
+			virtual uint16_t getInternalPort() const noexcept;
+			/**
+			 * @brief Метод установки внутреннего порта события
+			 *
+			 * @param port внутренний порт события
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setInternalPort(const uint16_t port) noexcept;
+		public:
+			/**
 			 * @brief Метод получения адреса хоста целевой машины
 			 *
 			 * @return адрес хоста целевой машины

@@ -296,6 +296,22 @@ namespace awh {
 				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
 				/**
+				 * @brief Метод получения внутреннего порта события
+				 *
+				 * @param id идентификатор события
+				 * @return   внутренний порт события
+				 */
+				uint16_t getInternalPort(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки внутреннего порта события
+				 *
+				 * @param id   идентификатор события
+				 * @param port внутренний порт события
+				 * @return     результат выполнения установки
+				 */
+				bool setInternalPort(const event::id_t id, const uint16_t port) noexcept;
+			public:
+				/**
 				 * @brief Метод получения адреса хоста целевой машины
 				 *
 				 * @param eid идентификатор события клиента

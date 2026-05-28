@@ -533,6 +533,31 @@ bool awh::unit::Client::setPort(const event::id_t eid, const uint16_t port) noex
 	return this->_io->setPort(eid, port);
 }
 /**
+ * @brief Метод получения внутреннего порта события
+ *
+ * @param id идентификатор события
+ * @return   внутренний порт события
+ */
+uint16_t awh::unit::Client::getInternalPort(const event::id_t id) const noexcept {
+	// Выполняем блокировку потока для работы с событием клиента
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выполняем получение внутреннего порта для события клиента
+	return this->_io->getInternalPort(id);
+}
+/**
+ * @brief Метод установки внутреннего порта события
+ *
+ * @param id   идентификатор события
+ * @param port внутренний порт события
+ * @return     результат выполнения установки
+ */
+bool awh::unit::Client::setInternalPort(const event::id_t id, const uint16_t port) noexcept {
+	// Выполняем блокировку потока для работы с событием клиента
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Выполняем установку внутреннего порта для события клиента
+	return this->_io->setInternalPort(id, port);
+}
+/**
  * @brief Метод получения адреса хоста целевой машины
  *
  * @param eid идентификатор события клиента

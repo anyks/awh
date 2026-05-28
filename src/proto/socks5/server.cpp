@@ -826,6 +826,8 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
 		switch(static_cast <uint8_t> (udp.host->type)){
 			// Если тип адреса соответствует FQDN
 			case static_cast <uint8_t> (net::type_t::FQDN): {
+				// Устанавливаем результат для отправки данных
+				result = true;
 				// Добавляем тип адреса "доменные имена" в буфер для отправки данных
 				::addPayload(addr_type_t::FQDN);
 				// Извлекаем доменное имя хоста для подключения
@@ -839,6 +841,8 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
 			} break;
 			// Если тип адреса соответствует IPv4
 			case static_cast <uint8_t> (net::type_t::IPV4): {
+				// Устанавливаем результат для отправки данных
+				result = true;
 				// Добавляем тип адреса "IPv4" в буфер для отправки данных
 				::addPayload(addr_type_t::IPV4);
 				// Добавляем IP адрес хоста для подключения в буфер для отправки данных
@@ -848,6 +852,8 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
 			} break;
 			// Если тип адреса соответствует IPv6
 			case static_cast <uint8_t> (net::type_t::IPV6): {
+				// Устанавливаем результат для отправки данных
+				result = true;
 				// Добавляем тип адреса "IPv6" в буфер для отправки данных
 				::addPayload(addr_type_t::IPV6);
 				// Добавляем IP адрес хоста для подключения в буфер для отправки данных
