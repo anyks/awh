@@ -193,6 +193,8 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options!" << endl;
+	// Устанавливаем сетевой интерфейс с которого отправляются пакеты
+	// unit.setIface(did, "en0");
 	// Устанавливаем собственный адрес для события клиентской точки назначения
 	// unit.setAddress(did, event::address_t::IPV4, "0.0.0.0");
 	// Устанавливаем идентификатор события клиента

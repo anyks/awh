@@ -24272,7 +24272,7 @@ namespace io {
 										// Устанавливаем полученный MAC-адрес в объект события
 										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
-										string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+										const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
@@ -24347,7 +24347,7 @@ namespace io {
 									// Устанавливаем полученный IP-адрес
 									const_cast <net_addr_t *> (addr)->v4(trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
-									string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+									const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 									// Если адрес находится в чёрном списке
 									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
@@ -24458,7 +24458,7 @@ namespace io {
 										// Устанавливаем полученный MAC-адрес в объект события
 										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
-										string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+										const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 										// Если адрес находится в чёрном списке
 										if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 											// Если установлена функция обратного вызова
@@ -24533,7 +24533,7 @@ namespace io {
 									// Устанавливаем полученный IP-адрес
 									const_cast <net_addr_t *> (addr)->source(src.ip.get(), net_addr_t::endian_t::LITTLE);
 									// Получаем IP-адрес для проверки
-									string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+									const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 									// Если адрес находится в чёрном списке
 									if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 										// Если установлена функция обратного вызова
@@ -25792,18 +25792,12 @@ namespace io {
 						eth->addr.fillSource(event::node_t::PEER, src);
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
-							// Временный объект для извлечения сетевого интерфейса
-							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
-							// Устанавливаем полученный IP-адрес во временный объект
-							awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
-							// Выполняем извлечение сетевых параметров
-							eth->addr.fillSource(event::node_t::PEER, src);
 							// Если MAC-адрес успешно получен
 							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
 								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
-								string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+								const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 								// Если адрес находится в чёрном списке
 								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
@@ -25870,7 +25864,7 @@ namespace io {
 							// Устанавливаем полученный IP-адрес
 							const_cast <net_addr_t *> (addr)->v4(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
-							string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+							const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 							// Если адрес находится в чёрном списке
 							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
@@ -25964,7 +25958,7 @@ namespace io {
 								// Устанавливаем полученный MAC-адрес в объект события
 								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
-								string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+								const string mac = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 								// Если адрес находится в чёрном списке
 								if(!server->blacklist.empty() && (server->blacklist.find(mac) != server->blacklist.end())){
 									// Если установлена функция обратного вызова
@@ -26031,7 +26025,7 @@ namespace io {
 							// Устанавливаем полученный IP-адрес
 							const_cast <net_addr_t *> (addr)->source(src.ip.get(), net_addr_t::endian_t::LITTLE);
 							// Получаем IP-адрес для проверки
-							string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
+							const string ip = ::move(static_cast <string> (* const_cast <net_addr_t *> (addr)));
 							// Если адрес находится в чёрном списке
 							if(!server->blacklist.empty() && (server->blacklist.find(ip) != server->blacklist.end())){
 								// Если установлена функция обратного вызова
@@ -34121,7 +34115,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 							// Устанавливаем имя сетевого интерфейса
 							src.iface = this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE);
 							// Выполняем извлечение сетевых параметров
-							this->_eth.addr.fillSource(src.ip.get(), src);
+							this->_eth.addr.fillSource(src);
 							// Если IP-адрес успешно получен
 							if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0))){
 								// Устанавливаем тип адреса

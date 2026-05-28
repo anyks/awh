@@ -13,6 +13,36 @@
  */
 
 /**
+ * Если размер MTU для UDP сообщений в IPv4 не определён
+ */
+#ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1472 - 72 = 1400 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * 1500 - 20 (IP) - 8 (UDP) = 1472 максимум без фрагментации
+	 * Запас 72 байта на возможную инкапсуляцию (туннели, провайдерские заголовки)
+	 * Больше → фрагментация → потеря пакетов
+	 */
+	#define AWH_MTU_UDP_IPV4_PAYLOAD_SIZE 0x578
+#endif
+
+/**
+ * Если размер MTU для UDP сообщений в IPv6 не определён
+ */
+#ifndef AWH_MTU_UDP_IPV6_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1452 - 72 = 1380 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * 1500 - 40 (IPv6) - 8 (UDP) = 1452 максимум без фрагментации
+	 * Запас 72 байта на инкапсуляцию (туннели часто используют двойную инкапсуляцию)
+	 * IPv6 не фрагментирует на маршрутизаторах → фрагментированные пакеты отбрасываются
+	 */
+	#define AWH_MTU_UDP_IPV6_PAYLOAD_SIZE 0x564
+#endif
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <client/socks5.hpp>
@@ -41,6 +71,18 @@ namespace {
 		// Комбинируем хеш-коды
 		seed ^= (value + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 	}
+
+	/**
+	 * @brief Размер данных в буфере
+	 *
+	 */
+	thread_local size_t __awh_size__ = 0;
+
+	/**
+	 * @brief Буфер временного хранения данных UDP сообщений
+	 *
+	 */
+	thread_local uint8_t __awh_buffer__[AWH_MTU_UDP_IPV4_PAYLOAD_SIZE] = {0};
 };
 
 /**
@@ -1103,8 +1145,10 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 						}
 					// Если идентификатор TLS не соответствует UDP-клиенту, работающему через прокси
 					} else {
-						// Буфер полезной нагрузки для отправки
-						vector <uint8_t> payload(size, 0);
+						// Сбрасываем размер буфера полезной нагрузки
+						::__awh_size__ = 0;
+						// Тип данных для события клиента
+						net::type_t type = net::type_t::NONE;
 						// Инициализируем объект заголовка UDP пакета
 						proto::client_socks5_t::udp_head_t udp{};
 						{
@@ -1114,10 +1158,12 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 							auto i = this->_mapping.find(eid);
 							// Если идентификатор события клиента для конечной точки найден в списке активных сессий клиентов
 							if(i != this->_mapping.end()){
+								// Извлекаем тип данных для события клиента
+								type = i->second.first->type;
 								/**
 								 * Определяем тип данных сесии клиента, работающего через прокси
 								 */
-								switch(static_cast <uint8_t> (i->second.first->type)){
+								switch(static_cast <uint8_t> (type)){
 									// Если тип данных соответствует FQDN
 									case static_cast <uint8_t> (net::type_t::FQDN): {
 										// Выполняем инициализацию объекта хоста
@@ -1160,12 +1206,47 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 								uint8_t * data = nullptr;
 								// Если извлечение буфера данных запроса выполнено успешно
 								if(this->_socks5.buffer(&data, length, udp)){
-									// Выделяем память для буфера полезной нагрузки
-									payload.resize(size + length);
-									// Копируем данные запроса в буфер полезной нагрузки
-									::memcpy(&payload[0], data, length);
-									// Добавляем к буферу данных для отправки полезную нагрузку
-									::memcpy(&payload[length], buffer, size);
+									/**
+									 * Определяем тип данных сесии клиента, работающего через прокси
+									 */
+									switch(static_cast <uint8_t> (type)){
+										// Если тип данных соответствует FQDN
+										case static_cast <uint8_t> (net::type_t::FQDN):
+										// Если тип данных соответствует IPv6
+										case static_cast <uint8_t> (net::type_t::IPV6):
+											// Устанавливаем размер буфера полезной нагрузки для отправки
+											::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+										break;
+										// Если тип данных соответствует IPv4
+										case static_cast <uint8_t> (net::type_t::IPV4):
+											// Устанавливаем размер буфера полезной нагрузки для отправки
+											::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+										break;
+									}
+									// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+									if(::__awh_size__ == (size + length)){
+										// Копируем данные запроса в буфер полезной нагрузки
+										::memcpy(&::__awh_buffer__[0], data, length);
+										// Добавляем к буферу данных для отправки полезную нагрузку
+										::memcpy(&::__awh_buffer__[length], buffer, size);
+									// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+									} else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+										#endif
+										// Выходим из функции
+										return;
+									}
 								// Если извлечение буфера данных запроса не выполнено
 								} else {
 									/**
@@ -1185,9 +1266,9 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 							}
 						}
 						// Если буфер полезной нагрузки для отправки не пустой
-						if(!payload.empty()){
+						if(::__awh_size__ > 0){
 							// Если отправка запроса на прокси-сервер не выполнена
-							if(this->_client->send(eid, &payload[0], payload.size()) != payload.size()){
+							if(this->_client->send(eid, ::__awh_buffer__, ::__awh_size__) != ::__awh_size__){
 								// Если функция обратного вызова не установлена
 								if(!this->_callback.is("error")){
 									/**
@@ -1364,14 +1445,47 @@ size_t awh::Socks5::send(const void * buffer, const size_t size) noexcept {
 					uint8_t * data = nullptr;
 					// Если извлечение буфера данных запроса выполнено успешно
 					if(this->_socks5.buffer(&data, length, udp)){
-						// Буфер полезной нагрузки для отправки
-						vector <uint8_t> payload(size + length, 0);
-						// Копируем данные запроса в буфер полезной нагрузки
-						::memcpy(&payload[0], data, length);
-						// Добавляем к буферу данных для отправки полезную нагрузку
-						::memcpy(&payload[length], buffer, size);
-						// Выполняем отправку данных серверу
-						return this->_client->send(eid, &payload[0], payload.size());
+						/**
+						 * Определяем тип данных сесии клиента, работающего через прокси
+						 */
+						switch(static_cast <uint8_t> (origin->type)){
+							// Если тип данных соответствует FQDN
+							case static_cast <uint8_t> (net::type_t::FQDN):
+							// Если тип данных соответствует IPv6
+							case static_cast <uint8_t> (net::type_t::IPV6):
+								// Устанавливаем размер буфера полезной нагрузки для отправки
+								::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+							break;
+							// Если тип данных соответствует IPv4
+							case static_cast <uint8_t> (net::type_t::IPV4):
+								// Устанавливаем размер буфера полезной нагрузки для отправки
+								::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+							break;
+						}
+						// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+						if(::__awh_size__ == (size + length)){
+							// Копируем данные запроса в буфер полезной нагрузки
+							::memcpy(&::__awh_buffer__[0], data, length);
+							// Добавляем к буферу данных для отправки полезную нагрузку
+							::memcpy(&::__awh_buffer__[length], buffer, size);
+							// Выполняем отправку данных серверу
+							return this->_client->send(eid, ::__awh_buffer__, ::__awh_size__);
+						// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+							#endif
+						}
 					// Если извлечение буфера данных запроса не выполнено
 					} else {
 						/**
@@ -1612,14 +1726,47 @@ size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_
 				uint8_t * data = nullptr;
 				// Если извлечение буфера данных запроса выполнено успешно
 				if(this->_socks5.buffer(&data, length, udp)){
-					// Буфер полезной нагрузки для отправки
-					vector <uint8_t> payload(size + length, 0);
-					// Копируем данные запроса в буфер полезной нагрузки
-					::memcpy(&payload[0], data, length);
-					// Добавляем к буферу данных для отправки полезную нагрузку
-					::memcpy(&payload[length], buffer, size);
-					// Выполняем отправку данных серверу
-					return this->_client->send(eid, &payload[0], payload.size());
+					/**
+					 * Определяем тип данных сесии клиента, работающего через прокси
+					 */
+					switch(static_cast <uint8_t> (origin->type)){
+						// Если тип данных соответствует FQDN
+						case static_cast <uint8_t> (net::type_t::FQDN):
+						// Если тип данных соответствует IPv6
+						case static_cast <uint8_t> (net::type_t::IPV6):
+							// Устанавливаем размер буфера полезной нагрузки для отправки
+							::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+						break;
+						// Если тип данных соответствует IPv4
+						case static_cast <uint8_t> (net::type_t::IPV4):
+							// Устанавливаем размер буфера полезной нагрузки для отправки
+							::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+						break;
+					}
+					// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+					if(::__awh_size__ == (size + length)){
+						// Копируем данные запроса в буфер полезной нагрузки
+						::memcpy(&::__awh_buffer__[0], data, length);
+						// Добавляем к буферу данных для отправки полезную нагрузку
+						::memcpy(&::__awh_buffer__[length], buffer, size);
+						// Выполняем отправку данных серверу
+						return this->_client->send(eid, ::__awh_buffer__, ::__awh_size__);
+					// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+						#endif
+					}
 				// Если извлечение буфера данных запроса не выполнено
 				} else {
 					/**
