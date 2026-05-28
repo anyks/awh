@@ -605,9 +605,6 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 												}
 											} break;
 										}
-
-										cout << "Client " << eid << " is using UDP protocol with internal port " << port << endl;
-
 										// Устанавливаем внутренний порт клиента
 										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
 									} break;
