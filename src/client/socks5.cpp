@@ -1636,20 +1636,35 @@ bool awh::Socks5::recv(const event::id_t eid) noexcept {
 			return this->_client->recv(eid);
 		// Если идентификатор клиента не передан корректно
 		else {
-			// Результат наличия идентификатора события клиента для конечной точки в списке активных сессий клиентов
-			bool result = false;
+			// Идентификатор инициатора запроса
+			const origin_t * origin = nullptr;
 			{
 				// Выполняем блокировку потока для работы с TLS
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-				// Проверяем наличие идентификатора события клиента для конечной точки в списке активных сессий клиентов
-				result = (this->_mapping.find(eid) != this->_mapping.end());
+				// Ищем идентификатор события клиента для конечной точки в списке активных сессий клиентов
+				auto i = this->_mapping.find(eid);
+				// Если идентификатор события клиента для конечной точки найден в списке активных сессий клиентов
+				if(i != this->_mapping.end())
+					// Извлекаем идентификатор события клиента, работающего через прокси
+					origin = i->second.first;
 			}
-			// Если идентификатор события клиента для конечной точки найден в списке активных сессий клиентов
-			if(result)
-				// Получаем данные от сервера
-				return this->_client->recv(eid);
+			// Если параметры клиента найдены успешно
+			if(origin != nullptr){
+				/**
+				 * Определяем протокол сесии клиента, работающего через прокси
+				 */
+				switch(static_cast <uint8_t> (origin->protocol)){
+					// Если протокол соответствует UDP
+					case static_cast <uint8_t> (event::protocol_t::UDP):
+						// Получаем данные от сервера
+						return this->_client->recv(eid);
+					// Если протокол соответствует TCP
+					case static_cast <uint8_t> (event::protocol_t::TCP):
+						// Получаем данные от сервера
+						return this->_client->recv(this->_eid);
+				}
 			// Если идентификатор события клиента для конечной точки не найден в списке активных сессий клиентов
-			else {
+			} else {
 				/**
 				 * Если включён режим отладки
 				 */
@@ -1733,119 +1748,141 @@ size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_
 			}
 			// Если параметры клиента найдены успешно
 			if(origin != nullptr){
-				// Если идентификатор TLS и объект TLS установлены
-				if((tid > 0) && (this->_coder != nullptr)){
-					// Если шифрование данных TLS выполнено успешно
-					if(this->_coder->encrypt(tid, buffer, size))
-						// Возвращаем размер отправленных данных
-						return size;
-					// Выводим результат по умолчанию
-					return 0;
-				}
-				// Инициализируем объект заголовка UDP пакета
-				proto::client_socks5_t::udp_head_t udp{};
 				/**
-				 * Определяем тип данных сесии клиента, работающего через прокси
+				 * Определяем протокол сесии клиента, работающего через прокси
 				 */
-				switch(static_cast <uint8_t> (origin->type)){
-					// Если тип данных соответствует FQDN
-					case static_cast <uint8_t> (net::type_t::FQDN): {
-						// Выполняем инициализацию объекта хоста
-						udp.host = make_unique <net::attr_fqdn_t> ();
-						// Устанавливаем тип адреса события
-						udp.host->type = net::type_t::FQDN;
-						// Устанавливаем порт хоста для подключения
-						awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = ntohs(origin->fqdn.port);
-						// Устанавливаем доменное имя хоста для подключения
-						awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain = origin->fqdn.data;
+				switch(static_cast <uint8_t> (origin->protocol)){
+					// Если протокол соответствует UDP
+					case static_cast <uint8_t> (event::protocol_t::UDP): {
+						// Если идентификатор TLS и объект TLS установлены
+						if((tid > 0) && (this->_coder != nullptr)){
+							// Если шифрование данных TLS выполнено успешно
+							if(this->_coder->encrypt(tid, buffer, size))
+								// Возвращаем размер отправленных данных
+								return size;
+							// Выводим результат по умолчанию
+							return 0;
+						}
+						// Инициализируем объект заголовка UDP пакета
+						proto::client_socks5_t::udp_head_t udp{};
+						/**
+						 * Определяем тип данных сесии клиента, работающего через прокси
+						 */
+						switch(static_cast <uint8_t> (origin->type)){
+							// Если тип данных соответствует FQDN
+							case static_cast <uint8_t> (net::type_t::FQDN): {
+								// Выполняем инициализацию объекта хоста
+								udp.host = make_unique <net::attr_fqdn_t> ();
+								// Устанавливаем тип адреса события
+								udp.host->type = net::type_t::FQDN;
+								// Устанавливаем порт хоста для подключения
+								awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = ntohs(origin->fqdn.port);
+								// Устанавливаем доменное имя хоста для подключения
+								awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain = origin->fqdn.data;
+							} break;
+							// Если тип данных соответствует IPv4
+							case static_cast <uint8_t> (net::type_t::IPV4): {
+								// Выполняем инициализацию объекта хоста
+								udp.host = make_unique <net::attr_net_t> ();
+								// Устанавливаем тип адреса события
+								udp.host->type = net::type_t::IPV4;
+								// Устанавливаем порт хоста для подключения
+								awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip4.port);
+								// Устанавливаем IP-адрес хоста для подключения
+								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = origin->ip4.address;
+							} break;
+							// Если тип данных соответствует IPv6
+							case static_cast <uint8_t> (net::type_t::IPV6): {
+								// Выполняем инициализацию объекта хоста
+								udp.host = make_unique <net::attr_net_t> ();
+								// Устанавливаем тип адреса события
+								udp.host->type = net::type_t::IPV6;
+								// Устанавливаем порт хоста для подключения
+								awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip6.port);
+								// Создаём новый объект адреса клиента IPv6
+								awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+								// Устанавливаем IP-адрес хоста для подключения
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &origin->ip6.address[0], 16);
+							} break;
+						}
+						// Размер буфера данных
+						size_t length = 0;
+						// Буфер данных запроса
+						uint8_t * data = nullptr;
+						// Если извлечение буфера данных запроса выполнено успешно
+						if(this->_socks5.buffer(&data, length, udp)){
+							/**
+							 * Определяем тип данных сесии клиента, работающего через прокси
+							 */
+							switch(static_cast <uint8_t> (origin->type)){
+								// Если тип данных соответствует FQDN
+								case static_cast <uint8_t> (net::type_t::FQDN):
+								// Если тип данных соответствует IPv6
+								case static_cast <uint8_t> (net::type_t::IPV6):
+									// Устанавливаем размер буфера полезной нагрузки для отправки
+									::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+								break;
+								// Если тип данных соответствует IPv4
+								case static_cast <uint8_t> (net::type_t::IPV4):
+									// Устанавливаем размер буфера полезной нагрузки для отправки
+									::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+								break;
+							}
+							// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+							if(::__awh_size__ == (size + length)){
+								// Копируем данные запроса в буфер полезной нагрузки
+								::memcpy(&::__awh_buffer__[0], data, length);
+								// Добавляем к буферу данных для отправки полезную нагрузку
+								::memcpy(&::__awh_buffer__[length], buffer, size);
+								// Выполняем отправку данных серверу
+								return this->_client->send(eid, ::__awh_buffer__, ::__awh_size__);
+							// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+							} else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+								#endif
+							}
+						// Если извлечение буфера данных запроса не выполнено
+						} else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
+							#endif
+						}
 					} break;
-					// Если тип данных соответствует IPv4
-					case static_cast <uint8_t> (net::type_t::IPV4): {
-						// Выполняем инициализацию объекта хоста
-						udp.host = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип адреса события
-						udp.host->type = net::type_t::IPV4;
-						// Устанавливаем порт хоста для подключения
-						awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip4.port);
-						// Устанавливаем IP-адрес хоста для подключения
-						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = origin->ip4.address;
-					} break;
-					// Если тип данных соответствует IPv6
-					case static_cast <uint8_t> (net::type_t::IPV6): {
-						// Выполняем инициализацию объекта хоста
-						udp.host = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип адреса события
-						udp.host->type = net::type_t::IPV6;
-						// Устанавливаем порт хоста для подключения
-						awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip6.port);
-						// Создаём новый объект адреса клиента IPv6
-						awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-						// Устанавливаем IP-адрес хоста для подключения
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &origin->ip6.address[0], 16);
-					} break;
-				}
-				// Размер буфера данных
-				size_t length = 0;
-				// Буфер данных запроса
-				uint8_t * data = nullptr;
-				// Если извлечение буфера данных запроса выполнено успешно
-				if(this->_socks5.buffer(&data, length, udp)){
-					/**
-					 * Определяем тип данных сесии клиента, работающего через прокси
-					 */
-					switch(static_cast <uint8_t> (origin->type)){
-						// Если тип данных соответствует FQDN
-						case static_cast <uint8_t> (net::type_t::FQDN):
-						// Если тип данных соответствует IPv6
-						case static_cast <uint8_t> (net::type_t::IPV6):
-							// Устанавливаем размер буфера полезной нагрузки для отправки
-							::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
-						break;
-						// Если тип данных соответствует IPv4
-						case static_cast <uint8_t> (net::type_t::IPV4):
-							// Устанавливаем размер буфера полезной нагрузки для отправки
-							::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
-						break;
-					}
-					// Если размер буфера полезной нагрузки достаточно для отправки всех данных
-					if(::__awh_size__ == (size + length)){
-						// Копируем данные запроса в буфер полезной нагрузки
-						::memcpy(&::__awh_buffer__[0], data, length);
-						// Добавляем к буферу данных для отправки полезную нагрузку
-						::memcpy(&::__awh_buffer__[length], buffer, size);
+					// Если протокол соответствует TCP
+					case static_cast <uint8_t> (event::protocol_t::TCP): {
+						// Если идентификатор TLS и объект TLS установлены
+						if((this->_tid > 0) && (this->_coder != nullptr)){
+							// Если шифрование данных TLS выполнено успешно
+							if(this->_coder->encrypt(this->_tid, buffer, size))
+								// Возвращаем размер отправленных данных
+								return size;
+							// Выводим результат по умолчанию
+							return 0;
+						}
 						// Выполняем отправку данных серверу
-						return this->_client->send(eid, ::__awh_buffer__, ::__awh_size__);
-					// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
-						#endif
+						return this->_client->send(this->_eid, buffer, size);
 					}
-				// Если извлечение буфера данных запроса не выполнено
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
-					#endif
 				}
 			// Если инициатор запроса не найден для переданного идентификатора события клиента
 			} else {
