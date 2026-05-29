@@ -1328,17 +1328,6 @@ void awh::Socks5::clearSessions() noexcept {
 	this->_sessions.clear();
 }
 /**
- * @brief Метод получения направления работы socks5 прокси
- *
- * @return направление работы socks5 прокси
- */
-awh::Socks5::route_t awh::Socks5::getRoute() const noexcept {
-	// Выполняем блокировку потока для работы с TLS
-	const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-	// Возвращаем направление работы socks5 прокси
-	return this->_route;
-}
-/**
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков
@@ -2714,56 +2703,52 @@ void awh::Socks5::setSecurityId(const tls::coder_t::id_t tid) noexcept {
 /**
  * @brief Конструктор
  *
- * @param route  направление работы socks5 прокси
  * @param client объект юнита клиента
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(const route_t route, unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, fmk, log), _route(route), _socks5(fmk, log) {
+awh::Socks5::Socks5(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept :
+ client_t(client, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 }
 /**
  * @brief Конструктор
  *
- * @param route  направление работы socks5 прокси
  * @param client объект юнита клиента
  * @param coder  объект транспортного уровня безопасности
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(const route_t route, unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, coder, fmk, log), _route(route), _socks5(fmk, log) {
+awh::Socks5::Socks5(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+ client_t(client, coder, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 }
 /**
  * @brief Конструктор
  *
- * @param route  направление работы socks5 прокси
  * @param client объект юнита клиента
  * @param dns    объект DNS-резолвера
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(const route_t route, unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, dns, fmk, log), _route(route), _socks5(fmk, log) {
+awh::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+ client_t(client, dns, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 }
 /**
  * @brief Конструктор
  *
- * @param route  направление работы socks5 прокси
  * @param client объект юнита клиента
  * @param dns    объект DNS-резолвера
  * @param coder  объект транспортного уровня безопасности
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(const route_t route, unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, dns, coder, fmk, log), _route(route), _socks5(fmk, log) {
+awh::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+ client_t(client, dns, coder, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 }

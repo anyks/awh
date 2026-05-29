@@ -176,7 +176,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект юнита клиента
 	unit::client_t unit(&fmk, &log);
 	// Создаём объект клиента
-	socks5_t client(socks5_t::route_t::PROXY, &unit, &fmk, &log);
+	socks5_t client(&unit, &fmk, &log);
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Создаём событие событие для клиентской точки назначения

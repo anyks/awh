@@ -44,16 +44,6 @@ namespace awh {
 	 *
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Socks5 : public client_t {
-		public:
-			/**
-			 * @brief Направление работы socks5 прокси
-			 *
-			 */
-			enum class route_t : uint8_t {
-				NONE    = 0x00, // Маршрут не определён
-				PROXY   = 0x01, // Маршрут через прокси
-				REVERSE = 0x02  // Обратный маршрут (прокси к клиенту)
-			};
 		private:
 			/**
 			 * @brief Класс идентификатора сессии клиента, работающего через прокси
@@ -147,9 +137,6 @@ namespace awh {
 					explicit Origin_Hash() noexcept = default;
 			} origin_hash_t;
 		private:
-			// Направление работы socks5 прокси
-			route_t _route;
-		private:
 			// Объект для работы с протоколом SOCKS5
 			proto::client_socks5_t _socks5;
 		private:
@@ -219,13 +206,6 @@ namespace awh {
 			 *
 			 */
 			void clearSessions() noexcept;
-		public:
-			/**
-			 * @brief Метод получения направления работы socks5 прокси
-			 *
-			 * @return направление работы socks5 прокси
-			 */
-			route_t getRoute() const noexcept;
 		public:
 			/**
 			 * @brief Метод установки безопасности работы потоков
@@ -380,43 +360,39 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param route  направление работы socks5 прокси
 			 * @param client объект юнита клиента
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Socks5(const route_t route, unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Socks5(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param route  направление работы socks5 прокси
 			 * @param client объект юнита клиента
 			 * @param coder  объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Socks5(const route_t route, unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Socks5(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param route  направление работы socks5 прокси
 			 * @param client объект юнита клиента
 			 * @param dns    объект DNS-резолвера
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Socks5(const route_t route, unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Socks5(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param route  направление работы socks5 прокси
 			 * @param client объект юнита клиента
 			 * @param dns    объект DNS-резолвера
 			 * @param coder  объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Socks5(const route_t route, unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор
