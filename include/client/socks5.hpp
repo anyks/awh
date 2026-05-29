@@ -167,6 +167,13 @@ namespace awh {
 			 */
 			void connect(const event::id_t eid, const bool ok) noexcept;
 			/**
+			 * @brief Метод обработки событий записи данных клиентом
+			 *
+			 * @param eid  идентификатор клиента
+			 * @param size размер данных для записи
+			 */
+			void write(const event::id_t eid, const size_t size) noexcept;
+			/**
 			 * @brief Метод обработки событий изменения состояния клиента
 			 *
 			 * @param eid    идентификатор клиента

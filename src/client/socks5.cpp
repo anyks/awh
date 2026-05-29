@@ -292,7 +292,7 @@ void awh::Socks5::status(const event::status_t status, const state_t state) noex
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("launch"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_client->getTarget(this->_eid), this->_client->getPort(this->_eid));
+								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_eid, this->_client->getTarget(this->_eid), this->_client->getPort(this->_eid));
 						}
 					}
 				} break;
@@ -389,12 +389,46 @@ void awh::Socks5::connect(const event::id_t eid, const bool ok) noexcept {
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("connect"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, false);
+					this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, false);
 			}
 		// Если функция обратного вызова установлена
 		} else if(this->_callback.is("connect"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, ok);
+			this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, ok);
+	}
+}
+/**
+ * @brief Метод обработки событий записи данных клиентом
+ *
+ * @param eid  идентификатор клиента
+ * @param size размер данных для записи
+ */
+void awh::Socks5::write(const event::id_t eid, const size_t size) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("write")){
+			// Если текущее состояние соответствует завершённому состоянию
+			if(this->_ctx.state == proto::client_socks5_t::state_t::COMPLETED){
+				// Если сообщение дешифровано для socks5-клиента
+				if(eid == this->_eid){
+					// Идентификатор события клиента для конечной точки
+					event::id_t eid = 0;
+					{
+						// Выполняем блокировку потока для работы с TLS
+						const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Если активные сессии клиентов, работающих через прокси, не пусты
+						if(!this->_sessions.empty())
+							// Извлекаем идентификатор события клиента для конечной точки
+							eid = this->_sessions.begin()->second.first;
+					}
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const event::id_t, const size_t)> ("write", this->_eid, eid, size);
+				// Выполняем функцию обратного вызова
+				} else this->_callback.call <void (const event::id_t, const event::id_t, const size_t)> ("write", this->_eid, eid, size);
+			// Если текущее состояние не соответствует завершённому состоянию, выполняем функцию обратного вызова для socks5-клиента
+			} else this->_callback.call <void (const event::id_t, const event::id_t, const size_t)> ("write", this->_eid, eid, size);
+		}
 	}
 }
 /**
@@ -463,9 +497,20 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 					// Если объект транспортного уровня безопасности не установлен
 					} else {
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("read"))
+						if(this->_callback.is("read")){
+							// Идентификатор события клиента для конечной точки
+							event::id_t eid = 0;
+							{
+								// Выполняем блокировку потока для работы с TLS
+								const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+								// Если активные сессии клиентов, работающих через прокси, не пусты
+								if(!this->_sessions.empty())
+									// Извлекаем идентификатор события клиента для конечной точки
+									eid = this->_sessions.begin()->second.first;
+							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+							this->_callback.call <void (const event::id_t, const event::id_t, const uint8_t *, const size_t)> ("read", this->_eid, eid, buffer, size);
+						}
 					}
 				// Если идентификатор клиента не соответствует идентификатору socks5 клиента
 				} else {
@@ -476,7 +521,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 						// Если хост клиента которому адресован UDP пакет установлен
 						if(udp.host != nullptr){
 							// Идентификатор события клиента для конечной точки
-							event::id_t cid = 0;
+							event::id_t eid = 0;
 							// Идентификатор TLS для клиента
 							tls::coder_t::id_t tid = 0;
 							{
@@ -489,13 +534,13 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 								// Если идентификатор события клиента для конечной точки найден
 								if(i != this->_sessions.end()){
 									// Извлекаем идентификатор события клиента для конечной точки
-									cid = i->second.first;
+									eid = i->second.first;
 									// Извлекаем идентификатор TLS для клиента
 									tid = i->second.second;
 								}
 							}
 							// Если идентификатор события клиента для конечной точки получен успешно
-							if(cid > 0){
+							if(eid > 0){
 								// Если объект транспортного уровня безопасности установлен
 								if((this->_coder != nullptr) && (tid > 0)){
 									// Если данные не расшифрованы
@@ -507,7 +552,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+												this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(this->_eid, buffer, size), log_t::flag_t::WARNING);
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -522,7 +567,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 									// Если функция обратного вызова установлена
 									if(this->_callback.is("read"))
 										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", cid, buffer + udp.size, size - udp.size);
+										this->_callback.call <void (const event::id_t, const event::id_t, const uint8_t *, const size_t)> ("read", this->_eid, eid, buffer + udp.size, size - udp.size);
 								}
 								// Выходим из функции
 								return;
@@ -579,7 +624,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("connect"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_eid, false);
+								this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, false);
 						} break;
 						// Если текущее состояние соответствует ожиданию выполнения подключения
 						case static_cast <uint8_t> (proto::client_socks5_t::state_t::CONNECT): {
@@ -727,7 +772,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("connect"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_eid, false);
+								this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, false);
 						} break;
 						// Если текущее состояние соответствует выполненному рукопожатию
 						case static_cast <uint8_t> (proto::client_socks5_t::state_t::HANDSHAKE): {
@@ -797,11 +842,11 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 										// Если функция обратного вызова установлена
 										if(this->_callback.is("ready"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_client->family(session.first), target, target);
+											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", session.first, this->_client->family(session.first), target, target);
 										// Если функция обратного вызова установлена
 										if(this->_callback.is("launch"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const string &, const uint16_t)> ("launch", target, this->_client->getPort(session.first));
+											this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", session.first, target, this->_client->getPort(session.first));
 										// Если объект транспортного уровня безопасности установлен
 										if((this->_coder != nullptr) && (session.second > 0)){
 											// Если рукопожатие TLS не выполнено
@@ -828,7 +873,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 											// Если функция обратного вызова установлена
 											if(this->_callback.is("connect"))
 												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const event::id_t, const bool)> ("connect", session.first, true);
+												this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, session.first, true);
 										}
 									}
 									// Выходим из функции
@@ -947,7 +992,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 										// Если функция обратного вызова установлена
 										if(this->_callback.is("launch"))
 											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
+											this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", eid, target, port);
 										// Если объект транспортного уровня безопасности установлен
 										if((this->_coder != nullptr) && (tid > 0)){
 											// Если рукопожатие TLS не выполнено
@@ -975,7 +1020,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 											// Если функция обратного вызова установлена
 											if(this->_callback.is("connect"))
 												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, true);
+												this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, true);
 											// Выходим из функции
 											return;
 										}
@@ -1000,7 +1045,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("connect"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, false);
+								this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, false);
 						} break;
 						// В остальных случаях, проходим процедуру общения с сервером в автоматическом режиме
 						default: {
@@ -1034,7 +1079,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("connect"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_eid, false);
+								this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, false);
 						}
 					}
 				// Если парсинг данных от прокси-сервера не выполнен
@@ -1094,9 +1139,24 @@ void awh::Socks5::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 		// Если состояние рукопожатия успешно завершено
 		if(state == tls::coder_t::state_t::HANDSHAKED){
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("connect"))
+			if(this->_callback.is("connect")){
+				// Если сообщение дешифровано для socks5-клиента
+				if(eid == this->_eid){
+					// Идентификатор события клиента для конечной точки
+					event::id_t eid = 0;
+					{
+						// Выполняем блокировку потока для работы с TLS
+						const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+						// Если активные сессии клиентов, работающих через прокси, не пусты
+						if(!this->_sessions.empty())
+							// Извлекаем идентификатор события клиента для конечной точки
+							eid = this->_sessions.begin()->second.first;
+					}
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, true);
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const bool)> ("connect", (eid > 0 ? eid : this->_eid), true);
+				} else this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, true);
+			}
 		}
 	}
 }
@@ -1292,9 +1352,24 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 				// Если событие дешифрования данных TLS
 				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
 					// Если функция обратного вызова установлена
-					if(this->_callback.is("read"))
+					if(this->_callback.is("read")){
+						// Если сообщение дешифровано для socks5-клиента
+						if(eid == this->_eid){
+							// Идентификатор события клиента для конечной точки
+							event::id_t eid = 0;
+							{
+								// Выполняем блокировку потока для работы с TLS
+								const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+								// Если активные сессии клиентов, работающих через прокси, не пусты
+								if(!this->_sessions.empty())
+									// Извлекаем идентификатор события клиента для конечной точки
+									eid = this->_sessions.begin()->second.first;
+							}
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::id_t, const uint8_t *, const size_t)> ("read", this->_eid, eid, buffer, size);
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", (eid > 0 ? eid : this->_eid), buffer, size);
+						} else this->_callback.call <void (const event::id_t, const event::id_t, const uint8_t *, const size_t)> ("read", this->_eid, eid, buffer, size);
+					}
 				} break;
 			}
 		/**
