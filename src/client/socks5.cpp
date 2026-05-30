@@ -92,7 +92,7 @@ namespace {
  * @param protocol протокол инициатора запроса
  * @return         идентификатор инициатора запроса
  */
-awh::Socks5::Origin & awh::Socks5::Origin::from(const net::attr_t * addr, const event::protocol_t protocol) noexcept {
+awh::client::Socks5::Origin & awh::client::Socks5::Origin::from(const net::attr_t * addr, const event::protocol_t protocol) noexcept {
 	// Если объект параметров подключения инициатора запроса передан корректно
 	if(addr != nullptr){
 		// Устанавливаем тип адреса инициатора запроса
@@ -141,7 +141,7 @@ awh::Socks5::Origin & awh::Socks5::Origin::from(const net::attr_t * addr, const 
  * @param other другой объект для сравнения
  * @return      результат сравнения
  */
-bool awh::Socks5::Origin::operator == (const Origin & other) const noexcept {
+bool awh::client::Socks5::Origin::operator == (const Origin & other) const noexcept {
 	// Сравниваем семейство адресов
 	if((this->type != other.type) || (this->protocol != other.protocol))
 		// Выводим отрицательный результат
@@ -179,7 +179,7 @@ bool awh::Socks5::Origin::operator == (const Origin & other) const noexcept {
  * @brief Конструктор
  *
  */
-awh::Socks5::Origin::Origin() noexcept :
+awh::client::Socks5::Origin::Origin() noexcept :
  type(net::type_t::NONE),
  protocol(event::protocol_t::NONE) {};
 
@@ -189,7 +189,7 @@ awh::Socks5::Origin::Origin() noexcept :
  * @param id объект для вычисления хеш-кода
  * @return   хеш-код объекта
  */
-size_t awh::Socks5::Origin_Hash::operator()(const origin_t & id) const noexcept {
+size_t awh::client::Socks5::Origin_Hash::operator()(const origin_t & id) const noexcept {
 	// Вычисляем начальный хеш-код по семейству адресов
 	size_t result = hash <uint8_t> {}(static_cast <uint8_t> (id.type));
 	// Комбинируем хеш-код протокола
@@ -236,7 +236,7 @@ size_t awh::Socks5::Origin_Hash::operator()(const origin_t & id) const noexcept 
  * @param status новый статус клиента
  * @param state  новое временное состояние клиента
  */
-void awh::Socks5::status(const event::status_t status, const state_t state) noexcept {
+void awh::client::Socks5::status(const event::status_t status, const state_t state) noexcept {
 	/**
 	 * Временное состояние клиента
 	 */
@@ -351,7 +351,7 @@ void awh::Socks5::status(const event::status_t status, const state_t state) noex
  * @param eid идентификатор клиента
  * @param ok  результат подключения
  */
-void awh::Socks5::connect(const event::id_t eid, const bool ok) noexcept {
+void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если идентификатор клиента соответствует идентификатору socks5 клиента
@@ -403,7 +403,7 @@ void awh::Socks5::connect(const event::id_t eid, const bool ok) noexcept {
  * @param eid  идентификатор клиента
  * @param size размер данных для записи
  */
-void awh::Socks5::write(const event::id_t eid, const size_t size) noexcept {
+void awh::client::Socks5::write(const event::id_t eid, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
@@ -437,7 +437,7 @@ void awh::Socks5::write(const event::id_t eid, const size_t size) noexcept {
  * @param eid    идентификатор клиента
  * @param status новый статус клиента
  */
-void awh::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
+void awh::client::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
@@ -462,7 +462,7 @@ void awh::Socks5::state(const event::id_t eid, const event::status_t status) noe
  * @param buffer буфер данных клиента
  * @param size   размер данных клиента
  */
-void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
+void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		/**
@@ -1129,7 +1129,7 @@ void awh::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size
  * @param eid   идентификатор клиента
  * @param state состояние TLS
  */
-void awh::Socks5::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept {
+void awh::client::Socks5::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
@@ -1169,7 +1169,7 @@ void awh::Socks5::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
  * @param size   размер данных для события шифрования/дешифрования TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
  */
-void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
+void awh::client::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		/**
@@ -1393,10 +1393,172 @@ void awh::Socks5::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 	}
 }
 /**
+ * @brief Метод приостановки работы клиента
+ *
+ * @return результат выполнения приостановки работы
+ */
+bool awh::client::Socks5::pause() noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0){
+			// Приостанавливаем событие клиента
+			if((result = this->_client->pause(this->_eid))){
+				// Если активных сессий клиентов нет
+				if(this->_sessions.empty())
+					// Выводим текущий результат постановки на паузу
+					return result;
+				// Если активные сессии клиентов присутствуют
+				else {
+					/**
+					 * Перебираем все активные сессии клиентов, работающих через прокси
+					 */
+					for(auto & session : this->_sessions){
+						// Если протокол сесии клиента, работающего через прокси, не соответствует UDP
+						if(session.first.protocol != event::protocol_t::UDP)
+							// Пропускаем постановку клиента на паузу так-как мы его уже установили
+							continue;
+						// Приостанавливаем событие клиента для конечной точки
+						this->_client->pause(session.second.first);
+					}
+				}
+			}
+		// Если идентификатор клиента не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод возобновления работы клиента
+ *
+ * @return результат выполнения возобновления работы
+ */
+bool awh::client::Socks5::resume() noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0){
+			// Возобновляем работу события клиента
+			if((result = this->_client->resume(this->_eid))){
+				// Если активных сессий клиентов нет
+				if(this->_sessions.empty())
+					// Выводим текущий результат возобновления работы
+					return result;
+				// Если активные сессии клиентов присутствуют
+				else {
+					/**
+					 * Перебираем все активные сессии клиентов, работающих через прокси
+					 */
+					for(auto & session : this->_sessions){
+						// Если протокол сесии клиента, работающего через прокси, не соответствует UDP
+						if(session.first.protocol != event::protocol_t::UDP)
+							// Пропускаем возобновление работы клиента так-как мы его уже установили
+							continue;
+						// Возобновляем работу события клиента для конечной точки
+						this->_client->resume(session.second.first);
+					}
+				}
+			}
+		// Если идентификатор клиента не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод мультиподключения клиентов к удалённым хостам (заглушка для клиента SOCKS5)
+ *
+ * @return результат выполнения подключения
+ */
+bool awh::client::Socks5::connect() noexcept {
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод отключения клиента от удалённого сервера (заглушка для клиента SOCKS5)
+ *
+ * @return результат выполнения отключения
+ */
+bool awh::client::Socks5::disconnect() noexcept {
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод очистки активных сессий клиентов, работающих через прокси
  *
  */
-void awh::Socks5::clearSessions() noexcept {
+void awh::client::Socks5::clearSessions() noexcept {
 	// Выполняем блокировку потока для работы с TLS
 	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Очищаем активные сессии клиентов, работающих через прокси
@@ -1407,7 +1569,7 @@ void awh::Socks5::clearSessions() noexcept {
  *
  * @param mode флаг режима безопасности потоков
  */
-void awh::Socks5::threadSafety(const bool mode) noexcept {
+void awh::client::Socks5::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности работы потоков для объекта блокировки
 	this->_mtx.enabled = mode;
 	// Устанавливаем режим безопасности работы потоков для объекта клиента
@@ -1420,7 +1582,7 @@ void awh::Socks5::threadSafety(const bool mode) noexcept {
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных серверу
  */
-size_t awh::Socks5::send(const void * buffer, const size_t size) noexcept {
+size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1625,7 +1787,7 @@ size_t awh::Socks5::send(const void * buffer, const size_t size) noexcept {
  * @param eid идентификатор события клиента
  * @return    результат получения данных
  */
-bool awh::Socks5::recv(const event::id_t eid) noexcept {
+bool awh::client::Socks5::recv(const event::id_t eid) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1709,7 +1871,7 @@ bool awh::Socks5::recv(const event::id_t eid) noexcept {
  * @param size   размер данных для отправки
  * @return       количество байт данных, отправленных клиенту
  */
-size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
+size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1923,12 +2085,86 @@ size_t awh::Socks5::send(const event::id_t eid, const void * buffer, const size_
 	return 0;
 }
 /**
+ * @brief Метод установки пропускной способности клиента
+ *
+ * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
+ * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+ * @return          результат выполнения установки
+ */
+bool awh::client::Socks5::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0){
+			// Устанавливаем пропускную способность клиента
+			if((result = this->_client->bandwidth(this->_eid, limiting, bandwidth))){
+				// Если активных сессий клиентов нет
+				if(this->_sessions.empty())
+					// Выводим текущий результат установки пропускной способности клиента
+					return result;
+				// Если активные сессии клиентов присутствуют
+				else {
+					/**
+					 * Перебираем все активные сессии клиентов, работающих через прокси
+					 */
+					for(auto & session : this->_sessions){
+						// Если протокол сесии клиента, работающего через прокси, не соответствует UDP
+						if(session.first.protocol != event::protocol_t::UDP)
+							// Пропускаем установку пропускной способности клиента так-как мы его уже установили
+							continue;
+						// Устанавливаем пропускную способность клиента для конечной точки
+						this->_client->bandwidth(session.second.first, limiting, bandwidth);
+					}
+				}
+			}
+		// Если идентификатор клиента не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод установки параметров авторизации
  *
  * @param username имя пользователя для авторизации на сервере
  * @param password пароль пользователя для авторизации на сервере
  */
-void awh::Socks5::setUser(const string & username, const string & password) noexcept {
+void awh::client::Socks5::setUser(const string & username, const string & password) noexcept {
 	// Выполняем блокировку потока для работы с TLS
 	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем параметры авторизации для объекта клиента
@@ -1940,7 +2176,7 @@ void awh::Socks5::setUser(const string & username, const string & password) noex
  * @param eid идентификатор события для проверки
  * @return    результат проверки наличия идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::isEventIdEndpoint(const event::id_t eid) const noexcept {
+bool awh::client::Socks5::isEventIdEndpoint(const event::id_t eid) const noexcept {
 	// Выполняем блокировку потока для работы с TLS
 	const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Если идентификатор события клиента найден в карте соответствия, возвращаем результат
@@ -1952,7 +2188,7 @@ bool awh::Socks5::isEventIdEndpoint(const event::id_t eid) const noexcept {
  * @param eid идентификатор события для добавления
  * @return    результат выполнения добавления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
+bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2027,7 +2263,7 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
  * @param tid идентификатор TLS для добавления
  * @return    результат выполнения добавления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid) noexcept {
+bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2129,7 +2365,7 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t t
  * @param port порт хоста для добавления
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept {
+bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2230,7 +2466,7 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, string_view addr, co
  * @param port порт хоста для добавления
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, string_view addr, const uint16_t port) noexcept {
+bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, string_view addr, const uint16_t port) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2356,7 +2592,7 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t t
  * @param port порт хоста для добавления
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept {
+bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2435,7 +2671,7 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, const net::addr_t * 
  * @param port порт хоста для добавления
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, const net::addr_t * addr, const uint16_t port) noexcept {
+bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, const net::addr_t * addr, const uint16_t port) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2537,7 +2773,7 @@ bool awh::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t t
  * @param eid идентификатор события для удаления
  * @return    результат выполнения удаления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
+bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2618,7 +2854,7 @@ bool awh::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
  * @param port порт хоста для удаления
  * @return     результат выполнения удаления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::delEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept {
+bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2721,7 +2957,7 @@ bool awh::Socks5::delEventIdEndpoint(const event::id_t eid, string_view addr, co
  * @param port порт хоста для удаления
  * @return     результат выполнения удаления идентификатора события клиента для конечной точки
  */
-bool awh::Socks5::delEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept {
+bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -2799,7 +3035,7 @@ bool awh::Socks5::delEventIdEndpoint(const event::id_t eid, const net::addr_t * 
  *
  * @param tid идентификатор TLS для установки
  */
-void awh::Socks5::setSecurityId(const tls::coder_t::id_t tid) noexcept {
+void awh::client::Socks5::setSecurityId(const tls::coder_t::id_t tid) noexcept {
 	// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
 	if((tid > 0) && (this->_coder != nullptr)){
 		// Устанавливаем идентификатор TLS для клиента
@@ -2819,7 +3055,7 @@ void awh::Socks5::setSecurityId(const tls::coder_t::id_t tid) noexcept {
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept :
+awh::client::Socks5::Socks5(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(client, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
@@ -2832,7 +3068,7 @@ awh::Socks5::Socks5(unit::client_t * client, const fmk_t * fmk, const log_t * lo
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+awh::client::Socks5::Socks5(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(client, coder, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
@@ -2845,7 +3081,7 @@ awh::Socks5::Socks5(unit::client_t * client, tls::coder_t * coder, const fmk_t *
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+awh::client::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(client, dns, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
@@ -2859,7 +3095,7 @@ awh::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, const fmk_t * fm
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+awh::client::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
  client_t(client, dns, coder, fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
@@ -2868,4 +3104,4 @@ awh::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * c
  * @brief Деструктор
  *
  */
-awh::Socks5::~Socks5() noexcept {}
+awh::client::Socks5::~Socks5() noexcept {}

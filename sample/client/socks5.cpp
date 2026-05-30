@@ -58,7 +58,7 @@ class Executor {
 		 * @param size   размер данных
 		 * @param client объект клиента
 		 */
-		void read(const event::id_t sid, const event::id_t eid, const uint8_t * data, const size_t size, socks5_t * client) noexcept {
+		void read(const event::id_t sid, const event::id_t eid, const uint8_t * data, const size_t size, client::socks5_t * client) noexcept {
 			// Если данные получены
 			if(size > 0)
 				// Выводим данные в лог
@@ -74,7 +74,7 @@ class Executor {
 		 * @param status новый статус клиента
 		 * @param client объект клиента
 		 */
-		void status(const event::status_t status, socks5_t * client) noexcept {
+		void status(const event::status_t status, client::socks5_t * client) noexcept {
 			/**
 			 * Определяем состояние клиента
 			 */
@@ -99,7 +99,7 @@ class Executor {
 		 * @param ok     результат подключения
 		 * @param client объект клиента
 		 */
-		void connect(const event::id_t sid, const event::id_t eid, const bool ok, socks5_t * client) noexcept {
+		void connect(const event::id_t sid, const event::id_t eid, const bool ok, client::socks5_t * client) noexcept {
 			// Если подключение выполнено
 			if(ok){
 				// Текст запроса к серверу
@@ -181,7 +181,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект юнита клиента
 	unit::client_t unit(&fmk, &log);
 	// Создаём объект клиента
-	socks5_t client(&unit, &coder, &fmk, &log);
+	client::socks5_t client(&unit, &coder, &fmk, &log);
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Создаём событие событие для клиентской точки назначения
