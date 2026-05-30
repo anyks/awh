@@ -824,7 +824,7 @@ bool awh::server::Socks5::keepAlive(const event::id_t eid, const int32_t cnt, co
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
-		if(i != this->_peers.end())
+		if((i != this->_peers.end()) && this->_server->keepAlive(eid, cnt, idle, intvl))
 			// Устанавливаем параметры жизни подключения для клиента принадлежащего этому пиру
 			return this->_server->keepAlive(i->second.eid, cnt, idle, intvl);
 	/**
