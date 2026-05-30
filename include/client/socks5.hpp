@@ -142,11 +142,11 @@ namespace awh {
 						explicit Origin_Hash() noexcept = default;
 				} origin_hash_t;
 			private:
+				// Контекст для хранения параметров сообщений
+				proto::socks5_t::ctx_t _ctx;
+			private:
 				// Объект для работы с протоколом SOCKS5
 				proto::client_socks5_t _socks5;
-			private:
-				// Контекст для хранения параметров сообщений
-				proto::client_socks5_t::ctx_t _ctx;
 			private:
 				// Мютекс для блокировки потоков при работе с TLS
 				lock_state_t <std::shared_mutex> _mtx;

@@ -143,6 +143,22 @@ namespace awh {
 						explicit Origin_Hash() noexcept = default;
 				} origin_hash_t;
 			private:
+				/**
+				 * @brief Структура для хранения информации о пирах
+				 *
+				 */
+				typedef struct Peer {
+					// Идентификатор события клиента для конечной точки
+					event::id_t eid;
+					// Контекст для хранения параметров сообщений
+					proto::socks5_t::ctx_t ctx;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Peer() noexcept : eid(0) {};
+				} peer_t;
+			private:
 				// Объект для работы с протоколом SOCKS5
 				proto::server_socks5_t _socks5;
 			private:
@@ -151,11 +167,13 @@ namespace awh {
 			private:
 				// Адрес хостов целевых UDP серверов
 				unordered_set <string> _hosts;
-				// Список идентификаторов активных UDP серверов
-				unordered_set <event::id_t> _eids;
+				// Список сетевых интерфейсов для подключения к сети клиентов
+				unordered_set <string> _interfaces;
+				// Список идентификаторов активных UDP-серверов
+				unordered_set <event::id_t> _servers;
 			private:
 				// Список для сопоставления идентификаторов пиров с удалёнными клиентами
-				unordered_map <event::id_t, event::id_t> _clients;
+				unordered_map <event::id_t, peer_t> _peers;
 			private:
 				// Отображение идентификаторов событий клиентов для конечных точек
 				unordered_map <event::id_t, const origin_t *> _mapping;
@@ -190,13 +208,6 @@ namespace awh {
 				void start() noexcept;
 			public:
 				/**
-				 * @brief Метод перевода события в режим прослушивания входящих соединений (заглушка для сервера SOCKS5)
-				 *
-				 * @return результат выполнения перевода в режим прослушивания
-				 */
-				bool listen(const uint16_t) noexcept;
-			public:
-				/**
 				 * @brief Метод установки безопасности работы потоков
 				 *
 				 * @param mode флаг режима безопасности потоков
@@ -209,22 +220,6 @@ namespace awh {
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
-			public:
-				/**
-				 * @brief Метод получения сетевого интерфейса сервера
-				 *
-				 * @param eid идентификатор события сервера
-				 * @return    сетевой интерфейс сервера
-				 */
-				string getIface(const event::id_t eid) const noexcept;
-				/**
-				 * @brief Метод установки сетевого интерфейса сервера
-				 *
-				 * @param eid  идентификатор события сервера
-				 * @param name имя сетевого интерфейса для установки
-				 * @return     результат выполнения установки
-				 */
-				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
@@ -307,6 +302,36 @@ namespace awh {
 				bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
 			public:
 				/**
+				 * @brief Метод получения сетевого интерфейса для подключения к сети клиентов
+				 *
+				 * @return сетевой интерфейс сервера
+				 */
+				string getIface() const noexcept;
+				/**
+				 * @brief Метод получения сетевого интерфейса сервера
+				 *
+				 * @param eid идентификатор события сервера
+				 * @return    сетевой интерфейс сервера
+				 */
+				string getIface(const event::id_t eid) const noexcept;
+			public:
+				/**
+				 * @brief Метод установки сетевого интерфейса для подключения к сети клиентов
+				 *
+				 * @param name имя сетевого интерфейса для установки
+				 * @return     результат выполнения установки
+				 */
+				bool setIface(string_view name) noexcept;
+				/**
+				 * @brief Метод установки сетевого интерфейса сервера
+				 *
+				 * @param eid  идентификатор события сервера
+				 * @param name имя сетевого интерфейса для установки
+				 * @return     результат выполнения установки
+				 */
+				bool setIface(const event::id_t eid, string_view name) noexcept;
+			public:
+				/**
 				 * @brief Метод получения порта удаленного клиента или текущего сервера
 				 *
 				 * @param eid идентификатор события клиента или сервера
@@ -321,6 +346,14 @@ namespace awh {
 				 * @return     результат выполнения установки
 				 */
 				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
+			public:
+				/**
+				 * @brief Метод получения внутреннего порта события
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    внутренний порт события
+				 */
+				uint16_t getInternalPort(const event::id_t eid) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста текущей машины
@@ -339,6 +372,31 @@ namespace awh {
 				bool setHost(const event::id_t eid, string_view host) noexcept;
 			public:
 				/**
+				 * @brief Метод получения адреса хоста целевой машины
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    адрес хоста целевой машины
+				 */
+				string getTarget(const event::id_t eid) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения адреса хоста целевой машины
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param target объект для извлечения адреса хоста целевой машины
+				 * @return       результат выполнения извлечения адреса хоста целевой машины
+				 */
+				bool getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept;
+			public:
+				/**
+				 * @brief Метод установки адреса для подключения к сети клиентов
+				 *
+				 * @param address тип адреса сервера
+				 * @param value   значение адреса сервера
+				 * @return        результат выполнения установки
+				 */
+				bool setAddress(const event::address_t address, string_view value) noexcept;
+				/**
 				 * @brief Метод установки адреса сервера
 				 *
 				 * @param eid     идентификатор события сервера
@@ -347,6 +405,15 @@ namespace awh {
 				 * @return        результат выполнения установки
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept;
+			public:
+				/**
+				 * @brief Метод установки адреса для подключения к сети клиентов
+				 *
+				 * @param address тип адреса сервера
+				 * @param value   значение адреса сервера
+				 * @return        результат выполнения установки
+				 */
+				bool setAddress(const event::address_t address, const net::addr_t * value) noexcept;
 				/**
 				 * @brief Метод установки адреса сервера
 				 *
@@ -357,7 +424,14 @@ namespace awh {
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept;
 			public:
-				 /**
+				/**
+				 * @brief Метод получения адреса для подключения к сети клиентов
+				 *
+				 * @param address тип адреса клиента или сервера
+				 * @return        значение адреса клиента или сервера
+				 */
+				string getAddress(const event::address_t address) const noexcept;
+				/**
 				 * @brief Метод получения адреса клиента или текущего сервера
 				 *
 				 * @param eid     идентификатор события клиента или сервера
@@ -365,6 +439,15 @@ namespace awh {
 				 * @return        значение адреса клиента или сервера
 				 */
 				string getAddress(const event::id_t eid, const event::address_t address) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения адреса для подключения к сети клиентов
+				 *
+				 * @param address тип адреса клиента или сервера
+				 * @param value   объект для извлечения адреса клиента или сервера
+				 * @return        результат выполнения извлечения адреса клиента или сервера
+				 */
+				bool getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 				/**
 				 * @brief Метод получения адреса клиента или текущего сервера
 				 *
@@ -452,12 +535,6 @@ namespace awh {
 				 * @param eid идентификатор события сервера для установки
 				 */
 				void setEventId(const event::id_t eid) noexcept;
-			public:
-				/**
-				 * @brief Метод установки идентификатора TLS шаблона (заглушка для сервера SOCKS5)
-				 *
-				 */
-				void setSecurityId(const tls::coder_t::id_t) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)

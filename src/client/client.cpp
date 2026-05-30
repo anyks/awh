@@ -1518,8 +1518,10 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
  * @param eid идентификатор события для установки
  */
 void awh::Client::setEventId(const event::id_t eid) noexcept {
-	// Устанавливаем идентификатор события для клиента
-	this->_eid = eid;
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working())
+		// Устанавливаем идентификатор события для клиента
+		this->_eid = eid;
 }
 /**
  * @brief Метод установки идентификатора TLS
@@ -1527,16 +1529,19 @@ void awh::Client::setEventId(const event::id_t eid) noexcept {
  * @param tid идентификатор TLS для установки
  */
 void awh::Client::setSecurityId(const tls::coder_t::id_t tid) noexcept {
-	// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-	if((tid > 0) && (this->_coder != nullptr)){
-		// Устанавливаем идентификатор TLS для клиента
-		this->_tid = tid;
-		// Устанавливаем функцию обратного вызова на событие состояния TLS
-		this->_coder->on(this->_tid, std::bind(&client_t::stateTLS, this, _1, _2));
-		// Устанавливаем функцию обратного вызова на событие ошибок TLS
-		this->_coder->on(this->_tid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
-		// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-		this->_coder->on(this->_tid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
+		if((tid > 0) && (this->_coder != nullptr)){
+			// Устанавливаем идентификатор TLS для клиента
+			this->_tid = tid;
+			// Устанавливаем функцию обратного вызова на событие состояния TLS
+			this->_coder->on(this->_tid, std::bind(&client_t::stateTLS, this, _1, _2));
+			// Устанавливаем функцию обратного вызова на событие ошибок TLS
+			this->_coder->on(this->_tid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
+			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+			this->_coder->on(this->_tid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
+		}
 	}
 }
 /**

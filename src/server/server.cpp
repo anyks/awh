@@ -2310,8 +2310,10 @@ bool awh::Server::keepAlive(const event::id_t eid, const int32_t cnt, const int3
  * @param eid идентификатор события для установки
  */
 void awh::Server::setEventId(const event::id_t eid) noexcept {
-	// Устанавливаем идентификатор события для сервера
-	this->_eid = eid;
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
+		// Устанавливаем идентификатор события для сервера
+		this->_eid = eid;
 }
 /**
  * @brief Метод установки идентификатора TLS шаблона
@@ -2319,8 +2321,10 @@ void awh::Server::setEventId(const event::id_t eid) noexcept {
  * @param tid идентификатор TLS шаблона для установки
  */
 void awh::Server::setSecurityId(const tls::coder_t::id_t tid) noexcept {
-	// Устанавливаем идентификатор TLS шаблона для сервера
-	this->_tid = tid;
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
+		// Устанавливаем идентификатор TLS шаблона для сервера
+		this->_tid = tid;
 }
 /**
  * @brief Конструктор

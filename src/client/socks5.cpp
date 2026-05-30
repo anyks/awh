@@ -2165,10 +2165,13 @@ bool awh::client::Socks5::bandwidth(const event::limiting_t limiting, string_vie
  * @param password пароль пользователя для авторизации на сервере
  */
 void awh::client::Socks5::setUser(const string & username, const string & password) noexcept {
-	// Выполняем блокировку потока для работы с TLS
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Устанавливаем параметры авторизации для объекта клиента
-	this->_socks5.setUser(username, password);
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Выполняем блокировку потока для работы с TLS
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Устанавливаем параметры авторизации для объекта клиента
+		this->_socks5.setUser(username, password);
+	}
 }
 /**
  * @brief Метод проверки наличия идентификатора события клиента для конечной точки
@@ -2193,47 +2196,50 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Создаём объект адреса назначения подключения для идентификатора события клиента
-		unique_ptr <net::addr_t> target = nullptr;
-		// Получаем адрес хоста целевой машины для идентификатора события клиента
-		if(this->_client->getTarget(eid, target)){
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(target->size){
-				// Для типа IPv4
-				case 4:
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-				break;
-				// Для типа IPv6
-				case 16:
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-				break;
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Создаём объект адреса назначения подключения для идентификатора события клиента
+			unique_ptr <net::addr_t> target = nullptr;
+			// Получаем адрес хоста целевой машины для идентификатора события клиента
+			if(this->_client->getTarget(eid, target)){
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(target->size){
+					// Для типа IPv4
+					case 4:
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+					break;
+					// Для типа IPv6
+					case 16:
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+					break;
+				}
+				// Устанавливаем полученный IP-адрес
+				awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
+				// Устанавливаем полученный порт
+				awh_cast <net::attr_net_t *> (attr.get())->port = this->_client->getPort(eid);
+				// Получаем протокол для идентификатора события клиента
+				const event::protocol_t protocol = this->_client->protocol(eid);
+				// Создаём идентификатор конечной точки для идентификатора события клиента
+				const origin_t endpoint = origin_t().from(attr.get(), protocol);
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
+				if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
+					// Сбрасываем идентификатор TLS для клиента
+					this->_tid = 0;
+				// Добавляем идентификатор события клиента для конечной точки
+				auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
+				// Если идентификатор события клиента для конечной точки добавлен
+				if(ret.second)
+					// Добавляем идентификатор события клиента в карту соответствия
+					return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
 			}
-			// Устанавливаем полученный IP-адрес
-			awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
-			// Устанавливаем полученный порт
-			awh_cast <net::attr_net_t *> (attr.get())->port = this->_client->getPort(eid);
-			// Получаем протокол для идентификатора события клиента
-			const event::protocol_t protocol = this->_client->protocol(eid);
-			// Создаём идентификатор конечной точки для идентификатора события клиента
-			const origin_t endpoint = origin_t().from(attr.get(), protocol);
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
-			if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
-				// Сбрасываем идентификатор TLS для клиента
-				this->_tid = 0;
-			// Добавляем идентификатор события клиента для конечной точки
-			auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
-			// Если идентификатор события клиента для конечной точки добавлен
-			if(ret.second)
-				// Добавляем идентификатор события клиента в карту соответствия
-				return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
 		}
 	/**
 	 * Если возникает ошибка
@@ -2268,73 +2274,76 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Создаём объект адреса назначения подключения для идентификатора события клиента
-		unique_ptr <net::addr_t> target = nullptr;
-		// Получаем адрес хоста целевой машины для идентификатора события клиента
-		if(this->_client->getTarget(eid, target)){
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(target->size){
-				// Для типа IPv4
-				case 4:
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-				break;
-				// Для типа IPv6
-				case 16:
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-				break;
-			}
-			// Устанавливаем полученный IP-адрес
-			awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
-			// Устанавливаем полученный порт
-			awh_cast <net::attr_net_t *> (attr.get())->port = this->_client->getPort(eid);
-			// Получаем протокол для идентификатора события клиента
-			const event::protocol_t protocol = this->_client->protocol(eid);
-			// Создаём идентификатор конечной точки для идентификатора события клиента
-			const origin_t endpoint = origin_t().from(attr.get(), protocol);
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-			if((tid > 0) && (this->_coder != nullptr)){
-				// Устанавливаем функцию обратного вызова на событие ошибок TLS
-				this->_coder->on(tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Создаём объект адреса назначения подключения для идентификатора события клиента
+			unique_ptr <net::addr_t> target = nullptr;
+			// Получаем адрес хоста целевой машины для идентификатора события клиента
+			if(this->_client->getTarget(eid, target)){
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
 				/**
-				 * Определяем протокол протокол клиента
+				 * Определяем тип полученного IP-адреса
 				 */
-				switch(static_cast <uint8_t> (protocol)){
-					// Если протокол соответствует UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP): {
-						// Устанавливаем функцию обратного вызова на событие состояния TLS
-						this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, eid, _2));
-						// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-						this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, eid, _2, _3, _4));
-					} break;
-					// Если протокол соответствует TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP): {
-						// Устанавливаем идентификатор TLS для клиента
-						this->_tid = tid;
-						// Устанавливаем функцию обратного вызова на событие состояния TLS
-						this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
-						// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-						this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
-					} break;
+				switch(target->size){
+					// Для типа IPv4
+					case 4:
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+					break;
+					// Для типа IPv6
+					case 16:
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+					break;
 				}
+				// Устанавливаем полученный IP-адрес
+				awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
+				// Устанавливаем полученный порт
+				awh_cast <net::attr_net_t *> (attr.get())->port = this->_client->getPort(eid);
+				// Получаем протокол для идентификатора события клиента
+				const event::protocol_t protocol = this->_client->protocol(eid);
+				// Создаём идентификатор конечной точки для идентификатора события клиента
+				const origin_t endpoint = origin_t().from(attr.get(), protocol);
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
+				if((tid > 0) && (this->_coder != nullptr)){
+					// Устанавливаем функцию обратного вызова на событие ошибок TLS
+					this->_coder->on(tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
+					/**
+					 * Определяем протокол протокол клиента
+					 */
+					switch(static_cast <uint8_t> (protocol)){
+						// Если протокол соответствует UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP): {
+							// Устанавливаем функцию обратного вызова на событие состояния TLS
+							this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, eid, _2));
+							// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+							this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, eid, _2, _3, _4));
+						} break;
+						// Если протокол соответствует TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP): {
+							// Устанавливаем идентификатор TLS для клиента
+							this->_tid = tid;
+							// Устанавливаем функцию обратного вызова на событие состояния TLS
+							this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
+							// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+							this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
+						} break;
+					}
+				}
+				// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
+				if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
+					// Сбрасываем идентификатор TLS для клиента
+					this->_tid = 0;
+				// Добавляем идентификатор события клиента для конечной точки
+				auto ret = this->_sessions.emplace(endpoint, make_pair(eid, tid));
+				// Если идентификатор события клиента для конечной точки добавлен
+				if(ret.second)
+					// Добавляем идентификатор события клиента в карту соответствия
+					return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
 			}
-			// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
-			if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
-				// Сбрасываем идентификатор TLS для клиента
-				this->_tid = 0;
-			// Добавляем идентификатор события клиента для конечной точки
-			auto ret = this->_sessions.emplace(endpoint, make_pair(eid, tid));
-			// Если идентификатор события клиента для конечной точки добавлен
-			if(ret.second)
-				// Добавляем идентификатор события клиента в карту соответствия
-				return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
 		}
 	/**
 	 * Если возникает ошибка
@@ -2370,70 +2379,73 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view 
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
-		if((eid > 0) && !addr.empty()){
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = nullptr;
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(static_cast <uint8_t> (this->_addr.host(addr))){
-				// Для типа FQDN
-				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_fqdn_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::FQDN;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
-					// Устанавливаем полученный доменное имя хоста для подключения
-					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
-				} break;
-				// Для типа IPv4
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-					// Выполняем парсинг IP-адреса
-					this->_addr = addr;
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = port;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-				} break;
-				// Для типа IPv6
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-					// Выполняем парсинг IP-адреса
-					this->_addr = addr;
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = port;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-				} break;
-			}
-			// Если объект параметров подключения для идентификатора события клиента создан
-			if(attr != nullptr){
-				// Получаем протокол для идентификатора события клиента
-				const event::protocol_t protocol = this->_client->protocol(eid);
-				// Создаём идентификатор конечной точки для идентификатора события клиента
-				const origin_t endpoint = origin_t().from(attr.get(), protocol);
-				// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
-				if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
-					// Сбрасываем идентификатор TLS для клиента
-					this->_tid = 0;
-				// Добавляем идентификатор события клиента для конечной точки
-				auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
-				// Если идентификатор события клиента для конечной точки добавлен
-				if(ret.second)
-					// Добавляем идентификатор события клиента в карту соответствия
-					return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
+			if((eid > 0) && !addr.empty()){
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = nullptr;
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.host(addr))){
+					// Для типа FQDN
+					case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_fqdn_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::FQDN;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+						// Устанавливаем полученный доменное имя хоста для подключения
+						awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
+					} break;
+					// Для типа IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+						// Выполняем парсинг IP-адреса
+						this->_addr = addr;
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = port;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
+					// Для типа IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+						// Выполняем парсинг IP-адреса
+						this->_addr = addr;
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = port;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
+				}
+				// Если объект параметров подключения для идентификатора события клиента создан
+				if(attr != nullptr){
+					// Получаем протокол для идентификатора события клиента
+					const event::protocol_t protocol = this->_client->protocol(eid);
+					// Создаём идентификатор конечной точки для идентификатора события клиента
+					const origin_t endpoint = origin_t().from(attr.get(), protocol);
+					// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
+					if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
+						// Сбрасываем идентификатор TLS для клиента
+						this->_tid = 0;
+					// Добавляем идентификатор события клиента для конечной точки
+					auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
+					// Если идентификатор события клиента для конечной точки добавлен
+					if(ret.second)
+						// Добавляем идентификатор события клиента в карту соответствия
+						return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
+				}
 			}
 		}
 	/**
@@ -2471,96 +2483,99 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
-		if((eid > 0) && !addr.empty()){
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = nullptr;
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(static_cast <uint8_t> (this->_addr.host(addr))){
-				// Для типа FQDN
-				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_fqdn_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::FQDN;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
-					// Устанавливаем полученный доменное имя хоста для подключения
-					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
-				} break;
-				// Для типа IPv4
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-					// Выполняем парсинг IP-адреса
-					this->_addr = addr;
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = port;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-				} break;
-				// Для типа IPv6
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-					// Выполняем парсинг IP-адреса
-					this->_addr = addr;
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = port;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-				} break;
-			}
-			// Если объект параметров подключения для идентификатора события клиента создан
-			if(attr != nullptr){
-				// Получаем протокол для идентификатора события клиента
-				const event::protocol_t protocol = this->_client->protocol(eid);
-				// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-				if((tid > 0) && (this->_coder != nullptr)){
-					// Устанавливаем функцию обратного вызова на событие ошибок TLS
-					this->_coder->on(tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
-					/**
-					 * Определяем протокол протокол клиента
-					 */
-					switch(static_cast <uint8_t> (protocol)){
-						// Если протокол соответствует UDP
-						case static_cast <uint8_t> (event::protocol_t::UDP): {
-							// Устанавливаем функцию обратного вызова на событие состояния TLS
-							this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, eid, _2));
-							// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-							this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, eid, _2, _3, _4));
-						} break;
-						// Если протокол соответствует TCP
-						case static_cast <uint8_t> (event::protocol_t::TCP): {
-							// Устанавливаем идентификатор TLS для клиента
-							this->_tid = tid;
-							// Устанавливаем функцию обратного вызова на событие состояния TLS
-							this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
-							// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-							this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
-						} break;
-					}
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
+			if((eid > 0) && !addr.empty()){
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = nullptr;
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.host(addr))){
+					// Для типа FQDN
+					case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_fqdn_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::FQDN;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+						// Устанавливаем полученный доменное имя хоста для подключения
+						awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
+					} break;
+					// Для типа IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+						// Выполняем парсинг IP-адреса
+						this->_addr = addr;
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = port;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
+					// Для типа IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+						// Выполняем парсинг IP-адреса
+						this->_addr = addr;
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = port;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
 				}
-				// Создаём идентификатор конечной точки для идентификатора события клиента
-				const origin_t endpoint = origin_t().from(attr.get(), protocol);
-				// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
-				if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
-					// Сбрасываем идентификатор TLS для клиента
-					this->_tid = 0;
-				// Добавляем идентификатор события клиента для конечной точки
-				auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, tid));
-				// Если идентификатор события клиента для конечной точки добавлен
-				if(ret.second)
-					// Добавляем идентификатор события клиента в карту соответствия
-					return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
+				// Если объект параметров подключения для идентификатора события клиента создан
+				if(attr != nullptr){
+					// Получаем протокол для идентификатора события клиента
+					const event::protocol_t protocol = this->_client->protocol(eid);
+					// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
+					if((tid > 0) && (this->_coder != nullptr)){
+						// Устанавливаем функцию обратного вызова на событие ошибок TLS
+						this->_coder->on(tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
+						/**
+						 * Определяем протокол протокол клиента
+						 */
+						switch(static_cast <uint8_t> (protocol)){
+							// Если протокол соответствует UDP
+							case static_cast <uint8_t> (event::protocol_t::UDP): {
+								// Устанавливаем функцию обратного вызова на событие состояния TLS
+								this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, eid, _2));
+								// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+								this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, eid, _2, _3, _4));
+							} break;
+							// Если протокол соответствует TCP
+							case static_cast <uint8_t> (event::protocol_t::TCP): {
+								// Устанавливаем идентификатор TLS для клиента
+								this->_tid = tid;
+								// Устанавливаем функцию обратного вызова на событие состояния TLS
+								this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
+								// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+								this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
+							} break;
+						}
+					}
+					// Создаём идентификатор конечной точки для идентификатора события клиента
+					const origin_t endpoint = origin_t().from(attr.get(), protocol);
+					// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
+					if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
+						// Сбрасываем идентификатор TLS для клиента
+						this->_tid = 0;
+					// Добавляем идентификатор события клиента для конечной точки
+					auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, tid));
+					// Если идентификатор события клиента для конечной точки добавлен
+					if(ret.second)
+						// Добавляем идентификатор события клиента в карту соответствия
+						return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
+				}
 			}
 		}
 	/**
@@ -2597,49 +2612,52 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, const net::a
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
-		if((eid > 0) && (addr != nullptr)){
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(addr->size){
-				// Для типа IPv4
-				case 4: {
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
-				} break;
-				// Для типа IPv6
-				case 16: {
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-					// Создаём новый объект адреса клиента IPv6
-					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-					// Устанавливаем полученный IP-адрес
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
-				} break;
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
+			if((eid > 0) && (addr != nullptr)){
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(addr->size){
+					// Для типа IPv4
+					case 4: {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
+					} break;
+					// Для типа IPv6
+					case 16: {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+						// Создаём новый объект адреса клиента IPv6
+						awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Устанавливаем полученный IP-адрес
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
+					} break;
+				}
+				// Устанавливаем полученный порт
+				awh_cast <net::attr_net_t *> (attr.get())->port = port;
+				// Получаем протокол для идентификатора события клиента
+				const event::protocol_t protocol = this->_client->protocol(eid);
+				// Создаём идентификатор конечной точки для идентификатора события клиента
+				const origin_t endpoint = origin_t().from(attr.get(), protocol);
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
+				if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
+					// Сбрасываем идентификатор TLS для клиента
+					this->_tid = 0;
+				// Добавляем идентификатор события клиента для конечной точки
+				auto ret = this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
+				// Если идентификатор события клиента для конечной точки добавлен
+				if(ret.second)
+					// Добавляем идентификатор события клиента в карту соответствия
+					return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
 			}
-			// Устанавливаем полученный порт
-			awh_cast <net::attr_net_t *> (attr.get())->port = port;
-			// Получаем протокол для идентификатора события клиента
-			const event::protocol_t protocol = this->_client->protocol(eid);
-			// Создаём идентификатор конечной точки для идентификатора события клиента
-			const origin_t endpoint = origin_t().from(attr.get(), protocol);
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
-			if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
-				// Сбрасываем идентификатор TLS для клиента
-				this->_tid = 0;
-			// Добавляем идентификатор события клиента для конечной точки
-			auto ret = this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
-			// Если идентификатор события клиента для конечной точки добавлен
-			if(ret.second)
-				// Добавляем идентификатор события клиента в карту соответствия
-				return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
 		}
 	/**
 	 * Если возникает ошибка
@@ -2676,75 +2694,78 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
-		if((eid > 0) && (addr != nullptr)){
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(addr->size){
-				// Для типа IPv4
-				case 4: {
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
-				} break;
-				// Для типа IPv6
-				case 16: {
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-					// Создаём новый объект адреса клиента IPv6
-					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-					// Устанавливаем полученный IP-адрес
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
-				} break;
-			}
-			// Устанавливаем полученный порт
-			awh_cast <net::attr_net_t *> (attr.get())->port = port;
-			// Получаем протокол для идентификатора события клиента
-			const event::protocol_t protocol = this->_client->protocol(eid);
-			// Создаём идентификатор конечной точки для идентификатора события клиента
-			const origin_t endpoint = origin_t().from(attr.get(), protocol);
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-			if((tid > 0) && (this->_coder != nullptr)){
-				// Устанавливаем функцию обратного вызова на событие ошибок TLS
-				this->_coder->on(tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
+			if((eid > 0) && (addr != nullptr)){
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
 				/**
-				 * Определяем протокол протокол клиента
+				 * Определяем тип полученного IP-адреса
 				 */
-				switch(static_cast <uint8_t> (protocol)){
-					// Если протокол соответствует UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP): {
-						// Устанавливаем функцию обратного вызова на событие состояния TLS
-						this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, eid, _2));
-						// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-						this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, eid, _2, _3, _4));
+				switch(addr->size){
+					// Для типа IPv4
+					case 4: {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
 					} break;
-					// Если протокол соответствует TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP): {
-						// Устанавливаем идентификатор TLS для клиента
-						this->_tid = tid;
-						// Устанавливаем функцию обратного вызова на событие состояния TLS
-						this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
-						// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-						this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
+					// Для типа IPv6
+					case 16: {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+						// Создаём новый объект адреса клиента IPv6
+						awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Устанавливаем полученный IP-адрес
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
 					} break;
 				}
+				// Устанавливаем полученный порт
+				awh_cast <net::attr_net_t *> (attr.get())->port = port;
+				// Получаем протокол для идентификатора события клиента
+				const event::protocol_t protocol = this->_client->protocol(eid);
+				// Создаём идентификатор конечной точки для идентификатора события клиента
+				const origin_t endpoint = origin_t().from(attr.get(), protocol);
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
+				if((tid > 0) && (this->_coder != nullptr)){
+					// Устанавливаем функцию обратного вызова на событие ошибок TLS
+					this->_coder->on(tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
+					/**
+					 * Определяем протокол протокол клиента
+					 */
+					switch(static_cast <uint8_t> (protocol)){
+						// Если протокол соответствует UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP): {
+							// Устанавливаем функцию обратного вызова на событие состояния TLS
+							this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, eid, _2));
+							// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+							this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, eid, _2, _3, _4));
+						} break;
+						// Если протокол соответствует TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP): {
+							// Устанавливаем идентификатор TLS для клиента
+							this->_tid = tid;
+							// Устанавливаем функцию обратного вызова на событие состояния TLS
+							this->_coder->on(tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
+							// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+							this->_coder->on(tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
+						} break;
+					}
+				}
+				// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
+				if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
+					// Сбрасываем идентификатор TLS для клиента
+					this->_tid = 0;
+				// Добавляем идентификатор события клиента для конечной точки
+				auto ret = this->_sessions.emplace(endpoint, make_pair(eid, tid));
+				// Если идентификатор события клиента для конечной точки добавлен
+				if(ret.second)
+					// Добавляем идентификатор события клиента в карту соответствия
+					return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
 			}
-			// Если протокол соответствует UDP и установлен идентификатор TLS для клиента
-			if((this->_tid > 0) && (protocol == event::protocol_t::UDP))
-				// Сбрасываем идентификатор TLS для клиента
-				this->_tid = 0;
-			// Добавляем идентификатор события клиента для конечной точки
-			auto ret = this->_sessions.emplace(endpoint, make_pair(eid, tid));
-			// Если идентификатор события клиента для конечной точки добавлен
-			if(ret.second)
-				// Добавляем идентификатор события клиента в карту соответствия
-				return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
 		}
 	/**
 	 * Если возникает ошибка
@@ -2780,49 +2801,52 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Создаём объект адреса назначения подключения для идентификатора события клиента
-		unique_ptr <net::addr_t> target = nullptr;
-		// Получаем адрес хоста целевой машины для идентификатора события клиента
-		if(this->_client->getTarget(eid, target)){
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(target->size){
-				// Для типа IPv4
-				case 4:
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-				break;
-				// Для типа IPv6
-				case 16:
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-				break;
-			}
-			// Устанавливаем полученный IP-адрес
-			awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
-			// Устанавливаем полученный порт
-			awh_cast <net::attr_net_t *> (attr.get())->port = this->_client->getPort(eid);
-			// Получаем протокол для идентификатора события клиента
-			const event::protocol_t protocol = this->_client->protocol(eid);
-			// Создаём идентификатор конечной точки для идентификатора события клиента
-			const origin_t endpoint = origin_t().from(attr.get(), protocol);
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Выполняем поиск идентификатора события клиента для конечной точки
-			auto i = this->_sessions.find(endpoint);
-			// Если идентификатор события клиента для конечной точки найден
-			if((result = (i != this->_sessions.end()))){
-				// Удаляем идентификатор события клиента для конечной точки
-				this->_sessions.erase(i);
-				// Выполняем поиск идентификатора события клиента в карте соответствия
-				auto j = this->_mapping.find(eid);
-				// Если идентификатор события клиента найден в карте соответствия
-				if((result = (j != this->_mapping.end())))
-					// Удаляем идентификатор события клиента из карты соответствия
-					this->_mapping.erase(j);
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Создаём объект адреса назначения подключения для идентификатора события клиента
+			unique_ptr <net::addr_t> target = nullptr;
+			// Получаем адрес хоста целевой машины для идентификатора события клиента
+			if(this->_client->getTarget(eid, target)){
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(target->size){
+					// Для типа IPv4
+					case 4:
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+					break;
+					// Для типа IPv6
+					case 16:
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+					break;
+				}
+				// Устанавливаем полученный IP-адрес
+				awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(target);
+				// Устанавливаем полученный порт
+				awh_cast <net::attr_net_t *> (attr.get())->port = this->_client->getPort(eid);
+				// Получаем протокол для идентификатора события клиента
+				const event::protocol_t protocol = this->_client->protocol(eid);
+				// Создаём идентификатор конечной точки для идентификатора события клиента
+				const origin_t endpoint = origin_t().from(attr.get(), protocol);
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем поиск идентификатора события клиента для конечной точки
+				auto i = this->_sessions.find(endpoint);
+				// Если идентификатор события клиента для конечной точки найден
+				if((result = (i != this->_sessions.end()))){
+					// Удаляем идентификатор события клиента для конечной точки
+					this->_sessions.erase(i);
+					// Выполняем поиск идентификатора события клиента в карте соответствия
+					auto j = this->_mapping.find(eid);
+					// Если идентификатор события клиента найден в карте соответствия
+					if((result = (j != this->_mapping.end())))
+						// Удаляем идентификатор события клиента из карты соответствия
+						this->_mapping.erase(j);
+				}
 			}
 		}
 	/**
@@ -2861,70 +2885,73 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view 
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
-		if((eid > 0) && !addr.empty()){
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = nullptr;
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(static_cast <uint8_t> (this->_addr.host(addr))){
-				// Для типа FQDN
-				case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_fqdn_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::FQDN;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
-					// Устанавливаем полученный доменное имя хоста для подключения
-					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
-				} break;
-				// Для типа IPv4
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-					// Выполняем парсинг IP-адреса
-					this->_addr = addr;
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = port;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-				} break;
-				// Для типа IPv6
-				case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-					// Выполняем парсинг IP-адреса
-					this->_addr = addr;
-					// Создаём объект параметров подключения для идентификатора события клиента
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = port;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-				} break;
-			}
-			// Если объект параметров подключения для идентификатора события клиента создан
-			if(attr != nullptr){
-				// Создаём идентификатор конечной точки для идентификатора события клиента
-				const origin_t endpoint = origin_t().from(attr.get(), this->_client->protocol(eid));
-				// Выполняем поиск идентификатора события клиента для конечной точки
-				auto i = this->_sessions.find(endpoint);
-				// Если идентификатор события клиента для конечной точки найден
-				if((result = (i != this->_sessions.end()))){
-					// Удаляем идентификатор события клиента для конечной точки
-					this->_sessions.erase(i);
-					// Выполняем поиск идентификатора события клиента в карте соответствия
-					auto j = this->_mapping.find(eid);
-					// Если идентификатор события клиента найден в карте соответствия
-					if((result = (j != this->_mapping.end())))
-						// Удаляем идентификатор события клиента из карты соответствия
-						this->_mapping.erase(j);
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
+			if((eid > 0) && !addr.empty()){
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = nullptr;
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.host(addr))){
+					// Для типа FQDN
+					case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_fqdn_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::FQDN;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+						// Устанавливаем полученный доменное имя хоста для подключения
+						awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
+					} break;
+					// Для типа IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+						// Выполняем парсинг IP-адреса
+						this->_addr = addr;
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = port;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
+					// Для типа IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+						// Выполняем парсинг IP-адреса
+						this->_addr = addr;
+						// Создаём объект параметров подключения для идентификатора события клиента
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = port;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
+				}
+				// Если объект параметров подключения для идентификатора события клиента создан
+				if(attr != nullptr){
+					// Создаём идентификатор конечной точки для идентификатора события клиента
+					const origin_t endpoint = origin_t().from(attr.get(), this->_client->protocol(eid));
+					// Выполняем поиск идентификатора события клиента для конечной точки
+					auto i = this->_sessions.find(endpoint);
+					// Если идентификатор события клиента для конечной точки найден
+					if((result = (i != this->_sessions.end()))){
+						// Удаляем идентификатор события клиента для конечной точки
+						this->_sessions.erase(i);
+						// Выполняем поиск идентификатора события клиента в карте соответствия
+						auto j = this->_mapping.find(eid);
+						// Если идентификатор события клиента найден в карте соответствия
+						if((result = (j != this->_mapping.end())))
+							// Удаляем идентификатор события клиента из карты соответствия
+							this->_mapping.erase(j);
+					}
 				}
 			}
 		}
@@ -2964,49 +2991,52 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, const net::a
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
-		if((eid > 0) && (addr != nullptr)){
-			// Создаём объект параметров подключения для идентификатора события клиента
-			unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(addr->size){
-				// Для типа IPv4
-				case 4: {
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV4;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
-				} break;
-				// Для типа IPv6
-				case 16: {
-					// Устанавливаем тип параметров подключения для идентификатора события клиента
-					attr->type = net::type_t::IPV6;
-					// Создаём новый объект адреса клиента IPv6
-					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-					// Устанавливаем полученный IP-адрес
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
-				} break;
-			}
-			// Устанавливаем полученный порт
-			awh_cast <net::attr_net_t *> (attr.get())->port = port;
-			// Создаём идентификатор конечной точки для идентификатора события клиента
-			const origin_t endpoint = origin_t().from(attr.get(), this->_client->protocol(eid));
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Выполняем поиск идентификатора события клиента для конечной точки
-			auto i = this->_sessions.find(endpoint);
-			// Если идентификатор события клиента для конечной точки найден
-			if((result = (i != this->_sessions.end()))){
-				// Удаляем идентификатор события клиента для конечной точки
-				this->_sessions.erase(i);
-				// Выполняем поиск идентификатора события клиента в карте соответствия
-				auto j = this->_mapping.find(eid);
-				// Если идентификатор события клиента найден в карте соответствия
-				if((result = (j != this->_mapping.end())))
-					// Удаляем идентификатор события клиента из карты соответствия
-					this->_mapping.erase(j);
+		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
+			if((eid > 0) && (addr != nullptr)){
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(addr->size){
+					// Для типа IPv4
+					case 4: {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (addr)->address;
+					} break;
+					// Для типа IPv6
+					case 16: {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+						// Создаём новый объект адреса клиента IPv6
+						awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+						// Устанавливаем полученный IP-адрес
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], 16);
+					} break;
+				}
+				// Устанавливаем полученный порт
+				awh_cast <net::attr_net_t *> (attr.get())->port = port;
+				// Создаём идентификатор конечной точки для идентификатора события клиента
+				const origin_t endpoint = origin_t().from(attr.get(), this->_client->protocol(eid));
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем поиск идентификатора события клиента для конечной точки
+				auto i = this->_sessions.find(endpoint);
+				// Если идентификатор события клиента для конечной точки найден
+				if((result = (i != this->_sessions.end()))){
+					// Удаляем идентификатор события клиента для конечной точки
+					this->_sessions.erase(i);
+					// Выполняем поиск идентификатора события клиента в карте соответствия
+					auto j = this->_mapping.find(eid);
+					// Если идентификатор события клиента найден в карте соответствия
+					if((result = (j != this->_mapping.end())))
+						// Удаляем идентификатор события клиента из карты соответствия
+						this->_mapping.erase(j);
+				}
 			}
 		}
 	/**
@@ -3036,16 +3066,19 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, const net::a
  * @param tid идентификатор TLS для установки
  */
 void awh::client::Socks5::setSecurityId(const tls::coder_t::id_t tid) noexcept {
-	// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-	if((tid > 0) && (this->_coder != nullptr)){
-		// Устанавливаем идентификатор TLS для клиента
-		this->_tid = tid;
-		// Устанавливаем функцию обратного вызова на событие ошибок TLS
-		this->_coder->on(this->_tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
-		// Устанавливаем функцию обратного вызова на событие состояния TLS
-		this->_coder->on(this->_tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
-		// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-		this->_coder->on(this->_tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
+		if((tid > 0) && (this->_coder != nullptr)){
+			// Устанавливаем идентификатор TLS для клиента
+			this->_tid = tid;
+			// Устанавливаем функцию обратного вызова на событие ошибок TLS
+			this->_coder->on(this->_tid, std::bind(&socks5_t::errorTLS, this, _1, _2, _3));
+			// Устанавливаем функцию обратного вызова на событие состояния TLS
+			this->_coder->on(this->_tid, std::bind(&socks5_t::stateTLS, this, _1, this->_eid, _2));
+			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+			this->_coder->on(this->_tid, std::bind(&socks5_t::processTLS, this, _1, this->_eid, _2, _3, _4));
+		}
 	}
 }
 /**
