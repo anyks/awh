@@ -1075,7 +1075,7 @@ string awh::Server::getIface() const noexcept {
 			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Выводим результат
 	return "";
 }
 /**
@@ -1572,7 +1572,7 @@ uint16_t awh::Server::getPort(const event::id_t eid) const noexcept {
  *
  * @return адрес хоста текущей машины
  */
-string awh::Server::getHost() const noexcept {
+const string & awh::Server::getHost() const noexcept {
 	// Выводим адрес хоста текущей машины для сервера
 	return this->_host;
 }

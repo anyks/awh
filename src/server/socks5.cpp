@@ -227,7 +227,10 @@ void awh::server::Socks5::start() noexcept {
  * @param mode флаг режима безопасности потоков
  */
 void awh::server::Socks5::threadSafety(const bool mode) noexcept {
-
+	// Устанавливаем режим безопасности работы потоков для объекта блокировки
+	this->_mtx.enabled = mode;
+	// Устанавливаем режим безопасности работы потоков для объекта сервера
+	server_t::threadSafety(mode);
 }
 /**
  * @brief Метод установки функций обратного вызова
@@ -262,7 +265,38 @@ bool awh::server::Socks5::membership(const event::mode_t, const net::addr_t *, c
  * @return    результат выполнения приостановки работы
  */
 bool awh::server::Socks5::pause(const event::id_t eid) noexcept {
-	// И для пиров и для их клиентов
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if((i != this->_peers.end()) && this->_server->pause(eid))
+			// Приостанавливаем работу события клиента, принадлежащего подключённому пиру
+			return this->_server->pause(i->second.eid);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод возобновления работы клиента
@@ -271,7 +305,38 @@ bool awh::server::Socks5::pause(const event::id_t eid) noexcept {
  * @return    результат выполнения возобновления работы
  */
 bool awh::server::Socks5::resume(const event::id_t eid) noexcept {
-	// И для пиров и для их клиентов
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if((i != this->_peers.end()) && this->_server->resume(eid))
+			// Возобновляем работу события клиента, принадлежащего подключённому пиру
+			return this->_server->resume(i->second.eid);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод уничтожения события клиента
@@ -279,7 +344,41 @@ bool awh::server::Socks5::resume(const event::id_t eid) noexcept {
  * @param eid идентификатор события клиента для уничтожения
  */
 void awh::server::Socks5::destroy(const event::id_t eid) noexcept {
-	// Уничтожаем событие клиента
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end()){
+			// Уничтожаем событие клиента, принадлежащего подключённому пиру
+			this->_server->destroy(i->second.eid);
+			// Уничтожаем событие подключённого пира
+			this->_server->destroy(i->first);
+			// Удаляем идентификатор события подключённого пира из списка
+			this->_peers.erase(i);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
 }
 /**
  * @brief Метод получения данных от клиента (заглушка для сервера SOCKS5)
@@ -315,7 +414,38 @@ bool awh::server::Socks5::splice(const event::id_t, const event::id_t) noexcept 
  * @return    опции клиента
  */
 uint16_t awh::server::Socks5::getOptions(const event::id_t eid) const noexcept {
-	// Только для удалённых клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Извлекаем опции для события клиента, принадлежащего подключённому пиру
+			return this->_server->getOptions(i->second.eid);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод установки опций клиента
@@ -325,7 +455,38 @@ uint16_t awh::server::Socks5::getOptions(const event::id_t eid) const noexcept {
  * @return        результат выполнения установки
  */
 bool awh::server::Socks5::setOptions(const event::id_t eid, const uint16_t options) noexcept {
-	// Только для удалённых клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Устанавливаем опции для события клиента, принадлежащего подключённому пиру
+			return this->_server->setOptions(i->second.eid, options);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, options), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод установки опции клиента
@@ -336,7 +497,38 @@ bool awh::server::Socks5::setOptions(const event::id_t eid, const uint16_t optio
  * @return       результат выполнения установки
  */
 bool awh::server::Socks5::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
-	// Только для удалённых клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Устанавливаем опцию для события клиента, принадлежащего подключённому пиру
+			return this->_server->setOption(i->second.eid, option, mode);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, option, mode), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод получения сетевого интерфейса для подключения к сети клиентов
@@ -344,7 +536,8 @@ bool awh::server::Socks5::setOption(const event::id_t eid, const uint16_t option
  * @return сетевой интерфейс сервера
  */
 string awh::server::Socks5::getIface() const noexcept {
-	// Только для клиентов принадлежащих пиру
+	// Выводим сетевой интерфейс для подключения к сети клиентов
+	return this->_interface;
 }
 /**
  * @brief Метод получения сетевого интерфейса сервера
@@ -353,7 +546,39 @@ string awh::server::Socks5::getIface() const noexcept {
  * @return    сетевой интерфейс сервера
  */
 string awh::server::Socks5::getIface(const event::id_t eid) const noexcept {
-	// Только для серверов и удаленных клиентов принадлежащих пиру
+	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+		// Извлекаем сетевой интерфейс для сервера
+		return this->_server->getIface(eid);
+	// Если идентификатор сервера не установлен
+	else {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Извлекаем сетевой интерфейс для события пира
+			return this->_server->getIface(i->second.eid);
+		// Если идентификатор события подключённого пира не найден
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server or Peer ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server or Peer ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return "";
 }
 /**
  * @brief Метод установки сетевого интерфейса для подключения к сети клиентов
@@ -362,7 +587,14 @@ string awh::server::Socks5::getIface(const event::id_t eid) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::server::Socks5::setIface(string_view name) noexcept {
-	// Только для клиентов принадлежащих пиру
+	// Результат работы функции
+	bool result = false;
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if((result = (this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())))
+		// Устанавливаем сетевой интерфейс для подключения к сети клиентов
+		this->_interface = name;
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод установки сетевого интерфейса сервера
@@ -372,7 +604,41 @@ bool awh::server::Socks5::setIface(string_view name) noexcept {
  * @return     результат выполнения установки
  */
 bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noexcept {
-	// Только для серверов и удаленных клиентов принадлежащих пиру
+	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+		// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
+			// Устанавливаем сетевой интерфейс сервера
+			return this->_server->setIface(eid, name);
+	// Если идентификатор сервера не установлен
+	} else {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Устанавливаем сетевой интерфейс для события пира
+			return this->_server->setIface(i->second.eid, name);
+		// Если идентификатор события подключённого пира не найден
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server or Peer ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid, name), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server or Peer ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод получения порта удаленного клиента или текущего сервера
@@ -381,7 +647,39 @@ bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noex
  * @return    порт удаленного клиента или текущего сервера
  */
 uint16_t awh::server::Socks5::getPort(const event::id_t eid) const noexcept {
-	// Для серверов и удаленных клиентов принадлежащих пиру
+	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+		// Получаем порт сервера
+		return this->_server->getPort(eid);
+	// Если идентификатор сервера не установлен
+	else {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Получаем порт удалённого клиента для события пира
+			return this->_server->getPort(i->second.eid);
+		// Если идентификатор события подключённого пира не найден
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server or Peer ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server or Peer ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод установки порта сервера
@@ -391,7 +689,30 @@ uint16_t awh::server::Socks5::getPort(const event::id_t eid) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::server::Socks5::setPort(const event::id_t eid, const uint16_t port) noexcept {
-	// Только для серверов
+	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+		// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
+			// Устанавливаем порт сервера
+			return this->_server->setPort(eid, port);
+	// Если идентификатор сервера не установлен
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid, port), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод получения внутреннего порта события
@@ -400,7 +721,38 @@ bool awh::server::Socks5::setPort(const event::id_t eid, const uint16_t port) no
  * @return    внутренний порт события
  */
 uint16_t awh::server::Socks5::getInternalPort(const event::id_t eid) const noexcept {
-	// Порт пира с которым он подключился
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Извлекаем внутренний порт события пира
+			return this->_unit.getInternalPort(i->first);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод получения адреса хоста текущей машины
@@ -408,8 +760,35 @@ uint16_t awh::server::Socks5::getInternalPort(const event::id_t eid) const noexc
  * @param eid идентификатор события сервера
  * @return    адрес хоста текущей машины
  */
-string awh::server::Socks5::getHost(const event::id_t eid) const noexcept {
-	// Только для адреса серверов
+const string & awh::server::Socks5::getHost(const event::id_t eid) const noexcept {
+	// Результат работы функции
+	const static string result = "";
+	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+		if(this->_eid == eid)
+			// Возвращаем адрес хоста текущей машины для сервера
+			return this->_host;
+		// Возвращаем адрес хоста текущей машины для указанного UDP-сервера
+		else return this->_hosts.at(eid);
+	// Если идентификатор сервера не установлен
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return result;
 }
 /**
  * @brief Метод установки адреса хоста текущей машины
@@ -419,7 +798,165 @@ string awh::server::Socks5::getHost(const event::id_t eid) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::server::Socks5::setHost(const event::id_t eid, string_view host) noexcept {
-	// Только для адреса серверов
+	// Результат работы функции
+	bool result = false;
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		/**
+		 * Определяем тип полученного IP-адреса
+		 */
+		switch(static_cast <uint8_t> (this->_addr.host(host))){
+			// Для типа Unix Domain Socket
+			case static_cast <uint8_t> (net_addr_t::type_t::FS): {
+				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+					// Устанавливаем адрес хоста целевой машины для сервера
+					result = this->_server->setAddress(eid, event::address_t::UDS, host);
+					// Если адрес установлен успешно
+					if(result){
+						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+						if(this->_eid == eid)
+							// Сохраняем адрес хоста целевой машины для сервера
+							this->_host = this->_server->getAddress(eid, event::address_t::UDS);
+						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
+						else {
+							// Выполняем поиск идентификатор события UDP-сервера
+							auto i = this->_hosts.find(eid);
+							// Если идентификатор события UDP-сервера найден
+							if(i != this->_hosts.end())
+								// Сохраняем адрес хоста целевой машины для сервера
+								i->second = this->_server->getAddress(eid, event::address_t::UDS);
+							// Сохраняем его для указанного UDP-сервера
+							else this->_hosts.emplace(eid, this->_server->getAddress(eid, event::address_t::UDS));
+						}
+					}
+				// Если идентификатор сервера не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid, host), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+			// Для типа IPv4
+			case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+					// Устанавливаем адрес хоста целевой машины для сервера
+					result = this->_server->setAddress(eid, event::address_t::IPV4, host);
+					// Если адрес установлен успешно
+					if(result){
+						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+						if(this->_eid == eid)
+							// Сохраняем адрес хоста целевой машины для сервера
+							this->_host = this->_server->getAddress(eid, event::address_t::IPV4);
+						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
+						else {
+							// Выполняем поиск идентификатор события UDP-сервера
+							auto i = this->_hosts.find(eid);
+							// Если идентификатор события UDP-сервера найден
+							if(i != this->_hosts.end())
+								// Сохраняем адрес хоста целевой машины для сервера
+								i->second = this->_server->getAddress(eid, event::address_t::IPV4);
+							// Сохраняем его для указанного UDP-сервера
+							else this->_hosts.emplace(eid, this->_server->getAddress(eid, event::address_t::IPV4));
+						}
+					}
+				// Если идентификатор сервера не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid, host), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+			// Для типа IPv6
+			case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+					// Устанавливаем адрес хоста целевой машины для сервера
+					result = this->_server->setAddress(eid, event::address_t::IPV6, host);
+					// Если адрес установлен успешно, сохраняем его
+					if(result){
+						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+						if(this->_eid == eid)
+							// Сохраняем адрес хоста целевой машины для сервера
+							this->_host = this->_server->getAddress(eid, event::address_t::IPV6);
+						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
+						else {
+							// Выполняем поиск идентификатор события UDP-сервера
+							auto i = this->_hosts.find(eid);
+							// Если идентификатор события UDP-сервера найден
+							if(i != this->_hosts.end())
+								// Сохраняем адрес хоста целевой машины для сервера
+								i->second = this->_server->getAddress(eid, event::address_t::IPV6);
+							// Сохраняем его для указанного UDP-сервера
+							else this->_hosts.emplace(eid, this->_server->getAddress(eid, event::address_t::IPV6));
+						}
+					}
+				// Если идентификатор сервера не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(eid, host), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+			// Для остальных типов адресов
+			default: {
+				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+					// Если адрес не является IP-адресом, устанавливаем его как есть
+					if((result = !host.empty())){
+						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+						if(this->_eid == eid)
+							// Устанавливаем адрес хоста целевой машины для сервера
+							this->_host = host;
+						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
+						else {
+							// Выполняем поиск идентификатор события UDP-сервера
+							auto i = this->_hosts.find(eid);
+							// Если идентификатор события UDP-сервера найден
+							if(i != this->_hosts.end())
+								// Сохраняем адрес хоста целевой машины для сервера
+								i->second = host;
+							// Сохраняем его для указанного UDP-сервера
+							else this->_hosts.emplace(eid, host);
+						}
+					}
+				}
+			}
+		}
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -428,7 +965,38 @@ bool awh::server::Socks5::setHost(const event::id_t eid, string_view host) noexc
  * @return    адрес хоста целевой машины
  */
 string awh::server::Socks5::getTarget(const event::id_t eid) const noexcept {
-	// Только для адреса клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Извлекаем адрес хоста целевой машины для клиента принадлежащего этому пиру
+			return this->_unit.getTarget(i->second.eid);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return "";
 }
 /**
  * @brief Метод получения адреса хоста целевой машины
@@ -438,7 +1006,38 @@ string awh::server::Socks5::getTarget(const event::id_t eid) const noexcept {
  * @return       результат выполнения извлечения адреса хоста целевой машины
  */
 bool awh::server::Socks5::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
-	// Только для адреса клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем блокировку потока для работы с локальными данными
+		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Извлекаем адрес хоста целевой машины для клиента принадлежащего этому пиру
+			return this->_unit.getTarget(i->second.eid, target);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод установки адреса для подключения к сети клиентов
@@ -448,7 +1047,108 @@ bool awh::server::Socks5::getTarget(const event::id_t eid, unique_ptr <net::addr
  * @return        результат выполнения установки
  */
 bool awh::server::Socks5::setAddress(const event::address_t address, string_view value) noexcept {
-	// Только для клиентов принадлежащих пиру
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип адреса события
+		 */
+		switch(static_cast <uint8_t> (address)){
+			// Если тип адреса принадлежит к MAC-адресам
+			case static_cast <uint8_t> (event::address_t::MAC): {
+				// Выполняем блокировку потока для работы с локальными данными
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Устанавливаем полученный MAC-адрес
+				if(this->_addr.parse(value, net_addr_t::type_t::MAC)){
+					/**
+					 * Определяем семейство адресов
+					 */
+					switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Извлекаем переданный MAC-адрес
+							src.mac = ::move(this->_addr.source());
+							// Извлекаем сетевой интерфейс из объекта адреса
+							this->_eth.addr.fillSource(event::node_t::SERVER, src);
+							// Если сетевой интерфейс успешно получен
+							if((result = !src.iface.empty()))
+								// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+								this->_interface = ::move(src.iface);
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Извлекаем переданный MAC-адрес
+							src.mac = ::move(this->_addr.source());
+							// Извлекаем сетевой интерфейс из объекта адреса
+							this->_eth.addr.fillSource(event::node_t::SERVER, src);
+							// Если сетевой интерфейс успешно получен
+							if((result = !src.iface.empty()))
+								// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+								this->_interface = ::move(src.iface);
+						} break;
+					}
+				}
+			} break;
+			// Если тип адреса принадлежит к IPv4-адресам
+			case static_cast <uint8_t> (event::address_t::IPV4): {
+				// Выполняем блокировку потока для работы с локальными данными
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Устанавливаем полученный IPv4-адрес
+				if(this->_addr.parse(value, net_addr_t::type_t::IPV4)){
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+					// Извлекаем сетевой интерфейс из объекта адреса
+					this->_eth.addr.fillSource(this->_addr.source().get(), src);
+					// Если сетевой интерфейс успешно получен
+					if((result = !src.iface.empty()))
+						// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+						this->_interface = ::move(src.iface);
+				}
+			} break;
+			// Если тип адреса принадлежит к IPv6-адресам
+			case static_cast <uint8_t> (event::address_t::IPV6): {
+				// Выполняем блокировку потока для работы с локальными данными
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Устанавливаем полученный IPv6-адрес
+				if(this->_addr.parse(value, net_addr_t::type_t::IPV6)){
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+					// Извлекаем сетевой интерфейс из объекта адреса
+					this->_eth.addr.fillSource(this->_addr.source().get(), src);
+					// Если сетевой интерфейс успешно получен
+					if((result = !src.iface.empty()))
+						// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+						this->_interface = ::move(src.iface);
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод установки адреса сервера
@@ -459,7 +1159,47 @@ bool awh::server::Socks5::setAddress(const event::address_t address, string_view
  * @return        результат выполнения установки
  */
 bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
-	// Только для адреса серверов и удаленных клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+			// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+			if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
+				// Устанавливаем внутренний адрес socks5-сервера
+				return this->_server->setAddress(eid, address, value);
+		// Если идентификатор события передан другой
+		} else {
+			// Выполняем блокировку потока для работы с локальными данными
+			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Выполняем поиск идентификатор события подключённого пира
+			auto i = this->_peers.find(eid);
+			// Если идентификатор события подключённого пира найден
+			if(i != this->_peers.end())
+				// Устанавливаем внутренний адрес удалённого клиента подключённого пира
+				return this->_server->setAddress(i->second.eid, address, value);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (address), value), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод установки адреса для подключения к сети клиентов
@@ -469,7 +1209,93 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
  * @return        результат выполнения установки
  */
 bool awh::server::Socks5::setAddress(const event::address_t address, const net::addr_t * value) noexcept {
-	// Только для клиентов принадлежащих пиру
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем тип адреса события
+		 */
+		switch(static_cast <uint8_t> (address)){
+			// Если тип адреса принадлежит к MAC-адресам
+			case static_cast <uint8_t> (event::address_t::MAC): {
+				/**
+				 * Определяем семейство адресов
+				 */
+				switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4): {
+						// Временный объект для извлечения сетевого интерфейса
+						net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+						// Устанавливаем MAC-адрес для извлечения сетевого интерфейса
+						::memcpy(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
+						// Извлекаем сетевой интерфейс из объекта адреса
+						this->_eth.addr.fillSource(event::node_t::SERVER, src);
+						// Если сетевой интерфейс успешно получен
+						if((result = !src.iface.empty()))
+							// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+							this->_interface = ::move(src.iface);
+					} break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6): {
+						// Временный объект для извлечения сетевого интерфейса
+						net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+						// Устанавливаем MAC-адрес для извлечения сетевого интерфейса
+						::memcpy(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], &awh_cast <const net::addr_mac_t *> (value)->address[0], 6);
+						// Извлекаем сетевой интерфейс из объекта адреса
+						this->_eth.addr.fillSource(event::node_t::SERVER, src);
+						// Если сетевой интерфейс успешно получен
+						if((result = !src.iface.empty()))
+							// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+							this->_interface = ::move(src.iface);
+					} break;
+				}
+			} break;
+			// Если тип адреса принадлежит к IPv4-адресам
+			case static_cast <uint8_t> (event::address_t::IPV4): {
+				// Временный объект для извлечения сетевого интерфейса
+				net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+				// Извлекаем сетевой интерфейс из объекта адреса
+				this->_eth.addr.fillSource(value, src);
+				// Если сетевой интерфейс успешно получен
+				if((result = !src.iface.empty()))
+					// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+					this->_interface = ::move(src.iface);
+			} break;
+			// Если тип адреса принадлежит к IPv6-адресам
+			case static_cast <uint8_t> (event::address_t::IPV6): {
+				// Временный объект для извлечения сетевого интерфейса
+				net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+				// Извлекаем сетевой интерфейс из объекта адреса
+				this->_eth.addr.fillSource(value, src);
+				// Если сетевой интерфейс успешно получен
+				if((result = !src.iface.empty()))
+					// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
+					this->_interface = ::move(src.iface);
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод установки адреса сервера
@@ -480,7 +1306,47 @@ bool awh::server::Socks5::setAddress(const event::address_t address, const net::
  * @return        результат выполнения установки
  */
 bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
-	// Только для адреса серверов и удаленных клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+			// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+			if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
+				// Устанавливаем внутренний адрес socks5-сервера
+				return this->_server->setAddress(eid, address, value);
+		// Если идентификатор события передан другой
+		} else {
+			// Выполняем блокировку потока для работы с локальными данными
+			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Выполняем поиск идентификатор события подключённого пира
+			auto i = this->_peers.find(eid);
+			// Если идентификатор события подключённого пира найден
+			if(i != this->_peers.end())
+				// Устанавливаем внутренний адрес удалённого клиента подключённого пира
+				return this->_server->setAddress(i->second.eid, address, value);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод получения адреса для подключения к сети клиентов
@@ -489,7 +1355,118 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
  * @return        значение адреса клиента или сервера
  */
 string awh::server::Socks5::getAddress(const event::address_t address) const noexcept {
-	// Только для клиентов принадлежащих пиру
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если сетевой интерфейс для подключения к сети клиентов установлен
+		if(!this->_interface.empty()){
+			/**
+			 * Определяем тип адреса события
+			 */
+			switch(static_cast <uint8_t> (address)){
+				// Если тип адреса принадлежит к MAC-адресам
+				case static_cast <uint8_t> (event::address_t::MAC): {
+					/**
+					 * Определяем семейство адресов
+					 */
+					switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Устанавливаем имя сетевого интерфейса
+							src.iface = this->_interface;
+							// Выполняем извлечение сетевых параметров
+							this->_eth.addr.fillSource(src);
+							// Если MAC-адрес успешно получен
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+								// Выполняем блокировку потока для работы с локальными данными
+								const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+								// Устанавливаем полученный MAC-адрес в объект события
+								const_cast <socks5_t *> (this)->_addr.source(src.mac.get());
+								// Выводим результат работы функции
+								return static_cast <string> (this->_addr);
+							}
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Устанавливаем имя сетевого интерфейса
+							src.iface = this->_interface;
+							// Выполняем извлечение сетевых параметров
+							this->_eth.addr.fillSource(src);
+							// Если MAC-адрес успешно получен
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+								// Выполняем блокировку потока для работы с локальными данными
+								const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+								// Устанавливаем полученный MAC-адрес в объект события
+								const_cast <socks5_t *> (this)->_addr.source(src.mac.get());
+								// Выводим результат работы функции
+								return static_cast <string> (this->_addr);
+							}
+						} break;
+					}
+				} break;
+				// Если тип адреса принадлежит к IPv4-адресам
+				case static_cast <uint8_t> (event::address_t::IPV4): {
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+					// Устанавливаем имя сетевого интерфейса
+					src.iface = this->_interface;
+					// Выполняем извлечение сетевых параметров
+					this->_eth.addr.fillSource(src);
+					// Если IP-адрес успешно получен
+					if(awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0){
+						// Выполняем блокировку потока для работы с локальными данными
+						const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Устанавливаем IP-адрес в источник сетевого адреса
+						const_cast <socks5_t *> (this)->_addr.source(src.ip.get());
+						// Выводим результат работы функции
+						return static_cast <string> (this->_addr);
+					}
+				} break;
+				// Если тип адреса принадлежит к IPv6-адресам
+				case static_cast <uint8_t> (event::address_t::IPV6): {
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+					// Устанавливаем имя сетевого интерфейса
+					src.iface = this->_interface;
+					// Выполняем извлечение сетевых параметров
+					this->_eth.addr.fillSource(src);
+					// Если IP-адрес успешно получен
+					if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0){
+						// Выполняем блокировку потока для работы с локальными данными
+						const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Устанавливаем IP-адрес в источник сетевого адреса
+						const_cast <socks5_t *> (this)->_addr.source(src.ip.get());
+						// Выводим результат работы функции
+						return static_cast <string> (this->_addr);
+					}
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return "";
 }
 /**
  * @brief Метод получения адреса клиента или текущего сервера
@@ -499,7 +1476,43 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
  * @return        значение адреса клиента или сервера
  */
 string awh::server::Socks5::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
-	// Только для адреса самого пира (не удалённого клиента) а также адресов серверов
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+			// Получаем адрес внутренний адрес socks5-сервера
+			return this->_server->getAddress(eid, address);
+		// Если идентификатор события передан другой
+		else {
+			// Выполняем блокировку потока для работы с локальными данными
+			const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Если идентификатор события подключённого пира найден
+			if(this->_peers.find(eid) != this->_peers.end())
+				// Получаем адрес подключённого пира
+				return this->_server->getAddress(eid, address);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return "";
 }
 /**
  * @brief Метод получения адреса для подключения к сети клиентов
@@ -509,7 +1522,100 @@ string awh::server::Socks5::getAddress(const event::id_t eid, const event::addre
  * @return        результат выполнения извлечения адреса клиента или сервера
  */
 bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
-	// Только для клиентов принадлежащих пиру
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если сетевой интерфейс для подключения к сети клиентов установлен
+		if(!this->_interface.empty()){
+			/**
+			 * Определяем тип адреса события
+			 */
+			switch(static_cast <uint8_t> (address)){
+				// Если тип адреса принадлежит к MAC-адресам
+				case static_cast <uint8_t> (event::address_t::MAC): {
+					/**
+					 * Определяем семейство адресов
+					 */
+					switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Устанавливаем имя сетевого интерфейса
+							src.iface = this->_interface;
+							// Выполняем извлечение сетевых параметров
+							this->_eth.addr.fillSource(src);
+							// Если MAC-адрес успешно получен
+							if((result = (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))
+								// Устанавливаем MAC-адрес в источник сетевого адреса
+								value = ::move(src.mac);
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Устанавливаем имя сетевого интерфейса
+							src.iface = this->_interface;
+							// Выполняем извлечение сетевых параметров
+							this->_eth.addr.fillSource(src);
+							// Если MAC-адрес успешно получен
+							if((result = (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))
+								// Устанавливаем MAC-адрес в источник сетевого адреса
+								value = ::move(src.mac);
+						} break;
+					}
+				} break;
+				// Если тип адреса принадлежит к IPv4-адресам
+				case static_cast <uint8_t> (event::address_t::IPV4): {
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+					// Устанавливаем имя сетевого интерфейса
+					src.iface = this->_interface;
+					// Выполняем извлечение сетевых параметров
+					this->_eth.addr.fillSource(src);
+					// Если IP-адрес успешно получен
+					if((result = (awh_cast <net::addr_net_ipv4_t *> (src.ip.get())->address > 0)))
+						// Устанавливаем IP-адрес в источник сетевого адреса
+						value = ::move(src.ip);
+				} break;
+				// Если тип адреса принадлежит к IPv6-адресам
+				case static_cast <uint8_t> (event::address_t::IPV6): {
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+					// Устанавливаем имя сетевого интерфейса
+					src.iface = this->_interface;
+					// Выполняем извлечение сетевых параметров
+					this->_eth.addr.fillSource(src);
+					// Если IP-адрес успешно получен
+					if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0)))
+						// Устанавливаем IP-адрес в источник сетевого адреса
+						value = ::move(src.ip);
+				} break;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод получения адреса клиента или текущего сервера
@@ -520,7 +1626,43 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
  * @return        результат выполнения извлечения адреса клиента или сервера
  */
 bool awh::server::Socks5::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
-	// Только для адреса самого пира (не удалённого клиента) а также адресов серверов
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
+		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+			// Получаем адрес внутренний адрес socks5-сервера
+			return this->_server->getAddress(eid, address, value);
+		// Если идентификатор события передан другой
+		else {
+			// Выполняем блокировку потока для работы с локальными данными
+			const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Если идентификатор события подключённого пира найден
+			if(this->_peers.find(eid) != this->_peers.end())
+				// Получаем адрес подключённого пира
+				return this->_server->getAddress(eid, address, value);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод получения размера буфера клиента
@@ -577,7 +1719,7 @@ bool awh::server::Socks5::setBufferSize(const event::id_t eid, const event::acti
 	 */
 	try {
 		// Выполняем блокировку потока для работы с локальными данными
-		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
@@ -657,7 +1799,7 @@ void awh::server::Socks5::setUsageReadTimeout(const event::id_t eid, const event
 	 */
 	try {
 		// Выполняем блокировку потока для работы с локальными данными
-		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
@@ -737,7 +1879,7 @@ void awh::server::Socks5::setTimeout(const event::id_t eid, const event::action_
 	 */
 	try {
 		// Выполняем блокировку потока для работы с локальными данными
-		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
@@ -777,7 +1919,7 @@ bool awh::server::Socks5::bandwidth(const event::id_t eid, const event::limiting
 	 */
 	try {
 		// Выполняем блокировку потока для работы с локальными данными
-		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
@@ -820,7 +1962,7 @@ bool awh::server::Socks5::keepAlive(const event::id_t eid, const int32_t cnt, co
 	 */
 	try {
 		// Выполняем блокировку потока для работы с локальными данными
-		const locker_t <std::shared_mutex> lock(const_cast <socks5_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
@@ -870,10 +2012,37 @@ void awh::server::Socks5::setEventId(const event::id_t eid) noexcept {
 					this->_servers.emplace(eid);
 				break;
 				// Если протокол соответствует TCP
-				case static_cast <uint8_t> (event::protocol_t::TCP):
+				case static_cast <uint8_t> (event::protocol_t::TCP): {
 					// Устанавливаем идентификатор события для сервера
 					this->_eid = eid;
-				break;
+					/**
+					 * Определяем семейство адресов
+					 */
+					switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+							// Выполняем извлечение сетевых параметров
+							this->_eth.addr.fillSource(event::node_t::NONE, src);
+							// Если MAC-адрес успешно получен
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+								// Устанавливаем имя сетевого интерфейса для подключения к сети клиентов
+								this->_interface = ::move(src.iface);
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Временный объект для извлечения сетевого интерфейса
+							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+							// Выполняем извлечение сетевых параметров
+							this->_eth.addr.fillSource(event::node_t::NONE, src);
+							// Если MAC-адрес успешно получен
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+								// Устанавливаем имя сетевого интерфейса для подключения к сети клиентов
+								this->_interface = ::move(src.iface);
+						} break;
+					}
+				} break;
 			}
 		}
 	/**
@@ -903,7 +2072,7 @@ void awh::server::Socks5::setEventId(const event::id_t eid) noexcept {
  * @param log    объект для работы с логами
  */
 awh::server::Socks5::Socks5(unit::server_t * server, const fmk_t * fmk, const log_t * log) noexcept :
- server_t(server, fmk, log), _socks5(fmk, log) {
+ server_t(server, fmk, log), _interface{""}, _unit(fmk, log), _eth(fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 }
@@ -916,7 +2085,7 @@ awh::server::Socks5::Socks5(unit::server_t * server, const fmk_t * fmk, const lo
  * @param log    объект для работы с логами
  */
 awh::server::Socks5::Socks5(unit::server_t * server, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- server_t(server, dns, fmk, log), _socks5(fmk, log) {
+ server_t(server, dns, fmk, log), _interface{""}, _unit(fmk, log), _eth(fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 }

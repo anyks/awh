@@ -29,6 +29,7 @@
  * Наши модули
  */
 #include "server.hpp"
+#include "../units/client.hpp"
 #include "../proto/socks5/server.hpp"
 
 /**
@@ -159,19 +160,26 @@ namespace awh {
 					explicit Peer() noexcept : eid(0) {};
 				} peer_t;
 			private:
+				// Сетевой интерфейс для подключения к сети клиентов
+				string _interface;
+			private:
+				// Объект работы с сетью
+				mutable eth_t _eth;
+			private:
+				// Создаём объект юнита клиента
+				unit::client_t _unit;
+			private:
 				// Объект для работы с протоколом SOCKS5
 				proto::server_socks5_t _socks5;
 			private:
 				// Мютекс для блокировки потоков
 				lock_state_t <std::shared_mutex> _mtx;
 			private:
-				// Адрес хостов целевых UDP серверов
-				unordered_set <string> _hosts;
-				// Список сетевых интерфейсов для подключения к сети клиентов
-				unordered_set <string> _interfaces;
 				// Список идентификаторов активных UDP-серверов
 				unordered_set <event::id_t> _servers;
 			private:
+				// Адрес хостов целевых UDP серверов
+				unordered_map <event::id_t, string> _hosts;
 				// Список для сопоставления идентификаторов пиров с удалёнными клиентами
 				unordered_map <event::id_t, peer_t> _peers;
 			private:
@@ -361,7 +369,7 @@ namespace awh {
 				 * @param eid идентификатор события сервера
 				 * @return    адрес хоста текущей машины
 				 */
-				string getHost(const event::id_t eid) const noexcept;
+				const string & getHost(const event::id_t eid) const noexcept;
 				/**
 				 * @brief Метод установки адреса хоста текущей машины
 				 *

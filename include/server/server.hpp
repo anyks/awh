@@ -434,7 +434,7 @@ namespace awh {
 			 *
 			 * @return адрес хоста текущей машины
 			 */
-			virtual string getHost() const noexcept;
+			virtual const string & getHost() const noexcept;
 			/**
 			 * @brief Метод установки адреса хоста текущей машины
 			 *
