@@ -253,6 +253,12 @@ namespace awh {
 				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
+				 * @brief Метод получения данных от сервера
+				 *
+				 * @return результат получения данных
+				 */
+				bool recv() noexcept;
+				/**
 				 * @brief Метод отправки данных серверу
 				 *
 				 * @param buffer буфер данных для отправки

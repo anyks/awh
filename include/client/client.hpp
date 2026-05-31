@@ -253,6 +253,12 @@ namespace awh {
 			virtual void callback(const callback_t & callback) noexcept;
 		public:
 			/**
+			 * @brief Метод получения данных от сервера
+			 *
+			 * @return результат получения данных
+			 */
+			virtual bool recv() noexcept;
+			/**
 			 * @brief Метод отправки данных серверу
 			 *
 			 * @param buffer буфер данных для отправки

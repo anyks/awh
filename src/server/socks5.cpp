@@ -212,14 +212,160 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
  *
  */
 void awh::server::Socks5::stop() noexcept {
-
+	// Если DNS-резолвер или сервер находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr)
+				// Останавливаем событие DNS-резолвера
+				this->_dns->stop();
+			// Если объект DNS-резолвера не установлен, останавливаем событие сервера
+			else this->_server->stop();
+		// Если идентификатор сервера не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод запуска сервера
  *
  */
 void awh::server::Socks5::start() noexcept {
-
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr){
+				/**
+				 * В зависимости от статуса события DNS-резолвера выполняем запуск
+				 */
+				switch(static_cast <uint8_t> (this->_dns->status())){
+					// Если событие DNS-резолвера не запущено, запускаем его
+					case static_cast <uint8_t> (event::status_t::NONE): {
+						// Если событие DNS-резолвера не запущено, запускаем его
+						if(this->_dns->commit())
+							// Запускаем событие DNS-резолвера
+							this->_dns->start();
+					} break;
+					// Если событие DNS-резолвера инициализировано, запускаем его
+					case static_cast <uint8_t> (event::status_t::INITIAL):
+						// Запускаем событие DNS-резолвера
+						this->_dns->start();
+					break;
+				}
+			// Если объект DNS-резолвера не установлен
+			} else {
+				/**
+				 * В зависимости от статуса события сервера выполняем запуск
+				 */
+				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
+					// Если событие сервера не запущено, запускаем его
+					case static_cast <uint8_t> (event::status_t::NONE): {
+						// Если событие сервера не запущено, запускаем его
+						if(this->_server->commit(this->_eid)){
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("ready")){
+								// Хост текущего сервера
+								string host = "";
+								/**
+								 * Определяем семейство адресов с которым работает сервер
+								 */
+								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+									// Если сервер работает с адресами Unix Domain Socket
+									case static_cast <uint8_t> (event::family_t::UDS):
+										// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
+										host = ::move(this->_server->getAddress(this->_eid, event::address_t::UDS));
+									break;
+									// Если сервер работает с адресами IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Извлекаем адрес хоста текущей машины для адресов IPv4
+										host = ::move(this->_server->getAddress(this->_eid, event::address_t::IPV4));
+									break;
+									// Если сервер работает с адресами IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Извлекаем адрес хоста текущей машины для адресов IPv6
+										host = ::move(this->_server->getAddress(this->_eid, event::address_t::IPV6));
+									break;
+								}
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_server->family(this->_eid), host, host);
+								// Если список серверов UDP не пустой
+								if(!this->_servers.empty()){
+									// Выполняем итерацию по списку серверов UDP
+									for(const auto & eid : this->_servers){
+										// Если событие сервера не запущено, запускаем его
+										if(this->_server->commit(eid)){
+											/**
+											 * Определяем семейство адресов с которым работает сервер
+											 */
+											switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(eid))){
+												// Если сервер работает с адресами Unix Domain Socket
+												case static_cast <uint8_t> (event::family_t::UDS):
+													// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
+													host = ::move(this->_server->getAddress(eid, event::address_t::UDS));
+												break;
+												// Если сервер работает с адресами IPv4
+												case static_cast <uint8_t> (event::family_t::IPV4):
+													// Извлекаем адрес хоста текущей машины для адресов IPv4
+													host = ::move(this->_server->getAddress(eid, event::address_t::IPV4));
+												break;
+												// Если сервер работает с адресами IPv6
+												case static_cast <uint8_t> (event::family_t::IPV6):
+													// Извлекаем адрес хоста текущей машины для адресов IPv6
+													host = ::move(this->_server->getAddress(eid, event::address_t::IPV6));
+												break;
+											}
+											// Выполняем функцию обратного вызова для сервера UDP
+											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_server->family(eid), host, host);
+										}
+									}
+								}
+							}
+							// Запускаем сервер
+							this->_server->start();
+						}
+					} break;
+					// Если событие сервера инициализировано, запускаем его
+					case static_cast <uint8_t> (event::status_t::INITIAL):
+					// Если событие находится в состоянии успешного подключения
+					case static_cast <uint8_t> (event::status_t::SUCCESS):
+						// Запускаем сервер
+						this->_server->start();
+					break;
+				}
+			}
+		// Если идентификатор сервера не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
 }
 /**
  * @brief Метод установки безопасности работы потоков
@@ -274,7 +420,7 @@ bool awh::server::Socks5::pause(const event::id_t eid) noexcept {
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
-		if((i != this->_peers.end()) && this->_server->pause(eid))
+		if((i != this->_peers.end()) && this->_server->pause(i->first))
 			// Приостанавливаем работу события клиента, принадлежащего подключённому пиру
 			return this->_server->pause(i->second.eid);
 	/**
@@ -314,7 +460,7 @@ bool awh::server::Socks5::resume(const event::id_t eid) noexcept {
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
-		if((i != this->_peers.end()) && this->_server->resume(eid))
+		if((i != this->_peers.end()) && this->_server->resume(i->first))
 			// Возобновляем работу события клиента, принадлежащего подключённому пиру
 			return this->_server->resume(i->second.eid);
 	/**
@@ -659,7 +805,7 @@ uint16_t awh::server::Socks5::getPort(const event::id_t eid) const noexcept {
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
 		if(i != this->_peers.end())
-			// Получаем порт удалённого клиента для события пира
+			// Получаем порт удалённого клиента принадлежащего подключённому пиру
 			return this->_server->getPort(i->second.eid);
 		// Если идентификатор события подключённого пира не найден
 		else {
@@ -1923,7 +2069,7 @@ bool awh::server::Socks5::bandwidth(const event::id_t eid, const event::limiting
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
-		if((i != this->_peers.end()) && this->_server->bandwidth(eid, limiting, bandwidth))
+		if((i != this->_peers.end()) && this->_server->bandwidth(i->first, limiting, bandwidth))
 			// Устанавливаем пропускную способность для клиента принадлежащего этому пиру
 			return this->_server->bandwidth(i->second.eid, limiting, bandwidth);
 	/**
@@ -1966,7 +2112,7 @@ bool awh::server::Socks5::keepAlive(const event::id_t eid, const int32_t cnt, co
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
-		if((i != this->_peers.end()) && this->_server->keepAlive(eid, cnt, idle, intvl))
+		if((i != this->_peers.end()) && this->_server->keepAlive(i->first, cnt, idle, intvl))
 			// Устанавливаем параметры жизни подключения для клиента принадлежащего этому пиру
 			return this->_server->keepAlive(i->second.eid, cnt, idle, intvl);
 	/**
@@ -2090,7 +2236,7 @@ awh::server::Socks5::Socks5(unit::server_t * server, unit::dns_t * dns, const fm
 	this->_mtx.enabled = false;
 }
 /**
-* @brief Деструктор
-*
-*/
+ * @brief Деструктор
+ *
+ */
 awh::server::Socks5::~Socks5() noexcept {}

@@ -1400,66 +1400,69 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t id, const event::i
 bool awh::client::Socks5::pause() noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если идентификатор клиента установлен
-		if(this->_eid > 0){
-			// Приостанавливаем событие клиента
-			if((result = this->_client->pause(this->_eid))){
-				// Если активных сессий клиентов нет
-				if(this->_sessions.empty())
-					// Выводим текущий результат постановки на паузу
-					return result;
-				// Если активные сессии клиентов присутствуют
-				else {
-					/**
-					 * Перебираем все активные сессии клиентов, работающих через прокси
-					 */
-					for(auto & session : this->_sessions){
-						// Если протокол сесии клиента, работающего через прокси, не соответствует UDP
-						if(session.first.protocol != event::protocol_t::UDP)
-							// Пропускаем постановку клиента на паузу так-как мы его уже установили
-							continue;
-						// Приостанавливаем событие клиента для конечной точки
-						this->_client->pause(session.second.first);
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если идентификатор клиента установлен
+			if(this->_eid > 0){
+				// Приостанавливаем событие клиента
+				if((result = this->_client->pause(this->_eid))){
+					// Если активных сессий клиентов нет
+					if(this->_sessions.empty())
+						// Выводим текущий результат постановки на паузу
+						return result;
+					// Если активные сессии клиентов присутствуют
+					else {
+						/**
+						 * Перебираем все активные сессии клиентов, работающих через прокси
+						 */
+						for(auto & session : this->_sessions){
+							// Если протокол сесии клиента, работающего через прокси, не соответствует UDP
+							if(session.first.protocol != event::protocol_t::UDP)
+								// Пропускаем постановку клиента на паузу так-как мы его уже установили
+								continue;
+							// Приостанавливаем событие клиента для конечной точки
+							this->_client->pause(session.second.first);
+						}
 					}
 				}
+			// Если идентификатор клиента не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				#endif
 			}
-		// Если идентификатор клиента не установлен
-		} else {
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат
 	return result;
@@ -1472,66 +1475,69 @@ bool awh::client::Socks5::pause() noexcept {
 bool awh::client::Socks5::resume() noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если идентификатор клиента установлен
-		if(this->_eid > 0){
-			// Возобновляем работу события клиента
-			if((result = this->_client->resume(this->_eid))){
-				// Если активных сессий клиентов нет
-				if(this->_sessions.empty())
-					// Выводим текущий результат возобновления работы
-					return result;
-				// Если активные сессии клиентов присутствуют
-				else {
-					/**
-					 * Перебираем все активные сессии клиентов, работающих через прокси
-					 */
-					for(auto & session : this->_sessions){
-						// Если протокол сесии клиента, работающего через прокси, не соответствует UDP
-						if(session.first.protocol != event::protocol_t::UDP)
-							// Пропускаем возобновление работы клиента так-как мы его уже установили
-							continue;
-						// Возобновляем работу события клиента для конечной точки
-						this->_client->resume(session.second.first);
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если идентификатор клиента установлен
+			if(this->_eid > 0){
+				// Возобновляем работу события клиента
+				if((result = this->_client->resume(this->_eid))){
+					// Если активных сессий клиентов нет
+					if(this->_sessions.empty())
+						// Выводим текущий результат возобновления работы
+						return result;
+					// Если активные сессии клиентов присутствуют
+					else {
+						/**
+						 * Перебираем все активные сессии клиентов, работающих через прокси
+						 */
+						for(auto & session : this->_sessions){
+							// Если протокол сесии клиента, работающего через прокси, не соответствует UDP
+							if(session.first.protocol != event::protocol_t::UDP)
+								// Пропускаем возобновление работы клиента так-как мы его уже установили
+								continue;
+							// Возобновляем работу события клиента для конечной точки
+							this->_client->resume(session.second.first);
+						}
 					}
 				}
+			// Если идентификатор клиента не установлен
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				#endif
 			}
-		// Если идентификатор клиента не установлен
-		} else {
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат
 	return result;
@@ -1576,6 +1582,15 @@ void awh::client::Socks5::threadSafety(const bool mode) noexcept {
 	client_t::threadSafety(mode);
 }
 /**
+ * @brief Метод получения данных от сервера
+ *
+ * @return результат получения данных
+ */
+bool awh::client::Socks5::recv() noexcept {
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод отправки данных серверу
  *
  * @param buffer буфер данных для отправки
@@ -1583,314 +1598,14 @@ void awh::client::Socks5::threadSafety(const bool mode) noexcept {
  * @return       количество байт данных, отправленных серверу
  */
 size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Идентификатор события клиента, работающего через прокси
-		event::id_t eid = 0;
-		// Идентификатор TLS для клиента
-		tls::coder_t::id_t tid = 0;
-		// Идентификатор инициатора запроса
-		const origin_t * origin = nullptr;
-		{
-			// Выполняем блокировку потока для работы с TLS
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-			// Если активные сессии клиентов, работающих через прокси, не пусты
-			if(!this->_sessions.empty()){
-				// Извлекаем идентификатор события клиента, работающего через прокси
-				origin = &this->_sessions.begin()->first;
-				// Извлекаем идентификатор события клиента, работающего через прокси
-				eid = this->_sessions.begin()->second.first;
-				// Извлекаем идентификатор TLS для клиента
-				tid = this->_sessions.begin()->second.second;
-			}
-		}
-		// Если параметры клиента найдены успешно
-		if(origin != nullptr){
-			/**
-			 * Определяем протокол сесии клиента, работающего через прокси
-			 */
-			switch(static_cast <uint8_t> (origin->protocol)){
-				// Если протокол соответствует UDP
-				case static_cast <uint8_t> (event::protocol_t::UDP): {
-					// Если идентификатор TLS и объект TLS установлены
-					if((tid > 0) && (this->_coder != nullptr)){
-						// Если шифрование данных TLS выполнено успешно
-						if(this->_coder->encrypt(tid, buffer, size))
-							// Возвращаем размер отправленных данных
-							return size;
-						// Выводим результат по умолчанию
-						return 0;
-					}
-					// Инициализируем объект заголовка UDP пакета
-					proto::client_socks5_t::udp_head_t udp{};
-					/**
-					 * Определяем тип данных сесии клиента, работающего через прокси
-					 */
-					switch(static_cast <uint8_t> (origin->type)){
-						// Если тип данных соответствует FQDN
-						case static_cast <uint8_t> (net::type_t::FQDN): {
-							// Выполняем инициализацию объекта хоста
-							udp.host = make_unique <net::attr_fqdn_t> ();
-							// Устанавливаем тип адреса события
-							udp.host->type = net::type_t::FQDN;
-							// Устанавливаем порт хоста для подключения
-							awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = ntohs(origin->fqdn.port);
-							// Устанавливаем доменное имя хоста для подключения
-							awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain = origin->fqdn.data;
-						} break;
-						// Если тип данных соответствует IPv4
-						case static_cast <uint8_t> (net::type_t::IPV4): {
-							// Выполняем инициализацию объекта хоста
-							udp.host = make_unique <net::attr_net_t> ();
-							// Устанавливаем тип адреса события
-							udp.host->type = net::type_t::IPV4;
-							// Устанавливаем порт хоста для подключения
-							awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip4.port);
-							// Устанавливаем IP-адрес хоста для подключения
-							awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = origin->ip4.address;
-						} break;
-						// Если тип данных соответствует IPv6
-						case static_cast <uint8_t> (net::type_t::IPV6): {
-							// Выполняем инициализацию объекта хоста
-							udp.host = make_unique <net::attr_net_t> ();
-							// Устанавливаем тип адреса события
-							udp.host->type = net::type_t::IPV6;
-							// Устанавливаем порт хоста для подключения
-							awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip6.port);
-							// Создаём новый объект адреса клиента IPv6
-							awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-							// Устанавливаем IP-адрес хоста для подключения
-							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &origin->ip6.address[0], 16);
-						} break;
-					}
-					// Размер буфера данных
-					size_t length = 0;
-					// Буфер данных запроса
-					uint8_t * data = nullptr;
-					// Если извлечение буфера данных запроса выполнено успешно
-					if(this->_socks5.buffer(&data, length, udp)){
-						/**
-						 * Определяем тип данных сесии клиента, работающего через прокси
-						 */
-						switch(static_cast <uint8_t> (origin->type)){
-							// Если тип данных соответствует FQDN
-							case static_cast <uint8_t> (net::type_t::FQDN):
-							// Если тип данных соответствует IPv6
-							case static_cast <uint8_t> (net::type_t::IPV6):
-								// Устанавливаем размер буфера полезной нагрузки для отправки
-								::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
-							break;
-							// Если тип данных соответствует IPv4
-							case static_cast <uint8_t> (net::type_t::IPV4):
-								// Устанавливаем размер буфера полезной нагрузки для отправки
-								::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
-							break;
-						}
-						// Если размер буфера полезной нагрузки достаточно для отправки всех данных
-						if(::__awh_size__ == (size + length)){
-							// Копируем данные запроса в буфер полезной нагрузки
-							::memcpy(&::__awh_buffer__[0], data, length);
-							// Добавляем к буферу данных для отправки полезную нагрузку
-							::memcpy(&::__awh_buffer__[length], buffer, size);
-							// Выполняем отправку данных серверу
-							return this->_client->send(eid, ::__awh_buffer__, ::__awh_size__);
-						// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
-						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
-							#endif
-						}
-					// Если извлечение буфера данных запроса не выполнено
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
-						#endif
-					}
-				} break;
-				// Если протокол соответствует TCP
-				case static_cast <uint8_t> (event::protocol_t::TCP): {
-					// Если идентификатор TLS и объект TLS установлены
-					if((this->_tid > 0) && (this->_coder != nullptr)){
-						// Если шифрование данных TLS выполнено успешно
-						if(this->_coder->encrypt(this->_tid, buffer, size))
-							// Возвращаем размер отправленных данных
-							return size;
-						// Выводим результат по умолчанию
-						return 0;
-					}
-					// Выполняем отправку данных серверу
-					return this->_client->send(this->_eid, buffer, size);
-				}
-			}
-		// Если инициатор запроса не найден
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
-			#endif
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		/**
-		 * Если включён режим отладки
+		 * Выполняем отлов ошибок
 		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return 0;
-}
-/**
- * @brief Метод получения данных от сервера
- *
- * @param eid идентификатор события клиента
- * @return    результат получения данных
- */
-bool awh::client::Socks5::recv(const event::id_t eid) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если идентификатор клиента передан корректно
-		if(eid == this->_eid)
-			// Получаем данные от сервера
-			return this->_client->recv(eid);
-		// Если идентификатор клиента не передан корректно
-		else {
-			// Идентификатор инициатора запроса
-			const origin_t * origin = nullptr;
-			{
-				// Выполняем блокировку потока для работы с TLS
-				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-				// Ищем идентификатор события клиента для конечной точки в списке активных сессий клиентов
-				auto i = this->_mapping.find(eid);
-				// Если идентификатор события клиента для конечной точки найден в списке активных сессий клиентов
-				if(i != this->_mapping.end())
-					// Извлекаем идентификатор события клиента, работающего через прокси
-					origin = i->second.first;
-			}
-			// Если параметры клиента найдены успешно
-			if(origin != nullptr){
-				/**
-				 * Определяем протокол сесии клиента, работающего через прокси
-				 */
-				switch(static_cast <uint8_t> (origin->protocol)){
-					// Если протокол соответствует UDP
-					case static_cast <uint8_t> (event::protocol_t::UDP):
-						// Получаем данные от сервера
-						return this->_client->recv(eid);
-					// Если протокол соответствует TCP
-					case static_cast <uint8_t> (event::protocol_t::TCP):
-						// Получаем данные от сервера
-						return this->_client->recv(this->_eid);
-				}
-			// Если идентификатор события клиента для конечной точки не найден в списке активных сессий клиентов
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
-				#endif
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return false;
-}
-/**
- * @brief Метод отправки данных клиенту
- *
- * @param eid    идентификатор события клиента
- * @param buffer буфер данных для отправки
- * @param size   размер данных для отправки
- * @return       количество байт данных, отправленных клиенту
- */
-size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если идентификатор клиента передан корректно
-		if(eid == this->_eid){
-			// Если идентификатор TLS и объект TLS установлены
-			if((this->_tid > 0) && (this->_coder != nullptr)){
-				// Если шифрование данных TLS выполнено успешно
-				if(this->_coder->encrypt(this->_tid, buffer, size))
-					// Возвращаем размер отправленных данных
-					return size;
-				// Выводим результат по умолчанию
-				return 0;
-			}
-			// Выполняем отправку данных серверу
-			return this->_client->send(this->_eid, buffer, size);
-		// Если идентификатор клиента не передан корректно
-		} else {
+		try {
+			// Идентификатор события клиента, работающего через прокси
+			event::id_t eid = 0;
 			// Идентификатор TLS для клиента
 			tls::coder_t::id_t tid = 0;
 			// Идентификатор инициатора запроса
@@ -1898,14 +1613,14 @@ size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, con
 			{
 				// Выполняем блокировку потока для работы с TLS
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-				// Ищем идентификатор события клиента для конечной точки в списке активных сессий клиентов
-				auto i = this->_mapping.find(eid);
-				// Если идентификатор события клиента для конечной точки найден в списке активных сессий клиентов
-				if(i != this->_mapping.end()){
-					// Извлекаем идентификатор TLS для клиента
-					tid = i->second.second;
+				// Если активные сессии клиентов, работающих через прокси, не пусты
+				if(!this->_sessions.empty()){
 					// Извлекаем идентификатор события клиента, работающего через прокси
-					origin = i->second.first;
+					origin = &this->_sessions.begin()->first;
+					// Извлекаем идентификатор события клиента, работающего через прокси
+					eid = this->_sessions.begin()->second.first;
+					// Извлекаем идентификатор TLS для клиента
+					tid = this->_sessions.begin()->second.second;
 				}
 			}
 			// Если параметры клиента найдены успешно
@@ -2005,7 +1720,7 @@ size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, con
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+									this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2021,7 +1736,7 @@ size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, con
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+								this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2046,14 +1761,14 @@ size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, con
 						return this->_client->send(this->_eid, buffer, size);
 					}
 				}
-			// Если инициатор запроса не найден для переданного идентификатора события клиента
+			// Если инициатор запроса не найден
 			} else {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+					this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2062,24 +1777,333 @@ size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, con
 					this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
 				#endif
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод получения данных от сервера
+ *
+ * @param eid идентификатор события клиента
+ * @return    результат получения данных
+ */
+bool awh::client::Socks5::recv(const event::id_t eid) noexcept {
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		/**
-		 * Если включён режим отладки
+		 * Выполняем отлов ошибок
 		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, error.what());
+		try {
+			// Если идентификатор клиента передан корректно
+			if(eid == this->_eid)
+				// Получаем данные от сервера
+				return this->_client->recv(eid);
+			// Если идентификатор клиента не передан корректно
+			else {
+				// Идентификатор инициатора запроса
+				const origin_t * origin = nullptr;
+				{
+					// Выполняем блокировку потока для работы с TLS
+					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Ищем идентификатор события клиента для конечной точки в списке активных сессий клиентов
+					auto i = this->_mapping.find(eid);
+					// Если идентификатор события клиента для конечной точки найден в списке активных сессий клиентов
+					if(i != this->_mapping.end())
+						// Извлекаем идентификатор события клиента, работающего через прокси
+						origin = i->second.first;
+				}
+				// Если параметры клиента найдены успешно
+				if(origin != nullptr){
+					/**
+					 * Определяем протокол сесии клиента, работающего через прокси
+					 */
+					switch(static_cast <uint8_t> (origin->protocol)){
+						// Если протокол соответствует UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP):
+							// Получаем данные от сервера
+							return this->_client->recv(eid);
+						// Если протокол соответствует TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP):
+							// Получаем данные от сервера
+							return this->_client->recv(this->_eid);
+					}
+				// Если идентификатор события клиента для конечной точки не найден в списке активных сессий клиентов
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
 		/**
-		 * Если режим отладки не включён
+		 * Если возникает ошибка
 		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод отправки данных клиенту
+ *
+ * @param eid    идентификатор события клиента
+ * @param buffer буфер данных для отправки
+ * @param size   размер данных для отправки
+ * @return       количество байт данных, отправленных клиенту
+ */
+size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если идентификатор клиента передан корректно
+			if(eid == this->_eid){
+				// Если идентификатор TLS и объект TLS установлены
+				if((this->_tid > 0) && (this->_coder != nullptr)){
+					// Если шифрование данных TLS выполнено успешно
+					if(this->_coder->encrypt(this->_tid, buffer, size))
+						// Возвращаем размер отправленных данных
+						return size;
+					// Выводим результат по умолчанию
+					return 0;
+				}
+				// Выполняем отправку данных серверу
+				return this->_client->send(this->_eid, buffer, size);
+			// Если идентификатор клиента не передан корректно
+			} else {
+				// Идентификатор TLS для клиента
+				tls::coder_t::id_t tid = 0;
+				// Идентификатор инициатора запроса
+				const origin_t * origin = nullptr;
+				{
+					// Выполняем блокировку потока для работы с TLS
+					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Ищем идентификатор события клиента для конечной точки в списке активных сессий клиентов
+					auto i = this->_mapping.find(eid);
+					// Если идентификатор события клиента для конечной точки найден в списке активных сессий клиентов
+					if(i != this->_mapping.end()){
+						// Извлекаем идентификатор TLS для клиента
+						tid = i->second.second;
+						// Извлекаем идентификатор события клиента, работающего через прокси
+						origin = i->second.first;
+					}
+				}
+				// Если параметры клиента найдены успешно
+				if(origin != nullptr){
+					/**
+					 * Определяем протокол сесии клиента, работающего через прокси
+					 */
+					switch(static_cast <uint8_t> (origin->protocol)){
+						// Если протокол соответствует UDP
+						case static_cast <uint8_t> (event::protocol_t::UDP): {
+							// Если идентификатор TLS и объект TLS установлены
+							if((tid > 0) && (this->_coder != nullptr)){
+								// Если шифрование данных TLS выполнено успешно
+								if(this->_coder->encrypt(tid, buffer, size))
+									// Возвращаем размер отправленных данных
+									return size;
+								// Выводим результат по умолчанию
+								return 0;
+							}
+							// Инициализируем объект заголовка UDP пакета
+							proto::client_socks5_t::udp_head_t udp{};
+							/**
+							 * Определяем тип данных сесии клиента, работающего через прокси
+							 */
+							switch(static_cast <uint8_t> (origin->type)){
+								// Если тип данных соответствует FQDN
+								case static_cast <uint8_t> (net::type_t::FQDN): {
+									// Выполняем инициализацию объекта хоста
+									udp.host = make_unique <net::attr_fqdn_t> ();
+									// Устанавливаем тип адреса события
+									udp.host->type = net::type_t::FQDN;
+									// Устанавливаем порт хоста для подключения
+									awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = ntohs(origin->fqdn.port);
+									// Устанавливаем доменное имя хоста для подключения
+									awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain = origin->fqdn.data;
+								} break;
+								// Если тип данных соответствует IPv4
+								case static_cast <uint8_t> (net::type_t::IPV4): {
+									// Выполняем инициализацию объекта хоста
+									udp.host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса события
+									udp.host->type = net::type_t::IPV4;
+									// Устанавливаем порт хоста для подключения
+									awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip4.port);
+									// Устанавливаем IP-адрес хоста для подключения
+									awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = origin->ip4.address;
+								} break;
+								// Если тип данных соответствует IPv6
+								case static_cast <uint8_t> (net::type_t::IPV6): {
+									// Выполняем инициализацию объекта хоста
+									udp.host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса события
+									udp.host->type = net::type_t::IPV6;
+									// Устанавливаем порт хоста для подключения
+									awh_cast <net::attr_net_t *> (udp.host.get())->port = ntohs(origin->ip6.port);
+									// Создаём новый объект адреса клиента IPv6
+									awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+									// Устанавливаем IP-адрес хоста для подключения
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &origin->ip6.address[0], 16);
+								} break;
+							}
+							// Размер буфера данных
+							size_t length = 0;
+							// Буфер данных запроса
+							uint8_t * data = nullptr;
+							// Если извлечение буфера данных запроса выполнено успешно
+							if(this->_socks5.buffer(&data, length, udp)){
+								/**
+								 * Определяем тип данных сесии клиента, работающего через прокси
+								 */
+								switch(static_cast <uint8_t> (origin->type)){
+									// Если тип данных соответствует FQDN
+									case static_cast <uint8_t> (net::type_t::FQDN):
+									// Если тип данных соответствует IPv6
+									case static_cast <uint8_t> (net::type_t::IPV6):
+										// Устанавливаем размер буфера полезной нагрузки для отправки
+										::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+									break;
+									// Если тип данных соответствует IPv4
+									case static_cast <uint8_t> (net::type_t::IPV4):
+										// Устанавливаем размер буфера полезной нагрузки для отправки
+										::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+									break;
+								}
+								// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+								if(::__awh_size__ == (size + length)){
+									// Копируем данные запроса в буфер полезной нагрузки
+									::memcpy(&::__awh_buffer__[0], data, length);
+									// Добавляем к буферу данных для отправки полезную нагрузку
+									::memcpy(&::__awh_buffer__[length], buffer, size);
+									// Выполняем отправку данных серверу
+									return this->_client->send(eid, ::__awh_buffer__, ::__awh_size__);
+								// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+								} else {
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+									#endif
+								}
+							// Если извлечение буфера данных запроса не выполнено
+							} else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
+								#endif
+							}
+						} break;
+						// Если протокол соответствует TCP
+						case static_cast <uint8_t> (event::protocol_t::TCP): {
+							// Если идентификатор TLS и объект TLS установлены
+							if((this->_tid > 0) && (this->_coder != nullptr)){
+								// Если шифрование данных TLS выполнено успешно
+								if(this->_coder->encrypt(this->_tid, buffer, size))
+									// Возвращаем размер отправленных данных
+									return size;
+								// Выводим результат по умолчанию
+								return 0;
+							}
+							// Выполняем отправку данных серверу
+							return this->_client->send(this->_eid, buffer, size);
+						}
+					}
+				// Если инициатор запроса не найден для переданного идентификатора события клиента
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return 0;
@@ -2192,12 +2216,12 @@ bool awh::client::Socks5::isEventIdEndpoint(const event::id_t eid) const noexcep
  * @return    результат выполнения добавления идентификатора события клиента для конечной точки
  */
 bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Создаём объект адреса назначения подключения для идентификатора события клиента
 			unique_ptr <net::addr_t> target = nullptr;
 			// Получаем адрес хоста целевой машины для идентификатора события клиента
@@ -2240,24 +2264,24 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
 					// Добавляем идентификатор события клиента в карту соответствия
 					return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -2270,12 +2294,12 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
  * @return    результат выполнения добавления идентификатора события клиента для конечной точки
  */
 bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Создаём объект адреса назначения подключения для идентификатора события клиента
 			unique_ptr <net::addr_t> target = nullptr;
 			// Получаем адрес хоста целевой машины для идентификатора события клиента
@@ -2344,24 +2368,24 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 					// Добавляем идентификатор события клиента в карту соответствия
 					return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, tid), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, tid), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -2375,12 +2399,12 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
 bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
 			if((eid > 0) && !addr.empty()){
 				// Выполняем блокировку потока для работы с TLS
@@ -2447,24 +2471,24 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view 
 						return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -2479,12 +2503,12 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view 
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
 bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, string_view addr, const uint16_t port) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
 			if((eid > 0) && !addr.empty()){
 				// Выполняем блокировку потока для работы с TLS
@@ -2577,24 +2601,24 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 						return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -2608,12 +2632,12 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
 bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
 			if((eid > 0) && (addr != nullptr)){
 				// Создаём объект параметров подключения для идентификатора события клиента
@@ -2658,24 +2682,24 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, const net::a
 					// Добавляем идентификатор события клиента в карту соответствия
 					return this->_mapping.emplace(eid, make_pair(&ret.first->first, this->_tid)).second;
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -2690,12 +2714,12 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, const net::a
  * @return     результат выполнения добавления идентификатора события клиента для конечной точки
  */
 bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, const net::addr_t * addr, const uint16_t port) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
 			if((eid > 0) && (addr != nullptr)){
 				// Создаём объект параметров подключения для идентификатора события клиента
@@ -2766,24 +2790,24 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 					// Добавляем идентификатор события клиента в карту соответствия
 					return this->_mapping.emplace(eid, make_pair(&ret.first->first, tid)).second;
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -2797,12 +2821,12 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Создаём объект адреса назначения подключения для идентификатора события клиента
 			unique_ptr <net::addr_t> target = nullptr;
 			// Получаем адрес хоста целевой машины для идентификатора события клиента
@@ -2848,24 +2872,24 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
 						this->_mapping.erase(j);
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат
 	return result;
@@ -2881,12 +2905,12 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid) noexcept {
 bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
 			if((eid > 0) && !addr.empty()){
 				// Выполняем блокировку потока для работы с TLS
@@ -2954,24 +2978,24 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view 
 					}
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат
 	return result;
@@ -2987,12 +3011,12 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view 
 bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
 			// Если идентификатор события клиента для конечной точки получен и адрес хоста для добавления не пустой
 			if((eid > 0) && (addr != nullptr)){
 				// Создаём объект параметров подключения для идентификатора события клиента
@@ -3038,24 +3062,24 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, const net::a
 						this->_mapping.erase(j);
 				}
 			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, addr, port), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
 	// Выводим результат
 	return result;

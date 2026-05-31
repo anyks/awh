@@ -476,29 +476,32 @@ void awh::Client::resolveDNS([[maybe_unused]] const unit::dns_t::id_t id, const 
  *
  */
 void awh::Client::stop() noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0){
-		// Если объект DNS-резолвера установлен
-		if(this->_dns != nullptr)
-			// Останавливаем событие DNS-резолвера
-			this->_dns->stop();
-		// Останавливаем событие клиента
-		else this->_client->stop();
-	// Если идентификатор клиента не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или сервер находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr)
+				// Останавливаем событие DNS-резолвера
+				this->_dns->stop();
+			// Останавливаем событие клиента
+			else this->_client->stop();
+		// Если идентификатор клиента не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 }
 /**
@@ -506,72 +509,75 @@ void awh::Client::stop() noexcept {
  *
  */
 void awh::Client::start() noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0){
-		// Если объект DNS-резолвера установлен
-		if(this->_dns != nullptr){
-			/**
-			 * В зависимости от статуса события DNS-резолвера выполняем запуск
-			 */
-			switch(static_cast <uint8_t> (this->_dns->status())){
-				// Если событие DNS-резолвера не запущено, запускаем его
-				case static_cast <uint8_t> (event::status_t::NONE): {
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr){
+				/**
+				 * В зависимости от статуса события DNS-резолвера выполняем запуск
+				 */
+				switch(static_cast <uint8_t> (this->_dns->status())){
 					// Если событие DNS-резолвера не запущено, запускаем его
-					if(this->_dns->commit())
+					case static_cast <uint8_t> (event::status_t::NONE): {
+						// Если событие DNS-резолвера не запущено, запускаем его
+						if(this->_dns->commit())
+							// Запускаем событие DNS-резолвера
+							this->_dns->start();
+					} break;
+					// Если событие DNS-резолвера инициализировано, запускаем его
+					case static_cast <uint8_t> (event::status_t::INITIAL):
 						// Запускаем событие DNS-резолвера
 						this->_dns->start();
-				} break;
-				// Если событие DNS-резолвера инициализировано, запускаем его
-				case static_cast <uint8_t> (event::status_t::INITIAL):
-					// Запускаем событие DNS-резолвера
-					this->_dns->start();
-				break;
-			}
-		// Если объект DNS-резолвера не установлен
-		} else {
-			/**
-			 * В зависимости от статуса события клиента выполняем запуск
-			 */
-			switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
-				// Если событие клиента не запущено, запускаем его
-				case static_cast <uint8_t> (event::status_t::NONE): {
+					break;
+				}
+			// Если объект DNS-резолвера не установлен
+			} else {
+				/**
+				 * В зависимости от статуса события клиента выполняем запуск
+				 */
+				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
 					// Если событие клиента не запущено, запускаем его
-					if(this->_client->commit(this->_eid)){
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("ready")){
-							// Получаем адрес хоста целевой машины для клиента
-							const string & host = this->_client->getTarget(this->_eid);
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_client->family(this->_eid), host, host);
+					case static_cast <uint8_t> (event::status_t::NONE): {
+						// Если событие клиента не запущено, запускаем его
+						if(this->_client->commit(this->_eid)){
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("ready")){
+								// Получаем адрес хоста целевой машины для клиента
+								const string & host = this->_client->getTarget(this->_eid);
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_client->family(this->_eid), host, host);
+							}
+							// Запускаем клиента
+							this->_client->start();
 						}
+					} break;
+					// Если событие клиента инициализировано, запускаем его
+					case static_cast <uint8_t> (event::status_t::INITIAL):
+					// Если событие находится в состоянии успешного подключения
+					case static_cast <uint8_t> (event::status_t::SUCCESS):
 						// Запускаем клиента
 						this->_client->start();
-					}
-				} break;
-				// Если событие клиента инициализировано, запускаем его
-				case static_cast <uint8_t> (event::status_t::INITIAL):
-				// Если событие находится в состоянии успешного подключения
-				case static_cast <uint8_t> (event::status_t::SUCCESS):
-					// Запускаем клиента
-					this->_client->start();
-				break;
+					break;
+				}
 			}
+		// Если идентификатор клиента не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
 		}
-	// Если идентификатор клиента не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
 	}
 }
 /**
@@ -580,25 +586,28 @@ void awh::Client::start() noexcept {
  * @return результат выполнения приостановки работы
  */
 bool awh::Client::pause() noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Приостанавливаем событие клиента
-		return this->_client->pause(this->_eid);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Приостанавливаем событие клиента
+			return this->_client->pause(this->_eid);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -609,25 +618,28 @@ bool awh::Client::pause() noexcept {
  * @return результат выполнения возобновления работы
  */
 bool awh::Client::resume() noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Возобновляем событие клиента
-		return this->_client->resume(this->_eid);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Возобновляем событие клиента
+			return this->_client->resume(this->_eid);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -638,25 +650,28 @@ bool awh::Client::resume() noexcept {
  * @return результат выполнения подключения
  */
 bool awh::Client::connect() noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Подключаем клиента к удалённому серверу
-		return this->_client->connect(this->_eid);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Подключаем клиента к удалённому серверу
+			return this->_client->connect(this->_eid);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -667,25 +682,28 @@ bool awh::Client::connect() noexcept {
  * @return результат выполнения отключения
  */
 bool awh::Client::disconnect() noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Отключаем клиента от удалённого сервера
-		return this->_client->disconnect(this->_eid);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Отключаем клиента от удалённого сервера
+			return this->_client->disconnect(this->_eid);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -763,6 +781,19 @@ void awh::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("attempts_dns", callback);
 }
 /**
+ * @brief Метод получения данных от сервера
+ *
+ * @return результат получения данных
+ */
+bool awh::Client::recv() noexcept {
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working())
+		// Выполняем получение данных от сервера
+		return this->_client->recv(this->_eid);
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод отправки данных серверу
  *
  * @param buffer буфер данных для отправки
@@ -770,17 +801,22 @@ void awh::Client::callback(const callback_t & callback) noexcept {
  * @return       количество байт данных, отправленных серверу
  */
 size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
-	// Если идентификатор TLS и объект TLS установлены
-	if((this->_tid > 0) && (this->_coder != nullptr)){
-		// Если шифрование данных TLS выполнено успешно
-		if(this->_coder->encrypt(this->_tid, buffer, size))
-			// Возвращаем размер отправленных данных
-			return size;
-		// Выводим результат по умолчанию
-		return 0;
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+		// Если идентификатор TLS и объект TLS установлены
+		if((this->_tid > 0) && (this->_coder != nullptr)){
+			// Если шифрование данных TLS выполнено успешно
+			if(this->_coder->encrypt(this->_tid, buffer, size))
+				// Возвращаем размер отправленных данных
+				return size;
+			// Выводим результат по умолчанию
+			return 0;
+		}
+		// Выполняем отправку данных серверу
+		return this->_client->send(this->_eid, buffer, size);
 	}
-	// Выполняем отправку данных серверу
-	return this->_client->send(this->_eid, buffer, size);
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод получения сетевого интерфейса клиента
@@ -818,25 +854,28 @@ string awh::Client::getIface() const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::Client::setIface(string_view name) noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Устанавливаем сетевой интерфейс клиента
-		return this->_client->setIface(this->_eid, name);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Устанавливаем сетевой интерфейс клиента
+			return this->_client->setIface(this->_eid, name);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -877,25 +916,28 @@ uint16_t awh::Client::getPort() const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::Client::setPort(const uint16_t port) noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Устанавливаем порт удаленного сервера для клиента
-		return this->_client->setPort(this->_eid, port);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Устанавливаем порт удаленного сервера для клиента
+			return this->_client->setPort(this->_eid, port);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -936,25 +978,28 @@ uint16_t awh::Client::getInternalPort() const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::Client::setInternalPort(const uint16_t port) noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Устанавливаем внутренний порт события для клиента
-		return this->_client->setInternalPort(this->_eid, port);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Устанавливаем внутренний порт события для клиента
+			return this->_client->setInternalPort(this->_eid, port);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -1001,47 +1046,50 @@ string awh::Client::getTarget() const noexcept {
 bool awh::Client::setTarget(string_view target) noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Определяем тип полученного IP-адреса
-	 */
-	switch(static_cast <uint8_t> (this->_addr.host(target))){
-		// Для типа Unix Domain Socket
-		case static_cast <uint8_t> (net_addr_t::type_t::FS):
-		// Для типа IPv4
-		case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-		// Для типа IPv6
-		case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-			// Если идентификатор клиента установлен
-			if(this->_eid > 0){
-				// Устанавливаем адрес хоста целевой машины для клиента
-				result = this->_client->setTarget(this->_eid, target);
-				// Если адрес установлен успешно, сохраняем его
-				if(result)
-					// Сохраняем адрес хоста целевой машины для клиента
-					this->_host = this->_client->getTarget(this->_eid);
-			// Если идентификатор клиента не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(target), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-				#endif
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		/**
+		 * Определяем тип полученного IP-адреса
+		 */
+		switch(static_cast <uint8_t> (this->_addr.host(target))){
+			// Для типа Unix Domain Socket
+			case static_cast <uint8_t> (net_addr_t::type_t::FS):
+			// Для типа IPv4
+			case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+			// Для типа IPv6
+			case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+				// Если идентификатор клиента установлен
+				if(this->_eid > 0){
+					// Устанавливаем адрес хоста целевой машины для клиента
+					result = this->_client->setTarget(this->_eid, target);
+					// Если адрес установлен успешно, сохраняем его
+					if(result)
+						// Сохраняем адрес хоста целевой машины для клиента
+						this->_host = this->_client->getTarget(this->_eid);
+				// Если идентификатор клиента не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(target), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+			// Для остальных типов адресов
+			default: {
+				// Если адрес не является IP-адресом, устанавливаем его как есть
+				if((result = !target.empty()))
+					// Устанавливаем адрес хоста целевой машины для клиента
+					this->_host = target;
 			}
-		} break;
-		// Для остальных типов адресов
-		default: {
-			// Если адрес не является IP-адресом, устанавливаем его как есть
-			if((result = !target.empty()))
-				// Устанавливаем адрес хоста целевой машины для клиента
-				this->_host = target;
 		}
 	}
 	// Выводим результат
@@ -1054,31 +1102,34 @@ bool awh::Client::setTarget(string_view target) noexcept {
  * @return       результат выполнения установки
  */
 bool awh::Client::setTarget(const net::addr_t * target) noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0){
-		// Устанавливаем адрес хоста целевой машины для клиента
-		const bool result = this->_client->setTarget(this->_eid, target);
-		// Если адрес установлен успешно, сохраняем его
-		if(result)
-			// Сохраняем адрес хоста целевой машины для клиента
-			this->_host = this->_client->getTarget(this->_eid);
-		// Возвращаем результат установки адреса хоста целевой машины для клиента
-		return result;
-	// Если идентификатор клиента не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0){
+			// Устанавливаем адрес хоста целевой машины для клиента
+			const bool result = this->_client->setTarget(this->_eid, target);
+			// Если адрес установлен успешно, сохраняем его
+			if(result)
+				// Сохраняем адрес хоста целевой машины для клиента
+				this->_host = this->_client->getTarget(this->_eid);
+			// Возвращаем результат установки адреса хоста целевой машины для клиента
+			return result;
+		// Если идентификатор клиента не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -1151,25 +1202,28 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
  * @return        результат выполнения установки
  */
 bool awh::Client::setAddress(const event::address_t address, string_view value) noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Устанавливаем адрес клиента
-		return this->_client->setAddress(this->_eid, address, value);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Устанавливаем адрес клиента
+			return this->_client->setAddress(this->_eid, address, value);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -1182,25 +1236,28 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
  * @return        результат выполнения установки
  */
 bool awh::Client::setAddress(const event::address_t address, const net::addr_t * value) noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Устанавливаем адрес клиента
-		return this->_client->setAddress(this->_eid, address, value);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_eid > 0)
+			// Устанавливаем адрес клиента
+			return this->_client->setAddress(this->_eid, address, value);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;

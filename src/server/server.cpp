@@ -785,55 +785,58 @@ void awh::Server::resolveDNS(const unit::dns_t::id_t id, const event::family_t f
  *
  */
 void awh::Server::stop() noexcept {
-	// Если идентификатор сервера установлен
-	if(this->_eid > 0){
-		// Если объект DNS-резолвера установлен
-		if(this->_dns != nullptr)
-			// Останавливаем событие DNS-резолвера
-			this->_dns->stop();
-		// Если объект DNS-резолвера не установлен
-		else {
-			// Если идентификатор TLS и объект TLS установлены
-			if((this->_tid > 0) && (this->_coder != nullptr) && !this->_tls.empty()){
-				// Временный список идентификаторов TLS, которые нужно удалить
-				vector <tls::coder_t::id_t> garbage;
-				{
-					// Выполняем блокировку потока для работы с TLS
-					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
-					for(auto i = this->_tls.begin(); i != this->_tls.end();){
-						// Формируем список идентификаторов TLS для удаления
-						garbage.push_back(i->second);
-						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-						i = this->_tls.erase(i);
+	// Если DNS-резолвер или сервер находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr)
+				// Останавливаем событие DNS-резолвера
+				this->_dns->stop();
+			// Если объект DNS-резолвера не установлен
+			else {
+				// Если идентификатор TLS и объект TLS установлены
+				if((this->_tid > 0) && (this->_coder != nullptr) && !this->_tls.empty()){
+					// Временный список идентификаторов TLS, которые нужно удалить
+					vector <tls::coder_t::id_t> garbage;
+					{
+						// Выполняем блокировку потока для работы с TLS
+						const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+						for(auto i = this->_tls.begin(); i != this->_tls.end();){
+							// Формируем список идентификаторов TLS для удаления
+							garbage.push_back(i->second);
+							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
+							i = this->_tls.erase(i);
+						}
+					}
+					// Если список идентификаторов TLS для удаления не пустой
+					if(!garbage.empty()){
+						// Проходим по всем идентификаторам TLS для удаления
+						for(const auto & id : garbage)
+							// Уничтожаем объект TLS по найденному идентификатору TLS
+							this->_coder->destroy(id);
 					}
 				}
-				// Если список идентификаторов TLS для удаления не пустой
-				if(!garbage.empty()){
-					// Проходим по всем идентификаторам TLS для удаления
-					for(const auto & id : garbage)
-						// Уничтожаем объект TLS по найденному идентификатору TLS
-						this->_coder->destroy(id);
-				}
+				// Останавливаем событие сервера
+				this->_server->stop();
 			}
-			// Останавливаем событие сервера
-			this->_server->stop();
+		// Если идентификатор сервера не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
 		}
-	// Если идентификатор сервера не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
 	}
 }
 /**
@@ -841,92 +844,95 @@ void awh::Server::stop() noexcept {
  *
  */
 void awh::Server::start() noexcept {
-	// Если идентификатор сервера установлен
-	if(this->_eid > 0){
-		// Если объект DNS-резолвера установлен
-		if(this->_dns != nullptr){
-			/**
-			 * В зависимости от статуса события DNS-резолвера выполняем запуск
-			 */
-			switch(static_cast <uint8_t> (this->_dns->status())){
-				// Если событие DNS-резолвера не запущено, запускаем его
-				case static_cast <uint8_t> (event::status_t::NONE): {
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0){
+			// Если объект DNS-резолвера установлен
+			if(this->_dns != nullptr){
+				/**
+				 * В зависимости от статуса события DNS-резолвера выполняем запуск
+				 */
+				switch(static_cast <uint8_t> (this->_dns->status())){
 					// Если событие DNS-резолвера не запущено, запускаем его
-					if(this->_dns->commit())
+					case static_cast <uint8_t> (event::status_t::NONE): {
+						// Если событие DNS-резолвера не запущено, запускаем его
+						if(this->_dns->commit())
+							// Запускаем событие DNS-резолвера
+							this->_dns->start();
+					} break;
+					// Если событие DNS-резолвера инициализировано, запускаем его
+					case static_cast <uint8_t> (event::status_t::INITIAL):
 						// Запускаем событие DNS-резолвера
 						this->_dns->start();
-				} break;
-				// Если событие DNS-резолвера инициализировано, запускаем его
-				case static_cast <uint8_t> (event::status_t::INITIAL):
-					// Запускаем событие DNS-резолвера
-					this->_dns->start();
-				break;
-			}
-		// Если объект DNS-резолвера не установлен
-		} else {
-			/**
-			 * В зависимости от статуса события сервера выполняем запуск
-			 */
-			switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
-				// Если событие сервера не запущено, запускаем его
-				case static_cast <uint8_t> (event::status_t::NONE): {
+					break;
+				}
+			// Если объект DNS-резолвера не установлен
+			} else {
+				/**
+				 * В зависимости от статуса события сервера выполняем запуск
+				 */
+				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
 					// Если событие сервера не запущено, запускаем его
-					if(this->_server->commit(this->_eid)){
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("ready")){
-							// Хост текущего сервера
-							string host = "";
-							/**
-							 * Определяем семейство адресов с которым работает сервер
-							 */
-							switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
-								// Если сервер работает с адресами Unix Domain Socket
-								case static_cast <uint8_t> (event::family_t::UDS):
-									// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
-									host = ::move(this->_server->getAddress(this->_eid, event::address_t::UDS));
-								break;
-								// Если сервер работает с адресами IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4):
-									// Извлекаем адрес хоста текущей машины для адресов IPv4
-									host = ::move(this->_server->getAddress(this->_eid, event::address_t::IPV4));
-								break;
-								// Если сервер работает с адресами IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6):
-									// Извлекаем адрес хоста текущей машины для адресов IPv6
-									host = ::move(this->_server->getAddress(this->_eid, event::address_t::IPV6));
-								break;
+					case static_cast <uint8_t> (event::status_t::NONE): {
+						// Если событие сервера не запущено, запускаем его
+						if(this->_server->commit(this->_eid)){
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("ready")){
+								// Хост текущего сервера
+								string host = "";
+								/**
+								 * Определяем семейство адресов с которым работает сервер
+								 */
+								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+									// Если сервер работает с адресами Unix Domain Socket
+									case static_cast <uint8_t> (event::family_t::UDS):
+										// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
+										host = ::move(this->_server->getAddress(this->_eid, event::address_t::UDS));
+									break;
+									// Если сервер работает с адресами IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Извлекаем адрес хоста текущей машины для адресов IPv4
+										host = ::move(this->_server->getAddress(this->_eid, event::address_t::IPV4));
+									break;
+									// Если сервер работает с адресами IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Извлекаем адрес хоста текущей машины для адресов IPv6
+										host = ::move(this->_server->getAddress(this->_eid, event::address_t::IPV6));
+									break;
+								}
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_server->family(this->_eid), host, host);
 							}
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_server->family(this->_eid), host, host);
+							// Запускаем сервер
+							this->_server->start();
 						}
+					} break;
+					// Если событие сервера инициализировано, запускаем его
+					case static_cast <uint8_t> (event::status_t::INITIAL):
+					// Если событие находится в состоянии успешного подключения
+					case static_cast <uint8_t> (event::status_t::SUCCESS):
 						// Запускаем сервер
 						this->_server->start();
-					}
-				} break;
-				// Если событие сервера инициализировано, запускаем его
-				case static_cast <uint8_t> (event::status_t::INITIAL):
-				// Если событие находится в состоянии успешного подключения
-				case static_cast <uint8_t> (event::status_t::SUCCESS):
-					// Запускаем сервер
-					this->_server->start();
-				break;
+					break;
+				}
 			}
+		// Если идентификатор сервера не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
 		}
-	// Если идентификатор сервера не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
 	}
 }
 /**
@@ -1085,25 +1091,28 @@ string awh::Server::getIface() const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::Server::setIface(string_view name) noexcept {
-	// Если идентификатор сервера установлен
-	if(this->_eid > 0)
-		// Устанавливаем сетевой интерфейс сервера
-		return this->_server->setIface(this->_eid, name);
-	// Если идентификатор сервера не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0)
+			// Устанавливаем сетевой интерфейс сервера
+			return this->_server->setIface(this->_eid, name);
+		// Если идентификатор сервера не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -1275,25 +1284,28 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
  * @return    результат получения данных
  */
 bool awh::Server::recv(const event::id_t eid) noexcept {
-	// Если идентификатор клиента найден в списке обслуживаемых клиентов
-	if((eid != this->_eid) && this->_server->isActual(eid))
-		// Получаем данные от клиента
-		return this->_server->recv(eid);
-	// Если идентификатор клиента не найден в списке обслуживаемых клиентов
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или сервер находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
+		// Если идентификатор клиента найден в списке обслуживаемых клиентов
+		if((eid != this->_eid) && this->_server->isActual(eid))
+			// Получаем данные от клиента
+			return this->_server->recv(eid);
+		// Если идентификатор клиента не найден в списке обслуживаемых клиентов
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -1307,49 +1319,52 @@ bool awh::Server::recv(const event::id_t eid) noexcept {
  * @return       количество байт данных, отправленных клиенту
  */
 size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
-	// Если идентификатор клиента найден в списке обслуживаемых клиентов
-	if((eid != this->_eid) && this->_server->isActual(eid)){
-		// Если идентификатор TLS и объект TLS установлены
-		if((this->_tid > 0) && (this->_coder != nullptr)){
-			// Временный идентификатор TLS для шифрования данных TLS
-			uint64_t tid = 0;
-			{
-				// Выполняем блокировку потока для работы с TLS
-				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-				// Выполняем поиск идентификатора TLS по идентификатору события клиента
-				auto i = this->_tls.find(eid);
-				// Если для данного идентификатора события клиента найден идентификатор TLS
-				if(i != this->_tls.end())
-					// Сохраняем идентификатор TLS для последующего шифрования данных TLS
-					tid = i->second;
+	// Если DNS-резолвер или сервер находятся в рабочем состоянии
+	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
+		// Если идентификатор клиента найден в списке обслуживаемых клиентов
+		if((eid != this->_eid) && this->_server->isActual(eid)){
+			// Если идентификатор TLS и объект TLS установлены
+			if((this->_tid > 0) && (this->_coder != nullptr)){
+				// Временный идентификатор TLS для шифрования данных TLS
+				uint64_t tid = 0;
+				{
+					// Выполняем блокировку потока для работы с TLS
+					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+					// Выполняем поиск идентификатора TLS по идентификатору события клиента
+					auto i = this->_tls.find(eid);
+					// Если для данного идентификатора события клиента найден идентификатор TLS
+					if(i != this->_tls.end())
+						// Сохраняем идентификатор TLS для последующего шифрования данных TLS
+						tid = i->second;
+				}
+				// Если идентификатор TLS для шифрования данных TLS найден
+				if(tid > 0){
+					// Если шифрование данных TLS выполнено успешно
+					if(this->_coder->encrypt(tid, buffer, size))
+						// Возвращаем размер отправленных данных
+						return size;
+				}
+				// Выводим результат по умолчанию
+				return 0;
 			}
-			// Если идентификатор TLS для шифрования данных TLS найден
-			if(tid > 0){
-				// Если шифрование данных TLS выполнено успешно
-				if(this->_coder->encrypt(tid, buffer, size))
-					// Возвращаем размер отправленных данных
-					return size;
-			}
-			// Выводим результат по умолчанию
-			return 0;
+			// Отправляем данные клиенту
+			return this->_server->send(eid, buffer, size);
+		// Если идентификатор клиента не найден в списке обслуживаемых клиентов
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
+			#endif
 		}
-		// Отправляем данные клиенту
-		return this->_server->send(eid, buffer, size);
-	// Если идентификатор клиента не найден в списке обслуживаемых клиентов
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not found", log_t::flag_t::WARNING);
-		#endif
 	}
 	// Выводим результат по умолчанию
 	return 0;
@@ -1514,25 +1529,28 @@ uint16_t awh::Server::getPort() const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::Server::setPort(const uint16_t port) noexcept {
-	// Если идентификатор сервера установлен
-	if(this->_eid > 0)
-		// Устанавливаем порт текущего сервера
-		return this->_server->setPort(this->_eid, port);
-	// Если идентификатор сервера не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0)
+			// Устанавливаем порт текущего сервера
+			return this->_server->setPort(this->_eid, port);
+		// Если идентификатор сервера не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -1585,97 +1603,100 @@ const string & awh::Server::getHost() const noexcept {
 bool awh::Server::setHost(string_view host) noexcept {
 	// Результат работы функции
 	bool result = false;
-	/**
-	 * Определяем тип полученного IP-адреса
-	 */
-	switch(static_cast <uint8_t> (this->_addr.host(host))){
-		// Для типа Unix Domain Socket
-		case static_cast <uint8_t> (net_addr_t::type_t::FS): {
-			// Если идентификатор сервера установлен
-			if(this->_eid > 0){
-				// Устанавливаем адрес хоста целевой машины для сервера
-				result = this->_server->setAddress(this->_eid, event::address_t::UDS, host);
-				// Если адрес установлен успешно, сохраняем его
-				if(result)
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::UDS);
-			// Если идентификатор сервера не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-				#endif
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		/**
+		 * Определяем тип полученного IP-адреса
+		 */
+		switch(static_cast <uint8_t> (this->_addr.host(host))){
+			// Для типа Unix Domain Socket
+			case static_cast <uint8_t> (net_addr_t::type_t::FS): {
+				// Если идентификатор сервера установлен
+				if(this->_eid > 0){
+					// Устанавливаем адрес хоста целевой машины для сервера
+					result = this->_server->setAddress(this->_eid, event::address_t::UDS, host);
+					// Если адрес установлен успешно, сохраняем его
+					if(result)
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::UDS);
+				// Если идентификатор сервера не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+			// Для типа IPv4
+			case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+				// Если идентификатор сервера установлен
+				if(this->_eid > 0){
+					// Устанавливаем адрес хоста целевой машины для сервера
+					result = this->_server->setAddress(this->_eid, event::address_t::IPV4, host);
+					// Если адрес установлен успешно, сохраняем его
+					if(result)
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV4);
+				// Если идентификатор сервера не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+			// Для типа IPv6
+			case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+				// Если идентификатор сервера установлен
+				if(this->_eid > 0){
+					// Устанавливаем адрес хоста целевой машины для сервера
+					result = this->_server->setAddress(this->_eid, event::address_t::IPV6, host);
+					// Если адрес установлен успешно, сохраняем его
+					if(result)
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV6);
+				// Если идентификатор сервера не установлен
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+					#endif
+				}
+			} break;
+			// Для остальных типов адресов
+			default: {
+				// Если адрес не является IP-адресом, устанавливаем его как есть
+				if((result = !host.empty()))
+					// Устанавливаем адрес хоста целевой машины для сервера
+					this->_host = host;
 			}
-		} break;
-		// Для типа IPv4
-		case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-			// Если идентификатор сервера установлен
-			if(this->_eid > 0){
-				// Устанавливаем адрес хоста целевой машины для сервера
-				result = this->_server->setAddress(this->_eid, event::address_t::IPV4, host);
-				// Если адрес установлен успешно, сохраняем его
-				if(result)
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV4);
-			// Если идентификатор сервера не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-				#endif
-			}
-		} break;
-		// Для типа IPv6
-		case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-			// Если идентификатор сервера установлен
-			if(this->_eid > 0){
-				// Устанавливаем адрес хоста целевой машины для сервера
-				result = this->_server->setAddress(this->_eid, event::address_t::IPV6, host);
-				// Если адрес установлен успешно, сохраняем его
-				if(result)
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV6);
-			// Если идентификатор сервера не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-				#endif
-			}
-		} break;
-		// Для остальных типов адресов
-		default: {
-			// Если адрес не является IP-адресом, устанавливаем его как есть
-			if((result = !host.empty()))
-				// Устанавливаем адрес хоста целевой машины для сервера
-				this->_host = host;
 		}
 	}
 	// Выводим результат
@@ -1721,46 +1742,49 @@ string awh::Server::getAddress(const event::address_t address) const noexcept {
 bool awh::Server::setAddress(const event::address_t address, string_view value) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если идентификатор сервера установлен
-	if(this->_eid > 0){
-		// Устанавливаем адрес сервера
-		if((result = this->_server->setAddress(this->_eid, address, value))){
-			/**
-			 * Определяем семейство адресов с которым работает сервер
-			 */
-			switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
-				// Если сервер работает с адресами Unix Domain Socket
-				case static_cast <uint8_t> (event::family_t::UDS):
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::UDS);
-				break;
-				// Если сервер работает с адресами IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV4);
-				break;
-				// Если сервер работает с адресами IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6):
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV6);
-				break;
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0){
+			// Устанавливаем адрес сервера
+			if((result = this->_server->setAddress(this->_eid, address, value))){
+				/**
+				 * Определяем семейство адресов с которым работает сервер
+				 */
+				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+					// Если сервер работает с адресами Unix Domain Socket
+					case static_cast <uint8_t> (event::family_t::UDS):
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::UDS);
+					break;
+					// Если сервер работает с адресами IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV4);
+					break;
+					// Если сервер работает с адресами IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV6);
+					break;
+				}
 			}
+		// Если идентификатор сервера не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
 		}
-	// Если идентификатор сервера не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
 	}
 	// Выводим результат
 	return result;
@@ -1806,46 +1830,49 @@ string awh::Server::getAddress(const event::id_t eid, const event::address_t add
 bool awh::Server::setAddress(const event::address_t address, const net::addr_t * value) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если идентификатор сервера установлен
-	if(this->_eid > 0){
-		// Устанавливаем адрес сервера
-		if((result = this->_server->setAddress(this->_eid, address, value))){
-			/**
-			 * Определяем семейство адресов с которым работает сервер
-			 */
-			switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
-				// Если сервер работает с адресами IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV4);
-				break;
-				// Если сервер работает с адресами IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6):
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV6);
-				break;
-				// Если сервер работает с адресами Unix Domain Socket
-				case static_cast <uint8_t> (event::family_t::UDS):
-					// Сохраняем адрес хоста целевой машины для сервера
-					this->_host = this->_server->getAddress(this->_eid, event::address_t::UDS);
-				break;
+	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+		// Если идентификатор сервера установлен
+		if(this->_eid > 0){
+			// Устанавливаем адрес сервера
+			if((result = this->_server->setAddress(this->_eid, address, value))){
+				/**
+				 * Определяем семейство адресов с которым работает сервер
+				 */
+				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+					// Если сервер работает с адресами IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV4);
+					break;
+					// Если сервер работает с адресами IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::IPV6);
+					break;
+					// Если сервер работает с адресами Unix Domain Socket
+					case static_cast <uint8_t> (event::family_t::UDS):
+						// Сохраняем адрес хоста целевой машины для сервера
+						this->_host = this->_server->getAddress(this->_eid, event::address_t::UDS);
+					break;
+				}
 			}
+		// Если идентификатор сервера не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+			#endif
 		}
-	// Если идентификатор сервера не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
 	}
 	// Выводим результат
 	return result;
