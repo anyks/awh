@@ -716,7 +716,7 @@ void awh::Server::resolveDNS(const unit::dns_t::id_t id, const event::family_t f
 		/**
 		 * Определяем семейство адресов с которым работает сервер
 		 */
-		switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+		switch(static_cast <uint8_t> (family)){
 			// Если сервер работает с адресами IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
 				// Устанавливаем адрес хоста целевой текущей машины

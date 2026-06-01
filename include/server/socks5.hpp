@@ -182,6 +182,10 @@ namespace awh {
 				unordered_map <event::id_t, string> _hosts;
 				// Список для сопоставления идентификаторов пиров с удалёнными клиентами
 				unordered_map <event::id_t, peer_t> _peers;
+				// Список для сопоставления идентификаторов клиентов с пирами которым они принадлежат
+				unordered_map <event::id_t, event::id_t> _clients;
+				// Список для сопоставления идентификаторов DNS-запросов с пирами
+				unordered_map <unit::dns_t::id_t, event::id_t> _resolves;
 			private:
 				// Отображение идентификаторов событий клиентов для конечных точек
 				unordered_map <event::id_t, const origin_t *> _mapping;
@@ -195,6 +199,38 @@ namespace awh {
 				 * @param state  новое временное состояние сервера
 				 */
 				void status(const event::status_t status, const state_t state) noexcept;
+			private:
+				/**
+				 * @brief Метод обработки событий подключения клиента к удалённому серверу
+				 *
+				 * @param eid идентификатор клиента
+				 * @param ok  результат подключения
+				 */
+				void connectClient(const event::id_t eid, const bool ok) noexcept;
+				/**
+				 * @brief Метод обработки событий изменения состояния клиента
+				 *
+				 * @param eid    идентификатор события клиента
+				 * @param status новый статус события
+				 */
+				void statusClient(const event::id_t eid, const event::status_t status) noexcept;
+				/**
+				 * @brief Метод получения события ошибок
+				 *
+				 * @param eid     идентификатор события
+				 * @param error   код ошибки
+				 * @param message сообщение об ошибке
+				 */
+				void errorClient(const event::id_t eid, const event::error_t error, const string & message) noexcept;
+				/**
+				 * @brief Метод обработки событий истечения таймаута клиента
+				 *
+				 * @param eid    идентификатор клиента
+				 * @param action тип действия для истекшего таймаута
+				 * @param delay  задержка таймаута в миллисекундах
+				 * @return       нужно ли завершить клиента после истечения таймаута
+				 */
+				bool timeoutClient(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки события разрешения подключения
@@ -212,6 +248,15 @@ namespace awh {
 				 */
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			private:
+				/**
+				 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+				 *
+				 * @param id     идентификатор DNS-запроса
+				 * @param family семейство адресов (IPv4/IPv6)
+				 * @param domain доменное имя для резолвинга
+				 * @param addr   указатель на структуру для хранения результата резолвинга
+				 */
+				void resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 				/**
 				 * @brief Метод резолвинга доменного имени в сетевой адрес
 				 *
