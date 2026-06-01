@@ -240,6 +240,13 @@ namespace awh {
 				 */
 				void accept(const event::id_t eid, const event::id_t cid) noexcept;
 				/**
+				 * @brief Метод обработки событий изменения состояния сервера
+				 *
+				 * @param eid    идентификатор клиента
+				 * @param status новый статус сервера
+				 */
+				void state(const event::id_t eid, const event::status_t status) noexcept;
+				/**
 				 * @brief Метод обработки событий получения данных сервером
 				 *
 				 * @param eid    идентификатор клиента
