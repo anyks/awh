@@ -252,7 +252,7 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
 							// Увеличиваем размер смещения на размер количества методов авторизации
 							offset += sizeof(count);
 							// Если количество методов авторизации получено
-							if((count > 0) && (size >= (sizeof(uint16_t) + (sizeof(uint8_t) * count)))){
+							if((result = ((count > 0) && (size >= (sizeof(uint16_t) + (sizeof(uint8_t) * count)))))){
 								// Устанавливаем статус ожидания ответа на авторизацию
 								ctx.state = state_t::AUTH;
 								// Устанавливаем статус ошибки
@@ -334,7 +334,7 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
 										// Если пароль пользователя для авторизации на сервере получен
 										if(length > 0){
 											// Если данных достаточно, чтобы получить пароль пользователя для авторизации на сервере
-											if(size >= (offset + length)){
+											if((result = (size >= (offset + length)))){
 												// Получаем пароль пользователя для авторизации на сервере
 												const string password(reinterpret_cast <const char *> (buffer) + offset, length);
 												// Увеличиваем размер смещения на размер пароля пользователя для авторизации на сервере

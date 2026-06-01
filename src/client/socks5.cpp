@@ -409,7 +409,7 @@ void awh::client::Socks5::write(const event::id_t eid, const size_t size) noexce
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("write")){
 			// Если текущее состояние соответствует завершённому состоянию
-			if(this->_ctx.state == proto::client_socks5_t::state_t::COMPLETED){
+			if(this->_ctx.state == proto::socks5_t::state_t::COMPLETED){
 				// Если сообщение дешифровано для socks5-клиента
 				if(eid == this->_eid){
 					// Идентификатор события клиента для конечной точки
@@ -470,7 +470,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 		 */
 		try {
 			// Если текущее состояние соответствует завершённому состоянию
-			if(this->_ctx.state == proto::client_socks5_t::state_t::COMPLETED){
+			if(this->_ctx.state == proto::socks5_t::state_t::COMPLETED){
 				// Если идентификатор клиента соответствует идентификатору socks5 клиента
 				if(eid == this->_eid){
 					// Если объект транспортного уровня безопасности установлен
@@ -515,7 +515,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				// Если идентификатор клиента не соответствует идентификатору socks5 клиента
 				} else {
 					// Инициализируем объект заголовка UDP пакета
-					proto::client_socks5_t::udp_head_t udp{};
+					proto::socks5_t::udp_head_t udp{};
 					// Если парсинг данных от прокси-сервера выполнен успешно
 					if(this->_socks5.parse(buffer, size, udp)){
 						// Если хост клиента которому адресован UDP пакет установлен
@@ -603,7 +603,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 					 */
 					switch(static_cast <uint8_t> (this->_ctx.state)){
 						// Если текущее состояние соответствует ошибке работе с прокси-сервером
-						case static_cast <uint8_t> (proto::client_socks5_t::state_t::BROKEN): {
+						case static_cast <uint8_t> (proto::socks5_t::state_t::BROKEN): {
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error")){
 								/**
@@ -627,7 +627,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, false);
 						} break;
 						// Если текущее состояние соответствует ожиданию выполнения подключения
-						case static_cast <uint8_t> (proto::client_socks5_t::state_t::CONNECT): {
+						case static_cast <uint8_t> (proto::socks5_t::state_t::CONNECT): {
 							// Идентификатор события клиента
 							event::id_t eid = 0;
 							// Идентификатор инициатора запроса
@@ -652,7 +652,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									// Если протокол соответствует UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP): {
 										// Устанавливаем команду для UDP протокола
-										this->_ctx.command = proto::client_socks5_t::command_t::UDP;
+										this->_ctx.command = proto::socks5_t::command_t::UDP;
 										// Получаем порт клиента для подключения, работающего через прокси
 										uint16_t port = this->_client->getInternalPort(eid);
 										/**
@@ -698,7 +698,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									// Если протокол соответствует TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP): {
 										// Устанавливаем команду для TCP протокола
-										this->_ctx.command = proto::client_socks5_t::command_t::CONNECT;
+										this->_ctx.command = proto::socks5_t::command_t::CONNECT;
 										/**
 										 * Определяем тип данных сесии клиента, работающего через прокси
 										 */
@@ -775,7 +775,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								this->_callback.call <void (const event::id_t, const event::id_t, const bool)> ("connect", this->_eid, eid, false);
 						} break;
 						// Если текущее состояние соответствует выполненному рукопожатию
-						case static_cast <uint8_t> (proto::client_socks5_t::state_t::HANDSHAKE): {
+						case static_cast <uint8_t> (proto::socks5_t::state_t::HANDSHAKE): {
 							// Количество активных сессий клиентов, работающих через прокси
 							size_t count = 0;
 							{
@@ -832,7 +832,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Если список активных сессий клиентов не пустой
 								if(!sessions.empty()){
 									// Устанавливаем состояние клиента как "завершённый"
-									this->_ctx.state = proto::client_socks5_t::state_t::COMPLETED;
+									this->_ctx.state = proto::socks5_t::state_t::COMPLETED;
 									/**
 									 * Перебираем все активные сессии клиентов, работающих через прокси
 									 */
@@ -984,7 +984,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									// Если адрес хоста для подключения к удалённому серверу получен успешно
 									if(!target.empty()){
 										// Устанавливаем состояние клиента как "завершённый"
-										this->_ctx.state = proto::client_socks5_t::state_t::COMPLETED;
+										this->_ctx.state = proto::socks5_t::state_t::COMPLETED;
 										// Если функция обратного вызова установлена
 										if(this->_callback.is("ready"))
 											// Выполняем функцию обратного вызова
@@ -1099,7 +1099,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							// Выводим сообщение об ошибке
 							this->_log->print("Failed to parse data from proxy server", log_t::flag_t::WARNING);
 						#endif
-					}
+					// Выполняем функцию обратного вызова
+					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, "Failed to parse data from proxy server");
 				}
 			}
 		/**
@@ -1210,7 +1211,7 @@ void awh::client::Socks5::processTLS(const tls::coder_t::id_t id, const event::i
 						// Тип данных для события клиента
 						net::type_t type = net::type_t::NONE;
 						// Инициализируем объект заголовка UDP пакета
-						proto::client_socks5_t::udp_head_t udp{};
+						proto::socks5_t::udp_head_t udp{};
 						{
 							// Выполняем блокировку потока для работы с TLS
 							const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
@@ -1641,7 +1642,7 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 							return 0;
 						}
 						// Инициализируем объект заголовка UDP пакета
-						proto::client_socks5_t::udp_head_t udp{};
+						proto::socks5_t::udp_head_t udp{};
 						/**
 						 * Определяем тип данных сесии клиента, работающего через прокси
 						 */
@@ -1949,7 +1950,7 @@ size_t awh::client::Socks5::send(const event::id_t eid, const void * buffer, con
 								return 0;
 							}
 							// Инициализируем объект заголовка UDP пакета
-							proto::client_socks5_t::udp_head_t udp{};
+							proto::socks5_t::udp_head_t udp{};
 							/**
 							 * Определяем тип данных сесии клиента, работающего через прокси
 							 */

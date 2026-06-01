@@ -189,6 +189,14 @@ namespace awh {
 				unordered_map <origin_t, event::id_t, origin_hash_t> _sessions;
 			private:
 				/**
+				 * @brief Метод изменения статуса сервера
+				 *
+				 * @param status новый статус сервера
+				 * @param state  новое временное состояние сервера
+				 */
+				void status(const event::status_t status, const state_t state) noexcept;
+			private:
+				/**
 				 * @brief Метод обработки события разрешения подключения
 				 *
 				 * @param eid идентификатор сервера
@@ -203,6 +211,17 @@ namespace awh {
 				 * @param size   размер данных сервера
 				 */
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+			private:
+				/**
+				 * @brief Метод резолвинга доменного имени в сетевой адрес
+				 *
+				 * @param id     идентификатор DNS-запроса
+				 * @param eid    идентификатор события сервера
+				 * @param family семейство адресов (IPv4/IPv6)
+				 * @param domain доменное имя для резолвинга
+				 * @param addr   указатель на структуру для хранения результата резолвинга
+				 */
+				void resolveDNS(const unit::dns_t::id_t id, const event::id_t eid, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 			public:
 				/**
 				 * @brief Метод остановки сервера
