@@ -178,6 +178,12 @@ int32_t main(int32_t argc, char * argv[]){
 	server::socks5_t server(&unit, &dns, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
+	// Устанавливаем имя кластера для сервера
+	unit.clusterName("ANYKS");
+	// Устанавливаем количество вокеров кластера для сервера
+	unit.clusterCount(0);
+	// Включаем режим кластера для сервера
+	unit.clusterMode(event::mode_t::ENABLED);
 	// Создаём событие сервера TCP и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Создаём событие первого сервера UDP и сохраняем его идентификатор
@@ -226,7 +232,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
 		server.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &server);
 		// Регистрируем функцию обратного вызова на событие аутентификации клиента
-		server.on <bool (const string &, const string &)> ("auth", &Executor::auth, &executor, _1, _2);
+		// server.on <bool (const string &, const string &)> ("auth", &Executor::auth, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие записи данных сервером
 		server.on <void (const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие чтения данных сервером
