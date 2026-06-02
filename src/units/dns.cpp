@@ -16,6 +16,7 @@
  * Стандартные модули
  */
 #include <array>
+#include <net/event.hpp>
 #include <vector>
 #include <random>
 #include <cerrno>
@@ -1158,7 +1159,7 @@ namespace dns {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (record), domain), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1171,6 +1172,168 @@ namespace dns {
 		return result;
 	}
 };
+
+/**
+ * @brief Оператор [=] перемещения параметров пакета
+ *
+ * @param packet объект параметров пакета
+ * @return       текущие параметры пакета
+ */
+awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) noexcept {
+	// Копируем количество попыток из объекта параметров пакета
+	this->attempt = packet.attempt;
+	// Копируем время жизни из объекта параметров пакета
+	this->lifetime = packet.lifetime;
+	// Копируем размер полезной нагрузки из объекта параметров пакета
+	this->payload.size = packet.payload.size;
+	// Перемещаем буфер полезной нагрузки из объекта параметров пакета
+	this->payload.buffer = ::move(packet.payload.buffer);
+	// Зануляем количество попыток в объекте параметров пакета
+	packet.attempt = 0;
+	// Зануляем время жизни в объекте параметров пакета
+	packet.lifetime = 0;
+	// Зануляем размер полезной нагрузки в объекте параметров пакета
+	packet.payload.size = 0;
+	// Зануляем буфер полезной нагрузки в объекте параметров пакета, чтобы избежать двойного освобождения памяти
+	packet.payload.buffer = nullptr;
+	// Выводим результат
+	return (* this);
+}
+/**
+ * @brief Оператор [=] присванивания параметров пакета
+ *
+ * @param packet объект параметров пакета
+ * @return        текущие параметры пакета
+ */
+awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (const Packet & packet) noexcept {
+	// Копируем количество попыток из объекта параметров пакета
+	this->attempt = packet.attempt;
+	// Копируем время жизни из объекта параметров пакета
+	this->lifetime = packet.lifetime;
+	// Копируем размер полезной нагрузки из объекта параметров пакета
+	this->payload.size = packet.payload.size;
+	// Выделяем новый буфер для полезной нагрузки и копируем данные из объекта параметров пакета
+	this->payload.buffer = make_unique <uint8_t []> (packet.payload.size);
+	// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+	::memcpy(this->payload.buffer.get(), packet.payload.buffer.get(), packet.payload.size);
+	// Выводим результат
+	return (* this);
+}
+/**
+ * @brief Конструктор перемещения
+ *
+ * @param packet объект параметров пакета
+ */
+awh::unit::DNS::Packet::Packet(Packet && packet) noexcept {
+	// Копируем количество попыток из объекта параметров пакета
+	this->attempt = packet.attempt;
+	// Копируем время жизни из объекта параметров пакета
+	this->lifetime = packet.lifetime;
+	// Копируем размер полезной нагрузки из объекта параметров пакета
+	this->payload.size = packet.payload.size;
+	// Перемещаем буфер полезной нагрузки из объекта параметров пакета
+	this->payload.buffer = ::move(packet.payload.buffer);
+	// Зануляем количество попыток в объекте параметров пакета
+	packet.attempt = 0;
+	// Зануляем время жизни в объекте параметров пакета
+	packet.lifetime = 0;
+	// Зануляем размер полезной нагрузки в объекте параметров пакета
+	packet.payload.size = 0;
+	// Зануляем буфер полезной нагрузки в объекте параметров пакета, чтобы избежать двойного освобождения памяти
+	packet.payload.buffer = nullptr;
+}
+/**
+ * @brief Конструктор копирования
+ *
+ * @param packet объект параметров пакета
+ */
+awh::unit::DNS::Packet::Packet(const Packet & packet) noexcept {
+	// Копируем количество попыток из объекта параметров пакета
+	this->attempt = packet.attempt;
+	// Копируем время жизни из объекта параметров пакета
+	this->lifetime = packet.lifetime;
+	// Копируем размер полезной нагрузки из объекта параметров пакета
+	this->payload.size = packet.payload.size;
+	// Выделяем новый буфер для полезной нагрузки и копируем данные из объекта параметров пакета
+	this->payload.buffer = make_unique <uint8_t []> (packet.payload.size);
+	// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+	::memcpy(this->payload.buffer.get(), packet.payload.buffer.get(), packet.payload.size);
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::DNS::Packet::Packet() noexcept : attempt(0), lifetime(0) {}
+
+/**
+ * @brief Метод очистки очереди идентификаторов событий
+ *
+ */
+void awh::unit::DNS::SimpleQueue::clear() noexcept {
+	// Выполняем блокировку потока для работы с очередью
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Очищаем очередь идентификаторов событий, используя swap с пустой очередью для эффективной очистки
+	std::queue <event::id_t> ().swap(this->_ids);
+}
+/**
+ * @brief Метод получения размера очереди идентификаторов событий
+ *
+ * @return размер очереди идентификаторов событий
+ */
+size_t awh::unit::DNS::SimpleQueue::size() const noexcept {
+	// Выполняем блокировку потока для работы с очередью
+	const locker_t <std::shared_mutex> lock(const_cast <queue_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	// Выводим размер очереди идентификаторов событий
+	return this->_ids.size();
+}
+/**
+ * @brief Метод добавления идентификатора события в очередь
+ *
+ * @param eid идентификатор события для добавления в очередь
+ */
+void awh::unit::DNS::SimpleQueue::push(event::id_t eid) noexcept {
+	// Выполняем блокировку потока для работы с очередью
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Добавляем идентификатор события в очередь
+    this->_ids.push(eid);
+}
+/**
+ * @brief Метод извлечения идентификатора события из очереди
+ *
+ * @param eid идентификатор события для извлечения из очереди
+ * @return    результат извлечения идентификатора
+ */
+bool awh::unit::DNS::SimpleQueue::pop(event::id_t & eid) noexcept {
+	// Выполняем блокировку потока для работы с очередью
+	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Проверяем, что очередь идентификаторов событий пуста
+	if(this->_ids.empty())
+		// Ошибка: очередь идентификаторов событий пуста, нет идентификатора для извлечения
+		return false;
+	// Извлекаем идентификатор события из очереди
+	eid = this->_ids.front();
+	// Удаляем извлечённый идентификатор события из очереди
+	this->_ids.pop();
+	// Выводим результат
+	return true;
+}
+/**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::unit::DNS::SimpleQueue::threadSafety(const bool mode) noexcept {
+	// Активируем работу мьютекса блокировки потока при работе с очередью
+	this->_mtx.enabled = mode;
+}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::DNS::SimpleQueue::SimpleQueue() noexcept {
+	// Деактивируем мьютекс на время инициализации
+	this->_mtx.enabled = false;
+}
 
 /**
  * @brief Метод инициализации списка DNS-серверов из переменных окружения или стандартных значений
@@ -1364,72 +1527,6 @@ awh::unit::DNS::Servers::Servers() noexcept :
  _initializedIPv4(false), _initializedIPv6(false) {}
 
 /**
- * @brief Метод создания события DNS-резолвера
- *
- * @param family семейство протоколов (например: IPv4 или IPv6)
- */
-void awh::unit::DNS::create(const event::family_t family) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Результат работы функции
-		bool result = false;
-		{
-			// Выполняем блокировку потока для работы с событием DNS-резолвера
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Добавляем новое событие клиента UDP
-			this->_resolver.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
-			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(this->_resolver.eid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие чтения данных
-			this->_io->on(this->_resolver.eid, static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
-			// Если опции события не установлены
-			if(!(result = this->_io->setOptions(this->_resolver.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)))
-				// Удаляем событие DNS-резолвера
-				this->_io->destroy(this->_resolver.eid);
-		}
-		// Если событие DNS-резолвера успешно создано и опции установлены
-		if(!result){
-			// Если функция обратного вызова не установлена
-			if(!this->_callback.is("error")){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Failed to set options for DNS resolver event", log_t::flag_t::CRITICAL);
-				#endif
-			}
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
  * @brief Метод обработки событий дампинга DNS-кэша
  *
  * @param        идентификатор таймера DNS-резолвера
@@ -1526,7 +1623,7 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1636,7 +1733,7 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1955,7 +2052,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(str), log_t::flag_t::CRITICAL, error.what());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2028,7 +2125,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(data, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2038,23 +2135,6 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 			#endif
 		}
 	}
-}
-/**
- * @brief Метод обработки ошибок событий DNS-резолвера
- *
- * @param eid         идентификатор события DNS-резолвера
- * @param error       код ошибки события DNS-резолвера
- * @param description описание ошибки события DNS-резолвера
- */
-void awh::unit::DNS::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
-	// Если событие относится к DNS-резолверу
-	if(eid == this->_resolver.eid)
-		// Выполняем сброс DNS-резолвера
-		this->reset();
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод обработки ответов от DNS-сервера на запросы резолвинга доменных имён
@@ -2078,17 +2158,19 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			string domain = "unknown";
 			{
 				// Выполняем блокировку потока для работы с контейнером активных пакетов
-				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем поиск пакета в контейнере активных пакетов
 				auto i = this->_transfer.waiting.find(id);
 				// Если пакет найден в контейнере активных пакетов
 				if(i != this->_transfer.waiting.end()){
-					// Получаем доменное имя из сохраненного запроса текущего DNS-резолвера для логирования
-					domain = ::move(i->second.domain);
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Удаляем событие таймера для ожидания ответа от DNS-сервера
-					this->_io->destroy(i->second.tid);
+					// Декодируем доменное имя
+					char name[256];
+					// Получаем размер запроса
+					size_t offset = sizeof(::dns::head_t);
+					// Выполняем декодирование доменного имени из бинарных данных запроса
+					if(::dns::decodeDomainName(i->second.payload.buffer.get(), i->second.payload.size, offset, name, sizeof(name)))
+						// Получаем доменное имя из сохраненного запроса текущего DNS-резолвера для логирования
+						domain = name;
 					// Удаляем пакет из контейнера активных пакетов
 					this->_transfer.waiting.erase(i);
 				}
@@ -2480,7 +2562,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2505,7 +2587,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2530,7 +2612,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2555,7 +2637,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2580,7 +2662,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2590,6 +2672,42 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						#endif
 					}
 				} break;
+			}
+			// Выполняем блокировку потока для работы с контейнером активных пакетов
+			const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем поиск DNS-резолвера в контейнере прикрепленных DNS-резолверов
+			auto i = this->_transfer.attached.find(eid);
+			// Если DNS-резолвер найден в контейнере прикрепленных DNS-резолверов
+			if(i != this->_transfer.attached.end()){
+				// Если в очереди на отправку есть пакеты
+				if(!this->_transfer.packets.empty()){
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Если время жизни пакета ещё не истекло
+					if(this->_transfer.packets.front().lifetime < this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
+						// Получаем объект заголовка запроса
+						::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
+						// Добавляем пакет в контейнер активных пакетов
+						auto ret = this->_transfer.waiting.emplace(ntohs(header->id), ::move(this->_transfer.packets.front()));
+						// Меняем идентификатор DNS-запроса
+						i->second = ret.first->first;
+						// Удаляем пакет из очереди на отправку
+						this->_transfer.packets.pop();
+						{
+							// Выполняем блокировку потока для работы с событием DNS-резолвера
+							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							// Отправляем запрос на резолвинг доменного имени
+							this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
+						}
+						// Выходим из функции
+						return;
+					// Удаляем пакет из очереди на отправку
+					} else this->_transfer.packets.pop();
+				}
+				// Возвращаем резолвер в очередь доступных DNS-резолверов
+				this->_resolver.queue.push(eid);
+				// Удаляем прикрепленный DNS-резолвер к DNS-запросу из контейнера прикрепленных DNS-резолверов
+				this->_transfer.attached.erase(i);
 			}
 		}
 	/**
@@ -2601,7 +2719,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2612,106 +2730,159 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 	}
 }
 /**
- * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
+ * @brief Метод обработки событий истечения таймаута резолвера доменного имени
  *
- * @param id     идентификатор DNS-резолвера
- * @param eid    идентификатор таймера DNS-резолвера
- * @param status статус события таймера DNS-резолвера
- * @param packet объект активного пакета DNS-запроса
+ * @param eid    идентификатор резолвера
+ * @param action тип действия для истекшего таймаута
+ * @param delay  задержка таймаута в миллисекундах
+ * @return       нужно ли завершить резолвер после истечения таймаута
  */
-void awh::unit::DNS::timeout(const id_t id, const event::id_t eid, const event::status_t status, packet_t * packet) noexcept {
-	// Если статус события успешен
-	if(status == event::status_t::SUCCESS){
-		// Если попытки резолвинга не превышают максимально допустимое количество
-		if(packet->attempt < this->_transfer.attempts){
-			// Результат установки таймера для ожидания ответа от DNS-сервера
+bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если таймаут истёк для действия чтения
+		if(action == event::action_t::READ){
+			// Идентификатор DNS-запроса
+			id_t id = 0;
+			// Количество попыток резолвинга доменного имени
+			uint8_t attempt = 0;
+			// Результат извлечения доменного имени
 			bool result = false;
+			// Декодируем доменное имя
+			char domain[256];
 			{
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Увеличиваем количество попыток резолвинга
-				packet->attempt++;
-				// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-				packet->tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-				// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-				this->_io->setTimeout(packet->tid, event::action_t::NONE, (packet->delay > 0 ? packet->delay : 5000));
-				// Устанавливаем функцию обратного вызова на событие получения ошибок
-				this->_io->on(packet->tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-				// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-				if(!(result = this->_io->commit(packet->tid)))
-					// Удаляем событие таймера
-					this->_io->destroy(packet->tid);
-				// Если таймер для ожидания ответа от DNS-сервера успешно установлен
-				else {
-					// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-					this->_io->on(packet->tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, packet)));
-					// Запускаем таймер для ожидания ответа от DNS-сервера
-					this->_io->launch(packet->tid);
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем поиск DNS-резолвера в контейнере прикрепленных DNS-резолверов
+				auto i = this->_transfer.attached.find(eid);
+				// Если DNS-резолвер найден в контейнере прикрепленных DNS-резолверов
+				if(i != this->_transfer.attached.end()){
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Выполняем поиск пакета в контейнере активных пакетов
+					auto j = this->_transfer.waiting.find(i->second);
+					// Если пакет найден в контейнере активных пакетов
+					if(j != this->_transfer.waiting.end()){
+						// Если попытки резолвинга не превышают максимально допустимое количество
+						if(j->second.attempt < this->_transfer.attempts.load(std::memory_order_acquire)){
+							// Увеличиваем количество попыток резолвинга доменного имени
+							j->second.attempt++;
+							// Выполняем блокировку потока для работы с событием DNS-резолвера
+							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							// Отправляем запрос на резолвинг доменного имени
+							this->_io->send(eid, j->second.payload.buffer.get(), j->second.payload.size);
+							// Запрещаем завершение резолвера после истечения таймаута
+							return false;
+						}
+						// Получаем идентификатор DNS-запроса
+						id = i->second;
+						// Устанавливаем количество попыток резолвинга доменного имени
+						attempt = j->second.attempt;
+						// Получаем размер запроса
+						size_t offset = sizeof(::dns::head_t);
+						// Выполняем декодирование доменного имени из бинарных данных запроса
+						result = ::dns::decodeDomainName(j->second.payload.buffer.get(), j->second.payload.size, offset, domain, sizeof(domain));
+						// Удаляем пакет из контейнера активных пакетов
+						this->_transfer.waiting.erase(j);
+						// Если в очереди на отправку есть пакеты
+						if(!this->_transfer.packets.empty()){
+							// Если время жизни пакета ещё не истекло
+							if(this->_transfer.packets.front().lifetime < this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
+								// Получаем объект заголовка запроса
+								::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
+								// Добавляем пакет в контейнер активных пакетов
+								auto ret = this->_transfer.waiting.emplace(ntohs(header->id), ::move(this->_transfer.packets.front()));
+								// Меняем идентификатор DNS-запроса
+								i->second = ret.first->first;
+								// Удаляем пакет из очереди на отправку
+								this->_transfer.packets.pop();
+								{
+									// Выполняем блокировку потока для работы с событием DNS-резолвера
+									const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+									// Отправляем запрос на резолвинг доменного имени
+									this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
+								}
+								// Завершаем работу резолвера
+								goto End;
+							// Удаляем пакет из очереди на отправку
+							} else this->_transfer.packets.pop();
+						}
+						// Возвращаем резолвер в очередь доступных DNS-резолверов
+						this->_resolver.queue.push(eid);
+						// Удаляем прикрепленный DNS-резолвер к DNS-запросу из контейнера прикрепленных DNS-резолверов
+						this->_transfer.attached.erase(i);
+					}
 				}
 			}
-			// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-			if(!result){
+			/**
+			 * Метка завершения работы резолвера
+			 */
+			End:
+			// Если декодирование доменного имени прошло успешно
+			if(result){
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("attempts"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const id_t, const string &, const uint8_t)> ("attempts", id, domain, attempt);
 				// Если функция обратного вызова не установлена
-				if(!this->_callback.is("error")){
+				else {
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL);
+						this->_log->debug(
+							"DNS resolver timeout for domain '%s' (attempts: %u)",
+							__PRETTY_FUNCTION__,
+							make_tuple(eid, static_cast <uint16_t> (action), delay),
+							log_t::flag_t::WARNING,
+							domain, attempt
+						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
+						this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, domain, attempt);
 					#endif
 				}
-				// Выходим из функции
-				return;
 			}
-			// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-			const size_t size = ::dns::request(id, packet->record, packet->domain, this->_log);
-			// Отправляем запрос на резолвинг доменного имени
-			this->_io->send(eid, ::dns::buffer, size);
-		// Если попытки резолвинга превышают максимально допустимое количество
-		} else {
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("attempts"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const id_t, const string &, const uint8_t)> ("attempts", id, packet->domain, packet->attempt);
-			// Если функция обратного вызова не установлена
-			else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug(
-						"DNS resolver timeout for domain '%s' (attempts: %u)",
-						__PRETTY_FUNCTION__,
-						std::make_tuple(id, eid, static_cast <uint16_t> (status)),
-						log_t::flag_t::WARNING,
-						packet->domain.c_str(), packet->attempt
-					);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, packet->domain.c_str(), packet->attempt);
-				#endif
-			}
-			// Выполняем блокировку потока для работы с контейнером активных пакетов
-			const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Выполняем поиск пакета в контейнере активных пакетов
-			auto i = this->_transfer.waiting.find(id);
-			// Если пакет найден в контейнере активных пакетов
-			if(i != this->_transfer.waiting.end())
-				// Удаляем пакет из контейнера активных пакетов
-				this->_transfer.waiting.erase(i);
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (action), delay), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
+	// Запрещаем завершение резолвера после истечения таймаута
+	return false;
+}
+/**
+ * @brief Метод обработки ошибок событий DNS-резолвера
+ *
+ * @param eid         идентификатор события DNS-резолвера
+ * @param error       код ошибки события DNS-резолвера
+ * @param description описание ошибки события DNS-резолвера
+ */
+void awh::unit::DNS::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("error"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод установки безопасности работы потоков
@@ -2729,8 +2900,12 @@ void awh::unit::DNS::threadSafety(const bool mode) noexcept {
 	::__awh_cache__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с чёрным списком
 	::__awh_blacklist__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе очередью активных пакетов
+	this->_transfer.mtxPackets.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Активируем работу мьютекса блокировки потока при работе с контейнером пакетов
-	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	this->_transfer.mtxWaiting.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с событием DNS-резолвера
+	this->_resolver.queue.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Метод установки функций обратного вызова
@@ -2763,10 +2938,17 @@ void awh::unit::DNS::callback(const callback_t & callback) noexcept {
  * @param attempts количество попыток резолвинга доменного имени
  */
 void awh::unit::DNS::setAttempts(const uint8_t attempts) noexcept {
-	// Выполняем блокировку потока для работы с контейнером пакетов
-	const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем количество попыток резолвинга доменного имени
-	this->_transfer.attempts = attempts;
+	this->_transfer.attempts.store(attempts, std::memory_order_release);
+}
+/**
+ * @brief Метод установки максимального количества пакетов в очереди ожидания выполнения запроса к DNS-серверу
+ *
+ * @param count максимальное количество пакетов
+ */
+void awh::unit::DNS::setMaxPackets(const uint16_t count) noexcept {
+	// Устанавливаем максимальное количество пакетов в очереди ожидания выполнения запроса к DNS-серверу
+	this->_transfer.maxPackets.store(count, std::memory_order_release);
 }
 /**
  * @brief Метод кодирования интернационального доменного имени
@@ -2800,7 +2982,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2825,7 +3007,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2850,7 +3032,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2894,7 +3076,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2919,7 +3101,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2944,7 +3126,7 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3023,7 +3205,7 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3119,7 +3301,7 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3184,7 +3366,7 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3317,7 +3499,7 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3373,7 +3555,7 @@ void awh::unit::DNS::pushAddressToBlacklist(string_view ip) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3490,7 +3672,7 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3545,7 +3727,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(string_view ip) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3668,7 +3850,7 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3878,7 +4060,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3975,7 +4157,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4106,7 +4288,7 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4187,7 +4369,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4277,7 +4459,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4503,7 +4685,7 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(domain, ttl), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain, ttl), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4602,7 +4784,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to set options for hosts file event", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL);
+								this->_log->debug("Failed to set options for hosts file event", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4626,7 +4808,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("[%s] host address cannot be established", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, filename);
+					this->_log->debug("[%s] host address cannot be established", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, filename);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -4647,7 +4829,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4779,7 +4961,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to start cache dump interval", __PRETTY_FUNCTION__, std::make_tuple(filename, interval), log_t::flag_t::CRITICAL);
+							this->_log->debug("Failed to start cache dump interval", __PRETTY_FUNCTION__, make_tuple(filename, interval), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4812,7 +4994,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, interval), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, interval), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4823,123 +5005,36 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 	}
 }
 /**
- * @brief Метод сброса DNS-резолвера
+ * @brief Метод установки таймаута для ожидания ответа от DNS-сервера
  *
- * @return результат выполнения операции
+ * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  */
-bool awh::unit::DNS::reset() noexcept {
-	// Получаем семейство IP-адресов текущего события DNS-резолвера
-	const event::family_t family = this->_io->family(this->_resolver.eid);
-	{
-		// Выполняем блокировку потока для работы с событием DNS-резолвера
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Удаляем событие DNS-резолвера
-		this->_io->destroy(this->_resolver.eid);
-	}
-	// Выполняем создание события DNS-резолвера для указанного семейство IP-адресов
-	this->create(family);
-	// Выполняем фиксацию параметров DNS-резолвера
-	return this->commit();
-}
-/**
- * @brief Метод фиксации параметров DNS-резолвера
- *
- * @return результат выполнения операции
- */
-bool awh::unit::DNS::commit() noexcept {
-	// Результат работы функции
-	bool result = false;
+void awh::unit::DNS::setTimeout(const uint32_t timeout) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		{
-			// Выполняем блокировку потока для работы с событием DNS-резолвера
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Устанавливаем порт события
-			this->_io->setPort(this->_resolver.eid, this->_resolver.port);
-			// Получаем семейство IP-адресов текущего события DNS-резолвера
-			const event::family_t family = this->_io->family(this->_resolver.eid);
+		// Выполняем блокировку потока для работы с событием DNS-резолвера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Устанавливаем таймаут для ожидания ответа от DNS-сервера
+		this->_resolver.timeout = timeout;
+		// Если DNS-резолверы IPv4 уже инициализированы
+		if(!this->_resolver.idv4.empty()){
 			/**
-			 * Определяем семейство события
+			 * Выполняем перебор всех событий DNS-резолвера для семейство IPv4
 			 */
-			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Если префикс для переменных окружения установлен
-					if(!this->_resolver.prefix.empty()){
-						// Получаем значение переменной
-						const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV4_SERVER", this->_resolver.prefix.c_str()).c_str());
-						// Если IP-адрес из переменной окружения получен
-						if(env != nullptr){
-							// Устанавливаем адрес сервера назначения
-							this->_io->setTarget(this->_resolver.eid, env);
-							// Выходим из условия
-							break;
-						}
-					}
-					// Устанавливаем адрес сервера назначения
-					this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
-				} break;
-				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Если префикс для переменных окружения установлен
-					if(!this->_resolver.prefix.empty()){
-						// Получаем значение переменной
-						const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV6_SERVER", this->_resolver.prefix.c_str()).c_str());
-						// Если IP-адрес из переменной окружения получен
-						if(env != nullptr){
-							// Устанавливаем адрес сервера назначения
-							this->_io->setTarget(this->_resolver.eid, env);
-							// Выходим из условия
-							break;
-						}
-					}
-					// Устанавливаем адрес сервера назначения
-					this->_io->setTarget(this->_resolver.eid, this->_resolver.nameServers.get(family));
-				} break;
-			}
-			// Если адрес сети для выполнения запроса установлен
-			if(this->_resolver.source != nullptr){
-				/**
-				 * Определяем семейство события
-				 */
-				switch(static_cast <uint8_t> (family)){
-					// Для семейства IPv4
-					case static_cast <uint8_t> (event::family_t::IPV4):
-						// Устанавливаем IP-адрес события
-						this->_io->setAddress(this->_resolver.eid, event::address_t::IPV4, this->_resolver.source.get());
-					break;
-					// Для семейства IPv6
-					case static_cast <uint8_t> (event::family_t::IPV6):
-						// Устанавливаем IP-адрес события
-						this->_io->setAddress(this->_resolver.eid, event::address_t::IPV6, this->_resolver.source.get());
-					break;
-				}
-			}
-			// Выполняем фиксацию параметров события и его запуск
-			if(!(result = this->_io->commit(this->_resolver.eid) && this->_io->launch(this->_resolver.eid)))
-				// Удаляем событие DNS-резолвера
-				this->_io->destroy(this->_resolver.eid);
+			for(auto & eid : this->_resolver.idv4)
+				// Устанавливаем таймаут для ожидания ответа от DNS-сервера
+				this->_io->setTimeout(eid, event::action_t::READ, this->_resolver.timeout);
 		}
-		// Если не удалось запустить событие DNS-резолвера
-		if(!result){
-			// Если функция обратного вызова не установлена
-			if(!this->_callback.is("error")){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("Failed to launch DNS-resolver", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("Failed to launch DNS-resolver", log_t::flag_t::CRITICAL);
-				#endif
-			}
+		// Если DNS-резолверы IPv6 уже инициализированы
+		if(!this->_resolver.idv6.empty()){
+			/**
+			 * Выполняем перебор всех событий DNS-резолвера для семейство IPv6
+			 */
+			for(auto & eid : this->_resolver.idv6)
+				// Устанавливаем таймаут для ожидания ответа от DNS-сервера
+				this->_io->setTimeout(eid, event::action_t::READ, this->_resolver.timeout);
 		}
 	/**
 	 * Если возникает ошибка
@@ -4950,7 +5045,229 @@ bool awh::unit::DNS::commit() noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод инициализации DNS-резолверов
+ *
+ * @param family семейство IP-адресов IPv4/IPv6
+ * @param count  количество DNS-резолверов для инициализации
+ * @return       результат выполнения операции
+ */
+bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Очищаем очередь списка доступных DNS-резолверов
+		this->_resolver.queue.clear();
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если DNS-резолверы IPv4 уже инициализированы
+				if(!this->_resolver.idv4.empty()){
+					/**
+					 * Удаляем все события DNS-резолвера
+					 */
+					for(auto i = this->_resolver.idv4.begin(); i != this->_resolver.idv4.end();){
+						// Удаляем событие DNS-резолвера
+						this->_io->destroy(* i);
+						// Удаляем идентификатор события DNS-резолвера из списка идентификаторов
+						i = this->_resolver.idv4.erase(i);
+					}
+				}
+				// Если количество DNS-резолверов установлено
+				if(count > 0){
+					// Ресайзим список идентификаторов событий DNS-резолвера для семейство IPv4
+					this->_resolver.idv4.resize(count, 0);
+					/**
+					 * Выполняем перебор всех создаваемых DNS-резолверов для семейство IPv4
+					 */
+					for(uint16_t i = 0; i < count; i++){
+						// Добавляем новое событие клиента UDP
+						this->_resolver.idv4[i] = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+						// Если опции события установлены
+						if(this->_io->setOptions(this->_resolver.idv4[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+							// Устанавливаем порт события
+							if(this->_io->setPort(this->_resolver.idv4[i], this->_resolver.port)){
+								// Сбрасываем результат
+								result = false;
+								// Устанавливаем таймаут для ожидания ответа от DNS-сервера
+								this->_io->setTimeout(this->_resolver.idv4[i], event::action_t::READ, this->_resolver.timeout);
+								// Если префикс для переменных окружения установлен
+								if(!this->_resolver.prefix.empty()){
+									// Получаем значение переменной
+									const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV4_SERVER", this->_resolver.prefix.c_str()).c_str());
+									// Если IP-адрес из переменной окружения получен
+									if(env != nullptr)
+										// Устанавливаем адрес сервера назначения
+										result = this->_io->setTarget(this->_resolver.idv4[i], env);
+								}
+								// Если адрес сервера назначения не установлен из переменной окружения
+								if(!result)
+									// Устанавливаем адрес сервера назначения
+									result = this->_io->setTarget(this->_resolver.idv4[i], this->_resolver.nameServers.get(family));
+								// Если адрес сервера назначения установлен
+								if(result){
+									// Если адрес сети для выполнения запроса установлен
+									if((this->_resolver.sourceIPv4 != nullptr) && (this->_resolver.sourceIPv4->size == 4))
+										// Устанавливаем IP-адрес события
+										this->_io->setAddress(this->_resolver.idv4[i], event::address_t::IPV4, this->_resolver.sourceIPv4.get());
+									// Устанавливаем функцию обратного вызова на событие получения ошибок
+									this->_io->on(this->_resolver.idv4[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+									// Устанавливаем функцию обратного вызова на событие чтения данных
+									this->_io->on(this->_resolver.idv4[i], static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
+									// Устанавливаем функцию обратного вызова на событие таймаута
+									this->_io->on(this->_resolver.idv4[i], static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (dns_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&dns_t::timeout), this, _1, _2, _3)));
+									// Выполняем фиксацию параметров события и его запуск
+									result = (this->_io->commit(this->_resolver.idv4[i]) && this->_io->launch(this->_resolver.idv4[i]));
+								}
+							}
+						}
+						// Если не удалось запустить событие DNS-резолвера, то удаляем
+						if(!result){
+							// Удаляем событие DNS-резолвера
+							this->_io->destroy(this->_resolver.idv4[i]);
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), count), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Failed to set options for DNS resolver event", log_t::flag_t::CRITICAL);
+								#endif
+							}
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
+						// Добавляем резолвер в очередь доступных DNS-резолверов
+						} else this->_resolver.queue.push(this->_resolver.idv4[i]);
+					}
+				}
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если DNS-резолверы IPv6 уже инициализированы
+				if(!this->_resolver.idv6.empty()){
+					/**
+					 * Удаляем все события DNS-резолвера
+					 */
+					for(auto i = this->_resolver.idv6.begin(); i != this->_resolver.idv6.end();){
+						// Удаляем событие DNS-резолвера
+						this->_io->destroy(* i);
+						// Удаляем идентификатор события DNS-резолвера из списка идентификаторов
+						i = this->_resolver.idv6.erase(i);
+					}
+				}
+				// Если количество DNS-резолверов установлено
+				if(count > 0){
+					// Ресайзим список идентификаторов событий DNS-резолвера для семейство IPv6
+					this->_resolver.idv6.resize(count, 0);
+					/**
+					 * Выполняем перебор всех создаваемых DNS-резолверов для семейство IPv6
+					 */
+					for(uint16_t i = 0; i < count; i++){
+						// Добавляем новое событие клиента UDP
+						this->_resolver.idv6[i] = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+						// Если опции события установлены
+						if(this->_io->setOptions(this->_resolver.idv6[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+							// Устанавливаем порт события
+							if(this->_io->setPort(this->_resolver.idv6[i], this->_resolver.port)){
+								// Сбрасываем результат
+								result = false;
+								// Устанавливаем таймаут для ожидания ответа от DNS-сервера
+								this->_io->setTimeout(this->_resolver.idv6[i], event::action_t::READ, this->_resolver.timeout);
+								// Если префикс для переменных окружения установлен
+								if(!this->_resolver.prefix.empty()){
+									// Получаем значение переменной
+									const char * env = ::getenv(this->_fmk->format("%s_DNS_IPV6_SERVER", this->_resolver.prefix.c_str()).c_str());
+									// Если IP-адрес из переменной окружения получен
+									if(env != nullptr)
+										// Устанавливаем адрес сервера назначения
+										result = this->_io->setTarget(this->_resolver.idv6[i], env);
+								}
+								// Если адрес сервера назначения не установлен из переменной окружения
+								if(!result)
+									// Устанавливаем адрес сервера назначения
+									result = this->_io->setTarget(this->_resolver.idv6[i], this->_resolver.nameServers.get(family));
+								// Если адрес сервера назначения установлен
+								if(result){
+									// Если адрес сети для выполнения запроса установлен
+									if((this->_resolver.sourceIPv6 != nullptr) && (this->_resolver.sourceIPv6->size == 16))
+										// Устанавливаем IP-адрес события
+										this->_io->setAddress(this->_resolver.idv6[i], event::address_t::IPV6, this->_resolver.sourceIPv6.get());
+									// Устанавливаем функцию обратного вызова на событие получения ошибок
+									this->_io->on(this->_resolver.idv6[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
+									// Устанавливаем функцию обратного вызова на событие чтения данных
+									this->_io->on(this->_resolver.idv6[i], static_cast <engine::callback::read_t> (std::bind(&dns_t::response, this, _1, _2, _3)));
+									// Устанавливаем функцию обратного вызова на событие таймаута
+									this->_io->on(this->_resolver.idv6[i], static_cast <engine::callback::timeout_t> (std::bind(static_cast <bool (dns_t::*)(const event::id_t, const event::action_t, const uint32_t)> (&dns_t::timeout), this, _1, _2, _3)));
+									// Выполняем фиксацию параметров события и его запуск
+									result = (this->_io->commit(this->_resolver.idv6[i]) && this->_io->launch(this->_resolver.idv6[i]));
+								}
+							}
+						}
+						// Если не удалось запустить событие DNS-резолвера, то удаляем
+						if(!result){
+							// Удаляем событие DNS-резолвера
+							this->_io->destroy(this->_resolver.idv6[i]);
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), count), log_t::flag_t::CRITICAL);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Failed to set options for DNS resolver event", log_t::flag_t::CRITICAL);
+								#endif
+							}
+							// Выходим из приложения
+							::exit(EXIT_FAILURE);
+						// Добавляем резолвер в очередь доступных DNS-резолверов
+						} else this->_resolver.queue.push(this->_resolver.idv6[i]);
+					}
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), count), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4968,6 +5285,8 @@ bool awh::unit::DNS::commit() noexcept {
  * @return порт сервера DNS-резолвера
  */
 uint16_t awh::unit::DNS::getPort() const noexcept {
+	// Выполняем блокировку потока для работы с событием DNS-резолвера
+	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Получаем порт события
 	return this->_resolver.port;
 }
@@ -4996,39 +5315,62 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((this->_resolver.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server)){
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				{
+					// Выполняем блокировку потока для работы с событием DNS-резолвера
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					/**
+					 * Определяем тип IP-адреса
+					 */
+					switch(static_cast <uint8_t> (this->_addr.type())){
+						// Если адрес является IPv4
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+							// Очищаем список IP-адресов события для семейство IPv4
+							this->_resolver.nameServers.reset(event::family_t::IPV4);
+						break;
+						// Если адрес является IPv6
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+							// Очищаем список IP-адресов события для семейство IPv6
+							this->_resolver.nameServers.reset(event::family_t::IPV6);
+						break;
+					}
+					// Устанавливаем IP-адрес события
+					this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+				}
 				/**
 				 * Определяем тип IP-адреса
 				 */
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-						// Очищаем список IP-адресов события для семейство IPv4
-						this->_resolver.nameServers.reset(event::family_t::IPV4);
+						// Инициализируем события DNS-резолвера для семейство IPv4
+						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-						// Очищаем список IP-адресов события для семейство IPv6
-						this->_resolver.nameServers.reset(event::family_t::IPV6);
+						// Инициализируем события DNS-резолвера для семейство IPv6
+						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 					break;
 				}
-				// Устанавливаем IP-адрес события
-				this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 			}
 		// Если адрес DNS-сервера не передан
 		} else {
-			// Выполняем блокировку потока для работы с событием DNS-резолвера
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Очищаем список IP-адресов события для семейство IPv4
-			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
-			this->_resolver.nameServers.reset(event::family_t::IPV6);
+			{
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Очищаем список IP-адресов события для семейство IPv4
+				this->_resolver.nameServers.reset(event::family_t::IPV4);
+				// Очищаем список IP-адресов события для семейство IPv6
+				this->_resolver.nameServers.reset(event::family_t::IPV6);
+			}
+			// Инициализируем события DNS-резолвера для семейство IPv4
+			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			// Инициализируем события DNS-резолвера для семейство IPv6
+			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
 	 * Если возникает ошибка
@@ -5039,7 +5381,7 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5060,38 +5402,52 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((this->_resolver.eid > 0) && (server != nullptr)){
+		if(server != nullptr){
 			/**
 			 * Определяем тип адреса
 			 */
 			switch(server->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv4
-					this->_resolver.nameServers.reset(event::family_t::IPV4);
-					// Устанавливаем IP-адрес события
-					this->_resolver.nameServers.push(server);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv4
+						this->_resolver.nameServers.reset(event::family_t::IPV4);
+						// Устанавливаем IP-адрес события
+						this->_resolver.nameServers.push(server);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv4
+					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv6
-					this->_resolver.nameServers.reset(event::family_t::IPV6);
-					// Устанавливаем IP-адрес события
-					this->_resolver.nameServers.push(server);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv6
+						this->_resolver.nameServers.reset(event::family_t::IPV6);
+						// Устанавливаем IP-адрес события
+						this->_resolver.nameServers.push(server);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv6
+					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
 		// Если адрес DNS-сервера не передан
 		} else {
-			// Выполняем блокировку потока для работы с событием DNS-резолвера
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Очищаем список IP-адресов события для семейство IPv4
-			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
-			this->_resolver.nameServers.reset(event::family_t::IPV6);
+			{
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Очищаем список IP-адресов события для семейство IPv4
+				this->_resolver.nameServers.reset(event::family_t::IPV4);
+				// Очищаем список IP-адресов события для семейство IPv6
+				this->_resolver.nameServers.reset(event::family_t::IPV6);
+			}
+			// Инициализируем события DNS-резолвера для семейство IPv4
+			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			// Инициализируем события DNS-резолвера для семейство IPv6
+			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
 	 * Если возникает ошибка
@@ -5102,7 +5458,7 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5124,7 +5480,7 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((this->_resolver.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			/**
 			 * Определяем семейство события
 			 */
@@ -5135,12 +5491,16 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
-						// Выполняем блокировку потока для работы с событием DNS-резолвера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Очищаем список IP-адресов события для семейство IPv4
-						this->_resolver.nameServers.reset(event::family_t::IPV4);
-						// Устанавливаем IP-адрес события
-						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						{
+							// Выполняем блокировку потока для работы с событием DNS-резолвера
+							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							// Очищаем список IP-адресов события для семейство IPv4
+							this->_resolver.nameServers.reset(event::family_t::IPV4);
+							// Устанавливаем IP-адрес события
+							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						}
+						// Инициализируем события DNS-резолвера для семейство IPv4
+						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 					}
 				} break;
 				// Для семейства IPv6
@@ -5149,12 +5509,16 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
-						// Выполняем блокировку потока для работы с событием DNS-резолвера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Очищаем список IP-адресов события для семейство IPv6
-						this->_resolver.nameServers.reset(event::family_t::IPV6);
-						// Устанавливаем IP-адрес события
-						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						{
+							// Выполняем блокировку потока для работы с событием DNS-резолвера
+							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							// Очищаем список IP-адресов события для семейство IPv6
+							this->_resolver.nameServers.reset(event::family_t::IPV6);
+							// Устанавливаем IP-адрес события
+							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						}
+						// Инициализируем события DNS-резолвера для семейство IPv6
+						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 					}
 				} break;
 			}
@@ -5166,17 +5530,25 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv4
-					this->_resolver.nameServers.reset(event::family_t::IPV4);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv4
+						this->_resolver.nameServers.reset(event::family_t::IPV4);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv4
+					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv6
-					this->_resolver.nameServers.reset(event::family_t::IPV6);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv6
+						this->_resolver.nameServers.reset(event::family_t::IPV6);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv6
+					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
 		}
@@ -5189,7 +5561,7 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5210,15 +5582,32 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((this->_resolver.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server)){
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Устанавливаем IP-адрес события
-				this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+				{
+					// Выполняем блокировку потока для работы с событием DNS-резолвера
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Устанавливаем IP-адрес события
+					this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+				}
+				/**
+				 * Определяем тип IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.type())){
+					// Если адрес является IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+						// Инициализируем события DNS-резолвера для семейство IPv4
+						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+					break;
+					// Если адрес является IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+						// Инициализируем события DNS-резолвера для семейство IPv6
+						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
+					break;
+				}
 			}
 		}
 	/**
@@ -5230,7 +5619,7 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5251,24 +5640,32 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((this->_resolver.eid > 0) && (server != nullptr)){
+		if(server != nullptr){
 			/**
 			 * Определяем тип адреса
 			 */
 			switch(server->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Устанавливаем IP-адрес события
-					this->_resolver.nameServers.push(server);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Устанавливаем IP-адрес события
+						this->_resolver.nameServers.push(server);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv4
+					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Устанавливаем IP-адрес события
-					this->_resolver.nameServers.push(server);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Устанавливаем IP-адрес события
+						this->_resolver.nameServers.push(server);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv6
+					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
 		}
@@ -5281,7 +5678,7 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5303,7 +5700,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 	 */
 	try {
 		// Если адрес DNS-сервера передан
-		if((this->_resolver.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			/**
 			 * Определяем семейство события
 			 */
@@ -5314,10 +5711,14 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
-						// Выполняем блокировку потока для работы с событием DNS-резолвера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Устанавливаем IP-адрес события
-						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						{
+							// Выполняем блокировку потока для работы с событием DNS-резолвера
+							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							// Устанавливаем IP-адрес события
+							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						}
+						// Инициализируем события DNS-резолвера для семейство IPv4
+						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 					}
 				} break;
 				// Для семейства IPv6
@@ -5326,10 +5727,14 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 					const locker_t <> lock(::__awh_mtx__);
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
-						// Выполняем блокировку потока для работы с событием DNS-резолвера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Устанавливаем IP-адрес события
-						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						{
+							// Выполняем блокировку потока для работы с событием DNS-резолвера
+							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							// Устанавливаем IP-адрес события
+							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+						}
+						// Инициализируем события DNS-резолвера для семейство IPv6
+						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 					}
 				} break;
 			}
@@ -5343,7 +5748,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5364,7 +5769,7 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 	 */
 	try {
 		// Если адреса DNS-серверов переданы
-		if((this->_resolver.eid > 0) && !servers.empty()){
+		if(!servers.empty()){
 			// Результат выполнения парсинга IP-адреса
 			bool result = false;
 			// Флаг сброса списка IP-адресов события для семейства IPv4
@@ -5399,34 +5804,50 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 			}
 			// Если парсинг адресов выполнен
 			if(result){
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				{
+					// Выполняем блокировку потока для работы с событием DNS-резолвера
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Если необходимо сбросить список IPv4
+					if(resetIPv4)
+						// Очищаем список IP-адресов события для семейство IPv4
+						this->_resolver.nameServers.reset(event::family_t::IPV4);
+					// Если необходимо сбросить список IPv6
+					if(resetIPv6)
+						// Очищаем список IP-адресов события для семейство IPv6
+						this->_resolver.nameServers.reset(event::family_t::IPV6);
+					/**
+					 * Проходим по каждому адресу DNS-сервера для установки
+					 */
+					for(const auto & server : servers){
+						// Выполняем парсинг IP-адреса
+						if(this->_addr.parse(server))
+							// Устанавливаем IP-адрес события
+							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+					}
+				}
 				// Если необходимо сбросить список IPv4
 				if(resetIPv4)
-					// Очищаем список IP-адресов события для семейство IPv4
-					this->_resolver.nameServers.reset(event::family_t::IPV4);
+					// Инициализируем события DNS-резолвера для семейство IPv4
+					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				// Если необходимо сбросить список IPv6
 				if(resetIPv6)
-					// Очищаем список IP-адресов события для семейство IPv6
-					this->_resolver.nameServers.reset(event::family_t::IPV6);
-				/**
-				 * Проходим по каждому адресу DNS-сервера для установки
-				 */
-				for(const auto & server : servers){
-					// Выполняем парсинг IP-адреса
-					if(this->_addr.parse(server))
-						// Устанавливаем IP-адрес события
-						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-				}
+					// Инициализируем события DNS-резолвера для семейство IPv6
+					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 			}
 		// Если адреса DNS-серверов не переданы
 		} else {
-			// Выполняем блокировку потока для работы с событием DNS-резолвера
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Очищаем список IP-адресов события для семейство IPv4
-			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
-			this->_resolver.nameServers.reset(event::family_t::IPV6);
+			{
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Очищаем список IP-адресов события для семейство IPv4
+				this->_resolver.nameServers.reset(event::family_t::IPV4);
+				// Очищаем список IP-адресов события для семейство IPv6
+				this->_resolver.nameServers.reset(event::family_t::IPV6);
+			}
+			// Инициализируем события DNS-резолвера для семейство IPv4
+			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			// Инициализируем события DNS-резолвера для семейство IPv6
+			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
 	 * Если возникает ошибка
@@ -5437,7 +5858,7 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, servers.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5458,7 +5879,7 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 	 */
 	try {
 		// Если адреса DNS-серверов переданы
-		if((this->_resolver.eid > 0) && !servers.empty()){
+		if(!servers.empty()){
 			// Флаг сброса списка IP-адресов события для семейства IPv4
 			bool resetIPv4 = false;
 			// Флаг сброса списка IP-адресов события для семейства IPv6
@@ -5488,48 +5909,64 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 			}
 			// Если необходимо сбросить список IPv4 или IPv6
 			if(resetIPv4 || resetIPv6){
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Если необходимо сбросить список IPv4
-				if(resetIPv4)
-					// Очищаем список IP-адресов события для семейство IPv4
-					this->_resolver.nameServers.reset(event::family_t::IPV4);
-				// Если необходимо сбросить список IPv6
-				if(resetIPv6)
-					// Очищаем список IP-адресов события для семейство IPv6
-					this->_resolver.nameServers.reset(event::family_t::IPV6);
-				/**
-				 * Проходим по каждому адресу DNS-сервера для установки
-				 */
-				for(const auto & server : servers){
-					// Если адрес DNS-сервера передан
-					if(server != nullptr){
-						/**
-						 * Определяем тип адреса
-						 */
-						switch(server->size){
-							// Если адрес является IPv4
-							case 4:
-								// Устанавливаем IP-адрес события
-								this->_resolver.nameServers.push(server);
-							break;
-							// Если адрес является IPv6
-							case 16:
-								// Устанавливаем IP-адрес события
-								this->_resolver.nameServers.push(server);
-							break;
+				{
+					// Выполняем блокировку потока для работы с событием DNS-резолвера
+					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Если необходимо сбросить список IPv4
+					if(resetIPv4)
+						// Очищаем список IP-адресов события для семейство IPv4
+						this->_resolver.nameServers.reset(event::family_t::IPV4);
+					// Если необходимо сбросить список IPv6
+					if(resetIPv6)
+						// Очищаем список IP-адресов события для семейство IPv6
+						this->_resolver.nameServers.reset(event::family_t::IPV6);
+					/**
+					 * Проходим по каждому адресу DNS-сервера для установки
+					 */
+					for(const auto & server : servers){
+						// Если адрес DNS-сервера передан
+						if(server != nullptr){
+							/**
+							 * Определяем тип адреса
+							 */
+							switch(server->size){
+								// Если адрес является IPv4
+								case 4:
+									// Устанавливаем IP-адрес события
+									this->_resolver.nameServers.push(server);
+								break;
+								// Если адрес является IPv6
+								case 16:
+									// Устанавливаем IP-адрес события
+									this->_resolver.nameServers.push(server);
+								break;
+							}
 						}
 					}
 				}
+				// Если необходимо сбросить список IPv4
+				if(resetIPv4)
+					// Инициализируем события DNS-резолвера для семейство IPv4
+					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+				// Если необходимо сбросить список IPv6
+				if(resetIPv6)
+					// Инициализируем события DNS-резолвера для семейство IPv6
+					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 			}
 		// Если адрес DNS-сервера не передан
 		} else {
-			// Выполняем блокировку потока для работы с событием DNS-резолвера
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Очищаем список IP-адресов события для семейство IPv4
-			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
-			this->_resolver.nameServers.reset(event::family_t::IPV6);
+			{
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Очищаем список IP-адресов события для семейство IPv4
+				this->_resolver.nameServers.reset(event::family_t::IPV4);
+				// Очищаем список IP-адресов события для семейство IPv6
+				this->_resolver.nameServers.reset(event::family_t::IPV6);
+			}
+			// Инициализируем события DNS-резолвера для семейство IPv4
+			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
+			// Инициализируем события DNS-резолвера для семейство IPv6
+			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
 	 * Если возникает ошибка
@@ -5540,7 +5977,7 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, servers.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5562,50 +5999,58 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 	 */
 	try {
 		// Если адреса DNS-серверов переданы
-		if((this->_resolver.eid > 0) && !servers.empty()){
+		if(!servers.empty()){
 			/**
 			 * Определяем семейство события
 			 */
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv4
-					this->_resolver.nameServers.reset(event::family_t::IPV4);
-					/**
-					 * Проходим по каждому адресу DNS-сервера для установки
-					 */
-					for(const auto & server : servers){
-						// Выполняем блокировку потока для парсинга IP-адреса
-						const locker_t <> lock(::__awh_mtx__);
-						// Выполняем парсинг IPv4-адреса
-						if(this->_addr.parse(server, net_addr_t::type_t::IPV4))
-							// Устанавливаем IP-адрес события
-							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-						// Выходим из цикла
-						else break;
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv4
+						this->_resolver.nameServers.reset(event::family_t::IPV4);
+						/**
+						 * Проходим по каждому адресу DNS-сервера для установки
+						 */
+						for(const auto & server : servers){
+							// Выполняем блокировку потока для парсинга IP-адреса
+							const locker_t <> lock(::__awh_mtx__);
+							// Выполняем парсинг IPv4-адреса
+							if(this->_addr.parse(server, net_addr_t::type_t::IPV4))
+								// Устанавливаем IP-адрес события
+								this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+							// Выходим из цикла
+							else break;
+						}
 					}
+					// Инициализируем события DNS-резолвера для семейство IPv4
+					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv6
-					this->_resolver.nameServers.reset(event::family_t::IPV6);
-					/**
-					 * Проходим по каждому адресу DNS-сервера для установки
-					 */
-					for(const auto & server : servers){
-						// Выполняем блокировку потока для парсинга IP-адреса
-						const locker_t <> lock(::__awh_mtx__);
-						// Выполняем парсинг IPv6-адреса
-						if(this->_addr.parse(server, net_addr_t::type_t::IPV6))
-							// Устанавливаем IP-адрес события
-							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-						// Выходим из цикла
-						else break;
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv6
+						this->_resolver.nameServers.reset(event::family_t::IPV6);
+						/**
+						 * Проходим по каждому адресу DNS-сервера для установки
+						 */
+						for(const auto & server : servers){
+							// Выполняем блокировку потока для парсинга IP-адреса
+							const locker_t <> lock(::__awh_mtx__);
+							// Выполняем парсинг IPv6-адреса
+							if(this->_addr.parse(server, net_addr_t::type_t::IPV6))
+								// Устанавливаем IP-адрес события
+								this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
+							// Выходим из цикла
+							else break;
+						}
 					}
+					// Инициализируем события DNS-резолвера для семейство IPv6
+					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
 		// Если адрес DNS-сервера не передан
@@ -5616,17 +6061,25 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv4
-					this->_resolver.nameServers.reset(family);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv4
+						this->_resolver.nameServers.reset(family);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv4
+					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Очищаем список IP-адресов события для семейство IPv6
-					this->_resolver.nameServers.reset(family);
+					{
+						// Выполняем блокировку потока для работы с событием DNS-резолвера
+						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+						// Очищаем список IP-адресов события для семейство IPv6
+						this->_resolver.nameServers.reset(family);
+					}
+					// Инициализируем события DNS-резолвера для семейство IPv6
+					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
 		}
@@ -5639,7 +6092,7 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, static_cast <uint16_t> (family), servers.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5660,7 +6113,7 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((this->_resolver.eid > 0) && !source.empty()){
+		if(!source.empty()){
 			// Выполняем блокировку потока для парсинга IP-адреса
 			const locker_t <> lock(::__awh_mtx__);
 			// Выполняем парсинг IP-адреса
@@ -5674,14 +6127,14 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 						// Выполняем блокировку потока для работы с событием DNS-резолвера
 						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv4 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					} break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 						// Выполняем блокировку потока для работы с событием DNS-резолвера
 						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv6 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					} break;
 				}
 			}
@@ -5689,8 +6142,10 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 		} else {
 			// Выполняем блокировку потока для работы с событием DNS-резолвера
 			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Сбрасываем IP-адрес события
-			this->_resolver.source.reset(nullptr);
+			// Сбрасываем IPv4-адрес события
+			this->_resolver.sourceIPv4.reset(nullptr);
+			// Сбрасываем IPv6-адрес события
+			this->_resolver.sourceIPv6.reset(nullptr);
 		}
 	/**
 	 * Если возникает ошибка
@@ -5701,7 +6156,7 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, source), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5722,7 +6177,7 @@ void awh::unit::DNS::setSource(const net::addr_t * source) noexcept {
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((this->_resolver.eid > 0) && (source != nullptr)){
+		if(source != nullptr){
 			/**
 			 * Определяем тип адреса
 			 */
@@ -5732,26 +6187,28 @@ void awh::unit::DNS::setSource(const net::addr_t * source) noexcept {
 					// Выполняем блокировку потока для работы с событием DNS-резолвера
 					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
-					this->_resolver.source = make_unique <net::addr_net_ipv4_t> ();
+					this->_resolver.sourceIPv4 = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (this->_resolver.source.get())->address = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
+					awh_cast <net::addr_net_ipv4_t *> (this->_resolver.sourceIPv4.get())->address = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
 				} break;
 				// Если адрес является IPv6
 				case 16: {
 					// Выполняем блокировку потока для работы с событием DNS-резолвера
 					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем инициализацию объекта IP-адреса
-					this->_resolver.source = make_unique <net::addr_net_ipv6_t> ();
+					this->_resolver.sourceIPv6 = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (this->_resolver.source.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], 16);
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (this->_resolver.sourceIPv6.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], 16);
 				} break;
 			}
 		// Если адрес сети для выполнения запроса не передан
 		} else {
 			// Выполняем блокировку потока для работы с событием DNS-резолвера
 			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Сбрасываем IP-адрес события
-			this->_resolver.source.reset(nullptr);
+			// Сбрасываем IPv4-адрес события
+			this->_resolver.sourceIPv4.reset(nullptr);
+			// Сбрасываем IPv6-адрес события
+			this->_resolver.sourceIPv6.reset(nullptr);
 		}
 	/**
 	 * Если возникает ошибка
@@ -5762,7 +6219,7 @@ void awh::unit::DNS::setSource(const net::addr_t * source) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5784,7 +6241,7 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((this->_resolver.eid > 0) && !source.empty()){
+		if(!source.empty()){
 			/**
 			 * Определяем семейство события
 			 */
@@ -5798,7 +6255,7 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 						// Выполняем блокировку потока для работы с событием DNS-резолвера
 						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv4 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					}
 				} break;
 				// Для семейства IPv6
@@ -5810,7 +6267,7 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 						// Выполняем блокировку потока для работы с событием DNS-резолвера
 						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Получаем IP-адрес в исходном виде
-						this->_resolver.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						this->_resolver.sourceIPv6 = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 					}
 				} break;
 			}
@@ -5818,8 +6275,10 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 		} else {
 			// Выполняем блокировку потока для работы с событием DNS-резолвера
 			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Сбрасываем IP-адрес события
-			this->_resolver.source.reset(nullptr);
+			// Сбрасываем IPv4-адрес события
+			this->_resolver.sourceIPv4.reset(nullptr);
+			// Сбрасываем IPv6-адрес события
+			this->_resolver.sourceIPv6.reset(nullptr);
 		}
 	/**
 	 * Если возникает ошибка
@@ -5830,7 +6289,7 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_resolver.eid, static_cast <uint16_t> (family), source), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5850,42 +6309,6 @@ awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
 	return ::dns::identifier();
 }
 /**
- * @brief Метод получения типа события
- *
- * @return тип события
- */
-awh::event::type_t awh::unit::DNS::type() const noexcept {
-	// Получаем тип события DNS-резолвера
-	return this->_io->type(this->_resolver.eid);
-}
-/**
- * @brief Метод получения типа узла события
- *
- * @return тип узла события
- */
-awh::event::node_t awh::unit::DNS::node() const noexcept {
-	// Получаем тип узла события DNS-резолвера
-	return this->_io->node(this->_resolver.eid);
-}
-/**
- * @brief Метод получения семейства события
- *
- * @return семейство адресов
- */
-awh::event::family_t awh::unit::DNS::family() const noexcept {
-	// Получаем семейство адресов события DNS-резолвера
-	return this->_io->family(this->_resolver.eid);
-}
-/**
- * @brief Метод получения статуса события
- *
- * @return статус события
- */
-awh::event::status_t awh::unit::DNS::status() const noexcept {
-	// Получаем статус события DNS-резолвера
-	return this->_io->status(this->_resolver.eid);
-}
-/**
  * @brief Метод поиска доменного имени соответствующего IP-адресу
  *
  * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
@@ -5894,8 +6317,16 @@ awh::event::status_t awh::unit::DNS::status() const noexcept {
  * @return        результат выполнения запроса
  */
 bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t timeout) noexcept {
-	// Выполняем поиск доменного имени соответствующему IP-адресу
-	return this->search(id, this->_io->family(this->_resolver.eid), ip, timeout);
+	// Если список резолверов для семейства IPv6 не пустой
+	if(!this->_resolver.idv6.empty())
+		// Выполняем поиск доменного имени соответствующему IP-адресу
+		return this->search(id, event::family_t::IPV6, ip, timeout);
+	// Если список резолверов для семейства IPv4 не пустой
+	if(!this->_resolver.idv4.empty())
+		// Выполняем поиск доменного имени соответствующему IP-адресу
+		return this->search(id, event::family_t::IPV4, ip, timeout);
+	// Выводим отрицательный результат
+	return false;
 }
 /**
  * @brief Метод поиска доменного имени соответствующего IP-адресу
@@ -5979,100 +6410,92 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для работы с контейнером пакетов
-				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
-				auto ret = this->_transfer.waiting.emplace(id, packet_t());
-				// Если пакет уже существует для данного идентификатора DNS-резолвера
-				if(!ret.second){
-					// Формируем текст выводимой ошибки DNS-резолвера
-					const string error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("error"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
-					// Если функция вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-						#endif
-					}
-					// Выводим результат по умолчанию
-					return false;
-				// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
-				} else {
-					// Флаг успешного добавления таймаута для данного идентификатора DNS-резолвера
-					bool result = false;
-					{
-						// Выполняем блокировку потока для работы с событием DNS-резолвера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-						const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-						this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-						// Устанавливаем функцию обратного вызова на событие получения ошибок
-						this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-						// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-						if(!(result = this->_io->commit(tid)))
-							// Удаляем событие таймера
-							this->_io->destroy(tid);
-						// Если таймер для ожидания ответа от DNS-сервера успешно установлен
-						else {
-							// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-							ret.first->second.tid = tid;
-							// Устанавливаем доменное имя для отслеживания его выполнения
-							ret.first->second.domain = domain;
-							// Устанавливаем время жизни пакета для отслеживания его выполнения
-							ret.first->second.delay = timeout;
-							// Устанавливаем тип записи для отслеживания передачи пакета
-							ret.first->second.record = record_t::PTR;
-							// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-							this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
-							// Запускаем таймер для ожидания ответа от DNS-сервера
-							this->_io->launch(tid);
-						}
-					}
-					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-					if(!result){
-						// Если функция обратного вызова не установлена
-						if(!this->_callback.is("error")){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to commit DNS resolver timeout", __PRETTY_FUNCTION__, std::make_tuple(id, timeout), log_t::flag_t::CRITICAL);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Failed to commit DNS resolver timeout", log_t::flag_t::CRITICAL);
-							#endif
-						}
-						// Выводим результат по умолчанию
-						return false;
-					}
-				}
-			}
-			// Выполняем резолвинг доменного имени
-			if(!domain.empty()){
-				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
 				// Выполняем блокировку потока для работы с событием DNS-резолвера
 				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
+				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
+				/**
+				 * Устанавливаем метку начала формирования запроса к DNS-серверу
+				 */
+				Begin:
+				{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
+					if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+						// Если очередь ожидания выполнения запроса переполнена
+						if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
+							// Формируем текст выводимой ошибки DNS-резолвера
+							const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+							// Если функция вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+							// Выводим отрицательный результат
+							return false;
+						// Если очередь ещё может вместить в себя новый пакет
+						} else {
+							// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+							this->_transfer.packets.push(packet_t());
+							// Устанавливаем размер полезной нагрузки
+							this->_transfer.packets.back().payload.size = size;
+							// Выделяем новый буфер для полезной нагрузки
+							this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+							// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+							::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
+							// Устанавливаем время жизни пакета для отслеживания его выполнения
+							this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+							// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+							return true;
+						}
+					}
+				}{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем пакет в контейнер активных пакетов
+					auto ret = this->_transfer.waiting.emplace(id, packet_t());
+					// Устанавливаем размер полезной нагрузки
+					ret.first->second.payload.size = size;
+					// Выделяем новый буфер для полезной нагрузки
+					ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+					// Устанавливаем время жизни пакета для отслеживания его выполнения
+					ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+				}
+				// Идентификатор события клиента DNS-резолвера
+				event::id_t eid = 0;
+				// Получаем идентификатор события клиента DNS-резолвера для отправки запроса к DNS-серверу
+				this->_resolver.queue.pop(eid);
+				// Если идентификатор события клиента DNS-резолвера не получен
+				if(eid == 0)
+					// Пытаемся повторить процедуру повторно
+					goto Begin;
+				// Если идентификатор события клиента DNS-резолвера всё же получен
+				else {
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
+					this->_transfer.attached.emplace(eid, id);
+				}
 				// Отправляем запрос на резолвинг доменного имени
-				return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
+				return (this->_io->send(eid, ::dns::buffer, size) > 0);
 			}
 		}
 	/**
@@ -6084,7 +6507,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6203,86 +6626,92 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Текст ошибки для вывода при невозможности выполнить запрос к DNS-серверу
-				string error = "";
-				{
-					// Выполняем блокировку потока для работы с контейнером пакетов
-					const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
-					auto ret = this->_transfer.waiting.emplace(id, packet_t());
-					// Если пакет уже существует для данного идентификатора DNS-резолвера
-					if(!ret.second)
-						// Формируем текст выводимой ошибки DNS-резолвера
-						error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
-					// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
-					else {
-						// Выполняем блокировку потока для работы с событием DNS-резолвера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-						const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-						this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-						// Устанавливаем функцию обратного вызова на событие получения ошибок
-						this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-						// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-						if(!this->_io->commit(tid)){
-							// Удаляем событие таймера
-							this->_io->destroy(tid);
-							// Удаляем пакет из контейнера ожидания выполнения запроса
-							this->_transfer.waiting.erase(id);
-							// Формируем текст выводимой ошибки DNS-резолвера
-							error = "Failed to commit DNS resolver timeout";
-						// Если таймер для ожидания ответа от DNS-сервера успешно установлен
-						} else {
-							// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-							ret.first->second.tid = tid;
-							// Устанавливаем доменное имя для отслеживания его выполнения
-							ret.first->second.domain = domain;
-							// Устанавливаем время жизни пакета для отслеживания его выполнения
-							ret.first->second.delay = timeout;
-							// Устанавливаем тип записи для отслеживания передачи пакета
-							ret.first->second.record = record_t::PTR;
-							// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-							this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
-							// Запускаем таймер для ожидания ответа от DNS-сервера
-							this->_io->launch(tid);
-						}
-					}
-				}
-				// Если возникла ошибка при добавлении таймаута для данного идентификатора DNS-резолвера
-				if(!error.empty()){
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("error"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
-					// Если функция вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::WARNING, error.c_str());
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-						#endif
-					}
-					// Выводим результат по умолчанию
-					return false;
-				}
-			}
-			// Выполняем резолвинг доменного имени
-			if(!domain.empty()){
-				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
 				// Выполняем блокировку потока для работы с событием DNS-резолвера
 				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
+				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
+				/**
+				 * Устанавливаем метку начала формирования запроса к DNS-серверу
+				 */
+				Begin:
+				{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
+					if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+						// Если очередь ожидания выполнения запроса переполнена
+						if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
+							// Формируем текст выводимой ошибки DNS-резолвера
+							const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+							// Если функция вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+							// Выводим отрицательный результат
+							return false;
+						// Если очередь ещё может вместить в себя новый пакет
+						} else {
+							// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+							this->_transfer.packets.push(packet_t());
+							// Устанавливаем размер полезной нагрузки
+							this->_transfer.packets.back().payload.size = size;
+							// Выделяем новый буфер для полезной нагрузки
+							this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+							// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+							::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
+							// Устанавливаем время жизни пакета для отслеживания его выполнения
+							this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+							// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+							return true;
+						}
+					}
+				}{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем пакет в контейнер активных пакетов
+					auto ret = this->_transfer.waiting.emplace(id, packet_t());
+					// Устанавливаем размер полезной нагрузки
+					ret.first->second.payload.size = size;
+					// Выделяем новый буфер для полезной нагрузки
+					ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+					// Устанавливаем время жизни пакета для отслеживания его выполнения
+					ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+				}
+				// Идентификатор события клиента DNS-резолвера
+				event::id_t eid = 0;
+				// Получаем идентификатор события клиента DNS-резолвера для отправки запроса к DNS-серверу
+				this->_resolver.queue.pop(eid);
+				// Если идентификатор события клиента DNS-резолвера не получен
+				if(eid == 0)
+					// Пытаемся повторить процедуру повторно
+					goto Begin;
+				// Если идентификатор события клиента DNS-резолвера всё же получен
+				else {
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
+					this->_transfer.attached.emplace(eid, id);
+				}
 				// Отправляем запрос на резолвинг доменного имени
-				return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
+				return (this->_io->send(eid, ::dns::buffer, size) > 0);
 			}
 		}
 	/**
@@ -6294,7 +6723,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6320,83 +6749,94 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
+		// Если доменное имя получено
 		if(!domain.empty()){
-			// Текст ошибки для вывода при невозможности выполнить запрос к DNS-серверу
-			string error = "";
+			// Выполняем блокировку потока для работы с событием DNS-резолвера
+			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
+			const size_t size = ::dns::request(id, record, domain, this->_log);
+			/**
+			 * Устанавливаем метку начала формирования запроса к DNS-серверу
+			 */
+			Begin:
 			{
-				// Выполняем блокировку потока для работы с контейнером пакетов
-				const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
-				auto ret = this->_transfer.waiting.emplace(id, packet_t());
-				// Если пакет уже существует для данного идентификатора DNS-резолвера
-				if(!ret.second)
-					// Формируем текст выводимой ошибки DNS-резолвера
-					error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
-				// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
-				else {
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-					const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-					// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-					this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-					// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-					if(!this->_io->commit(tid)){
-						// Удаляем событие таймера
-						this->_io->destroy(tid);
-						// Удаляем пакет из контейнера ожидания выполнения запроса
-						this->_transfer.waiting.erase(id);
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
+				if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+					// Если очередь ожидания выполнения запроса переполнена
+					if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
 						// Формируем текст выводимой ошибки DNS-резолвера
-						error = "Failed to commit DNS resolver timeout";
-					// Если таймер для ожидания ответа от DNS-сервера успешно установлен
+						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+						// Если функция вывода ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+						// Выводим отрицательный результат
+						return false;
+					// Если очередь ещё может вместить в себя новый пакет
 					} else {
-						// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-						ret.first->second.tid = tid;
-						// Устанавливаем доменное имя для отслеживания его выполнения
-						ret.first->second.domain = domain;
+						// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+						this->_transfer.packets.push(packet_t());
+						// Устанавливаем размер полезной нагрузки
+						this->_transfer.packets.back().payload.size = size;
+						// Выделяем новый буфер для полезной нагрузки
+						this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+						::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 						// Устанавливаем время жизни пакета для отслеживания его выполнения
-						ret.first->second.delay = timeout;
-						// Устанавливаем тип записи для отслеживания передачи пакета
-						ret.first->second.record = record;
-						// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-						this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
-						// Запускаем таймер для ожидания ответа от DNS-сервера
-						this->_io->launch(tid);
-						// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-						const size_t size = ::dns::request(id, record, domain, this->_log);
-						// Отправляем запрос на резолвинг доменного имени
-						return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
+						this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+						// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+						return true;
 					}
 				}
+			}{
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем пакет в контейнер активных пакетов
+				auto ret = this->_transfer.waiting.emplace(id, packet_t());
+				// Устанавливаем размер полезной нагрузки
+				ret.first->second.payload.size = size;
+				// Выделяем новый буфер для полезной нагрузки
+				ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+				// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+				::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+				// Устанавливаем время жизни пакета для отслеживания его выполнения
+				ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
 			}
-			// Если возникла ошибка при добавлении таймаута для данного идентификатора DNS-резолвера
-			if(!error.empty()){
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
-				// Если функция вывода ошибки не установлена
-				else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::WARNING, error.c_str());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-					#endif
-				}
-				// Выводим результат по умолчанию
-				return false;
+			// Идентификатор события клиента DNS-резолвера
+			event::id_t eid = 0;
+			// Получаем идентификатор события клиента DNS-резолвера для отправки запроса к DNS-серверу
+			this->_resolver.queue.pop(eid);
+			// Если идентификатор события клиента DNS-резолвера не получен
+			if(eid == 0)
+				// Пытаемся повторить процедуру повторно
+				goto Begin;
+			// Если идентификатор события клиента DNS-резолвера всё же получен
+			else {
+				// Выполняем блокировку потока для работы с контейнером активных пакетов
+				const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
+				this->_transfer.attached.emplace(eid, id);
 			}
+			// Отправляем запрос на резолвинг доменного имени
+			return (this->_io->send(eid, ::dns::buffer, size) > 0);
 		}
 	/**
 	 * Если возникает ошибка
@@ -6407,7 +6847,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6428,8 +6868,16 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
  * @return        результат выполнения запроса
  */
 bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t timeout) noexcept {
-	// Выполняем резолвинг доменного имени
-	return this->resolve(id, this->_io->family(this->_resolver.eid), domain, timeout);
+	// Если список резолверов для семейства IPv6 не пустой
+	if(!this->_resolver.idv6.empty())
+		// Выполняем резолвинг доменного имени
+		return this->resolve(id, event::family_t::IPV6, domain, timeout);
+	// Если список резолверов для семейства IPv4 не пустой
+	if(!this->_resolver.idv4.empty())
+		// Выполняем резолвинг доменного имени
+		return this->resolve(id, event::family_t::IPV4, domain, timeout);
+	// Выводим отрицательный результат
+	return false;
 }
 /**
  * @brief Метод резолвинга доменного имени
@@ -6491,114 +6939,137 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 						}
 					}
 				}
-			}{
-				// Текст ошибки для вывода при невозможности выполнить запрос к DNS-серверу
-				string error = "";
-				{
-					// Выполняем блокировку потока для работы с контейнером пакетов
-					const locker_t <std::shared_mutex> lock(this->_transfer.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Добавляем пакет в контейнер пакетов для отслеживания его выполнения
-					auto ret = this->_transfer.waiting.emplace(id, packet_t());
-					// Если пакет уже существует для данного идентификатора DNS-резолвера
-					if(!ret.second)
+			}
+			// Если доменное имя получено
+			if(!domain.empty()){
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Размер полезной нагрузки для запроса к DNS-серверу
+				size_t size = 0;
+				/**
+				 * Определяем семейство события
+				 */
+				switch(static_cast <uint8_t> (family)){
+					// Для семейства IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
+						size = ::dns::request(id, record_t::A, domain, this->_log);
+					break;
+					// Для семейства IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
+						size = ::dns::request(id, record_t::AAAA, domain, this->_log);
+					break;
+					// Если семейство события не определено
+					default: {
 						// Формируем текст выводимой ошибки DNS-резолвера
-						error = this->_fmk->format("DNS request for ID=%d is still in progress, please wait for the result", id);
-					// Если таймаут успешно добавлен для данного идентификатора DNS-резолвера
-					else {
-						// Выполняем блокировку потока для работы с событием DNS-резолвера
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Добавляем новое событие таймаута для ожидания ответа от DNS-сервера
-						const event::id_t tid = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
-						// Устанавливаем таймаут таймера по умолчанию на 5 секунд для ожидания ответа от DNS-сервера
-						this->_io->setTimeout(tid, event::action_t::NONE, (timeout > 0 ? timeout : 5000));
-						// Устанавливаем функцию обратного вызова на событие получения ошибок
-						this->_io->on(tid, static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
-						// Если не удалось установить таймер для ожидания ответа от DNS-сервера
-						if(!this->_io->commit(tid)){
-							// Удаляем событие таймера
-							this->_io->destroy(tid);
-							// Удаляем пакет из контейнера ожидания выполнения запроса
-							this->_transfer.waiting.erase(id);
-							// Формируем текст выводимой ошибки DNS-резолвера
-							error = "Failed to commit DNS resolver timeout";
-						// Если таймер для ожидания ответа от DNS-сервера успешно установлен
-						} else {
-							// Устанавливаем идентификатор события таймаута для отслеживания его выполнения
-							ret.first->second.tid = tid;
-							// Устанавливаем доменное имя для отслеживания его выполнения
-							ret.first->second.domain = domain;
-							// Устанавливаем время жизни пакета для отслеживания его выполнения
-							ret.first->second.delay = timeout;
+						const string error = this->_fmk->format("DNS resolver family is undefined for domain %s", string(domain).c_str());
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("error"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+						// Если функция вывода ошибки не установлена
+						else {
 							/**
-							 * Определяем семейство события
+							 * Если включён режим отладки
 							 */
-							switch(static_cast <uint8_t> (family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4):
-									// Устанавливаем тип записи для отслеживания передачи пакета
-									ret.first->second.record = record_t::A;
-								break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6):
-									// Устанавливаем тип записи для отслеживания передачи пакета
-									ret.first->second.record = record_t::AAAA;
-								break;
+							#if DEBUG_MODE
+								// Выводим сообщение об ошибке
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Выводим сообщение об ошибке
+								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+							#endif
+						}
+						// Выводим отрицательный результат
+						return false;
+					}
+				}
+				/**
+				 * Устанавливаем метку начала формирования запроса к DNS-серверу
+				 */
+				Begin:
+				{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
+					if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+						// Если очередь ожидания выполнения запроса переполнена
+						if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
+							// Формируем текст выводимой ошибки DNS-резолвера
+							const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("error"))
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+							// Если функция вывода ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
 							}
-							// Устанавливаем обработчик события таймера для обработки таймаута при ожидании ответа от DNS-сервера
-							this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::timeout, this, id, _1, _2, &ret.first->second)));
-							// Запускаем таймер для ожидания ответа от DNS-сервера
-							this->_io->launch(tid);
+							// Выводим отрицательный результат
+							return false;
+						// Если очередь ещё может вместить в себя новый пакет
+						} else {
+							// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+							this->_transfer.packets.push(packet_t());
+							// Устанавливаем размер полезной нагрузки
+							this->_transfer.packets.back().payload.size = size;
+							// Выделяем новый буфер для полезной нагрузки
+							this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+							// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+							::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
+							// Устанавливаем время жизни пакета для отслеживания его выполнения
+							this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+							// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+							return true;
 						}
 					}
+				}{
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем пакет в контейнер активных пакетов
+					auto ret = this->_transfer.waiting.emplace(id, packet_t());
+					// Устанавливаем размер полезной нагрузки
+					ret.first->second.payload.size = size;
+					// Выделяем новый буфер для полезной нагрузки
+					ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+					// Устанавливаем время жизни пакета для отслеживания его выполнения
+					ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
 				}
-				// Если возникла ошибка при добавлении таймаута для данного идентификатора DNS-резолвера
-				if(!error.empty()){
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("error"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_resolver.eid, event::error_t::INVALID, error);
-					// Если функция вывода ошибки не установлена
-					else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-						#endif
-					}
-					// Выводим результат по умолчанию
-					return false;
+				// Идентификатор события клиента DNS-резолвера
+				event::id_t eid = 0;
+				// Получаем идентификатор события клиента DNS-резолвера для отправки запроса к DNS-серверу
+				this->_resolver.queue.pop(eid);
+				// Если идентификатор события клиента DNS-резолвера не получен
+				if(eid == 0)
+					// Пытаемся повторить процедуру повторно
+					goto Begin;
+				// Если идентификатор события клиента DNS-резолвера всё же получен
+				else {
+					// Выполняем блокировку потока для работы с контейнером активных пакетов
+					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+					// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
+					this->_transfer.attached.emplace(eid, id);
 				}
-			}
-			/**
-			 * Определяем семейство события
-			 */
-			switch(static_cast <uint8_t> (family)){
-				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-					const size_t size = ::dns::request(id, record_t::A, domain, this->_log);
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Отправляем запрос на резолвинг доменного имени
-					return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
-				}
-				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
-					const size_t size = ::dns::request(id, record_t::AAAA, domain, this->_log);
-					// Выполняем блокировку потока для работы с событием DNS-резолвера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Отправляем запрос на резолвинг доменного имени
-					return (this->_io->send(this->_resolver.eid, ::dns::buffer, size) > 0);
-				}
+				// Отправляем запрос на резолвинг доменного имени
+				return (this->_io->send(eid, ::dns::buffer, size) > 0);
 			}
 		}
 	/**
@@ -6610,7 +7081,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6625,14 +7096,17 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 /**
  * @brief Конструктор
  *
- * @param family семейство IP-адресов IPv4/IPv6
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
  */
-awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept :
+awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _addr(fmk, log), _binbox(fmk, log) {
-	// Активируем работу мьютекса блокировки потока при работе с пакетами
-	this->_transfer.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе очередью активных пакетов
+	this->_transfer.mtxPackets.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с контейнером пакетов
+	this->_transfer.mtxWaiting.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с событием DNS-резолвера
+	this->_resolver.queue.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
 	// Если общие DNS-резолверы ещё не добавлены в глобальный список
 	if(::ns::general.empty()){
 		// Активируем работу мьютекса блокировки потока при работе с IP-адресами
@@ -6670,41 +7144,75 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 					::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
 			}
 		}
-		// Добавляем новое событие таймаута для периодической очистки кэша от устаревших записей
-		const event::id_t tid = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
-		// Устанавливаем интервал таймера по умолчанию на 1 минуту для периодической очистки кэша
-		this->_io->setTimeout(tid, event::action_t::NONE, 60000);
-		// Устанавливаем обработчик события таймера для периодической очистки кэша
-		this->_io->on(tid, static_cast <engine::callback::status_t> (std::bind(&dns_t::collector, this, _1, _2)));
-		// Если не удалось установить таймер для периодической очистки кэша
-		if(!this->_io->commit(tid) || !this->_io->launch(tid)){
-			// Удаляем событие таймера
-			this->_io->destroy(tid);
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("Failed to create collector timeout", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("Failed to create collector timeout", log_t::flag_t::CRITICAL);
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
+	}
+	/**
+	 * Инициализация DNS-сервера
+	 */
+	this->_resolver.nameServers.init();
+	// Выполняем инициализацию 5-и DNS-резолверов IPv4 по умолчанию
+	this->init(event::family_t::IPV4, 5);
+	// Выполняем инициализацию 5-и DNS-резолверов IPv6 по умолчанию
+	this->init(event::family_t::IPV6, 5);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param family семейство IP-адресов IPv4/IPv6
+ * @param fmk    объект фреймворка
+ * @param log    объект для работы с логами
+ */
+awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept :
+ unit_t(fmk, log), _addr(fmk, log), _binbox(fmk, log) {
+	// Активируем работу мьютекса блокировки потока при работе очередью активных пакетов
+	this->_transfer.mtxPackets.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с контейнером пакетов
+	this->_transfer.mtxWaiting.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с событием DNS-резолвера
+	this->_resolver.queue.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Если общие DNS-резолверы ещё не добавлены в глобальный список
+	if(::ns::general.empty()){
+		// Активируем работу мьютекса блокировки потока при работе с IP-адресами
+		::__awh_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		// Активируем работу мьютекса блокировки потока при работе с кэшем
+		::__awh_cache__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		// Активируем работу мьютекса блокировки потока при работе с чёрным списком
+		::__awh_blacklist__.mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		{
+			// Создаём массив стандартных DNS-серверов IPv4
+			array <string_view, 6> resolvers = {AWH_IPV4_NS};
+			// Выбираем стандарт рандомайзера
+			mt19937 generator(::__awh_randev__());
+			// Выполняем рандомную сортировку списка DNS-серверов
+			::shuffle(resolvers.begin(), resolvers.end(), generator);
+			// Выполняем перебор всех DNS-серверов из массива
+			for(const auto & item : resolvers){
+				// Выполняем парсинг IP-адреса
+				if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
+					// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
+					::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+			}
+		}{
+			// Создаём массив стандартных DNS-серверов IPv6
+			array <string_view, 6> resolvers = {AWH_IPV6_NS};
+			// Выбираем стандарт рандомайзера
+			mt19937 generator(::__awh_randev__());
+			// Выполняем рандомную сортировку списка DNS-серверов
+			::shuffle(resolvers.begin(), resolvers.end(), generator);
+			// Выполняем перебор всех DNS-серверов из массива
+			for(const auto & item : resolvers){
+				// Выполняем парсинг IP-адреса
+				if(this->_addr.parse(item, net_addr_t::type_t::IPV6))
+					// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
+					::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+			}
 		}
 	}
 	/**
 	 * Инициализация DNS-сервера
 	 */
 	this->_resolver.nameServers.init();
-	/**
-	 * Выполняем создание события DNS-резолвера для указанного семейство IP-адресов
-	 */
-	this->create(family);
+	// Выполняем инициализацию 5-и DNS-резолверов
+	this->init(family, 5);
 }
 /**
  * @brief Деструктор
@@ -6713,10 +7221,6 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 awh::unit::DNS::~DNS() noexcept {
 	// Выполняем блокировку потока для работы с событием DNS-резолвера
 	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Если событие DNS-резолвера активно
-	if(this->_resolver.eid > 0)
-		// Удаляем событие DNS-резолвера
-		this->_io->destroy(this->_resolver.eid);
 	// Если событие таймера для периодической очистки кэша активно
 	if(::__awh_cache__.tid > 0)
 		// Удаляем событие таймера для периодической очистки кэша
@@ -6725,14 +7229,22 @@ awh::unit::DNS::~DNS() noexcept {
 	if(::__awh_cache__.fid > 0)
 		// Удаляем событие таймера для периодической очистки кэша
 		this->_io->destroy(::__awh_cache__.fid);
-	// Если контейнер пакетов для отслеживания выполнения запросов не пустой
-	if(!this->_transfer.waiting.empty()){
-		// Выполняем перебор всех пакетов в контейнере пакетов
-		for(auto i = this->_transfer.waiting.begin(); i != this->_transfer.waiting.end(); ++i){
-			// Если событие таймаута для ожидания ответа от DNS-сервера активно
-			if(i->second.tid > 0)
-				// Удаляем событие таймаута для ожидания ответа от DNS-сервера
-				this->_io->destroy(i->second.tid);
-		}
+	// Если список DNS-резолверов IPv4 не пустой
+	if(!this->_resolver.idv4.empty()){
+		/**
+		 * Выполняем перебор всех DNS-резолверов IPv4 из списка для их удаления
+		 */
+		for(auto i = this->_resolver.idv4.begin(); i != this->_resolver.idv4.end(); ++i)
+			// Удаляем событие DNS-резолвера
+			this->_io->destroy(* i);
+	}
+	// Если список DNS-резолверов IPv6 не пустой
+	if(!this->_resolver.idv6.empty()){
+		/**
+		 * Выполняем перебор всех DNS-резолверов IPv6 из списка для их удаления
+		 */
+		for(auto i = this->_resolver.idv6.begin(); i != this->_resolver.idv6.end(); ++i)
+			// Удаляем событие DNS-резолвера
+			this->_io->destroy(* i);
 	}
 }

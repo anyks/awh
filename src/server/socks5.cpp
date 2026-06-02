@@ -1679,26 +1679,11 @@ void awh::server::Socks5::start() noexcept {
 		// Если идентификатор сервера установлен
 		if(this->_eid > 0){
 			// Если объект DNS-резолвера установлен
-			if(this->_dns != nullptr){
-				/**
-				 * В зависимости от статуса события DNS-резолвера выполняем запуск
-				 */
-				switch(static_cast <uint8_t> (this->_dns->status())){
-					// Если событие DNS-резолвера не запущено, запускаем его
-					case static_cast <uint8_t> (event::status_t::NONE): {
-						// Если событие DNS-резолвера не запущено, запускаем его
-						if(this->_dns->commit())
-							// Запускаем событие DNS-резолвера
-							this->_dns->start();
-					} break;
-					// Если событие DNS-резолвера инициализировано, запускаем его
-					case static_cast <uint8_t> (event::status_t::INITIAL):
-						// Запускаем событие DNS-резолвера
-						this->_dns->start();
-					break;
-				}
+			if(this->_dns != nullptr)
+				// Запускаем событие DNS-резолвера
+				this->_dns->start();
 			// Если объект DNS-резолвера не установлен
-			} else {
+			else {
 				/**
 				 * В зависимости от статуса события сервера выполняем запуск
 				 */

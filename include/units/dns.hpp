@@ -19,6 +19,11 @@
 #define __AWH_UNIT_DNS_RESOLVER__
 
 /**
+ * Стандартные модули
+ */
+#include <queue>
+
+/**
  * Наши модули
  */
 #include "unit.hpp"
@@ -68,6 +73,127 @@ namespace awh {
 					ANY   = 0xFF  // Любой тип записи (используется для запроса всех типов записей для домена)
 				};
 			private:
+				/**
+				 * @brief Структура буфера полезной нагрузки
+				 *
+				 */
+				typedef struct Payload {
+					// Размер буфера
+					size_t size;
+					// Данные буфера
+					unique_ptr <uint8_t []> buffer;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Payload() noexcept : size(0), buffer(nullptr) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~Payload() noexcept {}
+				} payload_t;
+			private:
+				/**
+				 * @brief Класс активного пакета при выполнении DNS-запросов
+				 *
+				 */
+				typedef class __AWH_SHARED_EXPORT__ Packet {
+					public:
+						// Количество попыток резолвинга доменного имени
+						uint8_t attempt;
+						// Время жизни DNS-записи (в миллисекундах)
+						uint64_t lifetime;
+						// Полезная нагрузка для отправки DNS-запроса
+						payload_t payload;
+					public:
+						/**
+						 * @brief Оператор [=] перемещения параметров пакета
+						 *
+						 * @param packet объект параметров пакета
+						 * @return       текущие параметры пакета
+						 */
+						Packet & operator = (Packet && packet) noexcept;
+						/**
+						 * @brief Оператор [=] присванивания параметров пакета
+						 *
+						 * @param packet объект параметров пакета
+						 * @return        текущие параметры пакета
+						 */
+						Packet & operator = (const Packet & packet) noexcept;
+					public:
+						/**
+						 * @brief Конструктор перемещения
+						 *
+						 * @param packet объект параметров пакета
+						 */
+						Packet(Packet && packet) noexcept;
+						/**
+						 * @brief Конструктор копирования
+						 *
+						 * @param packet объект параметров пакета
+						 */
+						Packet(const Packet & packet) noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit Packet() noexcept;
+				} packet_t;
+				/**
+				 * @brief Класс для управления очередью идентификаторов событий
+				 *
+				 */
+				typedef class __AWH_SHARED_EXPORT__ SimpleQueue {
+					private:
+						// Очередь для хранения идентификаторов событий
+						std::queue <event::id_t> _ids;
+					private:
+						// Мьютекс для блокировки потока
+						lock_state_t <std::shared_mutex> _mtx;
+					public:
+						/**
+						 * @brief Метод очистки очереди идентификаторов событий
+						 *
+						 */
+						void clear() noexcept;
+					public:
+						/**
+						 * @brief Метод получения размера очереди идентификаторов событий
+						 *
+						 * @return размер очереди идентификаторов событий
+						 */
+						size_t size() const noexcept;
+					public:
+						/**
+						 * @brief Метод добавления идентификатора события в очередь
+						 *
+						 * @param eid идентификатор события для добавления в очередь
+						 */
+						void push(event::id_t eid) noexcept;
+					public:
+						/**
+						 * @brief Метод извлечения идентификатора события из очереди
+						 *
+						 * @param eid идентификатор события для извлечения из очереди
+						 * @return    результат извлечения идентификатора
+						 */
+						bool pop(event::id_t & eid) noexcept;
+					public:
+						/**
+						 * @brief Метод установки безопасности работы потоков
+						 *
+						 * @param mode флаг режима безопасности потоков
+						 */
+						void threadSafety(const bool mode) noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit SimpleQueue() noexcept;
+				} queue_t;
 				/**
 				 * @brief Класс для управления списком DNS-серверов
 				 *
@@ -123,6 +249,7 @@ namespace awh {
 						 */
 						explicit Servers() noexcept;
 				} servers_t;
+			private:
 				/**
 				 * @brief Структура для управления состоянием DNS-резолвера
 				 *
@@ -132,60 +259,52 @@ namespace awh {
 					string prefix;
 					// Порт сервера DNS-резолвера
 					uint16_t port;
-					// Идентификатор события для DNS-резолвера
-					event::id_t eid;
+					// Таймаут для ожидания ответа от DNS-сервера (в миллисекундах)
+					uint32_t timeout;
+					// Очередь свободных идентификаторов событий DNS-резолверов
+					queue_t queue;
 					// Адрес DNS-сервера для выполнения запросов
 					servers_t nameServers;
-					// Адрес сети для выполнения запроса
-					unique_ptr <net::addr_t> source;
+					// Список идентификаторов событий DNS-резолверов IPv4
+					vector <event::id_t> idv4;
+					// Список идентификаторов событий DNS-резолверов IPv6
+					vector <event::id_t> idv6;
+					// Адрес сети для выполнения запроса IPv4
+					unique_ptr <net::addr_t> sourceIPv4;
+					// Адрес сети для выполнения запроса IPv6
+					unique_ptr <net::addr_t> sourceIPv6;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Resolver() noexcept :
-					 prefix{""}, port(53),
-					 eid(0), source(nullptr) {}
+					 prefix{AWH_SHORT_NAME}, port(53), timeout(5000),
+					 sourceIPv4(nullptr), sourceIPv6(nullptr) {}
 				} resolver_t;
-				/**
-				 * @brief Структура активного пакета при выполнении DNS-запросов
-				 *
-				 */
-				typedef struct Packet {
-					// Доменное имя, для которого произошёл таймаут
-					string domain;
-					// Время ожидания ответа от DNS-сервера (в миллисекундах)
-					uint32_t delay;
-					// Количество попыток резолвинга доменного имени
-					uint8_t attempt;
-					// Идентификатор события для таймера DNS-резолвера
-					event::id_t tid;
-					// Тип DNS-записи, для которой произошёл таймаут
-					record_t record;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Packet() noexcept :
-					 domain{AWH_SHORT_NAME},
-					 delay(5000), attempt(0), tid(0),
-					 record(record_t::NONE) {}
-				} packet_t;
 				/**
 				 * @brief Структура для управления передачей данных при резолвинге доменных имён
 				 *
 				 */
 				typedef struct Transfer {
 					// Количество попыток резолвинга доменного имени
-					uint8_t attempts;
-					// Мьютекс для блокировки потока
-					lock_state_t <std::shared_mutex> mtx;
+					atomic_uint8_t attempts;
+					// Максимальное количество пакетов в очереди ожидания выполнения запроса к DNS-серверу
+					atomic_uint16_t maxPackets;
+					// Очередь активных пакетов ожидающих выполнения отправки DNS-запросов
+					std::queue <packet_t> packets;
 					// Активные пакеты при резолвинге доменных имён
 					unordered_map <id_t, packet_t> waiting;
+					// Прикрепленные идентификаторы событий DNS-резолверов к идентификаторам событий запроса
+					unordered_map <event::id_t, id_t> attached;
+					// Мьютекс для блокировки потока для очереди активных пакетов
+					lock_state_t <std::shared_mutex> mtxPackets;
+					// Мьютекс для блокировки потока для списка ожидающих резолвинга доменных имён
+					lock_state_t <std::shared_mutex> mtxWaiting;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Transfer() noexcept : attempts(3) {}
+					explicit Transfer() noexcept : attempts(3), maxPackets(200) {}
 				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
@@ -197,13 +316,6 @@ namespace awh {
 				resolver_t _resolver;
 				// Объект управления передачей данных при резолвинге доменных имён
 				transfer_t _transfer;
-			private:
-				/**
-				 * @brief Метод создания события DNS-резолвера
-				 *
-				 * @param family семейство протоколов (например: IPv4 или IPv6)
-				 */
-				void create(const event::family_t family) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки событий дампинга DNS-кэша
@@ -230,15 +342,6 @@ namespace awh {
 				void hosts(const event::id_t, const uint8_t * data, const size_t size) noexcept;
 			private:
 				/**
-				 * @brief Метод обработки ошибок событий DNS-резолвера
-				 *
-				 * @param eid         идентификатор события DNS-резолвера
-				 * @param error       код ошибки события DNS-резолвера
-				 * @param description описание ошибки события DNS-резолвера
-				 */
-				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
-			private:
-				/**
 				 * @brief Метод обработки ответов от DNS-сервера на запросы резолвинга доменных имён
 				 *
 				 * @param eid  идентификатор события чтения из DNS-резолвера
@@ -247,14 +350,22 @@ namespace awh {
 				 */
 				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
-				 * @brief Метод обработки событий таймаута при ожидании ответа от DNS-сервера
+				 * @brief Метод обработки событий истечения таймаута резолвера доменного имени
 				 *
-				 * @param id     идентификатор DNS-резолвера
-				 * @param eid    идентификатор таймера DNS-резолвера
-				 * @param status статус события таймера DNS-резолвера
-				 * @param packet объект активного пакета DNS-запроса
+				 * @param eid    идентификатор резолвера
+				 * @param action тип действия для истекшего таймаута
+				 * @param delay  задержка таймаута в миллисекундах
+				 * @return       нужно ли завершить резолвер после истечения таймаута
 				 */
-				void timeout(const id_t id, const event::id_t eid, const event::status_t status, packet_t * packet) noexcept;
+				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+				/**
+				 * @brief Метод обработки ошибок событий DNS-резолвера
+				 *
+				 * @param eid         идентификатор события DNS-резолвера
+				 * @param error       код ошибки события DNS-резолвера
+				 * @param description описание ошибки события DNS-резолвера
+				 */
+				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			public:
 				/**
 				 * @brief Метод установки безопасности работы потоков
@@ -276,6 +387,13 @@ namespace awh {
 				 * @param attempts количество попыток резолвинга доменного имени
 				 */
 				void setAttempts(const uint8_t attempts) noexcept;
+			public:
+				/**
+				 * @brief Метод установки максимального количества пакетов в очереди ожидания выполнения запроса к DNS-серверу
+				 *
+				 * @param count максимальное количество пакетов
+				 */
+				void setMaxPackets(const uint16_t count) noexcept;
 			public:
 				/**
 				 * @brief Метод кодирования интернационального доменного имени
@@ -468,18 +586,20 @@ namespace awh {
 				void setDumpAddress(string_view filename, const uint32_t interval) noexcept;
 			public:
 				/**
-				 * @brief Метод сброса DNS-резолвера
+				 * @brief Метод установки таймаута для ожидания ответа от DNS-сервера
 				 *
-				 * @return результат выполнения операции
+				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 */
-				bool reset() noexcept;
+				void setTimeout(const uint32_t timeout) noexcept;
 			public:
 				/**
-				 * @brief Метод фиксации параметров DNS-резолвера
+				 * @brief Метод инициализации DNS-резолверов
 				 *
-				 * @return результат выполнения операции
+				 * @param family семейство IP-адресов IPv4/IPv6
+				 * @param count  количество DNS-резолверов для инициализации
+				 * @return       результат выполнения операции
 				 */
-				bool commit() noexcept;
+				bool init(const event::family_t family, const uint16_t count) noexcept;
 			public:
 				/**
 				 * @brief Метод получения порта сервера DNS-резолвера
@@ -582,31 +702,6 @@ namespace awh {
 				id_t issue() const noexcept;
 			public:
 				/**
-				 * @brief Метод получения типа события
-				 *
-				 * @return тип события
-				 */
-				event::type_t type() const noexcept;
-				/**
-				 * @brief Метод получения типа узла события
-				 *
-				 * @return тип узла события
-				 */
-				event::node_t node() const noexcept;
-				/**
-				 * @brief Метод получения семейства события
-				 *
-				 * @return семейство адресов
-				 */
-				event::family_t family() const noexcept;
-				/**
-				 * @brief Метод получения статуса события
-				 *
-				 * @return статус события
-				 */
-				event::status_t status() const noexcept;
-			public:
-				/**
 				 * @brief Метод поиска доменного имени соответствующего IP-адресу
 				 *
 				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
@@ -678,6 +773,13 @@ namespace awh {
 				 */
 				DNS & operator = (const DNS &) = delete;
 			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit DNS(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
