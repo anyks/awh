@@ -1887,159 +1887,181 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 					}
 					// Если IP-адрес и доменные имена успешно извлечены из строки файла хостов
 					if(!entry.ip.empty() && !entry.domains.empty()){
-						// Выполняем блокировку потока для парсинга IP-адреса
-						const locker_t <> lock(::__awh_mtx__);
 						/**
 						 * Выполняем перебор всех доменных имён, связанных с IP-адресом
 						 */
 						for(auto & domain : entry.domains){
-							// Выполняем парсинг IP-адреса
-							if(this->_addr.parse(entry.ip)){
-								// Выполняем блокировку потока для работы с кэшем
-								const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-								// Выполняем поиск доменного имени в кэше
-								auto i = ::__awh_cache__.domains.find(string{domain});
-								// Если в кэше доменное имя найдено
-								if(i != ::__awh_cache__.domains.end()){
-									// Создаём объект записи
-									EntryIP record;
-									// Помечаем IP-адрес как локальный
-									record.local = true;
-									/**
-									 * Определяем тип адреса
-									 */
-									switch(static_cast <uint8_t> (this->_addr.type())){
-										// Если адрес является IPv4
-										case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-											// Выполняем инициализацию объекта IP-адреса
-											record.ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-											// Выполняем поиск IP-адреса
-											auto i = ::__awh_cache__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address);
-											// Если IP-адрес найден в кэше
-											if(i != ::__awh_cache__.ipv4.end()){
-												// Создаём объект записи
-												EntryDomain record{};
-												// Помечаем IP-адрес как локальный
-												record.local = true;
-												// Устанавливаем доменное имя
-												record.domain = domain;
-												// Выполняем добавление IP-адреса
-												i->second.push_back(::move(record));
-											// Если IP-адрес не найден в кэше
-											} else {
-												// Создаём список записей IP-адресов
-												vector <EntryDomain> entry(1);
-												// Помечаем IP-адрес как локальный
-												entry.back().local = true;
-												// Устанавливаем доменное имя
-												entry.back().domain = domain;
-												// Добавляем новую запись в кэш IP-адресов
-												::__awh_cache__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address, ::move(entry));
-											}
-										} break;
-										// Если адрес является IPv6
-										case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-											// Выполняем инициализацию объекта IP-адреса
-											record.ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-											// Выполняем поиск IP-адреса
-											auto i = ::__awh_cache__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address);
-											// Если IP-адрес найден в кэше
-											if(i != ::__awh_cache__.ipv6.end()){
-												// Создаём объект записи
-												EntryDomain record{};
-												// Помечаем IP-адрес как локальный
-												record.local = true;
-												// Устанавливаем доменное имя
-												record.domain = domain;
-												// Выполняем добавление IP-адреса
-												i->second.push_back(::move(record));
-											// Если IP-адрес не найден в кэше
-											} else {
-												// Создаём список записей IP-адресов
-												vector <EntryDomain> entry(1);
-												// Помечаем IP-адрес как локальный
-												entry.back().local = true;
-												// Устанавливаем доменное имя
-												entry.back().domain = domain;
-												// Добавляем новую запись в кэш IP-адресов
-												::__awh_cache__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address, ::move(entry));
-											}
-										} break;
-									}
-									// Выполняем добавление IP-адреса
-									i->second.push_back(::move(record));
-								// Если в кэше доменное имя не найдено
-								} else {
-									// Создаём список записей IP-адресов
-									vector <EntryIP> entry(1);
-									// Помечаем IP-адрес как локальный
-									entry.back().local = true;
-									/**
-									 * Определяем тип адреса
-									 */
-									switch(static_cast <uint8_t> (this->_addr.type())){
-										// Если адрес является IPv4
-										case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-											// Выполняем инициализацию объекта IP-адреса
-											entry.back().ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-											// Выполняем поиск IP-адреса
-											auto i = ::__awh_cache__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (entry.back().ip.get())->address);
-											// Если IP-адрес найден в кэше
-											if(i != ::__awh_cache__.ipv4.end()){
-												// Создаём объект записи
-												EntryDomain record{};
-												// Помечаем IP-адрес как локальный
-												record.local = true;
-												// Устанавливаем доменное имя
-												record.domain = domain;
-												// Выполняем добавление IP-адреса
-												i->second.push_back(::move(record));
-											// Если IP-адрес не найден в кэше
-											} else {
-												// Создаём список записей IP-адресов
-												vector <EntryDomain> entryDomain(1);
-												// Помечаем IP-адрес как локальный
-												entryDomain.back().local = true;
-												// Устанавливаем доменное имя
-												entryDomain.back().domain = domain;
-												// Добавляем новую запись в кэш IP-адресов
-												::__awh_cache__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (entry.back().ip.get())->address, ::move(entryDomain));
-											}
-										} break;
-										// Если адрес является IPv6
-										case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-											// Выполняем инициализацию объекта IP-адреса
-											entry.back().ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-											// Выполняем поиск IP-адреса
-											auto i = ::__awh_cache__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (entry.back().ip.get())->address);
-											// Если IP-адрес найден в кэше
-											if(i != ::__awh_cache__.ipv6.end()){
-												// Создаём объект записи
-												EntryDomain record{};
-												// Помечаем IP-адрес как локальный
-												record.local = true;
-												// Устанавливаем доменное имя
-												record.domain = domain;
-												// Выполняем добавление IP-адреса
-												i->second.push_back(::move(record));
-											// Если IP-адрес не найден в кэше
-											} else {
-												// Создаём список записей IP-адресов
-												vector <EntryDomain> entryDomain(1);
-												// Помечаем IP-адрес как локальный
-												entryDomain.back().local = true;
-												// Устанавливаем доменное имя
-												entryDomain.back().domain = domain;
-												// Добавляем новую запись в кэш IP-адресов
-												::__awh_cache__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (entry.back().ip.get())->address, ::move(entryDomain));
-											}
-										} break;
-									}
-									// Добавляем доменное имя в запись
-									if(!domain.empty())
-										// Добавляем новую запись в кэш доменных имён
-										::__awh_cache__.domains.emplace(domain, ::move(entry));
+							// Распарсенный адрес из файла hosts
+							unique_ptr <net::addr_t> parsed = nullptr;
+							// Тип адреса из результата парсинга
+							net_addr_t::type_t type = net_addr_t::type_t::NONE;
+							{
+								// Выполняем блокировку потока только для парсинга IP-адреса
+								const locker_t <> lock(::__awh_mtx__);
+								// Выполняем парсинг IP-адреса
+								if(this->_addr.parse(entry.ip)){
+									// Получаем тип адреса из результата парсинга
+									type = this->_addr.type();
+									// Получаем распарсенный IP-адрес
+									parsed = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 								}
+							}
+							// Если парсинг IP-адреса не выполнен
+							if(parsed == nullptr)
+								// Пропускаем эту запись и переходим к следующей
+								continue;
+							// Выполняем блокировку потока для работы с кэшем
+							const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+							// Выполняем поиск доменного имени в кэше
+							auto i = ::__awh_cache__.domains.find(string{domain});
+							// Если в кэше доменное имя найдено
+							if(i != ::__awh_cache__.domains.end()){
+								// Создаём объект записи
+								EntryIP record{};
+								// Помечаем IP-адрес как локальный
+								record.local = true;
+								/**
+								 * Определяем тип адреса
+								 */
+								switch(static_cast <uint8_t> (type)){
+									// Если адрес является IPv4
+									case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+										// Создаём объект IP-адреса для хранения IPv4-адреса
+										record.ip = make_unique <net::addr_net_ipv4_t> ();
+										// Копируем IP-адрес из результата парсинга в запись
+										awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (parsed.get())->address;
+										// Выполняем поиск IP-адреса
+										auto i = ::__awh_cache__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address);
+										// Если IP-адрес найден в кэше
+										if(i != ::__awh_cache__.ipv4.end()){
+											// Создаём объект записи
+											EntryDomain record{};
+											// Помечаем IP-адрес как локальный
+											record.local = true;
+											// Устанавливаем доменное имя
+											record.domain = domain;
+											// Выполняем добавление IP-адреса
+											i->second.push_back(::move(record));
+										// Если IP-адрес не найден в кэше
+										} else {
+											// Создаём список записей IP-адресов
+											vector <EntryDomain> entry(1);
+											// Помечаем IP-адрес как локальный
+											entry.back().local = true;
+											// Устанавливаем доменное имя
+											entry.back().domain = domain;
+											// Добавляем новую запись в кэш IP-адресов
+											::__awh_cache__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (record.ip.get())->address, ::move(entry));
+										}
+									} break;
+									// Если адрес является IPv6
+									case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+										// Создаём объект IP-адреса для хранения IPv6-адреса
+										record.ip = make_unique <net::addr_net_ipv6_t> ();
+										// Копируем IP-адрес из результата парсинга в запись
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (parsed.get())->address[0], 16);
+										// Выполняем поиск IP-адреса
+										auto i = ::__awh_cache__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address);
+										// Если IP-адрес найден в кэше
+										if(i != ::__awh_cache__.ipv6.end()){
+											// Создаём объект записи
+											EntryDomain record{};
+											// Помечаем IP-адрес как локальный
+											record.local = true;
+											// Устанавливаем доменное имя
+											record.domain = domain;
+											// Выполняем добавление IP-адреса
+											i->second.push_back(::move(record));
+										// Если IP-адрес не найден в кэше
+										} else {
+											// Создаём список записей IP-адресов
+											vector <EntryDomain> entry(1);
+											// Помечаем IP-адрес как локальный
+											entry.back().local = true;
+											// Устанавливаем доменное имя
+											entry.back().domain = domain;
+											// Добавляем новую запись в кэш IP-адресов
+											::__awh_cache__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (record.ip.get())->address, ::move(entry));
+										}
+									} break;
+								}
+								// Выполняем добавление IP-адреса
+								i->second.push_back(::move(record));
+							// Если в кэше доменное имя не найдено
+							} else {
+								// Создаём список записей IP-адресов
+								vector <EntryIP> entry(1);
+								// Помечаем IP-адрес как локальный
+								entry.back().local = true;
+								/**
+								 * Определяем тип адреса
+								 */
+								switch(static_cast <uint8_t> (type)){
+									// Если адрес является IPv4
+									case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+										// Создаём объект IP-адреса для хранения IPv4-адреса
+										entry.back().ip = make_unique <net::addr_net_ipv4_t> ();
+										// Копируем IP-адрес из результата парсинга в запись
+										awh_cast <net::addr_net_ipv4_t *> (entry.back().ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (parsed.get())->address;
+										// Выполняем поиск IP-адреса
+										auto i = ::__awh_cache__.ipv4.find(awh_cast <net::addr_net_ipv4_t *> (entry.back().ip.get())->address);
+										// Если IP-адрес найден в кэше
+										if(i != ::__awh_cache__.ipv4.end()){
+											// Создаём объект записи
+											EntryDomain record{};
+											// Помечаем IP-адрес как локальный
+											record.local = true;
+											// Устанавливаем доменное имя
+											record.domain = domain;
+											// Выполняем добавление IP-адреса
+											i->second.push_back(::move(record));
+										// Если IP-адрес не найден в кэше
+										} else {
+											// Создаём список записей IP-адресов
+											vector <EntryDomain> entryDomain(1);
+											// Помечаем IP-адрес как локальный
+											entryDomain.back().local = true;
+											// Устанавливаем доменное имя
+											entryDomain.back().domain = domain;
+											// Добавляем новую запись в кэш IP-адресов
+											::__awh_cache__.ipv4.emplace(awh_cast <net::addr_net_ipv4_t *> (entry.back().ip.get())->address, ::move(entryDomain));
+										}
+									} break;
+									// Если адрес является IPv6
+									case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+										// Создаём объект IP-адреса для хранения IPv6-адреса
+										entry.back().ip = make_unique <net::addr_net_ipv6_t> ();
+										// Копируем IP-адрес из результата парсинга в запись
+										::memcpy(&awh_cast <net::addr_net_ipv6_t *> (entry.back().ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (parsed.get())->address[0], 16);
+										// Выполняем поиск IP-адреса
+										auto i = ::__awh_cache__.ipv6.find(awh_cast <net::addr_net_ipv6_t *> (entry.back().ip.get())->address);
+										// Если IP-адрес найден в кэше
+										if(i != ::__awh_cache__.ipv6.end()){
+											// Создаём объект записи
+											EntryDomain record{};
+											// Помечаем IP-адрес как локальный
+											record.local = true;
+											// Устанавливаем доменное имя
+											record.domain = domain;
+											// Выполняем добавление IP-адреса
+											i->second.push_back(::move(record));
+										// Если IP-адрес не найден в кэше
+										} else {
+											// Создаём список записей IP-адресов
+											vector <EntryDomain> entryDomain(1);
+											// Помечаем IP-адрес как локальный
+											entryDomain.back().local = true;
+											// Устанавливаем доменное имя
+											entryDomain.back().domain = domain;
+											// Добавляем новую запись в кэш IP-адресов
+											::__awh_cache__.ipv6.emplace(awh_cast <net::addr_net_ipv6_t *> (entry.back().ip.get())->address, ::move(entryDomain));
+										}
+									} break;
+								}
+								// Добавляем доменное имя в запись
+								if(!domain.empty())
+									// Добавляем новую запись в кэш доменных имён
+									::__awh_cache__.domains.emplace(domain, ::move(entry));
 							}
 						}
 					}
@@ -2684,7 +2706,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					// Выполняем блокировку потока для работы с контейнером активных пакетов
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Если время жизни пакета ещё не истекло
-					if(this->_transfer.packets.front().lifetime < this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
+					if(this->_transfer.packets.front().lifetime > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
 						// Получаем объект заголовка запроса
 						::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 						// Добавляем пакет в контейнер активных пакетов
@@ -2693,12 +2715,8 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						i->second = ret.first->first;
 						// Удаляем пакет из очереди на отправку
 						this->_transfer.packets.pop();
-						{
-							// Выполняем блокировку потока для работы с событием DNS-резолвера
-							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-							// Отправляем DNS-запрос
-							this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
-						}
+						// Отправляем DNS-запрос
+						this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
 						// Выходим из функции
 						return;
 					// Удаляем пакет из очереди на отправку
@@ -2769,8 +2787,6 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						if(j->second.attempt < this->_transfer.attempts.load(std::memory_order_acquire)){
 							// Увеличиваем число повторных попыток DNS-запроса
 							j->second.attempt++;
-							// Выполняем блокировку потока для работы с событием DNS-резолвера
-							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 							// Повторно отправляем DNS-запрос
 							this->_io->send(eid, j->second.payload.buffer.get(), j->second.payload.size);
 							// Запрещаем завершение резолвера после истечения таймаута
@@ -2789,7 +2805,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						// Если в очереди на отправку есть пакеты
 						if(!this->_transfer.packets.empty()){
 							// Если время жизни пакета ещё не истекло
-							if(this->_transfer.packets.front().lifetime < this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
+							if(this->_transfer.packets.front().lifetime > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
 								// Получаем объект заголовка запроса
 								::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 								// Добавляем пакет в контейнер активных пакетов
@@ -2798,12 +2814,8 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 								i->second = ret.first->first;
 								// Удаляем пакет из очереди на отправку
 								this->_transfer.packets.pop();
-								{
-									// Выполняем блокировку потока для работы с событием DNS-резолвера
-									const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-									// Отправляем DNS-запрос
-									this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
-								}
+								// Отправляем DNS-запрос
+								this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
 								// Завершаем работу резолвера
 								goto End;
 							// Удаляем пакет из очереди на отправку
@@ -6343,8 +6355,14 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 	try {
 		// Если адрес сети для выполнения запроса передан
 		if((ip != nullptr) && this->_callback.is("address")){
+			// Признак найденной записи в кэше
+			bool cacheHit = false;
 			// Доменное имя в формате ARPA для обратного поиска доменного имени по IP-адресу
 			string domain = "";
+			// Доменное имя найденной записи
+			string cacheDomain = "";
+			// Семейство найденной записи
+			event::family_t cacheFamily = event::family_t::NONE;
 			{
 				// Выполняем блокировку потока для парсинга IP-адреса
 				const locker_t <> lock(::__awh_mtx__);
@@ -6375,11 +6393,19 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 							if((j->life > 0) && (j->life <= now))
 								// Пропускаем записи IP-адреса
 								continue;
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, j->domain, ip);
-							// Выводим положительный результат
-							return true;
+							// Устанавливаем признак найденной записи в кэше
+							cacheHit = true;
+							// Устанавливаем доменное имя найденной записи
+							cacheDomain = j->domain;
+							// Устанавливаем семейство найденной записи
+							cacheFamily = event::family_t::IPV4;
+							// Выходим из цикла
+							break;
 						}
+						// Если запись найдена, выходим из обхода
+						if(cacheHit)
+							// Выходим из цикла
+							break;
 					}
 				} break;
 				// Если адрес является IPv6
@@ -6400,18 +6426,30 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 							if((j->life > 0) && (j->life <= now))
 								// Пропускаем записи IP-адреса
 								continue;
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, j->domain, ip);
-							// Выводим положительный результат
-							return true;
+							// Устанавливаем признак найденной записи в кэше
+							cacheHit = true;
+							// Устанавливаем доменное имя найденной записи
+							cacheDomain = j->domain;
+							// Устанавливаем семейство найденной записи
+							cacheFamily = event::family_t::IPV6;
+							// Выходим из цикла
+							break;
 						}
+						// Если запись найдена, выходим из обхода
+						if(cacheHit)
+							break;
 					}
 				} break;
 			}
+			// Вызываем callback только после выхода из блокировки кэша
+			if(cacheHit){
+				// Выполняем функцию обратного вызова для найденной записи в кэше
+				this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, cacheFamily, cacheDomain, ip);
+				// Выводим положительный результат
+				return true;
+			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
 				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
 				/**
@@ -6543,6 +6581,10 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
+					// Признак найденной записи
+					bool cacheHit = false;
+					// Найденное доменное имя в кэше
+					string cachedDomain = "";
 					// IP-адрес в исходном виде для поиска доменного имени
 					unique_ptr <net::addr_t> addr = nullptr;
 					{
@@ -6574,16 +6616,33 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 								if((j->life > 0) && (j->life <= now))
 									// Пропускаем записи IP-адреса
 									continue;
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, j->domain, addr.get());
-								// Выводим положительный результат
-								return true;
+								// Устанавливаем признак найденной записи в кэше
+								cacheHit = true;
+								// Устанавливаем доменное имя найденной записи
+								cachedDomain = j->domain;
+								// Выходим из цикла
+								break;
 							}
+							// Если запись найдена, выходим из обхода
+							if(cacheHit)
+								// Выходим из цикла
+								break;
 						}
+					}
+					// Выполняем callback после выхода из блокировки кэша
+					if(cacheHit){
+						// Выполняем функцию обратного вызова для найденной записи в кэше
+						this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, cachedDomain, addr.get());
+						// Выводим положительный результат
+						return true;
 					}
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Признак найденной записи
+					bool cacheHit = false;
+					// Найденное доменное имя в кэше
+					string cachedDomain = "";
 					// IP-адрес в исходном виде для поиска доменного имени
 					unique_ptr <net::addr_t> addr = nullptr;
 					{
@@ -6615,19 +6674,30 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 								if((j->life > 0) && (j->life <= now))
 									// Пропускаем записи IP-адреса
 									continue;
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, j->domain, addr.get());
-								// Выводим положительный результат
-								return true;
+								// Устанавливаем признак найденной записи в кэше
+								cacheHit = true;
+								// Устанавливаем доменное имя найденной записи
+								cachedDomain = j->domain;
+								// Выходим из цикла
+								break;
 							}
+							// Если запись найдена, выходим из обхода
+							if(cacheHit)
+								// Выходим из цикла
+								break;
 						}
+					}
+					// Выполняем callback после выхода из блокировки кэша
+					if(cacheHit){
+						// Выполняем функцию обратного вызова для найденной записи в кэше
+						this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, cachedDomain, addr.get());
+						// Выводим положительный результат
+						return true;
 					}
 				} break;
 			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
 				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
 				/**
@@ -6751,8 +6821,6 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 	try {
 		// Если доменное имя получено
 		if(!domain.empty()){
-			// Выполняем блокировку потока для работы с событием DNS-резолвера
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Выполняем генерацию запроса к DNS-серверу для получения доменного имени по IP-адресу
 			const size_t size = ::dns::request(id, record, domain, this->_log);
 			/**
@@ -6895,6 +6963,12 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 	try {
 		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
 		if(!domain.empty() && this->_callback.is("address")){
+			// Признак найденной записи в кэше
+			bool cacheHit = false;
+			// IP-адрес найденной записи (копия)
+			unique_ptr <net::addr_t> cacheAddress = nullptr;
+			// Семейство найденной записи
+			event::family_t cacheFamily = event::family_t::NONE;
 			{
 				// Выполняем блокировку потока для работы с кэшем
 				const locker_t <std::shared_mutex> lock(::__awh_cache__.mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
@@ -6919,31 +6993,48 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							// Для семейства IPv4
 							case static_cast <uint8_t> (event::family_t::IPV4): {
 								// Если IP-адрес доменного имени является IPv4
-								if(j->ip->size == 4){
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, string{domain}, j->ip.get());
-									// Выводим положительный результат
-									return true;
+								if((cacheHit = (j->ip->size == 4))){
+									// Устанавливаем семейство найденной записи
+									cacheFamily = event::family_t::IPV4;
+									// Выделяем новый буфер для IP-адреса найденной записи
+									cacheAddress = make_unique <net::addr_net_ipv4_t> ();
+									// Копируем данные IP-адреса найденной записи в новый буфер
+									awh_cast <net::addr_net_ipv4_t *> (cacheAddress.get())->address = awh_cast <net::addr_net_ipv4_t *> (j->ip.get())->address;
+									// Выходим из цикла
+									break;
 								}
 							} break;
 							// Для семейства IPv6
 							case static_cast <uint8_t> (event::family_t::IPV6): {
 								// Если IP-адрес доменного имени является IPv6
-								if(j->ip->size == 16){
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, string{domain}, j->ip.get());
-									// Выводим положительный результат
-									return true;
+								if((cacheHit = (j->ip->size == 16))){
+									// Устанавливаем семейство найденной записи
+									cacheFamily = event::family_t::IPV6;
+									// Выделяем новый буфер для IP-адреса найденной записи
+									cacheAddress = make_unique <net::addr_net_ipv6_t> ();
+									// Копируем данные IP-адреса найденной записи в новый буфер
+									::memcpy(&awh_cast <net::addr_net_ipv6_t *> (cacheAddress.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (j->ip.get())->address[0], 16);
+									// Выходим из цикла
+									break;
 								}
 							} break;
 						}
+						// Если запись найдена, завершаем перебор
+						if(cacheHit)
+							// Выходим из цикла
+							break;
 					}
 				}
 			}
+			// Выполняем callback только после выхода из блокировки кэша
+			if(cacheHit){
+				// Выполняем функцию обратного вызова для найденной записи в кэше
+				this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, cacheFamily, string{domain}, cacheAddress.get());
+				// Выводим положительный результат
+				return true;
+			}
 			// Если доменное имя получено
 			if(!domain.empty()){
-				// Выполняем блокировку потока для работы с событием DNS-резолвера
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Размер полезной нагрузки для запроса к DNS-серверу
 				size_t size = 0;
 				/**
