@@ -13,7 +13,7 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного подключения заголовка
  */
 #ifndef __AWH_UNIT_DNS_RESOLVER__
 #define __AWH_UNIT_DNS_RESOLVER__
@@ -41,11 +41,11 @@ namespace awh {
 	 */
 	namespace unit {
 		/**
-		 * Подписываемся на стандартное пространство имён
+		 * Стандартное пространство имён
 		 */
 		using namespace std;
 		/**
-		 * @brief Класс DNS ресолвера
+		 * @brief Класс DNS-резолвера
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ DNS : public unit_t {
@@ -100,7 +100,7 @@ namespace awh {
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Packet {
 					public:
-						// Количество попыток резолвинга доменного имени
+						// Количество попыток DNS-запроса
 						uint8_t attempt;
 						// Время жизни DNS-записи (в миллисекундах)
 						uint64_t lifetime;
@@ -115,7 +115,7 @@ namespace awh {
 						 */
 						Packet & operator = (Packet && packet) noexcept;
 						/**
-						 * @brief Оператор [=] присванивания параметров пакета
+						 * @brief Оператор [=] копирующего присваивания параметров пакета
 						 *
 						 * @param packet объект параметров пакета
 						 * @return        текущие параметры пакета
@@ -282,23 +282,23 @@ namespace awh {
 					 sourceIPv4(nullptr), sourceIPv6(nullptr) {}
 				} resolver_t;
 				/**
-				 * @brief Структура для управления передачей данных при резолвинге доменных имён
+				 * @brief Структура для управления очередью и состоянием DNS-запросов
 				 *
 				 */
 				typedef struct Transfer {
-					// Количество попыток резолвинга доменного имени
+					// Количество попыток DNS-запроса
 					atomic_uint8_t attempts;
 					// Максимальное количество пакетов в очереди ожидания выполнения запроса к DNS-серверу
 					atomic_uint16_t maxPackets;
-					// Очередь активных пакетов ожидающих выполнения отправки DNS-запросов
+					// Очередь пакетов, ожидающих отправки
 					std::queue <packet_t> packets;
-					// Активные пакеты при резолвинге доменных имён
+					// Активные DNS-запросы, ожидающие ответа
 					unordered_map <id_t, packet_t> waiting;
-					// Прикрепленные идентификаторы событий DNS-резолверов к идентификаторам событий запроса
+					// Соответствие между событием сокета и идентификатором запроса
 					unordered_map <event::id_t, id_t> attached;
-					// Мьютекс для блокировки потока для очереди активных пакетов
+					// Мьютекс для синхронизации доступа к очереди пакетов
 					lock_state_t <std::shared_mutex> mtxPackets;
-					// Мьютекс для блокировки потока для списка ожидающих резолвинга доменных имён
+					// Мьютекс для синхронизации доступа к списку ожидающих доменов
 					lock_state_t <std::shared_mutex> mtxWaiting;
 					/**
 					 * @brief Конструктор
@@ -314,7 +314,7 @@ namespace awh {
 			private:
 				// Состояние DNS-резолвера
 				resolver_t _resolver;
-				// Объект управления передачей данных при резолвинге доменных имён
+				// Объект управления очередью и состоянием DNS-запросов
 				transfer_t _transfer;
 			private:
 				/**
@@ -342,7 +342,7 @@ namespace awh {
 				void hosts(const event::id_t, const uint8_t * data, const size_t size) noexcept;
 			private:
 				/**
-				 * @brief Метод обработки ответов от DNS-сервера на запросы резолвинга доменных имён
+				 * @brief Метод обработки ответов DNS-сервера
 				 *
 				 * @param eid  идентификатор события чтения из DNS-резолвера
 				 * @param data данные события чтения из DNS-резолвера
@@ -350,12 +350,12 @@ namespace awh {
 				 */
 				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
-				 * @brief Метод обработки событий истечения таймаута резолвера доменного имени
+				 * @brief Метод обработки истечения таймаута DNS-запроса
 				 *
-				 * @param eid    идентификатор резолвера
+				 * @param eid    идентификатор события DNS-резолвера
 				 * @param action тип действия для истекшего таймаута
-				 * @param delay  задержка таймаута в миллисекундах
-				 * @return       нужно ли завершить резолвер после истечения таймаута
+				 * @param delay  длительность таймаута в миллисекундах
+				 * @return       нужно ли завершить обработчик после истечения таймаута
 				 */
 				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 				/**
@@ -382,9 +382,9 @@ namespace awh {
 				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * @brief Метод установки количества попыток резолвинга доменного имени
+				 * @brief Метод установки числа попыток DNS-запроса
 				 *
-				 * @param attempts количество попыток резолвинга доменного имени
+				 * @param attempts количество попыток DNS-запроса
 				 */
 				void setAttempts(const uint8_t attempts) noexcept;
 			public:
@@ -702,27 +702,27 @@ namespace awh {
 				id_t issue() const noexcept;
 			public:
 				/**
-				 * @brief Метод поиска доменного имени соответствующего IP-адресу
+				 * @brief Метод поиска доменного имени по IP-адресу
 				 *
-				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-запроса
 				 * @param ip      адрес для поиска доменного имени
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
 				bool search(const id_t id, string_view ip, const uint32_t timeout = 0) noexcept;
 				/**
-				 * @brief Метод поиска доменного имени соответствующего IP-адресу
+				 * @brief Метод поиска доменного имени по IP-адресу
 				 *
-				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-запроса
 				 * @param ip      адрес для поиска доменного имени
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
 				bool search(const id_t id, const net::addr_t * ip, const uint32_t timeout = 0) noexcept;
 				/**
-				 * @brief Метод поиска доменного имени соответствующего IP-адресу
+				 * @brief Метод поиска доменного имени по IP-адресу
 				 *
-				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-запроса
 				 * @param family  тип интернет-протокола IPv4/IPv6
 				 * @param ip      адрес для поиска доменного имени
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
@@ -731,31 +731,31 @@ namespace awh {
 				bool search(const id_t id, const event::family_t family, string_view ip, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
-				 * @brief Метод выполнения произвольного запроса
+				 * @brief Метод выполнения произвольного DNS-запроса
 				 *
-				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
-				 * @param record  тип DNS-записи которую необходимо получить
-				 * @param domain  доменное имя сервера
+				 * @param id      идентификатор DNS-запроса
+				 * @param record  тип DNS-записи, которую необходимо получить
+				 * @param domain  доменное имя
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
 				bool request(const id_t id, const record_t record, string_view domain, const uint32_t timeout = 0) noexcept;
 			public:
 				/**
-				 * @brief Метод резолвинга доменного имени
+				 * @brief Метод разрешения доменного имени
 				 *
-				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
-				 * @param domain  доменное имя сервера
+				 * @param id      идентификатор DNS-запроса
+				 * @param domain  доменное имя
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
 				bool resolve(const id_t id, string_view domain, const uint32_t timeout = 0) noexcept;
 				/**
-				 * @brief Метод резолвинга доменного имени
+				 * @brief Метод разрешения доменного имени
 				 *
-				 * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+				 * @param id      идентификатор DNS-запроса
 				 * @param family  тип интернет-протокола IPv4/IPv6
-				 * @param domain  доменное имя сервера
+				 * @param domain  доменное имя
 				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */

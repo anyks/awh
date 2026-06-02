@@ -31,7 +31,7 @@
 #include <sys/types.h>
 
 /**
- * Подключаем заголовочный файл модуля
+ * Заголовочный файл модуля
  */
 #include <units/dns.hpp>
 
@@ -43,12 +43,12 @@
 #endif
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Стандартное пространство имён
  */
 using namespace std;
 
 /**
- * Подписываемся на пространство имён плейсхолдеров
+ * Плейсхолдеры стандартной библиотеки
  */
 using namespace placeholders;
 
@@ -85,11 +85,11 @@ using namespace placeholders;
 #endif
 
 /**
- * Инкапсулируем параметры DNS-серверов в пространство имён
+ * Пространство имён со списком DNS-серверов
  */
 namespace ns {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
 
@@ -101,11 +101,11 @@ namespace ns {
 };
 
 /**
- * Инкапсулируем статические типы данных в пространство имён
+ * Внутренние структуры и служебные объекты
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
 
@@ -143,7 +143,7 @@ namespace {
 	};
 
 	/**
-	 * @brief Структура записи IP-адреса принадлежащего домену
+	 * @brief Структура IP-адреса, связанного с доменом
 	 *
 	 */
 	struct EntryIP {
@@ -195,9 +195,9 @@ namespace {
 			uint64_t result = 14695981039346656037ULL; // FNV offset basis
 			// Выполняем перебор всех байт ключа
 			for(uint8_t byte : key){
-				// Выполняем инвертирование байт ключа
+				// Смешиваем текущий байт с накопленным значением
 				result ^= static_cast <uint64_t> (byte);
-				// Выполняем компенсацию
+				// Умножаем на простое число FNV
 				result *= 1099511628211ULL; // FNV prime
 			}
 			// Выводим результат
@@ -224,9 +224,9 @@ namespace {
 			for(char c : domain){
 				// Приводим к lowercase на лету (если ещё не нормализовали)
 				char lower = static_cast <char> (::tolower(static_cast<uint8_t>(c)));
-				// Выполняем инвертирование байт доменного имени
+				// Смешиваем текущий символ с накопленным значением
 				result ^= static_cast <uint64_t> (lower);
-				// Выполняем компенсацию
+				// Умножаем на простое число FNV
 				result *= 1099511628211ULL; // FNV prime
 			}
 			// Выводим результат
@@ -239,7 +239,7 @@ namespace {
 	 *
 	 */
 	struct Blacklist {
-		// Мютекс для блокировки потока
+		// Мьютекс для синхронизации доступа
 		lock_state_t <std::shared_mutex> mtx;
 		// Чёрный список для блокировки IPv4-адресов
 		unordered_set <uint32_t> ipv4;
@@ -260,7 +260,7 @@ namespace {
 		event::id_t fid;
 		// Интервал сохранения дампа кэша в миллисекундах
 		uint32_t interval;
-		// Мютекс для блокировки потока
+		// Мьютекс для синхронизации доступа
 		lock_state_t <std::shared_mutex> mtx;
 		// Список IPv4-адресов с доменными именами
 		unordered_map <uint32_t, vector <EntryDomain>> ipv4;
@@ -277,11 +277,11 @@ namespace {
 };
 
 /**
- * Инкапсулируем статические типы данных в пространство имён
+ * Внутренние служебные объекты
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Пространство имён библиотеки
 	 */
 	using namespace awh;
 
@@ -291,7 +291,7 @@ namespace {
 	 */
 	random_device __awh_randev__;
 	/**
-	 * @brief Мютекс для блокировки потока
+	 * @brief Мьютекс для синхронизации доступа
 	 *
 	 */
 	lock_state_t <std::mutex> __awh_mtx__;
@@ -303,7 +303,7 @@ namespace {
 };
 
 /**
- * Инкапсулируем структуры протокола DNS в собственное пространство имён
+ * Структуры протокола DNS
  */
 namespace dns {
 	/**
@@ -317,7 +317,7 @@ namespace dns {
 	 *
 	 */
 	typedef struct ARecord {
-		// Доменное имя, связанное с этим A-записью
+		// Доменное имя записи
 		string name;
 		// IPv4-адрес в виде 32-битного целого числа
 		uint32_t ip;
@@ -355,7 +355,7 @@ namespace dns {
 	 *
 	 */
 	typedef struct NSRecord {
-		// Доменное имя, связанное с этой NS-записью
+		// Доменное имя записи
 		string name;
 		// Доменное имя сервера имён, который авторитетен для данного домена
 		string server;
@@ -374,9 +374,9 @@ namespace dns {
 	 *
 	 */
 	typedef struct CNAMERecord {
-		// Доменное имя, связанное с этой CNAME-записью
+		// Доменное имя записи
 		string name;
-		// Каноническое имя, связанное с этой CNAME-записью
+		// Каноническое имя записи
 		string canonical;
 		// Время жизни в секундах
 		uint32_t ttl;
@@ -393,7 +393,7 @@ namespace dns {
 	 *
 	 */
 	typedef struct MXRecord {
-		// Доменное имя, связанное с этой MX-записью
+		// Доменное имя записи
 		string name;
 		// Доменное имя почтового сервера, который обрабатывает почту для данного домена
 		string server;
@@ -414,9 +414,9 @@ namespace dns {
 	 *
 	 */
 	typedef struct TXTRecord {
-		// Доменное имя, связанное с этой TXT-записью
+		// Доменное имя записи
 		string name;
-		// Список текстовых строк, связанных с этой TXT-записью (может содержать несколько строк)
+		// Текстовые значения записи; может содержать несколько строк
 		vector <string> texts;
 		// Время жизни в секундах
 		uint32_t ttl;
@@ -433,7 +433,7 @@ namespace dns {
 	 *
 	 */
 	typedef struct SOARecord {
-		// Доменное имя, связанное с этой SOA-записью
+		// Доменное имя записи
 		string name;
 		// Доменное имя главного сервера имён для данного домена
 		string mname;
@@ -466,7 +466,7 @@ namespace dns {
 	 *
 	 */
 	typedef struct PTRRecord {
-		// Доменное имя, связанное с этой PTR-записью
+		// Доменное имя записи
 		string name;
 		// Доменное имя, на которое указывает эта PTR-запись
 		string domain;
@@ -555,7 +555,7 @@ namespace dns {
 };
 
 /**
- * Инкапсулируем вспомогательные функции протокола DNS в собственное пространство имён
+ * Вспомогательные функции протокола DNS
  */
 namespace dns {
 	/**
@@ -1095,13 +1095,13 @@ namespace dns {
 	}
 
 	/**
-	 * @brief Функция выполнения резолвинга доменного имени
+	 * @brief Формирование DNS-запроса для указанной записи
 	 *
 	 * @param id     идентификатор DNS-резолвера
 	 * @param record тип DNS-записи для запроса (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
-	 * @param domain доменное имя сервера
+	 * @param domain доменное имя
 	 * @param log    объект для работы с логами
-	 * @return       размер буфера данных, отправленного на резолвинг доменного имени, или 0 при ошибке
+	 * @return       размер сформированного DNS-запроса или 0 при ошибке
 	 */
 	static size_t request(const unit::dns_t::id_t id, const unit::dns_t::record_t record, string_view domain, const log_t * log) noexcept {
 		// Результат работы функции
@@ -1200,7 +1200,7 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) n
 	return (* this);
 }
 /**
- * @brief Оператор [=] присванивания параметров пакета
+ * @brief Оператор [=] копирующего присваивания параметров пакета
  *
  * @param packet объект параметров пакета
  * @return        текущие параметры пакета
@@ -2137,7 +2137,7 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 	}
 }
 /**
- * @brief Метод обработки ответов от DNS-сервера на запросы резолвинга доменных имён
+ * @brief Обработка ответов DNS-сервера
  *
  * @param eid  идентификатор события чтения из DNS-резолвера
  * @param data данные события чтения из DNS-резолвера
@@ -2696,7 +2696,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						{
 							// Выполняем блокировку потока для работы с событием DNS-резолвера
 							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-							// Отправляем запрос на резолвинг доменного имени
+							// Отправляем DNS-запрос
 							this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
 						}
 						// Выходим из функции
@@ -2746,7 +2746,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 		if(action == event::action_t::READ){
 			// Идентификатор DNS-запроса
 			id_t id = 0;
-			// Количество попыток резолвинга доменного имени
+			// Количество попыток повторной отправки DNS-запроса
 			uint8_t attempt = 0;
 			// Результат извлечения доменного имени
 			bool result = false;
@@ -2765,20 +2765,20 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 					auto j = this->_transfer.waiting.find(i->second);
 					// Если пакет найден в контейнере активных пакетов
 					if(j != this->_transfer.waiting.end()){
-						// Если попытки резолвинга не превышают максимально допустимое количество
+						// Если число повторных попыток не превышает допустимый предел
 						if(j->second.attempt < this->_transfer.attempts.load(std::memory_order_acquire)){
-							// Увеличиваем количество попыток резолвинга доменного имени
+							// Увеличиваем число повторных попыток DNS-запроса
 							j->second.attempt++;
 							// Выполняем блокировку потока для работы с событием DNS-резолвера
 							const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-							// Отправляем запрос на резолвинг доменного имени
+							// Повторно отправляем DNS-запрос
 							this->_io->send(eid, j->second.payload.buffer.get(), j->second.payload.size);
 							// Запрещаем завершение резолвера после истечения таймаута
 							return false;
 						}
 						// Получаем идентификатор DNS-запроса
 						id = i->second;
-						// Устанавливаем количество попыток резолвинга доменного имени
+						// Сохраняем число выполненных повторных попыток
 						attempt = j->second.attempt;
 						// Получаем размер запроса
 						size_t offset = sizeof(::dns::head_t);
@@ -2801,7 +2801,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 								{
 									// Выполняем блокировку потока для работы с событием DNS-резолвера
 									const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-									// Отправляем запрос на резолвинг доменного имени
+									// Отправляем DNS-запрос
 									this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
 								}
 								// Завершаем работу резолвера
@@ -2929,16 +2929,16 @@ void awh::unit::DNS::callback(const callback_t & callback) noexcept {
 	this->_callback.set("cname", callback);
 	// Выполняем установку функции обратного вызова при получении IP-адресов
 	this->_callback.set("address", callback);
-	// Выполняем установку функции обратного вызова при получении события истечения количества попыток резолвинга доменного имени
+	// Устанавливаем обработчик исчерпания числа попыток DNS-запроса
 	this->_callback.set("attempts", callback);
 }
 /**
- * @brief Метод установки количества попыток резолвинга доменного имени
+ * @brief Метод установки числа попыток DNS-запроса
  *
- * @param attempts количество попыток резолвинга доменного имени
+ * @param attempts количество попыток DNS-запроса
  */
 void awh::unit::DNS::setAttempts(const uint8_t attempts) noexcept {
-	// Устанавливаем количество попыток резолвинга доменного имени
+	// Устанавливаем число попыток DNS-запроса
 	this->_transfer.attempts.store(attempts, std::memory_order_release);
 }
 /**
@@ -6300,18 +6300,18 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 	}
 }
 /**
- * @brief Метод получения идентификатора DNS-резолвера для выполнения запроса к DNS-серверу
+ * @brief Метод получения идентификатора DNS-запроса
  *
- * @return идентификатор DNS-резолвера для выполнения запроса к DNS-серверу
+ * @return идентификатор DNS-запроса
  */
 awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
-	// Создаём идентификатор события DNS-резолвера
+	// Создаём идентификатор DNS-запроса
 	return ::dns::identifier();
 }
 /**
- * @brief Метод поиска доменного имени соответствующего IP-адресу
+ * @brief Метод поиска доменного имени по IP-адресу
  *
- * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-запроса
  * @param ip      адрес для поиска доменного имени
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
@@ -6319,19 +6319,19 @@ awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
 bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t timeout) noexcept {
 	// Если список резолверов для семейства IPv6 не пустой
 	if(!this->_resolver.idv6.empty())
-		// Выполняем поиск доменного имени соответствующему IP-адресу
+		// Выполняем обратный DNS-запрос для IPv6
 		return this->search(id, event::family_t::IPV6, ip, timeout);
 	// Если список резолверов для семейства IPv4 не пустой
 	if(!this->_resolver.idv4.empty())
-		// Выполняем поиск доменного имени соответствующему IP-адресу
+		// Выполняем обратный DNS-запрос для IPv4
 		return this->search(id, event::family_t::IPV4, ip, timeout);
 	// Выводим отрицательный результат
 	return false;
 }
 /**
- * @brief Метод поиска доменного имени соответствующего IP-адресу
+ * @brief Метод поиска доменного имени по IP-адресу
  *
- * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-запроса
  * @param ip      адрес для поиска доменного имени
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
@@ -6494,7 +6494,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
 					this->_transfer.attached.emplace(eid, id);
 				}
-				// Отправляем запрос на резолвинг доменного имени
+				// Отправляем DNS-запрос
 				return (this->_io->send(eid, ::dns::buffer, size) > 0);
 			}
 		}
@@ -6520,9 +6520,9 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 	return false;
 }
 /**
- * @brief Метод поиска доменного имени соответствующего IP-адресу
+ * @brief Метод поиска доменного имени по IP-адресу
  *
- * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-запроса
  * @param family  тип интернет-протокола IPv4/IPv6
  * @param ip      адрес для поиска доменного имени
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
@@ -6710,7 +6710,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
 					this->_transfer.attached.emplace(eid, id);
 				}
-				// Отправляем запрос на резолвинг доменного имени
+				// Отправляем DNS-запрос
 				return (this->_io->send(eid, ::dns::buffer, size) > 0);
 			}
 		}
@@ -6736,11 +6736,11 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 	return false;
 }
 /**
- * @brief Метод выполнения произвольного запроса
+ * @brief Метод выполнения произвольного DNS-запроса
  *
- * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
- * @param record  тип DNS-записи которую необходимо получить
- * @param domain  доменное имя сервера
+ * @param id      идентификатор DNS-запроса
+ * @param record  тип DNS-записи, которую необходимо получить
+ * @param domain  доменное имя
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
@@ -6835,7 +6835,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
 				this->_transfer.attached.emplace(eid, id);
 			}
-			// Отправляем запрос на резолвинг доменного имени
+			// Отправляем DNS-запрос
 			return (this->_io->send(eid, ::dns::buffer, size) > 0);
 		}
 	/**
@@ -6860,31 +6860,31 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 	return false;
 }
 /**
- * @brief Метод резолвинга доменного имени
+ * @brief Метод разрешения доменного имени
  *
- * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
- * @param domain  доменное имя сервера
+ * @param id      идентификатор DNS-запроса
+ * @param domain  доменное имя
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
 bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t timeout) noexcept {
 	// Если список резолверов для семейства IPv6 не пустой
 	if(!this->_resolver.idv6.empty())
-		// Выполняем резолвинг доменного имени
+		// Выполняем разрешение доменного имени
 		return this->resolve(id, event::family_t::IPV6, domain, timeout);
 	// Если список резолверов для семейства IPv4 не пустой
 	if(!this->_resolver.idv4.empty())
-		// Выполняем резолвинг доменного имени
+		// Выполняем разрешение доменного имени
 		return this->resolve(id, event::family_t::IPV4, domain, timeout);
 	// Выводим отрицательный результат
 	return false;
 }
 /**
- * @brief Метод резолвинга доменного имени
+ * @brief Метод разрешения доменного имени
  *
- * @param id      идентификатор DNS-резолвера для которого выполняется поиск доменного имени
+ * @param id      идентификатор DNS-запроса
  * @param family  тип интернет-протокола IPv4/IPv6
- * @param domain  доменное имя сервера
+ * @param domain  доменное имя
  * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
@@ -7068,7 +7068,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Добавляем идентификатор события клиента DNS-резолвера в контейнер соответствий с DNS-запросами
 					this->_transfer.attached.emplace(eid, id);
 				}
-				// Отправляем запрос на резолвинг доменного имени
+				// Отправляем DNS-запрос
 				return (this->_io->send(eid, ::dns::buffer, size) > 0);
 			}
 		}
