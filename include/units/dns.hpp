@@ -593,6 +593,14 @@ namespace awh {
 				void setTimeout(const uint32_t timeout) noexcept;
 			public:
 				/**
+				 * @brief Метод получения количества DNS-резолверов для выполнения запросов к DNS-серверам
+				 *
+				 * @param family семейство IP-адресов IPv4/IPv6
+				 * @return       количество DNS-резолверов
+				 */
+				uint16_t resolvers(const event::family_t family) const noexcept;
+			public:
+				/**
 				 * @brief Метод инициализации DNS-резолверов
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6

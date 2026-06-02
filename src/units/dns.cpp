@@ -5068,6 +5068,57 @@ void awh::unit::DNS::setTimeout(const uint32_t timeout) noexcept {
 	}
 }
 /**
+ * @brief Метод получения количества DNS-резолверов для выполнения запросов к DNS-серверам
+ *
+ * @param family семейство IP-адресов IPv4/IPv6
+ * @return       количество DNS-резолверов
+ */
+uint16_t awh::unit::DNS::resolvers(const event::family_t family) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Выводим количество DNS-резолверов для семейство IPv4
+				return static_cast <uint16_t> (this->_resolver.idv4.size());
+			}
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Выполняем блокировку потока для работы с событием DNS-резолвера
+				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Выводим количество DNS-резолверов для семейство IPv6
+				return static_cast <uint16_t> (this->_resolver.idv6.size());
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
  * @brief Метод инициализации DNS-резолверов
  *
  * @param family семейство IP-адресов IPv4/IPv6

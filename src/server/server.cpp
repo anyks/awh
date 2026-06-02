@@ -46,6 +46,16 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 				this->_callback.call <void (const event::status_t)> ("status", status);
 			// Если работа сервера запущена
 			if(status == event::status_t::LAUNCHED){
+				// Количество активных DNS-резолверов
+				uint16_t count = 0;
+				// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
+				if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
+					// Выполняем инициализацию DNS-резолвера для текущего сервера
+					this->_dns->init(event::family_t::IPV4, count);
+				// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
+				if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
+					// Выполняем инициализацию DNS-резолвера для текущего сервера
+					this->_dns->init(event::family_t::IPV6, count);
 				// Выполняем запуск работы сервера, если сервер не запущен
 				if(!this->_server->launch(this->_eid)){
 					// Если функция обратного вызова не установлена
