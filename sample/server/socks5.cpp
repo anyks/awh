@@ -181,7 +181,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем имя кластера для сервера
 	unit.clusterName("ANYKS");
 	// Устанавливаем количество вокеров кластера для сервера
-	unit.clusterCount(0);
+	unit.clusterCount(2);
 	// Включаем режим кластера для сервера
 	unit.clusterMode(event::mode_t::ENABLED);
 	// Создаём событие сервера TCP и сохраняем его идентификатор
@@ -224,6 +224,8 @@ int32_t main(int32_t argc, char * argv[]){
 	server.setEventId(uid2);
 	// Устанавливаем идентификатор события первого UDP сервера 3
 	server.setEventId(uid3);
+	// Устанавливаем диапазон портов для выделения портов UDP серверов
+	// server.setRangePorts(62000, 63000);
 	// Устанавливаем порт и хост сервера
 	if(server.setPort(eid, 2222) && server.setPort(uid1, 2223) && server.setPort(uid2, 2224) && server.setPort(uid3, 2225) &&
 	   server.setHost(eid, "localhost") && server.setHost(uid1, "localhost") && server.setHost(uid2, "localhost") && server.setHost(uid3, "localhost")){

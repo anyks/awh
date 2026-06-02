@@ -13,6 +13,13 @@
  */
 
 /**
+ * Стандартные модули
+ */
+#include <random>
+#include <optional>
+#include <algorithm>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <server/socks5.hpp>
@@ -26,6 +33,136 @@ using namespace std;
  * Подписываемся на пространство имён заполнителя
  */
 using namespace placeholders;
+
+/**
+ * Инкапсулируем внутренние классы в пространство имён
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Класс для управления динамическим выделением портов для UDP серверов
+	 *
+	 */
+	typedef class PortAllocator {
+		private:
+			// Список доступных портов для выделения
+			vector <uint16_t> _ports;
+		private:
+			// Мьютекс для синхронизации доступа к списку портов
+			mutable lock_state_t <std::shared_mutex> _mtx;
+		public:
+			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode флаг режима безопасности потоков
+			 */
+			void threadSafety(const bool mode) noexcept {
+				// Устанавливаем режим безопасности потоков для мьютекса, который синхронизирует доступ к списку портов
+				this->_mtx.enabled = mode;
+			}
+		public:
+			/**
+			 * @brief Метод получения количества доступных портов для выделения
+			 *
+			 * @return количество доступных портов для выделения
+			 */
+			size_t available() const noexcept {
+				// Блокируем доступ к списку портов для получения количества доступных портов
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Возвращаем количество доступных портов для выделения
+				return this->_ports.size();
+			}
+		public:
+			/**
+			 * @brief Метод возвращения порта в пул после его использования
+			 *
+			 * @param port порт для возвращения в пул
+			 */
+			void release(const uint16_t port) noexcept {
+				// Блокируем доступ к списку портов для возвращения порта в пул
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Проверка на дубликаты на случай багов в логике освобождения
+				if(std::find(this->_ports.begin(), this->_ports.end(), port) == this->_ports.end())
+					// Возвращаем порт в пул, добавляя его обратно в список доступных портов для выделения
+					this->_ports.push_back(port);
+			}
+		public:
+			/**
+			 * @brief Метод выделения порта для UDP сервера
+			 *
+			 * @return выделенный порт или nullopt, если порты закончились
+			 */
+			optional <uint16_t> allocate() noexcept {
+				// Блокируем доступ к списку портов для выделения
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Если список портов для выделения пуст
+				if(this->_ports.empty())
+					// Возвращаем nullopt, если порты кончились
+					return std::nullopt; 
+				// Получаем порт из списка доступных портов для выделения
+				const uint16_t result = this->_ports.back();
+				// Удаляем выделенный порт из списка доступных портов для выделения
+				this->_ports.pop_back();
+				// Возвращаем выделенный порт
+				return result;
+			}
+		public:
+			/**
+			 * @brief Метод инициализации списка портов для выделения
+			 *
+			 * @param min минимальный порт для выделения
+			 * @param max максимальный порт для выделения
+			 * @throws    std::invalid_argument если диапазон портов некорректный
+			 */
+			void init(const uint16_t min, const uint16_t max) noexcept {
+				// Блокируем доступ к списку портов для выделения
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Очищаем список портов для выделения
+				this->_ports.clear();
+				// Проверяем корректность диапазона портов
+				if((min > max) || (min < 1024) || (max > 65535))
+					// Выходим из функции, если диапазон портов некорректный
+					return;
+				// Резервируем память для списка портов
+				this->_ports.reserve(max - min + 1);
+				/**
+				 * Заполняем список портов для выделения.
+				 */
+				for(uint16_t port = min; port <= max; ++port)
+					// Добавляем порт в список доступных портов для выделения
+					this->_ports.push_back(port);
+				/**
+				 * Перемешиваем порты. Это важно!
+				 * Если порты идут по порядку, злоумышленнику или багованному
+				 * фаерволу легче предсказать или заблокировать следующий порт.
+				 */
+				std::random_device randev;
+				// Выбираем стандарт рандомайзера
+				mt19937 generator(randev());
+				// Перемешиваем список портов для выделения
+				std::shuffle(this->_ports.begin(), this->_ports.end(), generator);
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit PortAllocator() noexcept {
+				// Деактивируем мьютекс на время инициализации
+				this->_mtx.enabled = false;
+			}
+	} port_alloc_t;
+
+	/**
+	 * @brief Статический объект для управления динамическим выделением портов для UDP серверов
+	 *
+	 */
+	port_alloc_t __awh_port_allocator__;
+};
 
 /**
  * Инкапсулируем статические параметры в пространство имён
@@ -207,16 +344,6 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 				this->_callback.call <void (const event::status_t)> ("status", status);
 			// Если работа сервера запущена
 			if(status == event::status_t::LAUNCHED){
-				// Количество активных DNS-резолверов
-				uint16_t count = 0;
-				// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
-				if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
-					// Выполняем инициализацию DNS-резолвера для текущего сервера
-					this->_dns->init(event::family_t::IPV4, count);
-				// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
-				if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
-					// Выполняем инициализацию DNS-резолвера для текущего сервера
-					this->_dns->init(event::family_t::IPV6, count);
 				// Выполняем запуск работы сервера, если сервер не запущен
 				if(!this->_server->launch(this->_eid)){
 					// Если функция обратного вызова не установлена
@@ -237,6 +364,18 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 					}
 				// Если сервер запущен удачно
 				} else {
+					// Количество активных DNS-резолверов
+					uint16_t count = 0;
+					// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
+					if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
+						// Выполняем инициализацию DNS-резолвера для текущего сервера
+						this->_dns->init(event::family_t::IPV4, count);
+					// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
+					if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
+						// Выполняем инициализацию DNS-резолвера для текущего сервера
+						this->_dns->init(event::family_t::IPV6, count);
+					// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+					this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("launch")){
 						/**
@@ -253,53 +392,6 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(this->_eid, event::address_t::IPV6), this->_server->getPort(this->_eid));
 							break;
-						}
-					}
-					// Если список поддерживаемых UDP-серверов не пустой
-					if(!this->_servers.empty()){
-						/**
-						 * Выполняем перебор всего списка поддерживаемых UDP-серверов
-						 */
-						for(const auto & eid : this->_servers){
-							// Выполняем запуск работы сервера, если сервер не запущен
-							if(!this->_server->launch(eid)){
-								// Если функция обратного вызова не установлена
-								if(!this->_callback.is("error")){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, eid);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, eid);
-									#endif
-								}
-							// Если сервер запущен удачно
-							} else {
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("launch")){
-									/**
-									 * Определяем семейство адресов с которым работает сервер
-									 */
-									switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(eid))){
-										// Если сервер работает с адресами IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(eid, event::address_t::IPV4), this->_server->getPort(eid));
-										break;
-										// Если сервер работает с адресами IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6):
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(eid, event::address_t::IPV6), this->_server->getPort(eid));
-										break;
-									}
-								}
-							}
 						}
 					}
 				}
@@ -1358,13 +1450,11 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 										// Выполняем функцию обратного вызова
 										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_server->getAddress(this->_eid, event::address_t::IPV4));
 									// Если список поддерживаемых UDP-серверов пустой
-									if(this->_servers.empty()){
+									if(this->_servers.empty())
 										// Запускаем сервер
 										this->_server->start();
-										// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-										this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
 									// Если список поддерживаемых UDP-серверов не пустой
-									} else {
+									else {
 										// Получаем идентификатор UDP-сервера
 										const event::id_t eid = (* this->_servers.begin());
 										// Выполняем поиск хоста принадлежащему этому UDP-серверу
@@ -1384,7 +1474,7 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -1405,8 +1495,6 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 							case static_cast <uint8_t> (event::status_t::SUCCESS): {
 								// Запускаем сервер
 								this->_server->start();
-								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
 							} break;
 						}
 					}
@@ -1428,13 +1516,11 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 										// Выполняем функцию обратного вызова
 										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_server->getAddress(this->_eid, event::address_t::IPV6));
 									// Если список поддерживаемых UDP-серверов пустой
-									if(this->_servers.empty()){
+									if(this->_servers.empty())
 										// Запускаем сервер
 										this->_server->start();
-										// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-										this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
 									// Если список поддерживаемых UDP-серверов не пустой
-									} else {
+									else {
 										// Получаем идентификатор UDP-сервера
 										const event::id_t eid = (* this->_servers.begin());
 										// Выполняем поиск хоста принадлежащему этому UDP-серверу
@@ -1454,7 +1540,7 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -1475,8 +1561,6 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 							case static_cast <uint8_t> (event::status_t::SUCCESS): {
 								// Запускаем сервер
 								this->_server->start();
-								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
 							} break;
 						}
 					}
@@ -1490,6 +1574,12 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 			switch(static_cast <uint8_t> (family)){
 				// Если сервер работает с адресами IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
+					// Выделяем порт для UDP-сервера
+					auto port = ::__awh_port_allocator__.allocate();
+					// Если порт выделен успешно, устанавливаем его для UDP-сервера
+					if(port)
+						// Устанавливаем выделенный порт для UDP-сервера
+						this->_server->setPort(eid, * port);
 					// Устанавливаем адрес хоста целевой текущей машины
 					if(this->_server->setAddress(eid, event::address_t::IPV4, addr)){
 						/**
@@ -1504,6 +1594,31 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 									if(this->_callback.is("ready"))
 										// Выполняем функцию обратного вызова
 										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, domain, this->_server->getAddress(eid, event::address_t::IPV4));
+									// Выполняем запуск работы сервера, если сервер не запущен
+									if(!this->_server->launch(eid)){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, eid);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+											#endif
+										}
+									// Если сервер запущен удачно
+									} else {
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("launch"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(eid, event::address_t::IPV4), this->_server->getPort(eid));
+									}
 									// Выполняем поиск хоста принадлежащему этому UDP-серверу
 									auto i = this->_servers.find(eid);
 									// Если хост для этого UDP-сервера найден
@@ -1529,7 +1644,7 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -1541,30 +1656,29 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
 												}
 											}
-										// Если все UDP-серверы в списке были проверены
-										} else {
-											// Запускаем сервер
-											this->_server->start();
-											// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-											this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
-										}
+										// Если все UDP-серверы в списке были проверены, запускаем сервер
+										} else this->_server->start();
 									}
 								}
 							} break;
 							// Если событие сервера инициализировано, запускаем его
 							case static_cast <uint8_t> (event::status_t::INITIAL):
 							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS): {
+							case static_cast <uint8_t> (event::status_t::SUCCESS):
 								// Запускаем сервер
 								this->_server->start();
-								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
-							} break;
+							break;
 						}
 					}
 				} break;
 				// Если сервер работает с адресами IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Выделяем порт для UDP-сервера
+					auto port = ::__awh_port_allocator__.allocate();
+					// Если порт выделен успешно, устанавливаем его для UDP-сервера
+					if(port)
+						// Устанавливаем выделенный порт для UDP-сервера
+						this->_server->setPort(eid, * port);
 					// Устанавливаем адрес хоста целевой текущей машины
 					if(this->_server->setAddress(eid, event::address_t::IPV6, addr)){
 						/**
@@ -1579,6 +1693,31 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 									if(this->_callback.is("ready"))
 										// Выполняем функцию обратного вызова
 										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, domain, this->_server->getAddress(eid, event::address_t::IPV6));
+									// Выполняем запуск работы сервера, если сервер не запущен
+									if(!this->_server->launch(eid)){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, eid);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+											#endif
+										}
+									// Если сервер запущен удачно
+									} else {
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("launch"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(eid, event::address_t::IPV6), this->_server->getPort(eid));
+									}
 									// Выполняем поиск хоста принадлежащему этому UDP-серверу
 									auto i = this->_servers.find(eid);
 									// Если хост для этого UDP-сервера найден
@@ -1604,7 +1743,7 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -1616,25 +1755,18 @@ void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id
 													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
 												}
 											}
-										// Если все UDP-серверы в списке были проверены
-										} else {
-											// Запускаем сервер
-											this->_server->start();
-											// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-											this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
-										}
+										// Если все UDP-серверы в списке были проверены, запускаем сервер
+										} else this->_server->start();
 									}
 								}
 							} break;
 							// Если событие сервера инициализировано, запускаем его
 							case static_cast <uint8_t> (event::status_t::INITIAL):
 							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS): {
+							case static_cast <uint8_t> (event::status_t::SUCCESS):
 								// Запускаем сервер
 								this->_server->start();
-								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
-							} break;
+							break;
 						}
 					}
 				} break;
@@ -1799,6 +1931,8 @@ void awh::server::Socks5::start() noexcept {
 void awh::server::Socks5::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности работы потоков для объекта блокировки
 	this->_mtx.enabled = mode;
+	// Устанавливаем режим безопасности работы потоков для объекта выделения портов
+	::__awh_port_allocator__.threadSafety(mode);
 	// Устанавливаем режим безопасности работы потоков для объекта сервера
 	server_t::threadSafety(mode);
 }
@@ -2209,6 +2343,16 @@ bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noex
 	}
 	// Выводим результат по умолчанию
 	return false;
+}
+/**
+ * @brief Метод установки диапазона портов для выделения портов UDP серверов
+ *
+ * @param start начальный порт диапазона для выделения
+ * @param end   конечный порт диапазона для выделения
+ */
+void awh::server::Socks5::setRangePorts(const uint16_t start, const uint16_t end) noexcept {
+	// Инициализируем пул портов для подключения к сети клиентов
+	::__awh_port_allocator__.init(start, end);
 }
 /**
  * @brief Метод получения порта удаленного клиента или текущего сервера

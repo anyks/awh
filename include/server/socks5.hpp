@@ -411,6 +411,14 @@ namespace awh {
 				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
 				/**
+				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
+				 *
+				 * @param start начальный порт диапазона для выделения
+				 * @param end   конечный порт диапазона для выделения
+				 */
+				void setRangePorts(const uint16_t start, const uint16_t end) noexcept;
+			public:
+				/**
 				 * @brief Метод получения порта удаленного клиента или текущего сервера
 				 *
 				 * @param eid идентификатор события клиента или сервера
