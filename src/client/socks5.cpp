@@ -798,37 +798,53 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									 * Перебираем все активные сессии клиентов, работающих через прокси
 									 */
 									for(auto & session : this->_sessions){
-										// Устанавливаем порт хоста для подключения к удалённому серверу
-										if(this->_client->setPort(session.second.first, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
-											// Устанавливаем порт хоста для подключения к удалённому серверу
-											if(this->_client->setTarget(session.second.first, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())){
-												// Выполняем фиксацию изменений для клиента, работающего через прокси
-												if(this->_client->commit(session.second.first)){
-													// Выполняем запуск работы клиента, работающего через прокси
-													if(this->_client->launch(session.second.first))
-														// Добавляем идентификатор события клиента, работающего через прокси, и идентификатор TLS для клиента в список активных сессий клиентов
-														sessions.emplace(session.second.first, session.second.second);
-													// Если запуск работы клиента, работающего через прокси, не выполнен
-													else {
-														// Если функция обратного вызова не установлена
-														if(!this->_callback.is("error")){
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
-																this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(session.second.first, buffer, size), log_t::flag_t::WARNING, session.second.first);
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Выводим сообщение об ошибке
-																this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, session.second.first);
-															#endif
+										/**
+										 * Определяем тип данных адреса полученного от socks5 прокси-сервера
+										 */
+										switch(static_cast <uint8_t> (this->_ctx.host->type)){
+											// Если тип данных соответствует FQDN
+											case static_cast <uint8_t> (net::type_t::FQDN): {
+
+												cout << " !!!!!!!!!!!!!!!! " << awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain << ":" << awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port << endl;
+
+											} break;
+											// Если тип данных соответствует IPv4
+											case static_cast <uint8_t> (net::type_t::IPV4):
+											// Если тип данных соответствует IPv6
+											case static_cast <uint8_t> (net::type_t::IPV6): {
+												// Устанавливаем порт хоста для подключения к удалённому серверу
+												if(this->_client->setPort(session.second.first, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
+													// Устанавливаем порт хоста для подключения к удалённому серверу
+													if(this->_client->setTarget(session.second.first, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())){
+														// Выполняем фиксацию изменений для клиента, работающего через прокси
+														if(this->_client->commit(session.second.first)){
+															// Выполняем запуск работы клиента, работающего через прокси
+															if(this->_client->launch(session.second.first))
+																// Добавляем идентификатор события клиента, работающего через прокси, и идентификатор TLS для клиента в список активных сессий клиентов
+																sessions.emplace(session.second.first, session.second.second);
+															// Если запуск работы клиента, работающего через прокси, не выполнен
+															else {
+																// Если функция обратного вызова не установлена
+																if(!this->_callback.is("error")){
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(session.second.first, buffer, size), log_t::flag_t::WARNING, session.second.first);
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, session.second.first);
+																	#endif
+																}
+															}
 														}
 													}
 												}
-											}
+											} break;
 										}
 									}
 								}
@@ -915,39 +931,55 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									switch(static_cast <uint8_t> (origin->protocol)){
 										// Если протокол соответствует UDP
 										case static_cast <uint8_t> (event::protocol_t::UDP): {
-											// Устанавливаем порт хоста для подключения к удалённому серверу
-											if(this->_client->setPort(eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
-												// Устанавливаем порт хоста для подключения к удалённому серверу
-												if(this->_client->setTarget(eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())){
-													// Выполняем фиксацию изменений для клиента, работающего через прокси
-													if(this->_client->commit(eid)){
-														// Выполняем запуск работы клиента, работающего через прокси
-														if(this->_client->launch(eid)){
-															// Получаем порт хоста для подключения к удалённому серверу
-															port = this->_client->getPort(eid);
-															// Получаем адрес хоста для подключения к удалённому серверу
-															target = this->_client->getTarget(eid);
-														// Если запуск работы клиента, работающего через прокси, не выполнен
-														} else {
-															// Если функция обратного вызова не установлена
-															if(!this->_callback.is("error")){
-																/**
-																 * Если включён режим отладки
-																 */
-																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
-																	this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
-																/**
-																 * Если режим отладки не включён
-																 */
-																#else
-																	// Выводим сообщение об ошибке
-																	this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, eid);
-																#endif
+											/**
+											 * Определяем тип данных адреса полученного от socks5 прокси-сервера
+											 */
+											switch(static_cast <uint8_t> (this->_ctx.host->type)){
+												// Если тип данных соответствует FQDN
+												case static_cast <uint8_t> (net::type_t::FQDN): {
+
+													cout << " !!!!!!!!!!!!!!!! " << awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain << ":" << awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port << endl;
+
+												} break;
+												// Если тип данных соответствует IPv4
+												case static_cast <uint8_t> (net::type_t::IPV4):
+												// Если тип данных соответствует IPv6
+												case static_cast <uint8_t> (net::type_t::IPV6): {
+													// Устанавливаем порт хоста для подключения к удалённому серверу
+													if(this->_client->setPort(eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
+														// Устанавливаем порт хоста для подключения к удалённому серверу
+														if(this->_client->setTarget(eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())){
+															// Выполняем фиксацию изменений для клиента, работающего через прокси
+															if(this->_client->commit(eid)){
+																// Выполняем запуск работы клиента, работающего через прокси
+																if(this->_client->launch(eid)){
+																	// Получаем порт хоста для подключения к удалённому серверу
+																	port = this->_client->getPort(eid);
+																	// Получаем адрес хоста для подключения к удалённому серверу
+																	target = this->_client->getTarget(eid);
+																// Если запуск работы клиента, работающего через прокси, не выполнен
+																} else {
+																	// Если функция обратного вызова не установлена
+																	if(!this->_callback.is("error")){
+																		/**
+																		 * Если включён режим отладки
+																		 */
+																		#if DEBUG_MODE
+																			// Выводим сообщение об ошибке
+																			this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+																		/**
+																		 * Если режим отладки не включён
+																		 */
+																		#else
+																			// Выводим сообщение об ошибке
+																			this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+																		#endif
+																	}
+																}
 															}
 														}
 													}
-												}
+												} break;
 											}
 										} break;
 										// Если протокол соответствует TCP
@@ -2434,8 +2466,6 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view 
 						} break;
 						// Для типа IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-							// Выполняем парсинг IP-адреса
-							this->_addr = addr;
 							// Создаём объект параметров подключения для идентификатора события клиента
 							attr = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип параметров подключения для идентификатора события клиента
@@ -2447,8 +2477,6 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view 
 						} break;
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-							// Выполняем парсинг IP-адреса
-							this->_addr = addr;
 							// Создаём объект параметров подключения для идентификатора события клиента
 							attr = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип параметров подключения для идентификатора события клиента
@@ -2551,8 +2579,6 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 						} break;
 						// Для типа IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-							// Выполняем парсинг IP-адреса
-							this->_addr = addr;
 							// Создаём объект параметров подключения для идентификатора события клиента
 							attr = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип параметров подключения для идентификатора события клиента
@@ -2564,8 +2590,6 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 						} break;
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-							// Выполняем парсинг IP-адреса
-							this->_addr = addr;
 							// Создаём объект параметров подключения для идентификатора события клиента
 							attr = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип параметров подключения для идентификатора события клиента
@@ -2966,8 +2990,6 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view 
 						} break;
 						// Для типа IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-							// Выполняем парсинг IP-адреса
-							this->_addr = addr;
 							// Создаём объект параметров подключения для идентификатора события клиента
 							attr = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип параметров подключения для идентификатора события клиента
@@ -2979,8 +3001,6 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view 
 						} break;
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-							// Выполняем парсинг IP-адреса
-							this->_addr = addr;
 							// Создаём объект параметров подключения для идентификатора события клиента
 							attr = make_unique <net::attr_net_t> ();
 							// Устанавливаем тип параметров подключения для идентификатора события клиента

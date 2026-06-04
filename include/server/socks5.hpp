@@ -145,6 +145,23 @@ namespace awh {
 				} origin_hash_t;
 			private:
 				/**
+				 * @brief Структура для хранения информации о сетевой конфигурации
+				 *
+				 */
+				typedef struct Network {
+					// Сетевой интерфейс для подключения к сети клиентов
+					string iface;
+					// Мютекс для блокировки потоков
+					lock_state_t <std::shared_mutex> mtx;
+					// Алиасы для внутренних адресов если мы работаем за NAT
+					unordered_map <origin_t, unique_ptr <net::attr_t>, origin_hash_t> aliases;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Network() noexcept : iface{""} {};
+				} net_t;
+				/**
 				 * @brief Структура для хранения информации о пирах
 				 *
 				 */
@@ -182,8 +199,8 @@ namespace awh {
 					 begin(0), end(0), count(0), address(nullptr) {};
 				} udp_server_t;
 			private:
-				// Сетевой интерфейс для подключения к сети клиентов
-				string _iface;
+				// Объект работы с сетью для сервера
+				net_t _net;
 			private:
 				// Объект работы с сетью
 				eth_t _eth;
@@ -198,7 +215,7 @@ namespace awh {
 				proto::server_socks5_t _socks5;
 			private:
 				// Мютекс для блокировки потоков
-				lock_state_t <std::shared_mutex> _mtx;
+				lock_state_t <std::mutex> _mtx;
 			private:
 				// Список для сопоставления идентификаторов пиров с удалёнными клиентами
 				unordered_map <event::id_t, peer_t> _peers;
@@ -391,6 +408,33 @@ namespace awh {
 				 * @return количество байт данных, отправленных клиенту
 				 */
 				size_t send(const event::id_t, const void *, const size_t) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки сообщения родительскому процессу
+				 *
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 */
+				size_t clusterSend(const void * buffer, const size_t size) noexcept;
+				/**
+				 * @brief Метод отправки сообщения дочернему процессу
+				 *
+				 * @param pid    идентификатор процесса для получения сообщения
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 */
+				size_t clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки сообщения всем дочерним процессам
+				 *
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 */
+				size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод перемещения данных между сервером и другим событием (заглушка для сервера SOCKS5)
@@ -636,23 +680,40 @@ namespace awh {
 				void setEventId(const event::id_t eid) noexcept;
 			public:
 				/**
-				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
+				 * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
 				 *
-				 * @param count   количество портов для выделения
-				 * @param begin   начальный порт диапазона для выделения
-				 * @param end     конечный порт диапазона для выделения
-				 * @param address адрес для запуска UDP-серверов
+				 * @param addr  объект параметров подключения внутреннего адреса
+				 * @param alias объект параметров подключения алиаса для внутреннего адреса
 				 */
-				void udp(const uint16_t count, const uint16_t begin, const uint16_t end, string_view address) noexcept;
+				void setAlias(const net::attr_t * addr, const net::attr_t * alias) noexcept;
+				/**
+				 * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
+				 *
+				 * @param addr  внутренний адрес работающий за NAT
+				 * @param port  порт внутреннего адреса работающий за NAT
+				 * @param alias внешний адрес для алиаса внутреннего адреса
+				 * @param eport внешний порт для алиаса внутреннего адреса
+				 */
+				void setAlias(string_view addr, const uint16_t port, string_view alias, const uint16_t eport) noexcept;
+			public:
 				/**
 				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
 				 *
-				 * @param count   количество портов для выделения
-				 * @param begin   начальный порт диапазона для выделения
-				 * @param end     конечный порт диапазона для выделения
-				 * @param address адрес для запуска UDP-серверов
+				 * @param count количество портов для выделения
+				 * @param begin начальный порт диапазона для выделения
+				 * @param end   конечный порт диапазона для выделения
+				 * @param addr  адрес для запуска UDP-серверов
 				 */
-				void udp(const uint16_t count, const uint16_t begin, const uint16_t end, const net::addr_t * address) noexcept;
+				void udp(const uint16_t count, const uint16_t begin, const uint16_t end, string_view addr) noexcept;
+				/**
+				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
+				 *
+				 * @param count количество портов для выделения
+				 * @param begin начальный порт диапазона для выделения
+				 * @param end   конечный порт диапазона для выделения
+				 * @param addr  адрес для запуска UDP-серверов
+				 */
+				void udp(const uint16_t count, const uint16_t begin, const uint16_t end, const net::addr_t * addr) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)
