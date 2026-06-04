@@ -444,23 +444,28 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 						switch(static_cast <uint8_t> (this->_server->clusterMode())){
 							// Если сервер запущен в режиме кластера
 							case static_cast <uint8_t> (event::mode_t::ENABLED): {
-								// Количество активных DNS-резолверов
-								uint16_t count = 0;
-								// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
-								if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
-									// Выполняем инициализацию DNS-резолвера для текущего сервера
-									this->_dns->init(event::family_t::IPV4, count);
-								// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
-								if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
-									// Выполняем инициализацию DNS-резолвера для текущего сервера
-									this->_dns->init(event::family_t::IPV6, count);
-								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
+								// Если DNS-резолвер подключён
+								if(this->_dns != nullptr){
+									// Количество активных DNS-резолверов
+									uint16_t count = 0;
+									// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
+									if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
+										// Выполняем инициализацию DNS-резолвера для текущего сервера
+										this->_dns->init(event::family_t::IPV4, count);
+									// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
+									if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
+										// Выполняем инициализацию DNS-резолвера для текущего сервера
+										this->_dns->init(event::family_t::IPV6, count);
+									// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+									this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
+								}
 							} break;
 							// Если сервер не запущен в режиме кластера
 							case static_cast <uint8_t> (event::mode_t::DISABLED): {
-								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
+								// Если DNS-резолвер подключён
+								if(this->_dns != nullptr)
+									// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+									this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
 								// Если порты для UDP серверов установлены корректно
 								if((this->_udp.begin > 0) && (this->_udp.begin < this->_udp.end)){
 									// Инициализируем пул портов для подключения к сети клиентов
@@ -707,6 +712,75 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 				switch(static_cast <uint8_t> (status)){
 					// Если событие DNS-резолвера запущено
 					case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+						/**
+						 * Определяем принадлежит ли хост, к IP-адресу
+						 */
+						switch(static_cast <uint8_t> (this->_addr.host(this->_host))){
+							// Для типа IPv4
+							case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+								// Устанавливаем адрес хоста целевой текущей машины
+								if(this->_server->setAddress(this->_eid, event::address_t::IPV4, this->_host)){
+									/**
+									 * В зависимости от статуса события сервера выполняем запуск
+									 */
+									switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
+										// Если событие сервера не запущено, запускаем его
+										case static_cast <uint8_t> (event::status_t::NONE): {
+											// Если событие сервера не запущено, запускаем его
+											if(this->_server->commit(this->_eid)){
+												// Если функция обратного вызова установлена
+												if(this->_callback.is("ready"))
+													// Выполняем функцию обратного вызова
+													this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, event::family_t::IPV4, this->_host, this->_server->getAddress(this->_eid, event::address_t::IPV4));
+												// Запускаем сервер
+												this->_server->start();
+											}
+										} break;
+										// Если событие сервера инициализировано, запускаем его
+										case static_cast <uint8_t> (event::status_t::INITIAL):
+										// Если событие находится в состоянии успешного подключения
+										case static_cast <uint8_t> (event::status_t::SUCCESS):
+											// Запускаем сервер
+											this->_server->start();
+										break;
+									}
+									// Выходим из функции
+									return;
+								}
+							} break;
+							// Для типа IPv6
+							case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+								// Устанавливаем адрес хоста целевой текущей машины
+								if(this->_server->setAddress(this->_eid, event::address_t::IPV6, this->_host)){
+									/**
+									 * В зависимости от статуса события сервера выполняем запуск
+									 */
+									switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
+										// Если событие сервера не запущено, запускаем его
+										case static_cast <uint8_t> (event::status_t::NONE): {
+											// Если событие сервера не запущено, запускаем его
+											if(this->_server->commit(this->_eid)){
+												// Если функция обратного вызова установлена
+												if(this->_callback.is("ready"))
+													// Выполняем функцию обратного вызова
+													this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, event::family_t::IPV6, this->_host, this->_server->getAddress(this->_eid, event::address_t::IPV6));
+												// Запускаем сервер
+												this->_server->start();
+											}
+										} break;
+										// Если событие сервера инициализировано, запускаем его
+										case static_cast <uint8_t> (event::status_t::INITIAL):
+										// Если событие находится в состоянии успешного подключения
+										case static_cast <uint8_t> (event::status_t::SUCCESS):
+											// Запускаем сервер
+											this->_server->start();
+										break;
+									}
+									// Выходим из функции
+									return;
+								}
+							} break;
+						}
 						// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
 						this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, this->_eid, _2, _3, _4);
 						// Выполняем резолвинг хоста текущего сервера

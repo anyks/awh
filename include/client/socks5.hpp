@@ -51,104 +51,25 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ Socks5 : public client_t {
 			private:
 				/**
-				 * @brief Класс идентификатора сессии клиента, работающего через прокси
+				 * @brief Структура параметров UDP-клиента
 				 *
 				 */
-				typedef class __AWH_SHARED_EXPORT__ Origin {
-					public:
-						// Тип адреса инициатора запроса
-						net::type_t type;
-						// Протокол инициатора запроса
-						event::protocol_t protocol;
-					public:
-						/**
-						 * @brief Универсальная структура для хранения различных типов адресов
-						 *
-						 */
-						union {
-							/**
-							 * @brief Структура FQDN адреса инициатора запроса
-							 *
-							 */
-							struct {
-								// Порт инициатора запроса
-								uint16_t port = 0;
-								// Данные доменного имени инициатора запроса
-								char data[256] = {0};
-							} fqdn;
-							/**
-							 * @brief Структура IPv4 адреса инициатора запроса
-							 *
-							 */
-							struct {
-								// Порт инициатора запроса
-								uint16_t port = 0;
-								// Адрес инициатора запроса
-								uint32_t address = 0;
-							} ip4;
-							/**
-							 * @brief Структура IPv6 адреса инициатора запроса
-							 *
-							 */
-							struct {
-								// Порт инициатора запроса
-								uint16_t port = 0;
-								// Адрес инициатора запроса
-								array <uint8_t, 16> address = {0};
-							} ip6;
-						};
-					public:
-						/**
-						 * @brief Фабричный метод создания идентификатора инициатора запроса
-						 *
-						 * @param addr     объект параметров подключения инициатора запроса
-						 * @param protocol протокол инициатора запроса
-						 * @return         идентификатор инициатора запроса
-						 */
-						Origin & from(const net::attr_t * addr, const event::protocol_t protocol) noexcept;
-					public:
-						/**
-						 * @brief Оператор сравнения
-						 *
-						 * @param other другой объект для сравнения
-						 * @return      результат сравнения
-						 */
-						bool operator == (const Origin & other) const noexcept;
-					public:
-						/**
-						 * @brief Конструктор
-						 *
-						 */
-						explicit Origin() noexcept;
-				} origin_t;
-				/**
-				 * @brief Специализация хеш-функции для структуры идентификатора инициатора запроса
-				 *
-				 */
-				typedef class __AWH_SHARED_EXPORT__ Origin_Hash {
-					public:
-						/**
-						 * @brief Оператор вычисления хеш-кода
-						 *
-						 * @param id объект для вычисления хеш-кода
-						 * @return   хеш-код объекта
-						 */
-						size_t operator()(const origin_t & id) const noexcept;
-					public:
-						/**
-						 * @brief Конструктор
-						 *
-						 */
-						explicit Origin_Hash() noexcept = default;
-				} origin_hash_t;
-			private:
+				typedef struct UDP_Client {
+					// Идентификатор события клиента
+					event::id_t eid;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit UDP_Client() noexcept : eid(0) {};
+				} udp_client_t;
 				/**
 				 * @brief Структура конечной точки клиента, работающего через прокси
 				 *
 				 */
 				typedef struct Endpoint {
-					// Идентификатор события клиента
-					event::id_t eid;
+					// Параметры для исходящих UDP-соединений
+					udp_client_t udp;
 					// Идентификатор TLS для клиента
 					tls::coder_t::id_t tid;
 					// Атрибуты сети для конечной точки
@@ -157,7 +78,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Endpoint() noexcept : eid(0), tid(0), attr(nullptr) {}
+					explicit Endpoint() noexcept : tid(0), attr(nullptr) {}
 				} endpoint_t;
 			private:
 				// Конечная точка клиента, работающего через прокси
@@ -171,11 +92,6 @@ namespace awh {
 			private:
 				// Мютекс для блокировки потоков при работе с TLS
 				lock_state_t <std::shared_mutex> _mtx;
-			private:
-				// Отображение идентификаторов событий клиентов для конечных точек
-				unordered_map <event::id_t, pair <const origin_t *, tls::coder_t::id_t>> _mapping;
-				// Активные сессии клиентов, работающих через прокси
-				unordered_map <origin_t, pair <event::id_t, tls::coder_t::id_t>, origin_hash_t> _sessions;
 			private:
 				/**
 				 * @brief Метод изменения статуса клиента
@@ -216,23 +132,31 @@ namespace awh {
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			private:
 				/**
+				 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+				 *
+				 * @param id     идентификатор DNS-запроса
+				 * @param family семейство адресов (IPv4/IPv6)
+				 * @param domain доменное имя для резолвинга
+				 * @param addr   указатель на структуру для хранения результата резолвинга
+				 */
+				void resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+			private:
+				/**
 				 * @brief Метод получения состояния TLS
 				 *
 				 * @param id    идентификатор TLS
-				 * @param eid   идентификатор клиента
 				 * @param state состояние TLS
 				 */
-				void stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept;
+				void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
 				/**
 				 * @brief Метод получения событий шифрования/дешифрования данных TLS
 				 *
 				 * @param id     идентификатор TLS
-				 * @param eid    идентификатор клиента
 				 * @param event  тип события TLS
 				 * @param size   размер данных для события шифрования/дешифрования TLS
 				 * @param buffer буфер данных для события шифрования/дешифрования TLS
 				 */
-				void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+				void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод приостановки работы клиента
@@ -261,12 +185,6 @@ namespace awh {
 				bool disconnect() noexcept;
 			public:
 				/**
-				 * @brief Метод очистки активных сессий клиентов, работающих через прокси
-				 *
-				 */
-				void clearSessions() noexcept;
-			public:
-				/**
 				 * @brief Метод установки безопасности работы потоков
 				 *
 				 * @param mode флаг режима безопасности потоков
@@ -289,23 +207,6 @@ namespace awh {
 				size_t send(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * @brief Метод получения данных от сервера
-				 *
-				 * @param eid идентификатор события клиента
-				 * @return    результат получения данных
-				 */
-				bool recv(const event::id_t eid) noexcept;
-				/**
-				 * @brief Метод отправки данных клиенту
-				 *
-				 * @param eid    идентификатор события клиента
-				 * @param buffer буфер данных для отправки
-				 * @param size   размер данных для отправки
-				 * @return       количество байт данных, отправленных клиенту
-				 */
-				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
-			public:
-				/**
 				 * @brief Метод установки пропускной способности клиента
 				 *
 				 * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
@@ -323,101 +224,36 @@ namespace awh {
 				void setUser(const string & username, const string & password) noexcept;
 			public:
 				/**
-				 * @brief Метод проверки наличия идентификатора события клиента для конечной точки
+				 * @brief Метод установки исходящего адреса для UDP-клиента
 				 *
-				 * @param eid идентификатор события для проверки
-				 * @return    результат проверки наличия идентификатора события клиента для конечной точки
+				 * @param addr искходящий адрес для UDP-клиента
+				 * @return 	   результат выполнения установки исходящего адреса для UDP-клиента
 				 */
-				bool isEventIdEndpoint(const event::id_t eid) const noexcept;
+				bool udp(const net::attr_net_t * addr) noexcept;
+				/**
+				 * @brief Метод установки исходящего адреса для UDP-клиента
+				 *
+				 * @param addr искходящий адрес для UDP-клиента
+				 * @param port исходящий порт для UDP-клиента
+				 * @return     результат выполнения установки исходящего адреса для UDP-клиента
+				 */
+				bool udp(string_view addr, const uint16_t port = 0) noexcept;
 			public:
 				/**
-				 * @brief Метод добавления идентификатора события клиента для конечной точки
+				 * @brief Метод установки конечной точки клиента
 				 *
-				 * @param eid идентификатор события для добавления
-				 * @return    результат выполнения добавления идентификатора события клиента для конечной точки
+				 * @param attr параметры подключения для установки конечной точки
+				 * @return     результат выполнения установки конечной точки
 				 */
-				bool addEventIdEndpoint(const event::id_t eid) noexcept;
+				bool endpoint(const net::attr_t * attr) noexcept;
 				/**
-				 * @brief Метод добавления идентификатора события клиента для конечной точки
+				 * @brief Метод установки конечной точки клиента
 				 *
-				 * @param eid идентификатор события для добавления
-				 * @param tid идентификатор TLS для добавления
-				 * @return    результат выполнения добавления идентификатора события клиента для конечной точки
+				 * @param addr адрес хоста для установки
+				 * @param port порт хоста для установки
+				 * @return     результат выполнения установки конечной точки
 				 */
-				bool addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid) noexcept;
-			public:
-				/**
-				 * @brief Метод добавления идентификатора события клиента для конечной точки
-				 *
-				 * @param eid  идентификатор события для добавления
-				 * @param addr адрес хоста для добавления
-				 * @param port порт хоста для добавления
-				 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
-				 */
-				bool addEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept;
-				/**
-				 * @brief Метод добавления идентификатора события клиента для конечной точки
-				 *
-				 * @param eid  идентификатор события для добавления
-				 * @param tid  идентификатор TLS для добавления
-				 * @param addr адрес хоста для добавления
-				 * @param port порт хоста для добавления
-				 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
-				 */
-				bool addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, string_view addr, const uint16_t port) noexcept;
-			public:
-				/**
-				 * @brief Метод добавления идентификатора события клиента для конечной точки
-				 *
-				 * @param eid  идентификатор события для добавления
-				 * @param addr адрес хоста для добавления
-				 * @param port порт хоста для добавления
-				 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
-				 */
-				bool addEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept;
-				/**
-				 * @brief Метод добавления идентификатора события клиента для конечной точки
-				 *
-				 * @param eid  идентификатор события для добавления
-				 * @param tid  идентификатор TLS для добавления
-				 * @param addr адрес хоста для добавления
-				 * @param port порт хоста для добавления
-				 * @return     результат выполнения добавления идентификатора события клиента для конечной точки
-				 */
-				bool addEventIdEndpoint(const event::id_t eid, tls::coder_t::id_t tid, const net::addr_t * addr, const uint16_t port) noexcept;
-			public:
-				/**
-				 * @brief Метод удаления идентификатора события клиента для конечной точки
-				 *
-				 * @param eid идентификатор события для удаления
-				 * @return    результат выполнения удаления идентификатора события клиента для конечной точки
-				 */
-				bool delEventIdEndpoint(const event::id_t eid) noexcept;
-				/**
-				 * @brief Метод удаления идентификатора события клиента для конечной точки
-				 *
-				 * @param eid  идентификатор события для удаления
-				 * @param addr адрес хоста для удаления
-				 * @param port порт хоста для удаления
-				 * @return     результат выполнения удаления идентификатора события клиента для конечной точки
-				 */
-				bool delEventIdEndpoint(const event::id_t eid, string_view addr, const uint16_t port) noexcept;
-				/**
-				 * @brief Метод удаления идентификатора события клиента для конечной точки
-				 *
-				 * @param eid  идентификатор события для удаления
-				 * @param addr адрес хоста для удаления
-				 * @param port порт хоста для удаления
-				 * @return     результат выполнения удаления идентификатора события клиента для конечной точки
-				 */
-				bool delEventIdEndpoint(const event::id_t eid, const net::addr_t * addr, const uint16_t port) noexcept;
-			public:
-				/**
-				 * @brief Метод установки идентификатора TLS
-				 *
-				 * @param tid идентификатор TLS для установки
-				 */
-				void setSecurityId(const tls::coder_t::id_t tid) noexcept;
+				bool endpoint(string_view addr, const uint16_t port) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)

@@ -46,16 +46,6 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 				this->_callback.call <void (const event::status_t)> ("status", status);
 			// Если работа сервера запущена
 			if(status == event::status_t::LAUNCHED){
-				// Количество активных DNS-резолверов
-				uint16_t count = 0;
-				// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
-				if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
-					// Выполняем инициализацию DNS-резолвера для текущего сервера
-					this->_dns->init(event::family_t::IPV4, count);
-				// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
-				if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
-					// Выполняем инициализацию DNS-резолвера для текущего сервера
-					this->_dns->init(event::family_t::IPV6, count);
 				// Выполняем запуск работы сервера, если сервер не запущен
 				if(!this->_server->launch(this->_eid)){
 					// Если функция обратного вызова не установлена
@@ -65,7 +55,7 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_eid);
+							this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, this->_eid);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -94,6 +84,36 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 							break;
 						}
 					}
+					/**
+					 * Определяем режим работы сервера
+					 */
+					switch(static_cast <uint8_t> (this->_server->clusterMode())){
+						// Если сервер запущен в режиме кластера
+						case static_cast <uint8_t> (event::mode_t::ENABLED): {
+							// Если DNS-резолвер подключён
+							if(this->_dns != nullptr){
+								// Количество активных DNS-резолверов
+								uint16_t count = 0;
+								// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
+								if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
+									// Выполняем инициализацию DNS-резолвера для текущего сервера
+									this->_dns->init(event::family_t::IPV4, count);
+								// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
+								if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
+									// Выполняем инициализацию DNS-резолвера для текущего сервера
+									this->_dns->init(event::family_t::IPV6, count);
+								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server_t::resolve, this, _1, _2, _3, _4);
+							}
+						} break;
+						// Если сервер не запущен в режиме кластера
+						case static_cast <uint8_t> (event::mode_t::DISABLED): {
+							// Если DNS-резолвер подключён
+							if(this->_dns != nullptr)
+								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server_t::resolve, this, _1, _2, _3, _4);
+						} break;
+					}
 				}
 			}
 		} break;
@@ -105,6 +125,75 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 			switch(static_cast <uint8_t> (status)){
 				// Если событие DNS-резолвера запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+					/**
+					 * Определяем принадлежит ли хост, к IP-адресу
+					 */
+					switch(static_cast <uint8_t> (this->_addr.host(this->_host))){
+						// Для типа IPv4
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+							// Устанавливаем адрес хоста целевой текущей машины
+							if(this->_server->setAddress(this->_eid, event::address_t::IPV4, this->_host)){
+								/**
+								 * В зависимости от статуса события сервера выполняем запуск
+								 */
+								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
+									// Если событие сервера не запущено, запускаем его
+									case static_cast <uint8_t> (event::status_t::NONE): {
+										// Если событие сервера не запущено, запускаем его
+										if(this->_server->commit(this->_eid)){
+											// Если функция обратного вызова установлена
+											if(this->_callback.is("ready"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, event::family_t::IPV4, this->_host, this->_server->getAddress(this->_eid, event::address_t::IPV4));
+											// Запускаем сервер
+											this->_server->start();
+										}
+									} break;
+									// Если событие сервера инициализировано, запускаем его
+									case static_cast <uint8_t> (event::status_t::INITIAL):
+									// Если событие находится в состоянии успешного подключения
+									case static_cast <uint8_t> (event::status_t::SUCCESS):
+										// Запускаем сервер
+										this->_server->start();
+									break;
+								}
+								// Выходим из функции
+								return;
+							}
+						} break;
+						// Для типа IPv6
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+							// Устанавливаем адрес хоста целевой текущей машины
+							if(this->_server->setAddress(this->_eid, event::address_t::IPV6, this->_host)){
+								/**
+								 * В зависимости от статуса события сервера выполняем запуск
+								 */
+								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
+									// Если событие сервера не запущено, запускаем его
+									case static_cast <uint8_t> (event::status_t::NONE): {
+										// Если событие сервера не запущено, запускаем его
+										if(this->_server->commit(this->_eid)){
+											// Если функция обратного вызова установлена
+											if(this->_callback.is("ready"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, event::family_t::IPV6, this->_host, this->_server->getAddress(this->_eid, event::address_t::IPV6));
+											// Запускаем сервер
+											this->_server->start();
+										}
+									} break;
+									// Если событие сервера инициализировано, запускаем его
+									case static_cast <uint8_t> (event::status_t::INITIAL):
+									// Если событие находится в состоянии успешного подключения
+									case static_cast <uint8_t> (event::status_t::SUCCESS):
+										// Запускаем сервер
+										this->_server->start();
+									break;
+								}
+								// Выходим из функции
+								return;
+							}
+						} break;
+					}
 					// Выполняем резолвинг хоста текущего сервера
 					if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_server)->family(this->_eid), this->_host)){
 						// Создаём текст ошибки резолвинга хоста текущего сервера
@@ -116,7 +205,7 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -224,7 +313,7 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("TLS handshake process was not completed", __PRETTY_FUNCTION__, std::make_tuple(eid, cid, ctl), log_t::flag_t::WARNING);
+					this->_log->debug("TLS handshake process was not completed", __PRETTY_FUNCTION__, make_tuple(eid, cid, ctl), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -370,7 +459,7 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -584,7 +673,7 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("TLS is failed", __PRETTY_FUNCTION__, std::make_tuple(id, eid, static_cast <uint16_t> (state)), log_t::flag_t::WARNING);
+						this->_log->debug("TLS is failed", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (state)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -652,7 +741,7 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, eid, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, message.c_str());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, message.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -691,7 +780,7 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, std::make_tuple(id, eid, buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(id, eid, buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -711,6 +800,19 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 			} break;
 		}
 	}
+}
+/**
+ * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+ *
+ * @param id     идентификатор DNS-запроса
+ * @param family семейство адресов (IPv4/IPv6)
+ * @param domain доменное имя для резолвинга
+ * @param addr   указатель на структуру для хранения результата резолвинга
+ */
+void awh::Server::resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
+	/**
+	 * Ничего не делаем так-как функция виртуальная и нужна для дочерних классов
+	 */
 }
 /**
  * @brief Метод резолвинга доменного имени в сетевой адрес
@@ -948,7 +1050,7 @@ bool awh::Server::listen(const uint16_t max) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(max), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(max), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -987,7 +1089,7 @@ void awh::Server::threadSafety(const bool mode) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("TLS ID is not set", __PRETTY_FUNCTION__, std::make_tuple(mode), log_t::flag_t::WARNING);
+			this->_log->debug("TLS ID is not set", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1099,7 +1201,7 @@ bool awh::Server::setIface(string_view name) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1133,7 +1235,7 @@ bool awh::Server::membership(const event::mode_t mode, string_view group, string
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1166,7 +1268,7 @@ bool awh::Server::membership(const event::mode_t mode, const net::addr_t * group
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1196,7 +1298,7 @@ bool awh::Server::pause(const event::id_t eid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1226,7 +1328,7 @@ bool awh::Server::resume(const event::id_t eid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1292,7 +1394,7 @@ bool awh::Server::recv(const event::id_t eid) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+				this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1351,7 +1453,7 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+				this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1383,7 +1485,7 @@ bool awh::Server::splice(const event::id_t eid, const event::id_t dest) noexcept
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1413,7 +1515,7 @@ uint16_t awh::Server::getOptions(const event::id_t eid) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1444,7 +1546,7 @@ bool awh::Server::setOptions(const event::id_t eid, const uint16_t options) noex
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, options), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, options), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1476,7 +1578,7 @@ bool awh::Server::setOption(const event::id_t eid, const uint16_t option, const 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, option, mode), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, option, mode), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1537,7 +1639,7 @@ bool awh::Server::setPort(const uint16_t port) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1568,7 +1670,7 @@ uint16_t awh::Server::getPort(const event::id_t eid) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1621,7 +1723,7 @@ bool awh::Server::setHost(string_view host) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(host), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1648,7 +1750,7 @@ bool awh::Server::setHost(string_view host) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(host), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1675,7 +1777,7 @@ bool awh::Server::setHost(string_view host) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::WARNING);
+						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(host), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1715,7 +1817,7 @@ string awh::Server::getAddress(const event::address_t address) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1771,7 +1873,7 @@ bool awh::Server::setAddress(const event::address_t address, string_view value) 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1803,7 +1905,7 @@ string awh::Server::getAddress(const event::id_t eid, const event::address_t add
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1859,7 +1961,7 @@ bool awh::Server::setAddress(const event::address_t address, const net::addr_t *
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+				this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1891,7 +1993,7 @@ bool awh::Server::getAddress(const event::address_t address, unique_ptr <net::ad
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1923,7 +2025,7 @@ bool awh::Server::getAddress(const event::id_t eid, const event::address_t addre
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1954,7 +2056,7 @@ size_t awh::Server::getBufferSize(const event::id_t eid, const event::action_t a
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1986,7 +2088,7 @@ bool awh::Server::setBufferSize(const event::id_t eid, const event::action_t act
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2045,7 +2147,7 @@ awh::event::usage_t awh::Server::getUsageReadTimeout(const event::id_t eid) cons
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2074,7 +2176,7 @@ void awh::Server::setUsageReadTimeout(const event::usage_t usage) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2102,7 +2204,7 @@ void awh::Server::setUsageReadTimeout(const event::id_t eid, const event::usage_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2130,7 +2232,7 @@ uint32_t awh::Server::getTimeout(const event::action_t action) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2161,7 +2263,7 @@ uint32_t awh::Server::getTimeout(const event::id_t eid, const event::action_t ac
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2191,7 +2293,7 @@ void awh::Server::setTimeout(const event::action_t action, const uint32_t timeou
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2220,7 +2322,7 @@ void awh::Server::setTimeout(const event::id_t eid, const event::action_t action
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2249,7 +2351,7 @@ bool awh::Server::bandwidth(const event::limiting_t limiting, string_view bandwi
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2281,7 +2383,7 @@ bool awh::Server::bandwidth(const event::id_t eid, const event::limiting_t limit
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2314,7 +2416,7 @@ bool awh::Server::keepAlive(const event::id_t eid, const int32_t cnt, const int3
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, std::make_tuple(eid, cnt, idle, intvl), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not found", __PRETTY_FUNCTION__, make_tuple(eid, cnt, idle, intvl), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */

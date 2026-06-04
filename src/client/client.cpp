@@ -55,7 +55,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_eid);
+							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, this->_eid);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -81,6 +81,45 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 			switch(static_cast <uint8_t> (status)){
 				// Если событие DNS-резолвера запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+					/**
+					 * Определяем принадлежит ли хост, к IP-адресу
+					 */
+					switch(static_cast <uint8_t> (this->_addr.host(this->_host))){
+						// Для типа IPv4
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+						// Для типа IPv6
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+							// Устанавливаем адрес хоста целевой машины для клиента
+							if(this->_client->setTarget(this->_eid, this->_host)){
+								/**
+								 * В зависимости от статуса события клиента выполняем запуск
+								 */
+								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
+									// Если событие клиента не запущено, запускаем его
+									case static_cast <uint8_t> (event::status_t::NONE): {
+										// Если событие клиента не запущено, запускаем его
+										if(this->_client->commit(this->_eid)){
+											// Если функция обратного вызова установлена
+											if(this->_callback.is("ready"))
+												// Выполняем функцию обратного вызова
+												this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_client->family(this->_eid), this->_host, this->_client->getTarget(this->_eid));
+											// Запускаем клиента
+											this->_client->start();
+										}
+									} break;
+									// Если событие клиента инициализировано, запускаем его
+									case static_cast <uint8_t> (event::status_t::INITIAL):
+									// Если событие находится в состоянии успешного подключения
+									case static_cast <uint8_t> (event::status_t::SUCCESS):
+										// Запускаем клиента
+										this->_client->start();
+									break;
+								}
+							}
+							// Выходим из функции
+							return;
+						}
+					}
 					// Выполняем резолвинг доменного имени
 					if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_client)->family(this->_eid), this->_host, this->_timeoutDNS.load(std::memory_order_acquire))){
 						// Создаём текст ошибки резолвинга доменного имени
@@ -92,7 +131,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -135,7 +174,7 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, std::make_tuple(this->_eid), log_t::flag_t::WARNING);
+							this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, make_tuple(this->_eid), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -230,7 +269,7 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, std::make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+						this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -356,7 +395,7 @@ void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::erro
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, message.c_str());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, message.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -394,7 +433,7 @@ void awh::Client::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, std::make_tuple(this->_eid, buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(this->_eid, buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -718,7 +757,7 @@ void awh::Client::threadSafety(const bool mode) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("TLS ID is not set", __PRETTY_FUNCTION__, std::make_tuple(mode), log_t::flag_t::WARNING);
+			this->_log->debug("TLS ID is not set", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -852,7 +891,7 @@ bool awh::Client::setIface(string_view name) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::WARNING);
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -914,7 +953,7 @@ bool awh::Client::setPort(const uint16_t port) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -976,7 +1015,7 @@ bool awh::Client::setInternalPort(const uint16_t port) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(port), log_t::flag_t::WARNING);
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1058,7 +1097,7 @@ bool awh::Client::setTarget(string_view target) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(target), log_t::flag_t::WARNING);
+						this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(target), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1167,7 +1206,7 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1200,7 +1239,7 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1234,7 +1273,7 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1266,7 +1305,7 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1296,7 +1335,7 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1327,7 +1366,7 @@ bool awh::Client::setBufferSize(const event::action_t action, const size_t size)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1423,7 +1462,7 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1451,7 +1490,7 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1481,7 +1520,7 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1510,7 +1549,7 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1542,7 +1581,7 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, std::make_tuple(cnt, idle, intvl), log_t::flag_t::WARNING);
+			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(cnt, idle, intvl), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */

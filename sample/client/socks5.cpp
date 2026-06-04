@@ -41,30 +41,28 @@ class Executor {
 		/**
 		 * @brief Метод обработки событий записи данных клиентом
 		 *
-		 * @param sid  идентификатор socks5-клиента
 		 * @param eid  идентификатор клиента
 		 * @param size размер данных для записи
 		 */
-		void write(const event::id_t sid, const event::id_t eid, const size_t size) noexcept {
+		void write(const event::id_t eid, const size_t size) noexcept {
 			// Выводим информацию о событии записи данных клиентом
-			this->_log->print("Client write event: %zu bytes (SID=%u, EID=%u)", log_t::flag_t::INFO, size, sid, eid);
+			this->_log->print("Client write event: %zu bytes (EID=%u)", log_t::flag_t::INFO, size, eid);
 		}
 		/**
 		 * @brief Метод обработки событий чтения данных клиентом
 		 *
-		 * @param sid    идентификатор socks5-клиента
 		 * @param eid    идентификатор клиента
 		 * @param data   бинарный буфер данных
 		 * @param size   размер данных
 		 * @param client объект клиента
 		 */
-		void read(const event::id_t sid, const event::id_t eid, const uint8_t * data, const size_t size, client::socks5_t * client) noexcept {
+		void read(const event::id_t eid, const uint8_t * data, const size_t size, client::socks5_t * client) noexcept {
 			// Если данные получены
 			if(size > 0)
 				// Выводим данные в лог
-				this->_log->print("%s (SID=%u, EID=%u)", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str(), sid, eid);
+				this->_log->print("%s (EID=%u)", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str(), eid);
 			// Если данные не получены, то выводим сообщение об отсутствии данных
-			else this->_log->print("No data received (SID=%u, EID=%u)", log_t::flag_t::WARNING, sid, eid);
+			else this->_log->print("No data received (EID=%u)", log_t::flag_t::WARNING, eid);
 			// Останавливаем событие клиента
 			client->stop();
 		}
@@ -94,12 +92,11 @@ class Executor {
 		/**
 		 * @brief Метод обработки событий подключения клиента к удалённому серверу
 		 *
-		 * @param sid    идентификатор socks5-клиента
 		 * @param eid    идентификатор клиента
 		 * @param ok     результат подключения
 		 * @param client объект клиента
 		 */
-		void connect(const event::id_t sid, const event::id_t eid, const bool ok, client::socks5_t * client) noexcept {
+		void connect(const event::id_t eid, const bool ok, client::socks5_t * client) noexcept {
 			// Если подключение выполнено
 			if(ok){
 				// Текст запроса к серверу
@@ -112,11 +109,11 @@ class Executor {
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(request.c_str(), request.size()) == 0)
 					// Выводим сообщение об ошибке отправки данных клиентом на сервер
-					this->_log->print("Failed to send data to remote server (SID=%u, EID=%u)", log_t::flag_t::WARNING, sid, eid);
+					this->_log->print("Failed to send data to remote server (EID=%u)", log_t::flag_t::WARNING, eid);
 				// Если отправка данных клиентом на сервер выполнена, то выводим сообщение об успешной отправке данных клиентом на сервер
-				else this->_log->print("Sent data to remote server (SID=%u, EID=%u)", log_t::flag_t::INFO, sid, eid);
+				else this->_log->print("Sent data to remote server (EID=%u)", log_t::flag_t::INFO, eid);
 			// Если подключение не выполнено, то выводим сообщение об ошибке подключения клиента к удалённому серверу
-			} else this->_log->print("Failed to connect to remote server (SID=%u, EID=%u)", log_t::flag_t::WARNING, sid, eid);
+			} else this->_log->print("Failed to connect to remote server (EID=%u)", log_t::flag_t::WARNING, eid);
 		}
 		/**
 		 * @brief Метод обработки событий готовности клиента к работе
@@ -196,8 +193,6 @@ int32_t main(int32_t argc, char * argv[]){
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-	// Создаём событие событие для клиентской точки назначения
-	const event::id_t did = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
@@ -223,8 +218,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(ctl);
 	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
-	// if(client.setPort(11613) && client.setTarget("217.29.53.105") && client.addEventIdEndpoint(did, host, 443)){
-	if(client.setPort(2222) && client.setTarget("localhost") && client.addEventIdEndpoint(did, host, 443)){
+	// if(client.setPort(11613) && client.setTarget("217.29.53.105") && client.endpoint(host, 443)){
+	if(client.setPort(2222) && client.setTarget("localhost") && client.endpoint(host, 443)){
 		// Устанавливаем параметры авторизации для клиента
 		client.setUser("8J0sHd", "G4DfSK");
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд
@@ -232,15 +227,15 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие изменения статуса клиента
 		client.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &client);
 		// Регистрируем функцию обратного вызова на событие записи данных клиентом
-		client.on <void (const event::id_t, const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2, _3);
+		client.on <void (const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие подключения клиента к удалённому серверу
-		client.on <void (const event::id_t, const event::id_t, const bool)> ("connect", &Executor::connect, &executor, _1, _2, _3, &client);
+		client.on <void (const event::id_t, const bool)> ("connect", &Executor::connect, &executor, _1, _2, &client);
+		// Регистрируем функцию обратного вызова на событие чтения данных клиентом
+		client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::read, &executor, _1, _2, _3, &client);
 		// Регистрируем функцию обратного вызова на событие ошибок клиента
 		client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &Executor::error, &executor, _1, _2, _3, &client);
 		// Регистрируем функцию обратного вызова на событие готовности клиента к работе
 		client.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
-		// Регистрируем функцию обратного вызова на событие чтения данных клиентом
-		client.on <void (const event::id_t, const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::read, &executor, _1, _2, _3, _4, &client);
 		// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
 		client.on <void (const tls::coder_t::id_t, const tls::coder_t::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2, _3, &client);
 		// Запускаем событие клиента

@@ -258,6 +258,15 @@ namespace awh {
 			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		protected:
 			/**
+			 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+			 *
+			 * @param id     идентификатор DNS-запроса
+			 * @param family семейство адресов (IPv4/IPv6)
+			 * @param domain доменное имя для резолвинга
+			 * @param addr   указатель на структуру для хранения результата резолвинга
+			 */
+			virtual void resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+			/**
 			 * @brief Метод резолвинга доменного имени в сетевой адрес
 			 *
 			 * @param id     идентификатор DNS-запроса
