@@ -313,7 +313,7 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("TLS handshake process was not completed", __PRETTY_FUNCTION__, make_tuple(eid, cid, ctl), log_t::flag_t::WARNING);
+					this->_log->debug("TLS handshake process was not completed", __PRETTY_FUNCTION__, make_tuple(eid, cid), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -780,7 +780,7 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(id, eid, buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */

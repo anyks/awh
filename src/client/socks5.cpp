@@ -1389,17 +1389,6 @@ bool awh::client::Socks5::disconnect() noexcept {
 	return false;
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::client::Socks5::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности работы потоков для объекта блокировки
-	this->_mtx.enabled = mode;
-	// Устанавливаем режим безопасности работы потоков для объекта клиента
-	client_t::threadSafety(mode);
-}
-/**
  * @brief Метод получения данных от сервера
  *
  * @return результат получения данных
@@ -1673,12 +1662,9 @@ bool awh::client::Socks5::bandwidth(const event::limiting_t limiting, string_vie
  */
 void awh::client::Socks5::setUser(const string & username, const string & password) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
-		// Выполняем блокировку потока для работы с TLS
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working())
 		// Устанавливаем параметры авторизации для объекта клиента
 		this->_socks5.setUser(username, password);
-	}
 }
 /**
  * @brief Метод установки исходящего адреса для UDP-клиента
@@ -1697,6 +1683,10 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 		try {
 			// Если исходящий адрес для UDP-клиента не пустой
 			if(addr != nullptr){
+				// Если клиент для работы с UDP протоколом инициализирован
+				if(this->_endpoint.udp.eid > 0)
+					// Удаляем клиента принадлежащего пиру
+					this->_client->destroy(this->_endpoint.udp.eid);
 				/**
 				 * Определяем тип полученного IP-адреса
 				 */
@@ -1803,6 +1793,10 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 			if(!addr.empty()){
 				// Выполняем парсинг IP-адреса
 				if(this->_addr.parse(addr)){
+					// Если клиент для работы с UDP протоколом инициализирован
+					if(this->_endpoint.udp.eid > 0)
+						// Удаляем клиента принадлежащего пиру
+						this->_client->destroy(this->_endpoint.udp.eid);
 					/**
 					 * Определяем тип полученного IP-адреса
 					 */
@@ -2070,10 +2064,7 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
  * @param log    объект для работы с логами
  */
 awh::client::Socks5::Socks5(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, fmk, log), _socks5(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+ client_t(client, fmk, log), _socks5(fmk, log) {}
 /**
  * @brief Конструктор
  *
@@ -2083,10 +2074,7 @@ awh::client::Socks5::Socks5(unit::client_t * client, const fmk_t * fmk, const lo
  * @param log    объект для работы с логами
  */
 awh::client::Socks5::Socks5(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, coder, fmk, log), _socks5(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+ client_t(client, coder, fmk, log), _socks5(fmk, log) {}
 /**
  * @brief Конструктор
  *
@@ -2096,10 +2084,7 @@ awh::client::Socks5::Socks5(unit::client_t * client, tls::coder_t * coder, const
  * @param log    объект для работы с логами
  */
 awh::client::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, dns, fmk, log), _socks5(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+ client_t(client, dns, fmk, log), _socks5(fmk, log) {}
 /**
  * @brief Конструктор
  *
@@ -2110,10 +2095,7 @@ awh::client::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, const fm
  * @param log    объект для работы с логами
  */
 awh::client::Socks5::Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(client, dns, coder, fmk, log), _socks5(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+ client_t(client, dns, coder, fmk, log), _socks5(fmk, log) {}
 /**
  * @brief Деструктор
  *

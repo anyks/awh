@@ -60,8 +60,6 @@ namespace awh {
 					public:
 						// Тип адреса инициатора запроса
 						net::type_t type;
-						// Протокол инициатора запроса
-						event::protocol_t protocol;
 					public:
 						/**
 						 * @brief Универсальная структура для хранения различных типов адресов
@@ -103,11 +101,10 @@ namespace awh {
 						/**
 						 * @brief Фабричный метод создания идентификатора инициатора запроса
 						 *
-						 * @param addr     объект параметров подключения инициатора запроса
-						 * @param protocol протокол инициатора запроса
-						 * @return         идентификатор инициатора запроса
+						 * @param addr объект параметров подключения инициатора запроса
+						 * @return     идентификатор инициатора запроса
 						 */
-						Origin & from(const net::attr_t * addr, const event::protocol_t protocol) noexcept;
+						Origin & from(const net::attr_t * addr) noexcept;
 					public:
 						/**
 						 * @brief Оператор сравнения
@@ -201,7 +198,6 @@ namespace awh {
 			private:
 				// Объект работы с сетью для сервера
 				net_t _net;
-			private:
 				// Объект работы с сетью
 				eth_t _eth;
 			private:

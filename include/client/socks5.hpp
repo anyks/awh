@@ -22,7 +22,6 @@
  * Стандартные модули
  */
 #include <string>
-#include <unordered_map>
 
 /**
  * Наши модули
@@ -51,25 +50,18 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ Socks5 : public client_t {
 			private:
 				/**
-				 * @brief Структура параметров UDP-клиента
-				 *
-				 */
-				typedef struct UDP_Client {
-					// Идентификатор события клиента
-					event::id_t eid;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit UDP_Client() noexcept : eid(0) {};
-				} udp_client_t;
-				/**
 				 * @brief Структура конечной точки клиента, работающего через прокси
 				 *
 				 */
 				typedef struct Endpoint {
-					// Параметры для исходящих UDP-соединений
-					udp_client_t udp;
+					/**
+					 * @brief Идентификатор события UDP-клиента
+					 *
+					 */
+					union {
+						// Идентификатор события клиента
+						event::id_t eid;
+					} udp;
 					// Идентификатор TLS для клиента
 					tls::coder_t::id_t tid;
 					// Атрибуты сети для конечной точки
@@ -78,7 +70,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Endpoint() noexcept : tid(0), attr(nullptr) {}
+					explicit Endpoint() noexcept : udp{0}, tid(0), attr(nullptr) {}
 				} endpoint_t;
 			private:
 				// Конечная точка клиента, работающего через прокси
@@ -89,9 +81,6 @@ namespace awh {
 			private:
 				// Объект для работы с протоколом SOCKS5
 				proto::client_socks5_t _socks5;
-			private:
-				// Мютекс для блокировки потоков при работе с TLS
-				lock_state_t <std::shared_mutex> _mtx;
 			private:
 				/**
 				 * @brief Метод изменения статуса клиента
@@ -183,13 +172,6 @@ namespace awh {
 				 * @return результат выполнения отключения
 				 */
 				bool disconnect() noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод получения данных от сервера

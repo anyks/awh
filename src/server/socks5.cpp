@@ -132,7 +132,7 @@ namespace {
 				// Если список портов для выделения пуст
 				if(this->_ports.empty())
 					// Возвращаем nullopt, если порты кончились
-					return std::nullopt; 
+					return std::nullopt;
 				// Получаем порт из списка доступных портов для выделения
 				const uint16_t result = this->_ports.back();
 				// Удаляем выделенный порт из списка доступных портов для выделения
@@ -235,17 +235,14 @@ namespace {
 /**
  * @brief Фабричный метод создания идентификатора инициатора запроса
  *
- * @param addr     объект параметров подключения инициатора запроса
- * @param protocol протокол инициатора запроса
- * @return         идентификатор инициатора запроса
+ * @param addr объект параметров подключения инициатора запроса
+ * @return     идентификатор инициатора запроса
  */
-awh::server::Socks5::Origin & awh::server::Socks5::Origin::from(const net::attr_t * addr, const event::protocol_t protocol) noexcept {
+awh::server::Socks5::Origin & awh::server::Socks5::Origin::from(const net::attr_t * addr) noexcept {
 	// Если объект параметров подключения инициатора запроса передан корректно
 	if(addr != nullptr){
 		// Устанавливаем тип адреса инициатора запроса
 		this->type = addr->type;
-		// Устанавливаем протокол инициатора запроса
-		this->protocol = protocol;
 		/**
 		 * Определяем тип адреса хоста для подключения
 		 */
@@ -290,7 +287,7 @@ awh::server::Socks5::Origin & awh::server::Socks5::Origin::from(const net::attr_
  */
 bool awh::server::Socks5::Origin::operator == (const Origin & other) const noexcept {
 	// Сравниваем семейство адресов
-	if((this->type != other.type) || (this->protocol != other.protocol))
+	if(this->type != other.type)
 		// Выводим отрицательный результат
 		return false;
 	/**
@@ -326,9 +323,7 @@ bool awh::server::Socks5::Origin::operator == (const Origin & other) const noexc
  * @brief Конструктор
  *
  */
-awh::server::Socks5::Origin::Origin() noexcept :
- type(net::type_t::NONE),
- protocol(event::protocol_t::NONE) {};
+awh::server::Socks5::Origin::Origin() noexcept : type(net::type_t::NONE) {};
 
 /**
  * @brief Оператор вычисления хеш-кода
@@ -339,8 +334,6 @@ awh::server::Socks5::Origin::Origin() noexcept :
 size_t awh::server::Socks5::Origin_Hash::operator()(const origin_t & id) const noexcept {
 	// Вычисляем начальный хеш-код по семейству адресов
 	size_t result = hash <uint8_t> {}(static_cast <uint8_t> (id.type));
-	// Комбинируем хеш-код протокола
-	::combine(result, hash <uint16_t> {}(static_cast <uint8_t> (id.protocol)));
 	/**
 	 * Сравниваем данные в зависимости от семейства адресов
 	 */
@@ -409,7 +402,7 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_eid);
+								this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, this->_eid);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -794,7 +787,7 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1169,7 +1162,6 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 									this->_udp.events.erase(ret.first);
 								} break;
 							}
-
 						}
 					}
 				} break;
@@ -1584,7 +1576,7 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
 				// Устанавливаем порт подключённого клиента для идентификатора события клиента
 				awh_cast <net::attr_net_t *> (attr.get())->port = this->_server->getPort(cid);
 				// Создаём идентификатор конечной точки для идентификатора события клиента
-				const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+				const origin_t endpoint = origin_t().from(attr.get());
 				// Выполняем поиск идентификатора конечной точки в списке активных сессий
 				auto i = this->_sessions.find(endpoint);
 				// Если идентификатор конечной точки найден в списке активных сессий
@@ -1923,7 +1915,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
 										if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
 											// Создаём новый объект адреса клиента IPv4
-											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> (); 
+											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
 											// Извлекаем IP-адрес удалённого сервера для подключения
 											this->_client.getTarget(i->second.eid, ip);
 											// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
@@ -1946,7 +1938,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
 										if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
 											// Создаём новый объект адреса клиента IPv6
-											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> (); 
+											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
 											// Извлекаем IP-адрес удалённого сервера для подключения
 											this->_client.getTarget(i->second.eid, ip);
 											// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
@@ -2052,7 +2044,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -2272,7 +2264,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Устанавливаем полученный порт
 											else awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
 											// Создаём идентификатор конечной точки для идентификатора события клиента
-											const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+											const origin_t endpoint = origin_t().from(attr.get());
 											// Добавляем идентификатор события клиента для конечной точки
 											this->_sessions.emplace(endpoint, make_pair(eid, 0));
 											// Устанавливаем статус успешного выполнения команды
@@ -2299,7 +2291,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														unique_ptr <net::addr_t> addr = nullptr;
 														// Извлекаем IP-адрес этого сервера
 														this->_server->getAddress(sid, event::address_t::IPV4, addr);
-														// Если IP-адрес которому разрешено подключаться к socks5 прокси-серверу установлен 
+														// Если IP-адрес которому разрешено подключаться к socks5 прокси-серверу установлен
 														if(awh_cast <net::addr_net_ipv4_t *> (addr.get())->address == 0)
 															// Устанавливаем текущий IP-адрес этого сервера для установки подключения
 															this->_server->getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
@@ -2318,7 +2310,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															// Устанавливаем полученный IP-адрес
 															awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address;
 															// Создаём идентификатор конечной точки для идентификатора события клиента
-															const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+															const origin_t endpoint = origin_t().from(attr.get());
 															// Выполняем поиск алиаса для указанного адреса конечной точки
 															auto j = this->_net.aliases.find(endpoint);
 															// Если алиас для указанного адреса конечной точки найден
@@ -2416,7 +2408,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															// Устанавливаем полученный IP-адрес
 															::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], 16);
 															// Создаём идентификатор конечной точки для идентификатора события клиента
-															const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+															const origin_t endpoint = origin_t().from(attr.get());
 															// Выполняем поиск алиаса для указанного адреса конечной точки
 															auto j = this->_net.aliases.find(endpoint);
 															// Если алиас для указанного адреса конечной точки найден
@@ -4884,7 +4876,7 @@ void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t *
 			// Если объект параметров подключения успешно создан
 			if(attr != nullptr){
 				// Создаём идентификатор конечной точки для добавляемого адреса
-				const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+				const origin_t endpoint = origin_t().from(attr.get());
 				// Выполняем блокировку потока для работы с алиасами
 				const locker_t <std::shared_mutex> lock(this->_net.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем добавление идентификатора конечной точки в список алиасов
@@ -5000,7 +4992,7 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t port, string
 			// Если объект параметров подключения создан
 			if(attr != nullptr){
 				// Создаём идентификатор конечной точки для добавляемого адреса
-				const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+				const origin_t endpoint = origin_t().from(attr.get());
 				// Выполняем блокировку потока для работы с алиасами
 				const locker_t <std::shared_mutex> lock(this->_net.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем добавление идентификатора конечной точки в список алиасов
@@ -5134,7 +5126,7 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count, begin, end), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count, begin, end, addr), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

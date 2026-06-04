@@ -330,7 +330,7 @@ namespace dns {
 		explicit ARecord() noexcept :
 		 name{""}, ip(0), ttl(0) {}
 	} a_record_t;
-	
+
 	/**
 	 * @brief Структура AAAA-записи DNS
 	 *
@@ -2584,7 +2584,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2609,7 +2609,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2634,7 +2634,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2659,7 +2659,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2684,7 +2684,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2737,7 +2737,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6775,7 +6775,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -6898,7 +6898,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -7117,7 +7117,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -7154,7 +7154,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
