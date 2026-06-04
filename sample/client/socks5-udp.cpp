@@ -39,6 +39,17 @@ class Executor {
 		const log_t * _log;
 	public:
 		/**
+		 * @brief Метод обработки события запуска клиента
+		 *
+		 * @param eid  идентификатор клиента
+		 * @param host адрес хоста
+		 * @param port порт хоста
+		 */
+		void launch(const event::id_t eid, const string & host, const uint16_t port) noexcept {
+			// Выводим информацию о событии запуска клиента
+			this->_log->print("Launched socks5 client (EID=%u, Host=%s, Port=%u)", log_t::flag_t::INFO, eid, host.c_str(), port);
+		}
+		/**
 		 * @brief Метод обработки событий записи данных клиентом
 		 *
 		 * @param sid  идентификатор socks5-клиента
@@ -180,8 +191,12 @@ int32_t main(int32_t argc, char * argv[]){
 	Executor executor(&fmk, &log);
 	// Создаём объект юнита клиента
 	unit::client_t unit(&fmk, &log);
+	// Создаём объект DNS-резолвера
+	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект клиента
-	client::socks5_t client(&unit, &fmk, &log);
+	client::socks5_t client(&unit, &dns, &fmk, &log);
+	// Устанавливаем список поддерживаемых DNS-серверов
+	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Создаём событие событие для клиентской точки назначения
@@ -201,11 +216,12 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем сетевой интерфейс с которого отправляются пакеты
 	// unit.setIface(did, "en0");
 	// Устанавливаем собственный адрес для события клиентской точки назначения
-	// unit.setAddress(did, event::address_t::IPV4, "0.0.0.0");
+	unit.setAddress(did, event::address_t::IPV4, "0.0.0.0");
 	// Устанавливаем идентификатор события клиента
 	client.setEventId(eid);
 	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
-	if(client.setPort(11613) && client.setTarget("217.29.53.105") && client.addEventIdEndpoint(did, "77.88.8.8", 53)){
+	// if(client.setPort(11613) && client.setTarget("217.29.53.105") && client.addEventIdEndpoint(did, "77.88.8.8", 53)){ // Заменить на setEndpoint
+	if(client.setPort(2222) && client.setTarget("localhost") && client.addEventIdEndpoint(did, "77.88.8.8", 53)){
 		// Устанавливаем параметры авторизации для клиента
 		client.setUser("8J0sHd", "G4DfSK");
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд
@@ -214,6 +230,8 @@ int32_t main(int32_t argc, char * argv[]){
 		client.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &client);
 		// Регистрируем функцию обратного вызова на событие записи данных клиентом
 		client.on <void (const event::id_t, const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2, _3);
+		// Регистрируем функцию обратного вызова на событие запуска клиента
+		client.on <void (const event::id_t, const string &, const uint16_t)> ("launch", &Executor::launch, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие ошибок клиента
 		client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &Executor::error, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие подключения клиента к удалённому серверу

@@ -127,9 +127,7 @@ namespace awh {
 			 *
 			 */
 			explicit LockState() noexcept :
-			 enabled(true),
-			 _pid(::getpid()),
-			 _mtx(std::make_unique <MutexType> ()) {}
+			 enabled(true), _pid(::getpid()), _mtx(nullptr) {}
 	};
 	/**
 	 * @brief Шаблон формата данных состояния блокировок
@@ -322,17 +320,19 @@ namespace awh {
 				if(this->_state._pid.load(std::memory_order_acquire) != ::getpid()){
 					// Устанавливаем идентификатор процесса
 					this->_state._pid.store(::getpid(), std::memory_order_release);
-					// Выполняем удаление мютекса
-					this->_state._mtx.reset(nullptr);
+					// Если мютекс уже создан ранее
+					if(this->_state._mtx != nullptr)
+						// Выполняем удаление мютекса
+						this->_state._mtx.reset(nullptr);
 				}
-				// Если мютекс пустой
-				if(this->_state._mtx == nullptr)
-					// Пересоздаём мютекс
-					this->_state._mtx = std::make_unique <MutexType> ();
 				// Если захватывать доступ к памяти нам не нужно
 				if(!this->_state.enabled.load(std::memory_order_acquire))
 					// Выходим из конструктора
 					return;
+				// Если мютекс пустой
+				if(this->_state._mtx == nullptr)
+					// Пересоздаём мютекс
+					this->_state._mtx = std::make_unique <MutexType> ();
 				// Выполняем блокировку
 				this->_locked = true;
 				// Выполняем блокировку потока

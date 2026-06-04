@@ -52,7 +52,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			 */
 			#elif __linux__ || __FreeBSD__
 				// Если кластер в работе не используется или если процесс является дочерним
-				if((this->_clusterMode == event::mode_t::DISABLED) || !this->_cluster.master()){
+				if((this->_clusterParams.mode == event::mode_t::DISABLED) || !this->_cluster->master()){
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("server_status"))
 						// Выполняем функцию обратного вызова
@@ -65,27 +65,40 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				/**
 				 * Проверяем требуется ли активировать кластер
 				 */
-				switch(static_cast <uint8_t> (this->_clusterMode)){
+				switch(static_cast <uint8_t> (this->_clusterParams.mode)){
 					// Если необходимо активировать кластер
 					case static_cast <uint8_t> (event::mode_t::ENABLED): {
+						// Если кластер не инициализирован
+						if(this->_cluster == nullptr){
+							// Создаём объект кластера для управления процессами сервера
+							this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+							// Если имя кластера установлено
+							if(!this->_clusterParams.name.empty())
+								// Устанавливаем название кластера
+								this->_cluster->name(this->_clusterParams.name);
+							// Устанавливаем максимальное количество процессов кластера
+							this->_cluster->count(this->_clusterParams.count);
+							// Устанавливаем флаг автоматического возрождения процессов
+							this->_cluster->rebirth(this->_clusterParams.rebirth);
+						}
 						// Устанавливаем функцию обратного вызова на событие получения сигнала
-						this->_cluster.on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
+						this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
 						// Устанавливаем функцию обратного вызова на событие пересоздания процесса
-						this->_cluster.on <void (const pid_t, const pid_t)> ("rebase", &server_t::rebase, this, _1, _2);
+						this->_cluster->on <void (const pid_t, const pid_t)> ("rebase", &server_t::rebase, this, _1, _2);
 						// Устанавливаем функцию обратного вызова на событие отправки сообщений
-						this->_cluster.on <void (const pid_t, const size_t)> ("sending", &server_t::sending, this, _1, _2);
+						this->_cluster->on <void (const pid_t, const size_t)> ("sending", &server_t::sending, this, _1, _2);
 						// Устанавливаем функцию обратного вызова на получение событий кластера
-						this->_cluster.on <void (const pid_t, const unit::cluster_t::event_t)> ("events", &server_t::cluster, this, _1, _2);
+						this->_cluster->on <void (const pid_t, const unit::cluster_t::event_t)> ("events", &server_t::cluster, this, _1, _2);
 						// Устанавливаем функцию обратного вызова на событие получения сообщений
-						this->_cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("message", &server_t::message, this, _1, _2, _3);
+						this->_cluster->on <void (const pid_t, const uint8_t *, const size_t)> ("message", &server_t::message, this, _1, _2, _3);
 						// Устанавливаем функцию обратного вызова на событие изменения статуса кластера
-						this->_cluster.on <void (const pid_t, const event::status_t)> ("state", static_cast <void (server_t::*)(const pid_t, const event::status_t)> (&server_t::status), this, _1, _2);
+						this->_cluster->on <void (const pid_t, const event::status_t)> ("state", static_cast <void (server_t::*)(const pid_t, const event::status_t)> (&server_t::status), this, _1, _2);
 						// Устанавливаем функцию обратного вызова на событие получения ошибок кластера
-						this->_cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", static_cast <void (server_t::*)(const pid_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3);
+						this->_cluster->on <void (const pid_t, const event::error_t, const string &)> ("error", static_cast <void (server_t::*)(const pid_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3);
 						// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных кластера
-						this->_cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (server_t::*)(const pid_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3);
+						this->_cluster->on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (server_t::*)(const pid_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3);
 						// Запускаем работу кластера
-						this->_cluster.start();
+						this->_cluster->start();
 					} break;
 					// Если активировать кластер не требуется
 					case static_cast <uint8_t> (event::mode_t::DISABLED): {
@@ -125,9 +138,12 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			 */
 			#if __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				// Если необходимо деактивировать кластер
-				if(this->_clusterMode == event::mode_t::ENABLED)
-					// Останавливаем работу кластера
-					this->_cluster.stop();
+				if(this->_clusterParams.mode == event::mode_t::ENABLED){
+					// Если кластер инициализирован
+					if(this->_cluster != nullptr)
+						// Останавливаем работу кластера
+						this->_cluster->stop();
+				}
 			#endif
 		} break;
 	}
@@ -286,7 +302,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			 */
 			#elif __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				// Если процесс является дочерним
-				if(!this->_cluster.master()){
+				if(!this->_cluster->master()){
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("server_status"))
 						// Выполняем функцию обратного вызова
@@ -564,7 +580,7 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 			 */
 			#if __linux__ || __FreeBSD__
 				// Если кластер активен, значит нам необходимо проверить опции сервера
-				if(this->_clusterMode == event::mode_t::ENABLED){
+				if(this->_clusterParams.mode == event::mode_t::ENABLED){
 					// Если не установлена опция переиспользования портов
 					if(!(this->_io->getOptions(eid) & event::options::REUSE_PORT))
 						// Выполняем установку опции для события сервера
@@ -1253,12 +1269,14 @@ void awh::unit::Server::stop() noexcept {
 			/**
 			 * Определяем режим запуска сервера
 			 */
-			switch(static_cast <uint8_t> (this->_clusterMode)){
+			switch(static_cast <uint8_t> (this->_clusterParams.mode)){
 				// Если необходимо активировать кластер
-				case static_cast <uint8_t> (event::mode_t::ENABLED):
-					// Останавливаем работу кластера
-					this->_cluster.stop();
-				break;
+				case static_cast <uint8_t> (event::mode_t::ENABLED): {
+					// Если кластер инициализирован
+					if(this->_cluster != nullptr)
+						// Останавливаем работу кластера
+						this->_cluster->stop();
+				} break;
 				// Если необходимо кластер в работе не используется
 				case static_cast <uint8_t> (event::mode_t::DISABLED):
 					// Выполняем остановку работы основного юнита
@@ -1319,27 +1337,40 @@ void awh::unit::Server::start() noexcept {
 			/**
 			 * Определяем режим запуска сервера
 			 */
-			switch(static_cast <uint8_t> (this->_clusterMode)){
+			switch(static_cast <uint8_t> (this->_clusterParams.mode)){
 				// Если необходимо активировать кластер
 				case static_cast <uint8_t> (event::mode_t::ENABLED): {
+					// Если кластер не инициализирован
+					if(this->_cluster == nullptr){
+						// Создаём объект кластера для управления процессами сервера
+						this->_cluster = make_unique <cluster_t> (this->_fmk, this->_log);
+						// Если имя кластера установлено
+						if(!this->_clusterParams.name.empty())
+							// Устанавливаем название кластера
+							this->_cluster->name(this->_clusterParams.name);
+						// Устанавливаем максимальное количество процессов кластера
+						this->_cluster->count(this->_clusterParams.count);
+						// Устанавливаем флаг автоматического возрождения процессов
+						this->_cluster->rebirth(this->_clusterParams.rebirth);
+					}
 					// Устанавливаем функцию обратного вызова на событие получения сигнала
-					this->_cluster.on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
+					this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
 					// Устанавливаем функцию обратного вызова на событие пересоздания процесса
-					this->_cluster.on <void (const pid_t, const pid_t)> ("rebase", &server_t::rebase, this, _1, _2);
+					this->_cluster->on <void (const pid_t, const pid_t)> ("rebase", &server_t::rebase, this, _1, _2);
 					// Устанавливаем функцию обратного вызова на событие отправки сообщений
-					this->_cluster.on <void (const pid_t, const size_t)> ("sending", &server_t::sending, this, _1, _2);
+					this->_cluster->on <void (const pid_t, const size_t)> ("sending", &server_t::sending, this, _1, _2);
 					// Устанавливаем функцию обратного вызова на получение событий кластера
-					this->_cluster.on <void (const pid_t, const unit::cluster_t::event_t)> ("events", &server_t::cluster, this, _1, _2);
+					this->_cluster->on <void (const pid_t, const unit::cluster_t::event_t)> ("events", &server_t::cluster, this, _1, _2);
 					// Устанавливаем функцию обратного вызова на событие получения сообщений
-					this->_cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("message", &server_t::message, this, _1, _2, _3);
+					this->_cluster->on <void (const pid_t, const uint8_t *, const size_t)> ("message", &server_t::message, this, _1, _2, _3);
 					// Устанавливаем функцию обратного вызова на событие изменения статуса кластера
-					this->_cluster.on <void (const pid_t, const event::status_t)> ("state", static_cast <void (server_t::*)(const pid_t, const event::status_t)> (&server_t::status), this, _1, _2);
+					this->_cluster->on <void (const pid_t, const event::status_t)> ("state", static_cast <void (server_t::*)(const pid_t, const event::status_t)> (&server_t::status), this, _1, _2);
 					// Устанавливаем функцию обратного вызова на событие получения ошибок кластера
-					this->_cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", static_cast <void (server_t::*)(const pid_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3);
+					this->_cluster->on <void (const pid_t, const event::error_t, const string &)> ("error", static_cast <void (server_t::*)(const pid_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3);
 					// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных кластера
-					this->_cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (server_t::*)(const pid_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3);
+					this->_cluster->on <void (const pid_t, const event::status_t, const size_t)> ("available", static_cast <void (server_t::*)(const pid_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3);
 					// Запускаем работу кластера
-					this->_cluster.start();
+					this->_cluster->start();
 				} break;
 				// Если необходимо кластер в работе не используется
 				case static_cast <uint8_t> (event::mode_t::DISABLED): {
@@ -1519,7 +1550,11 @@ void awh::unit::Server::clusterRebirth(const bool mode) noexcept {
 	// Выполняем блокировку потока для работы с событием кластера
 	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем флаг автоматического возрождения процессов
-	this->_cluster.rebirth(mode);
+	this->_clusterParams.rebirth = mode;
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr)
+		// Устанавливаем флаг автоматического возрождения процессов
+		this->_cluster->rebirth(this->_clusterParams.rebirth);
 }
 /**
  * @brief Метод установки названия кластера
@@ -1530,7 +1565,11 @@ void awh::unit::Server::clusterName(string_view name) noexcept {
 	// Выполняем блокировку потока для работы с событием кластера
 	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем название кластера
-	this->_cluster.name(name);
+	this->_clusterParams.name = name;
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr)
+		// Устанавливаем название кластера
+		this->_cluster->name(this->_clusterParams.name);
 }
 /**
  * @brief Метод получения семейства кластера
@@ -1538,14 +1577,19 @@ void awh::unit::Server::clusterName(string_view name) noexcept {
  * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
  */
 awh::unit::cluster_t::family_t awh::unit::Server::clusterFamily() const noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
-	// Если текущий процесс кластера является родительским
-	if(this->_cluster.master())
-		// Устанавливаем результат работы функции
-		return cluster_t::family_t::MASTER;
-	// Если текущий процесс кластера является дочерним
-	return cluster_t::family_t::CHILDREN;
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Если текущий процесс кластера является родительским
+		if(this->_cluster->master())
+			// Устанавливаем результат работы функции
+			return cluster_t::family_t::MASTER;
+		// Если текущий процесс кластера является дочерним
+		return cluster_t::family_t::CHILDREN;
+	}
+	// Выводим результат по умолчанию
+	return cluster_t::family_t::NONE;
 }
 /**
  * @brief Метод получения режима активации кластера
@@ -1556,7 +1600,7 @@ awh::event::mode_t awh::unit::Server::clusterMode() const noexcept {
 	// Выполняем блокировку потока для работы с событием кластера
 	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Извлекаем режим активации кластера
-	return this->_clusterMode;
+	return this->_clusterParams.mode;
 }
 /**
  * @brief Метод установки количества процессов кластера
@@ -1568,7 +1612,7 @@ void awh::unit::Server::clusterMode(const event::mode_t mode) noexcept {
 	// Выполняем блокировку потока для работы с событием кластера
 	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Устанавливаем режим активации кластера
-	this->_clusterMode = mode;
+	this->_clusterParams.mode = mode;
 }
 /**
  * @brief Метод получения максимального количества процессов
@@ -1576,10 +1620,15 @@ void awh::unit::Server::clusterMode(const event::mode_t mode) noexcept {
  * @return максимальное количество процессов
  */
 uint16_t awh::unit::Server::clusterCount() const noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
-	// Выводим максимальное количество процессов кластера
-	return this->_cluster.count();
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выводим максимальное количество процессов кластера
+		return this->_cluster->count();
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод установки максимального количества процессов
@@ -1594,18 +1643,20 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 		// Выполняем блокировку потока для работы с событием кластера
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Локальная переменная для работы с количеством процессов
-		uint16_t currentCount = count;
+		this->_clusterParams.count = count;
 		// Если количество процессов передано пустое
-		if(currentCount == 0){
+		if(this->_clusterParams.count == 0){
 			// Устанавливаем количество доступных ядер в системе
-			currentCount = static_cast <uint16_t> (thread::hardware_concurrency());
+			this->_clusterParams.count = static_cast <uint16_t> (thread::hardware_concurrency());
 			// Если количество доступных воркеров больше одного, уменьшаем пополам
-			if(currentCount > 1)
+			if(this->_clusterParams.count > 1)
 				// Уменьшаем количество воркеров в два раза
-				currentCount /= 2;
+				this->_clusterParams.count /= 2;
 		}
-		// Устанавливаем максимальное количество процессов кластера
-		this->_cluster.count(currentCount);
+		// Если кластер инициализирован
+		if(this->_cluster != nullptr)
+			// Устанавливаем максимальное количество процессов кластера
+			this->_cluster->count(this->_clusterParams.count);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1631,10 +1682,15 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
  * @return список дочерних процессов
  */
 unordered_set <pid_t> awh::unit::Server::clusterWorkers() const noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
-	// Выводим количество активных воркеров кластера
-	return this->_cluster.workers();
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выводим количество активных воркеров кластера
+		return this->_cluster->workers();
+	}
+	// Выводим результат по умолчанию
+	return {};
 }
 /**
  * @brief Метод отправки сообщения родительскому процессу
@@ -1644,10 +1700,15 @@ unordered_set <pid_t> awh::unit::Server::clusterWorkers() const noexcept {
  * @return       количество байт отправленного сообщения
  */
 size_t awh::unit::Server::clusterSend(const void * buffer, const size_t size) noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем отправку сообщения родительскому процессу
-	return this->_cluster.send(buffer, size);
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем отправку сообщения родительскому процессу
+		return this->_cluster->send(buffer, size);
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод отправки сообщения дочернему процессу
@@ -1658,10 +1719,15 @@ size_t awh::unit::Server::clusterSend(const void * buffer, const size_t size) no
  * @return       количество байт отправленного сообщения
  */
 size_t awh::unit::Server::clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем отправку сообщения дочернему процессу
-	return this->_cluster.send(pid, buffer, size);
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем отправку сообщения дочернему процессу
+		return this->_cluster->send(pid, buffer, size);
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод отправки сообщения всем дочерним процессам
@@ -1671,10 +1737,15 @@ size_t awh::unit::Server::clusterSend(const pid_t pid, const void * buffer, cons
  * @return       количество байт отправленного сообщения
  */
 size_t awh::unit::Server::clusterBroadcast(const void * buffer, const size_t size) noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем отправку сообщения всем дочерним процессам
-	return this->_cluster.broadcast(buffer, size);
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем отправку сообщения всем дочерним процессам
+		return this->_cluster->broadcast(buffer, size);
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод получения размера буфера события
@@ -1684,10 +1755,15 @@ size_t awh::unit::Server::clusterBroadcast(const void * buffer, const size_t siz
  * @return       размер буфера события
  */
 size_t awh::unit::Server::clusterGetBufferSize(const pid_t pid, const event::action_t action) const noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
-	// Выполняем получение размера буфера кластера для события кластера
-	return this->_cluster.getBufferSize(pid, action);
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+		// Выполняем получение размера буфера кластера для события кластера
+		return this->_cluster->getBufferSize(pid, action);
+	}
+	// Выводим результат по умолчанию
+	return 0;
 }
 /**
  * @brief Метод установки размера буфера события
@@ -1698,10 +1774,15 @@ size_t awh::unit::Server::clusterGetBufferSize(const pid_t pid, const event::act
  * @return       результат выполнения установки
  */
 bool awh::unit::Server::clusterSetBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept {
-	// Выполняем блокировку потока для работы с событием кластера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем установку размера буфера кластера для события кластера
-	return this->_cluster.setBufferSize(pid, action, size);
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr){
+		// Выполняем блокировку потока для работы с событием кластера
+		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Выполняем установку размера буфера кластера для события кластера
+		return this->_cluster->setBufferSize(pid, action, size);
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Конструктор
@@ -1709,8 +1790,7 @@ bool awh::unit::Server::clusterSetBufferSize(const pid_t pid, const event::actio
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _cluster(fmk, log), _clusterMode(event::mode_t::DISABLED) {
+awh::unit::Server::Server(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log), _cluster(nullptr) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 }

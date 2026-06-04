@@ -463,6 +463,9 @@ void awh::client::Socks5::state(const event::id_t eid, const event::status_t sta
  * @param size   размер данных клиента
  */
 void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
+	
+	cout << "!!!!!!!!!! Socks5::read: eid=" << eid << ", size=" << size << endl;
+	
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
 		/**
@@ -2259,7 +2262,7 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid) noexcept {
 					// Сбрасываем идентификатор TLS для клиента
 					this->_tid = 0;
 				// Добавляем идентификатор события клиента для конечной точки
-				auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
+				auto ret = this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
 				// Если идентификатор события клиента для конечной точки добавлен
 				if(ret.second)
 					// Добавляем идентификатор события клиента в карту соответствия
@@ -2412,47 +2415,60 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view 
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Создаём объект параметров подключения для идентификатора события клиента
 				unique_ptr <net::attr_t> attr = nullptr;
-				/**
-				 * Определяем тип полученного IP-адреса
-				 */
-				switch(static_cast <uint8_t> (this->_addr.host(addr))){
-					// Для типа FQDN
-					case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_fqdn_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::FQDN;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
-						// Устанавливаем полученный доменное имя хоста для подключения
-						awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
-					} break;
-					// Для типа IPv4
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Выполняем парсинг IP-адреса
-						this->_addr = addr;
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::IPV4;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
-					// Для типа IPv6
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Выполняем парсинг IP-адреса
-						this->_addr = addr;
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::IPV6;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
+				// Выполняем парсинг IP-адреса
+				if(this->_addr.parse(addr)){
+					/**
+					 * Определяем тип полученного IP-адреса
+					 */
+					switch(static_cast <uint8_t> (this->_addr.type())){
+						// Для типа FQDN
+						case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_fqdn_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::FQDN;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+							// Устанавливаем полученный доменное имя хоста для подключения
+							awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
+						} break;
+						// Для типа IPv4
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+							// Выполняем парсинг IP-адреса
+							this->_addr = addr;
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::IPV4;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (attr.get())->port = port;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+						// Для типа IPv6
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+							// Выполняем парсинг IP-адреса
+							this->_addr = addr;
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::IPV6;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (attr.get())->port = port;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+					}
+				// Если распарсить адрес не удалось, значит будем считать, что это FQDN
+				} else {
+					// Создаём объект параметров подключения для идентификатора события клиента
+					attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+					// Устанавливаем полученный доменное имя хоста для подключения
+					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
 				}
 				// Если объект параметров подключения для идентификатора события клиента создан
 				if(attr != nullptr){
@@ -2465,7 +2481,7 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, string_view 
 						// Сбрасываем идентификатор TLS для клиента
 						this->_tid = 0;
 					// Добавляем идентификатор события клиента для конечной точки
-					auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
+					auto ret = this->_sessions.emplace(endpoint, make_pair(eid, this->_tid));
 					// Если идентификатор события клиента для конечной точки добавлен
 					if(ret.second)
 						// Добавляем идентификатор события клиента в карту соответствия
@@ -2516,47 +2532,60 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Создаём объект параметров подключения для идентификатора события клиента
 				unique_ptr <net::attr_t> attr = nullptr;
-				/**
-				 * Определяем тип полученного IP-адреса
-				 */
-				switch(static_cast <uint8_t> (this->_addr.host(addr))){
-					// Для типа FQDN
-					case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_fqdn_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::FQDN;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
-						// Устанавливаем полученный доменное имя хоста для подключения
-						awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
-					} break;
-					// Для типа IPv4
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Выполняем парсинг IP-адреса
-						this->_addr = addr;
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::IPV4;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
-					// Для типа IPv6
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Выполняем парсинг IP-адреса
-						this->_addr = addr;
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::IPV6;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
+				// Выполняем парсинг IP-адреса
+				if(this->_addr.parse(addr)){
+					/**
+					 * Определяем тип полученного IP-адреса
+					 */
+					switch(static_cast <uint8_t> (this->_addr.type())){
+						// Для типа FQDN
+						case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_fqdn_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::FQDN;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+							// Устанавливаем полученный доменное имя хоста для подключения
+							awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
+						} break;
+						// Для типа IPv4
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+							// Выполняем парсинг IP-адреса
+							this->_addr = addr;
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::IPV4;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (attr.get())->port = port;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+						// Для типа IPv6
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+							// Выполняем парсинг IP-адреса
+							this->_addr = addr;
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::IPV6;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (attr.get())->port = port;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+					}
+				// Если распарсить адрес не удалось, значит будем считать, что это FQDN
+				} else {
+					// Создаём объект параметров подключения для идентификатора события клиента
+					attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+					// Устанавливаем полученный доменное имя хоста для подключения
+					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
 				}
 				// Если объект параметров подключения для идентификатора события клиента создан
 				if(attr != nullptr){
@@ -2595,7 +2624,7 @@ bool awh::client::Socks5::addEventIdEndpoint(const event::id_t eid, tls::coder_t
 						// Сбрасываем идентификатор TLS для клиента
 						this->_tid = 0;
 					// Добавляем идентификатор события клиента для конечной точки
-					auto ret =  this->_sessions.emplace(endpoint, make_pair(eid, tid));
+					auto ret = this->_sessions.emplace(endpoint, make_pair(eid, tid));
 					// Если идентификатор события клиента для конечной точки добавлен
 					if(ret.second)
 						// Добавляем идентификатор события клиента в карту соответствия
@@ -2918,47 +2947,60 @@ bool awh::client::Socks5::delEventIdEndpoint(const event::id_t eid, string_view 
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Создаём объект параметров подключения для идентификатора события клиента
 				unique_ptr <net::attr_t> attr = nullptr;
-				/**
-				 * Определяем тип полученного IP-адреса
-				 */
-				switch(static_cast <uint8_t> (this->_addr.host(addr))){
-					// Для типа FQDN
-					case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_fqdn_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::FQDN;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
-						// Устанавливаем полученный доменное имя хоста для подключения
-						awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
-					} break;
-					// Для типа IPv4
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Выполняем парсинг IP-адреса
-						this->_addr = addr;
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::IPV4;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
-					// Для типа IPv6
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Выполняем парсинг IP-адреса
-						this->_addr = addr;
-						// Создаём объект параметров подключения для идентификатора события клиента
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения для идентификатора события клиента
-						attr->type = net::type_t::IPV6;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
+				// Выполняем парсинг IP-адреса
+				if(this->_addr.parse(addr)){
+					/**
+					 * Определяем тип полученного IP-адреса
+					 */
+					switch(static_cast <uint8_t> (this->_addr.type())){
+						// Для типа FQDN
+						case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_fqdn_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::FQDN;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+							// Устанавливаем полученный доменное имя хоста для подключения
+							awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
+						} break;
+						// Для типа IPv4
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+							// Выполняем парсинг IP-адреса
+							this->_addr = addr;
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::IPV4;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (attr.get())->port = port;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+						// Для типа IPv6
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+							// Выполняем парсинг IP-адреса
+							this->_addr = addr;
+							// Создаём объект параметров подключения для идентификатора события клиента
+							attr = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения для идентификатора события клиента
+							attr->type = net::type_t::IPV6;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (attr.get())->port = port;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+					}
+				// Если распарсить адрес не удалось, значит будем считать, что это FQDN
+				} else {
+					// Создаём объект параметров подключения для идентификатора события клиента
+					attr = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения для идентификатора события клиента
+					attr->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (attr.get())->port = port;
+					// Устанавливаем полученный доменное имя хоста для подключения
+					awh_cast <net::attr_fqdn_t *> (attr.get())->domain = addr;
 				}
 				// Если объект параметров подключения для идентификатора события клиента создан
 				if(attr != nullptr){

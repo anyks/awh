@@ -142,6 +142,27 @@ namespace awh {
 						explicit Origin_Hash() noexcept = default;
 				} origin_hash_t;
 			private:
+				/**
+				 * @brief Структура конечной точки клиента, работающего через прокси
+				 *
+				 */
+				typedef struct Endpoint {
+					// Идентификатор события клиента
+					event::id_t eid;
+					// Идентификатор TLS для клиента
+					tls::coder_t::id_t tid;
+					// Атрибуты сети для конечной точки
+					unique_ptr <net::attr_t> attr;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Endpoint() noexcept : eid(0), tid(0), attr(nullptr) {}
+				} endpoint_t;
+			private:
+				// Конечная точка клиента, работающего через прокси
+				endpoint_t _endpoint;
+			private:
 				// Контекст для хранения параметров сообщений
 				proto::socks5_t::ctx_t _ctx;
 			private:

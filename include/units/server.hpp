@@ -44,11 +44,33 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Server : public unit_t {
 			private:
-				// Объект работы с кластером
-				cluster_t _cluster;
+				/**
+				 * @brief Структура параметров кластера
+				 *
+				 */
+				typedef struct ClusterParams {
+					// Имя кластера
+					string name;
+					// Флаг пересоздания процесса при его завершении
+					bool rebirth;
+					// Максимальное количество процессов в кластере
+					uint16_t count;
+					// Режим активации кластера
+					event::mode_t mode;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit ClusterParams() noexcept :
+					 name{""}, rebirth(false),
+					 count(0), mode(event::mode_t::DISABLED) {}
+				} cluster_params_t;
 			private:
-				// Флаг активации/деактивации кластера
-				event::mode_t _clusterMode;
+				// Объект работы с кластером
+				unique_ptr <cluster_t> _cluster;
+			private:
+				// Параметры кластера
+				cluster_params_t _clusterParams;
 			private:
 				// Мютекс для блокировки потоков
 				lock_state_t <std::shared_mutex> _mtx;

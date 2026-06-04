@@ -39,6 +39,17 @@ class Executor {
 		const log_t * _log;
 	public:
 		/**
+		 * @brief Метод обработки события запуска клиента
+		 *
+		 * @param eid  идентификатор клиента
+		 * @param host адрес хоста
+		 * @param port порт хоста
+		 */
+		void launch(const event::id_t eid, const string & host, const uint16_t port) noexcept {
+			// Выводим информацию о событии запуска клиента
+			this->_log->print("Launched socks5 client (EID=%u, Host=%s, Port=%u)", log_t::flag_t::INFO, eid, host.c_str(), port);
+		}
+		/**
 		 * @brief Метод обработки событий записи данных клиентом
 		 *
 		 * @param eid  идентификатор клиента
@@ -113,10 +124,9 @@ class Executor {
 		 *
 		 * @param eid    идентификатор сервера
 		 * @param cid    идентификатор клиента
-		 * @param tid    идентификатор клиента TLS
 		 * @param server объект сервера
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server::socks5_t * server) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, server::socks5_t * server) noexcept {
 			// Устананавливаем опции события
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE))
 				// Выводим сообщение об успешной установке опций события
@@ -181,68 +191,39 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем имя кластера для сервера
 	unit.clusterName("ANYKS");
 	// Устанавливаем количество вокеров кластера для сервера
-	unit.clusterCount(2);
+	unit.clusterCount(4);
 	// Включаем режим кластера для сервера
 	unit.clusterMode(event::mode_t::ENABLED);
 	// Создаём событие сервера TCP и сохраняем его идентификатор
 	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
-	// Создаём событие первого сервера UDP и сохраняем его идентификатор
-	const event::id_t uid1 = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-	// Создаём событие второго сервера UDP и сохраняем его идентификатор
-	const event::id_t uid2 = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-	// Создаём событие третьего сервера UDP и сохраняем его идентификатор
-	const event::id_t uid3 = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
 	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
 		cout << " Successfully set event options for TCP event!" << endl;
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options TCP event!" << endl;
-	// Устананавливаем опции события
-	if(unit.setOptions(uid1, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
-		cout << " Successfully set event options for UDP event 1!" << endl;
-	// Выводим сообщение об ошибке установки опций события
-	else cout << " Failed to set event options UDP event 1!" << endl;
-	// Устананавливаем опции события
-	if(unit.setOptions(uid2, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
-		cout << " Successfully set event options for UDP event 2!" << endl;
-	// Выводим сообщение об ошибке установки опций события
-	else cout << " Failed to set event options UDP event 2!" << endl;
-	// Устананавливаем опции события
-	if(unit.setOptions(uid3, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
-		cout << " Successfully set event options for UDP event 3!" << endl;
-	// Выводим сообщение об ошибке установки опций события
-	else cout << " Failed to set event options UDP event 3!" << endl;
 	// Устанавливаем идентификатор события TCP сервера
 	server.setEventId(eid);
-	// Устанавливаем идентификатор события первого UDP сервера 1
-	server.setEventId(uid1);
-	// Устанавливаем идентификатор события первого UDP сервера 2
-	server.setEventId(uid2);
-	// Устанавливаем идентификатор события первого UDP сервера 3
-	server.setEventId(uid3);
 	// Устанавливаем диапазон портов для выделения портов UDP серверов
-	// server.setRangePorts(62000, 63000);
+	server.udp(25, 62000, 63000, "0.0.0.0");
 	// Устанавливаем порт и хост сервера
-	if(server.setPort(eid, 2222) && server.setPort(uid1, 2223) && server.setPort(uid2, 2224) && server.setPort(uid3, 2225) &&
-	   server.setHost(eid, "localhost") && server.setHost(uid1, "localhost") && server.setHost(uid2, "localhost") && server.setHost(uid3, "localhost")){
+	if(server.setPort(2222) && server.setHost("localhost")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд
 		server.setTimeout(eid, event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса сервера
 		server.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &server);
 		// Регистрируем функцию обратного вызова на событие аутентификации клиента
-		// server.on <bool (const string &, const string &)> ("auth", &Executor::auth, &executor, _1, _2);
+		server.on <bool (const string &, const string &)> ("auth", &Executor::auth, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие записи данных сервером
 		server.on <void (const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2);
+		// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
+		server.on <void (const event::id_t, const event::id_t)> ("accept", &Executor::accept, &executor, _1, _2, &server);
+		// Регистрируем функцию обратного вызова на событие запуска клиента
+		server.on <void (const event::id_t, const string &, const uint16_t)> ("launch", &Executor::launch, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие чтения данных сервером
 		server.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::read, &executor, _1, _2, _3, &server);
 		// Регистрируем функцию обратного вызова на событие ошибок сервера
 		server.on <void (const event::id_t, const event::error_t, const string &)> ("error", &Executor::error, &executor, _1, _2, _3);
-		// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server);
 		// Регистрируем функцию обратного вызова на событие готовности сервера к работе
 		server.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4, &server);
 		// Запускаем событие сервера

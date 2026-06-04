@@ -13,6 +13,36 @@
  */
 
 /**
+ * Если размер MTU для UDP сообщений в IPv4 не определён
+ */
+#ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1472 - 72 = 1400 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * 1500 - 20 (IP) - 8 (UDP) = 1472 максимум без фрагментации
+	 * Запас 72 байта на возможную инкапсуляцию (туннели, провайдерские заголовки)
+	 * Больше → фрагментация → потеря пакетов
+	 */
+	#define AWH_MTU_UDP_IPV4_PAYLOAD_SIZE 0x578
+#endif
+
+/**
+ * Если размер MTU для UDP сообщений в IPv6 не определён
+ */
+#ifndef AWH_MTU_UDP_IPV6_PAYLOAD_SIZE
+	/**
+	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
+	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1452 - 72 = 1380 байт, с запасом на возможную инкапсуляцию
+	 *
+	 * 1500 - 40 (IPv6) - 8 (UDP) = 1452 максимум без фрагментации
+	 * Запас 72 байта на инкапсуляцию (туннели часто используют двойную инкапсуляцию)
+	 * IPv6 не фрагментирует на маршрутизаторах → фрагментированные пакеты отбрасываются
+	 */
+	#define AWH_MTU_UDP_IPV6_PAYLOAD_SIZE 0x564
+#endif
+
+/**
  * Стандартные модули
  */
 #include <random>
@@ -140,11 +170,11 @@ namespace {
 				 * Если порты идут по порядку, злоумышленнику или багованному
 				 * фаерволу легче предсказать или заблокировать следующий порт.
 				 */
-				std::random_device randev;
+				::random_device randev;
 				// Выбираем стандарт рандомайзера
-				mt19937 generator(randev());
+				::mt19937 generator(randev());
 				// Перемешиваем список портов для выделения
-				std::shuffle(this->_ports.begin(), this->_ports.end(), generator);
+				::shuffle(this->_ports.begin(), this->_ports.end(), generator);
 			}
 		public:
 			/**
@@ -178,6 +208,18 @@ namespace {
 		// Комбинируем хеш-коды
 		seed ^= (value + 0x9E3779B9 + (seed << 6) + (seed >> 2));
 	}
+
+	/**
+	 * @brief Размер данных в буфере
+	 *
+	 */
+	thread_local size_t __awh_size__ = 0;
+
+	/**
+	 * @brief Буфер временного хранения данных UDP сообщений
+	 *
+	 */
+	thread_local uint8_t __awh_buffer__[AWH_MTU_UDP_IPV4_PAYLOAD_SIZE] = {0};
 };
 
 /**
@@ -333,84 +375,23 @@ size_t awh::server::Socks5::Origin_Hash::operator()(const origin_t & id) const n
  */
 void awh::server::Socks5::status(const event::status_t status, const state_t state) noexcept {
 	/**
-	 * Временное состояние сервера
+	 * Выполняем отлов ошибок
 	 */
-	switch(static_cast <uint8_t> (state)){
-		// Если мы получили статус события сервера
-		case static_cast <uint8_t> (state_t::SERVER): {
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("status"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("status", status);
-			// Если работа сервера запущена
-			if(status == event::status_t::LAUNCHED){
-				// Выполняем запуск работы сервера, если сервер не запущен
-				if(!this->_server->launch(this->_eid)){
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_eid);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, this->_eid);
-						#endif
-					}
-				// Если сервер запущен удачно
-				} else {
-					// Количество активных DNS-резолверов
-					uint16_t count = 0;
-					// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
-					if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
-						// Выполняем инициализацию DNS-резолвера для текущего сервера
-						this->_dns->init(event::family_t::IPV4, count);
-					// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
-					if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
-						// Выполняем инициализацию DNS-резолвера для текущего сервера
-						this->_dns->init(event::family_t::IPV6, count);
-					// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-					this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("launch")){
-						/**
-						 * Определяем семейство адресов с которым работает сервер
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
-							// Если сервер работает с адресами IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4):
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(this->_eid, event::address_t::IPV4), this->_server->getPort(this->_eid));
-							break;
-							// Если сервер работает с адресами IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6):
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(this->_eid, event::address_t::IPV6), this->_server->getPort(this->_eid));
-							break;
-						}
-					}
-				}
-			}
-		} break;
-		// Если мы получили статус события DNS-резолвера
-		case static_cast <uint8_t> (state_t::RESOLVER): {
-			/**
-			 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
-			 */
-			switch(static_cast <uint8_t> (status)){
-				// Если событие DNS-резолвера запущено
-				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-					// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-					this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, this->_eid, _2, _3, _4);
-					// Выполняем резолвинг хоста текущего сервера
-					if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_server)->family(this->_eid), this->_host)){
-						// Создаём текст ошибки резолвинга хоста текущего сервера
-						const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", this->_host.c_str());
+	try {
+		/**
+		 * Временное состояние сервера
+		 */
+		switch(static_cast <uint8_t> (state)){
+			// Если мы получили статус события сервера
+			case static_cast <uint8_t> (state_t::SERVER): {
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("status"))
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::status_t)> ("status", status);
+				// Если работа сервера запущена
+				if(status == event::status_t::LAUNCHED){
+					// Выполняем запуск работы сервера, если сервер не запущен
+					if(!this->_server->launch(this->_eid)){
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
 							/**
@@ -418,26 +399,692 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_eid);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, this->_eid);
 							#endif
-						// Выполняем функцию обратного вызова
-						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_eid, event::error_t::NOT_FOUND, error);
+						}
+					// Если сервер запущен удачно
+					} else {
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("launch")){
+							/**
+							 * Определяем семейство адресов с которым работает сервер
+							 */
+							switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(this->_eid))){
+								// Если сервер работает с адресами IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4):
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(this->_eid, event::address_t::IPV4), this->_server->getPort(this->_eid));
+								break;
+								// Если сервер работает с адресами IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6):
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(this->_eid, event::address_t::IPV6), this->_server->getPort(this->_eid));
+								break;
+							}
+						}
+						/**
+						 * Определяем режим работы сервера
+						 */
+						switch(static_cast <uint8_t> (this->_server->clusterMode())){
+							// Если сервер запущен в режиме кластера
+							case static_cast <uint8_t> (event::mode_t::ENABLED): {
+								// Количество активных DNS-резолверов
+								uint16_t count = 0;
+								// Если количество активных DNS-резолверов для семейства адресов IPv4 больше нуля
+								if((count = this->_dns->resolvers(event::family_t::IPV4)) > 0)
+									// Выполняем инициализацию DNS-резолвера для текущего сервера
+									this->_dns->init(event::family_t::IPV4, count);
+								// Если количество активных DNS-резолверов для семейства адресов IPv6 больше нуля
+								if((count = this->_dns->resolvers(event::family_t::IPV6)) > 0)
+									// Выполняем инициализацию DNS-резолвера для текущего сервера
+									this->_dns->init(event::family_t::IPV6, count);
+								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
+							} break;
+							// Если сервер не запущен в режиме кластера
+							case static_cast <uint8_t> (event::mode_t::DISABLED): {
+								// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+								this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolve, this, _1, _2, _3, _4);
+								// Если порты для UDP серверов установлены корректно
+								if((this->_udp.begin > 0) && (this->_udp.begin < this->_udp.end)){
+									// Инициализируем пул портов для подключения к сети клиентов
+									::__awh_port_allocator__.init(this->_udp.begin, this->_udp.end);
+									// Если количество выделенных портов для UDP серверов больше нуля
+									if(this->_udp.count > 0){
+										/**
+										 * Определяем семейство адресов для запуска UDP сервера
+										 */
+										switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+											// Если процесс работает с адресами IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												/**
+												 * Выполняем инициализацию указанного количества UDP серверов
+												 */
+												for(uint16_t i = 0; i < this->_udp.count; i++){
+													// Выделяем порт для UDP-сервера
+													auto port = ::__awh_port_allocator__.allocate();
+													// Если порт выделен успешно, отправляем его врокеру для запуска UDP сервера
+													if(port){
+														// Создаём UDP сервер для работы с клиентами
+														auto ret = this->_udp.events.emplace(this->_server->issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP));
+														// Устананавливаем опции события UDP сервера
+														if(this->_server->setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+															// Устанавливаем порт и адрес для UDP сервера
+															if(this->_server->setPort(* ret.first, * port) && this->_server->setAddress(* ret.first, event::address_t::IPV4, this->_udp.address.get())){
+																// Выполняем фиксацию настроек события сервера
+																if(this->_server->commit(* ret.first)){
+																	// Выполняем запуск события
+																	if(!this->_server->launch(* ret.first)){
+																		// Если функция обратного вызова не установлена
+																		if(!this->_callback.is("error")){
+																			/**
+																			 * Если включён режим отладки
+																			 */
+																			#if DEBUG_MODE
+																				// Выводим сообщение об ошибке
+																				this->_log->debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																			/**
+																			 * Если режим отладки не включён
+																			 */
+																			#else
+																				// Выводим сообщение об ошибке
+																				this->_log->print("Creating UDP server for peer ID=%u is failed", log_t::flag_t::WARNING, * ret.first);
+																			#endif
+																		}
+																	// Если сервер удачно запущен
+																	} else {
+																		// Если функция обратного вызова установлена
+																		if(this->_callback.is("launch"))
+																			// Выполняем функцию обратного вызова
+																			this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", * ret.first, this->_server->getAddress(* ret.first, event::address_t::IPV4), this->_server->getPort(* ret.first));
+																		// Продолжаем цикл для запуска следующего UDP сервера
+																		continue;
+																	}
+																// Если фиксация настроек события сервера не выполнена
+																} else {
+																	// Если функция обратного вызова не установлена
+																	if(!this->_callback.is("error")){
+																		/**
+																		 * Если включён режим отладки
+																		 */
+																		#if DEBUG_MODE
+																			// Выводим сообщение об ошибке
+																			this->_log->debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																		/**
+																		 * Если режим отладки не включён
+																		 */
+																		#else
+																			// Выводим сообщение об ошибке
+																			this->_log->print("UDP server parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+																		#endif
+																	}
+																}
+															// Если установка порта и адреса удалённого сервера для подключения не выполнена
+															} else {
+																// Если функция обратного вызова не установлена
+																if(!this->_callback.is("error")){
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		this->_log->debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		this->_log->print("Port and address of the UDP server were not set correctly for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+																	#endif
+																}
+															}
+														// Если установка опций события не выполнена
+														} else {
+															// Если функция обратного вызова не установлена
+															if(!this->_callback.is("error")){
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("Failed to configure UDP server events settings for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+																#endif
+															}
+														}
+														// Удаляем UDP сервер, если его создание не выполнено
+														this->_server->destroy(* ret.first);
+														// Удаляем событие UDP сервера из списка событий
+														this->_udp.events.erase(ret.first);
+													// Если порт для UDP сервера не выделен, выходим из цикла, так как порты закончились
+													} else break;
+												}
+											} break;
+											// Если процесс работает с адресами IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												/**
+												 * Выполняем инициализацию указанного количества UDP серверов
+												 */
+												for(uint16_t i = 0; i < this->_udp.count; i++){
+													// Выделяем порт для UDP-сервера
+													auto port = ::__awh_port_allocator__.allocate();
+													// Если порт выделен успешно, отправляем его врокеру для запуска UDP сервера
+													if(port){
+														// Создаём UDP сервер для работы с клиентами
+														auto ret = this->_udp.events.emplace(this->_server->issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP));
+														// Устананавливаем опции события UDP сервера
+														if(this->_server->setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+															// Устанавливаем порт и адрес для UDP сервера
+															if(this->_server->setPort(* ret.first, * port) && this->_server->setAddress(* ret.first, event::address_t::IPV6, "::")){
+																// Выполняем фиксацию настроек события сервера
+																if(this->_server->commit(* ret.first)){
+																	// Выполняем запуск события
+																	if(!this->_server->launch(* ret.first)){
+																		// Если функция обратного вызова не установлена
+																		if(!this->_callback.is("error")){
+																			/**
+																			 * Если включён режим отладки
+																			 */
+																			#if DEBUG_MODE
+																				// Выводим сообщение об ошибке
+																				this->_log->debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																			/**
+																			 * Если режим отладки не включён
+																			 */
+																			#else
+																				// Выводим сообщение об ошибке
+																				this->_log->print("Creating UDP server for peer ID=%u is failed", log_t::flag_t::WARNING, * ret.first);
+																			#endif
+																		}
+																	// Если сервер удачно запущен
+																	} else {
+																		// Если функция обратного вызова установлена
+																		if(this->_callback.is("launch"))
+																			// Выполняем функцию обратного вызова
+																			this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", * ret.first, this->_server->getAddress(* ret.first, event::address_t::IPV6), this->_server->getPort(* ret.first));
+																		// Продолжаем цикл для запуска следующего UDP сервера
+																		continue;
+																	}
+																// Если фиксация настроек события сервера не выполнена
+																} else {
+																	// Если функция обратного вызова не установлена
+																	if(!this->_callback.is("error")){
+																		/**
+																		 * Если включён режим отладки
+																		 */
+																		#if DEBUG_MODE
+																			// Выводим сообщение об ошибке
+																			this->_log->debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																		/**
+																		 * Если режим отладки не включён
+																		 */
+																		#else
+																			// Выводим сообщение об ошибке
+																			this->_log->print("UDP server parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+																		#endif
+																	}
+																}
+															// Если установка порта и адреса удалённого сервера для подключения не выполнена
+															} else {
+																// Если функция обратного вызова не установлена
+																if(!this->_callback.is("error")){
+																	/**
+																	 * Если включён режим отладки
+																	 */
+																	#if DEBUG_MODE
+																		// Выводим сообщение об ошибке
+																		this->_log->debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																	/**
+																	 * Если режим отладки не включён
+																	 */
+																	#else
+																		// Выводим сообщение об ошибке
+																		this->_log->print("Port and address of the UDP server were not set correctly for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+																	#endif
+																}
+															}
+														// Если установка опций события не выполнена
+														} else {
+															// Если функция обратного вызова не установлена
+															if(!this->_callback.is("error")){
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, * ret.first);
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("Failed to configure UDP server events settings for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+																#endif
+															}
+														}
+														// Удаляем UDP сервер, если его создание не выполнено
+														this->_server->destroy(* ret.first);
+														// Удаляем событие UDP сервера из списка событий
+														this->_udp.events.erase(ret.first);
+													// Если порт для UDP сервера не выделен, выходим из цикла, так как порты закончились
+													} else break;
+												}
+											} break;
+										}
+									}
+								}
+							} break;
+						}
 					}
-				} break;
-				// Если событие DNS-резолвера остановлено
-				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Останавливаем сервер
-					this->_server->stop();
-				break;
-			}
-		} break;
+				}
+			} break;
+			// Если мы получили статус события DNS-резолвера
+			case static_cast <uint8_t> (state_t::RESOLVER): {
+				/**
+				 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
+				 */
+				switch(static_cast <uint8_t> (status)){
+					// Если событие DNS-резолвера запущено
+					case static_cast <uint8_t> (event::status_t::LAUNCHED): {
+						// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+						this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, this->_eid, _2, _3, _4);
+						// Выполняем резолвинг хоста текущего сервера
+						if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_server)->family(this->_eid), this->_host)){
+							// Создаём текст ошибки резолвинга хоста текущего сервера
+							const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", this->_host.c_str());
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(this->_eid), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							// Выполняем функцию обратного вызова
+							} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_eid, event::error_t::NOT_FOUND, error);
+						}
+					} break;
+					// Если событие DNS-резолвера остановлено
+					case static_cast <uint8_t> (event::status_t::DESTROYED):
+						// Останавливаем сервер
+						this->_server->stop();
+					break;
+				}
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
+}
+/**
+ * @brief Метод инициализации запуска или остановки кластера
+ *
+ * @param pid   идентификатор процесса
+ * @param event событие кластера
+ */
+void awh::server::Socks5::eventsCluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем полученное событие кластера
+		 */
+		switch(static_cast <uint8_t> (event)){
+			// Если событие представляет из себя запуск процесса
+			case static_cast <uint8_t> (unit::cluster_t::event_t::START): {
+				// Если запущенный процесс является мастером кластера
+				if(this->_server->clusterFamily() == ::unit::cluster_t::family_t::MASTER){
+					// Если порты для UDP серверов установлены корректно
+					if((this->_udp.begin > 0) && (this->_udp.begin < this->_udp.end)){
+						// Инициализируем пул портов для подключения к сети клиентов
+						::__awh_port_allocator__.init(this->_udp.begin, this->_udp.end);
+						// Если количество выделенных портов для UDP серверов больше нуля
+						if(this->_udp.count > 0){
+							// Получаем список идентификаторов всех воркеров в кластере
+							const auto & workers = this->_server->clusterWorkers();
+							// Индекс для распределения UDP портов по воркерам
+							uint16_t index = 0;
+							/**
+							 * Выполняем инициализацию указанного количества UDP серверов
+							 */
+							for(uint16_t i = 0; i < this->_udp.count; i++){
+								// Выделяем порт для UDP-сервера
+								auto port = ::__awh_port_allocator__.allocate();
+								// Если порт выделен успешно, отправляем его врокеру для запуска UDP сервера
+								if(port){
+									// Получаем индекс воркера для которого выделяется порт UDP сервера
+									index = (i % static_cast <uint16_t> (workers.size()));
+									// Получаем идентификатор воркера для которого выделяется порт UDP сервера
+									auto worker = ::next(workers.begin(), index);
+									// Отправляем выделенный порт UDP сервера, воркеру для запуска UDP сервера на этом порту
+									this->_server->clusterSend(* worker, &(* port), sizeof(uint16_t));
+								// Если порты для UDP серверов закончились, выходим из цикла
+								} else break;
+							}
+						}
+					}
+				}
+			} break;
+			// Если событие представляет из себя остановку процесса
+			case static_cast <uint8_t> (unit::cluster_t::event_t::STOP): {
+				// Если запущенный процесс является дочерним процессом кластера
+				if(this->_server->clusterFamily() == ::unit::cluster_t::family_t::CHILDREN){
+					// Если события UDP серверов активны
+					if(!this->_udp.events.empty()){
+						/**
+						 * Удаляем все события UDP серверов, так как дочерний процесс, который их обслуживает, остановлен
+						 */
+						for(const auto & eid : this->_udp.events)
+							// Удаляем событие UDP сервера
+							this->_server->destroy(eid);
+					}
+				}
+			} break;
+		}
+		// Если функция получения событий кластера установлена
+		if(this->_callback.is("cluster_events"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", pid, event);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pid, static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод обработки события получения сообщения от процесса кластера
+ *
+ * @param pid  идентификатор процесса
+ * @param data данные полученного сообщения
+ * @param size размер данных полученного сообщения
+ */
+void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
+	// Если сообщение получено от родительского процесса
+	if(this->_server->clusterFamily() == ::unit::cluster_t::family_t::CHILDREN){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если размер данных полученного сообщения соответствует размеру порта
+			if(size == sizeof(uint16_t)){
+				// Порт для запуска UDP сервера, который был выделен родительским процессом
+				uint16_t port = 0;
+				// Копируем данные сообщения в переменную порта
+				::memcpy(&port, data, sizeof(port));
+				/**
+				 * Определяем семейство адресов для запуска UDP сервера
+				 */
+				switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+					// Если процесс работает с адресами IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4): {
+						// Создаём UDP сервер для работы с клиентами
+						auto ret = this->_udp.events.emplace(this->_server->issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP));
+						// Устананавливаем опции события UDP сервера
+						if(this->_server->setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+							// Устанавливаем порт и адрес для UDP сервера
+							if(this->_server->setPort(* ret.first, port) && this->_server->setAddress(* ret.first, event::address_t::IPV4, this->_udp.address.get())){
+								// Выполняем фиксацию настроек события сервера
+								if(this->_server->commit(* ret.first)){
+									// Выполняем запуск события
+									if(!this->_server->launch(* ret.first)){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("Creating UDP server for peer ID=%u is failed", log_t::flag_t::WARNING, * ret.first);
+											#endif
+										}
+									// Если сервер удачно запущен
+									} else {
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("launch"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", * ret.first, this->_server->getAddress(* ret.first, event::address_t::IPV4), this->_server->getPort(* ret.first));
+										// Выходим из функции
+										return;
+									}
+								// Если фиксация настроек события сервера не выполнена
+								} else {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("UDP server parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+										#endif
+									}
+								}
+							// Если установка порта и адреса удалённого сервера для подключения не выполнена
+							} else {
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Port and address of the UDP server were not set correctly for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+									#endif
+								}
+							}
+						// Если установка опций события не выполнена
+						} else {
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Failed to configure UDP server events settings for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+								#endif
+							}
+						}
+						// Удаляем UDP сервер, если его создание не выполнено
+						this->_server->destroy(* ret.first);
+						// Удаляем событие UDP сервера из списка событий
+						this->_udp.events.erase(ret.first);
+					} break;
+					// Если процесс работает с адресами IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6): {
+						// Создаём UDP сервер для работы с клиентами
+						auto ret = this->_udp.events.emplace(this->_server->issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP));
+						// Устананавливаем опции события UDP сервера
+						if(this->_server->setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+							// Устанавливаем порт и адрес для UDP сервера
+							if(this->_server->setPort(* ret.first, port) && this->_server->setAddress(* ret.first, event::address_t::IPV6, "::")){
+								// Выполняем фиксацию настроек события сервера
+								if(this->_server->commit(* ret.first)){
+									// Выполняем запуск события
+									if(!this->_server->launch(* ret.first)){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("Creating UDP server for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("Creating UDP server for peer ID=%u is failed", log_t::flag_t::WARNING, * ret.first);
+											#endif
+										}
+									// Если сервер удачно запущен
+									} else {
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("launch"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", * ret.first, this->_server->getAddress(* ret.first, event::address_t::IPV6), this->_server->getPort(* ret.first));
+										// Выходим из функции
+										return;
+									}
+								// Если фиксация настроек события сервера не выполнена
+								} else {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("UDP server parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("UDP server parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+										#endif
+									}
+								}
+							// Если установка порта и адреса удалённого сервера для подключения не выполнена
+							} else {
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Port and address of the UDP server were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Port and address of the UDP server were not set correctly for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+									#endif
+								}
+							}
+						// Если установка опций события не выполнена
+						} else {
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Failed to configure UDP server events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::WARNING, * ret.first);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Failed to configure UDP server events settings for node with ID=%u", log_t::flag_t::WARNING, * ret.first);
+								#endif
+							}
+						}
+						// Удаляем UDP сервер, если его создание не выполнено
+						this->_server->destroy(* ret.first);
+						// Удаляем событие UDP сервера из списка событий
+						this->_udp.events.erase(ret.first);
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pid, data, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("cluster_message"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
 }
 /**
  * @brief Метод обработки событий подключения клиента к удалённому серверу
@@ -469,7 +1116,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 					/**
 					 * Определяем семейство адресов для хоста сервера
 					 */
-					switch(static_cast <uint8_t> (this->_unit.family(eid))){
+					switch(static_cast <uint8_t> (this->_client.family(eid))){
 						// Если семейство адресов соответствует IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4): {
 							// Устанавливаем тип адреса как IPv4
@@ -488,7 +1135,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 						} break;
 					}
 					// Устанавливаем порт хоста сервера
-					awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port = this->_unit.getInternalPort(eid);
+					awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port = this->_client.getInternalPort(eid);
 					// Если извлечение буфера данных ответа выполнено успешно
 					if(this->_socks5.buffer(&buffer, size, j->second.ctx)){
 						// Если отправка ответа прокси-клиенту не выполнена
@@ -511,10 +1158,6 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 							}
 							// Удаляем подключённого пира
 							this->_server->destroy(i->second);
-							// Удаляем пира из списка активных пиров
-							this->_peers.erase(j);
-							// Удаляем клиента из списка активных клиентов
-							this->_clients.erase(i);
 						// Если отправка ответа прокси-клиенту выполнена успешно
 						} else {
 							// Если статус ответа от прокси-сервера соответствует успешному выполнению команды
@@ -540,14 +1183,9 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 									// Выполняем поиск пира, которому принадлежит идентификатор
 									auto j = this->_peers.find(i->second);
 									// Если пир для этого идентификатора найден
-									if(j != this->_peers.end()){
+									if(j != this->_peers.end())
 										// Удаляем подключённого пира
 										this->_server->destroy(i->second);
-										// Удаляем пира из списка активных пиров
-										this->_peers.erase(j);
-										// Удаляем клиента из списка активных клиентов
-										this->_clients.erase(i);
-									}
 								// Если объединение событий пира и принадлежащего ему клиента выполнено успешно
 								} else {
 									// Устанавливаем статус успешного выполнения команды
@@ -601,24 +1239,117 @@ void awh::server::Socks5::statusClient(const event::id_t eid, const event::statu
 		 */
 		switch(static_cast <uint8_t> (status)){
 			// Если статус уничтожения
-			case static_cast <uint8_t> (event::status_t::DESTROYED): {
-				// Ищем идентификатор пира в списке сопоставления идентификаторов пиров с удалёнными клиентами
-				auto j = this->_peers.find(eid);
-				// Если идентификатор пира найден в списке
-				if(j != this->_peers.end()){
-					// Удаляем пира из списка активных пиров
-					this->_peers.erase(j);
-					// Удаляем клиента из списка активных клиентов
-					this->_clients.erase(i);
-					// Удаляем подключённого пира
-					this->_server->destroy(eid);
-				}
-			} break;
+			case static_cast <uint8_t> (event::status_t::DESTROYED):
+				// Удаляем подключённого пира
+				this->_server->destroy(eid);
+			break;
 		}
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("state"))
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+	}
+}
+/**
+ * @brief Метод обработки событий получения данных клиентом
+ *
+ * @param eid    идентификатор клиента
+ * @param buffer буфер данных клиента
+ * @param size   размер данных клиента
+ */
+void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
+	// Ищем идентификатор клиента в списке сопоставления идентификаторов клиентов с пирами которым они принадлежат
+	auto i = this->_clients.find(eid);
+	// Если идентификатор клиента найден в списке
+	if(i != this->_clients.end()){
+		// Инициализируем объект заголовка UDP пакета
+		proto::socks5_t::udp_head_t udp{};
+		// Выполняем инициализацию объекта хоста
+		udp.host = make_unique <net::attr_net_t> ();
+		/**
+		 * Определяем тип адреса хоста для подключения
+		 */
+		switch(static_cast <uint8_t> (this->_server->family(eid))){
+			// Если тип адреса соответствует IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4):
+				// Устанавливаем тип параметров подключения для идентификатора события клиента
+				udp.host->type = net::type_t::IPV4;
+			break;
+			// Если тип адреса соответствует IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Устанавливаем тип параметров подключения для идентификатора события клиента
+				udp.host->type = net::type_t::IPV6;
+				// Создаём новый объект адреса клиента IPv6
+				awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+			} break;
+		}
+		// Устанавливаем порт подключённого клиента для идентификатора события клиента
+		awh_cast <net::attr_net_t *> (udp.host.get())->port = this->_client.getPort(eid);
+		// Извлекаем IP-адрес клиента для идентификатора события клиента
+		this->_client.getTarget(eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip);
+		// Размер буфера данных
+		size_t length = 0;
+		// Буфер данных запроса
+		uint8_t * data = nullptr;
+		// Если извлечение буфера данных запроса выполнено успешно
+		if(this->_socks5.buffer(&data, length, udp)){
+			/**
+			 * Определяем тип данных сесии клиента, работающего через прокси
+			 */
+			switch(static_cast <uint8_t> (udp.host->type)){
+				// Если тип данных соответствует FQDN
+				case static_cast <uint8_t> (net::type_t::FQDN):
+				// Если тип данных соответствует IPv6
+				case static_cast <uint8_t> (net::type_t::IPV6):
+					// Устанавливаем размер буфера полезной нагрузки для отправки
+					::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
+				break;
+				// Если тип данных соответствует IPv4
+				case static_cast <uint8_t> (net::type_t::IPV4):
+					// Устанавливаем размер буфера полезной нагрузки для отправки
+					::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+				break;
+			}
+			// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+			if(::__awh_size__ == (size + length)){
+				// Копируем данные запроса в буфер полезной нагрузки
+				::memcpy(&::__awh_buffer__[0], data, length);
+				// Добавляем к буферу данных для отправки полезную нагрузку
+				::memcpy(&::__awh_buffer__[length], buffer, size);
+				// Выполняем отправку данных серверу
+				this->_server->send(i->second, ::__awh_buffer__, ::__awh_size__);
+			// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+			} else {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Выводим сообщение об ошибке
+					this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Выводим сообщение об ошибке
+					this->_log->print("Message sent by the UDP is too large for the configured MTU values of %zu bytes", log_t::flag_t::WARNING, ::__awh_size__);
+				#endif
+			}
+		// Если извлечение буфера данных запроса не выполнено
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Failed to generate buffer for UDP packet", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 }
 /**
@@ -670,53 +1401,135 @@ bool awh::server::Socks5::timeoutClient(const event::id_t eid, const event::acti
  * @param cid идентификатор клиента
  */
 void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
-		// Если идентификатор сервера соответствует идентификатору socks5-сервера
-		if(eid == this->_eid){
-			// Добавляем пира в список активных пиров
-			auto ret = this->_peers.emplace(cid, peer_t{});
-			// Если пир был добавлен успешно
-			if(ret.second){
-				// Устананавливаем опции события
-				if(this->_server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
-					// Размер буфера данных
-					size_t size = 0;
-					// Буфер данных запроса
-					uint8_t * buffer = nullptr;
-					// Если извлечение буфера данных запроса выполнено успешно
-					if(this->_socks5.buffer(&buffer, size, ret.first->second.ctx)){
-						// Если отправка запроса на прокси-сервер не выполнена
-						if(this->_server->send(cid, buffer, size) != size){
-							// Если функция обратного вызова не установлена
-							if(!this->_callback.is("error")){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, make_tuple(cid), log_t::flag_t::WARNING);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
-								#endif
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
+		if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
+			// Если идентификатор сервера соответствует идентификатору socks5-сервера
+			if(eid == this->_eid){
+				// Добавляем пира в список активных пиров
+				auto ret = this->_peers.emplace(cid, peer_t{});
+				// Если пир был добавлен успешно
+				if(ret.second){
+					// Устананавливаем опции события
+					if(this->_server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+						// Размер буфера данных
+						size_t size = 0;
+						// Буфер данных запроса
+						uint8_t * buffer = nullptr;
+						// Если извлечение буфера данных запроса выполнено успешно
+						if(this->_socks5.buffer(&buffer, size, ret.first->second.ctx)){
+							// Если отправка запроса на прокси-сервер не выполнена
+							if(this->_server->send(cid, buffer, size) != size){
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, make_tuple(eid, cid), log_t::flag_t::WARNING);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+									#endif
+								}
 							}
 						}
 					}
 				}
+			// Если идентификатор сервера соответствует идентификатору одного из поддерживаемых UDP-серверов
+			} else if(this->_udp.events.find(eid) != this->_udp.events.end()) {
+				// Создаём объект параметров подключения для идентификатора события клиента
+				unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+				/**
+				 * Определяем тип адреса хоста для подключения
+				 */
+				switch(static_cast <uint8_t> (this->_server->family(cid))){
+					// Если тип адреса соответствует IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4): {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV4;
+						// Извлекаем IP-адрес клиента для идентификатора события клиента
+						this->_server->getAddress(cid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (attr.get())->ip);
+					} break;
+					// Если тип адреса соответствует IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6): {
+						// Устанавливаем тип параметров подключения для идентификатора события клиента
+						attr->type = net::type_t::IPV6;
+						// Извлекаем IP-адрес клиента для идентификатора события клиента
+						this->_server->getAddress(cid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (attr.get())->ip);
+					} break;
+				}
+				// Устанавливаем порт подключённого клиента для идентификатора события клиента
+				awh_cast <net::attr_net_t *> (attr.get())->port = this->_server->getPort(cid);
+				// Создаём идентификатор конечной точки для идентификатора события клиента
+				const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+				// Выполняем блокировку потока для работы с TLS
+				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем поиск идентификатора конечной точки в списке активных сессий
+				auto i = this->_sessions.find(endpoint);
+				// Если идентификатор конечной точки найден в списке активных сессий
+				if(i != this->_sessions.end()){
+					// Запоминаем идентификатор пира для идентификатора события клиента
+					i->second.second = cid;
+					// Сопоставляем идентификатор события клиента с идентификатором конечной точки
+					this->_mapping.emplace(i->second.first, &i->first);
+				// Если идентификатор конечной точки не найден в списке активных сессий
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Attempt to illegally connect to a UDP server for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, cid), log_t::flag_t::WARNING, eid);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Attempt to illegally connect to a UDP server for node with ID=%u", log_t::flag_t::WARNING, eid);
+					#endif
+					// Удаляем подключённого пира
+					this->_server->destroy(cid);
+					// Выходим из функции
+					return;
+				}
+				// Добавляем пира в список активных пиров
+				auto ret = this->_peers.emplace(cid, peer_t{});
+				// Если пир был добавлен успешно
+				if(ret.second){
+					// Устанавливаем статус успешного выполнения команды
+					ret.first->second.ctx.state = proto::socks5_t::state_t::COMPLETED;
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("accept"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", eid, cid);
+				}
 			}
-		// Если идентификатор сервера соответствует идентификатору одного из поддерживаемых UDP-серверов
-		} else if(this->_servers.find(eid) != this->_servers.end()) {
-			/*
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("accept"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", eid, cid, 0);
-			 */
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, cid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -726,42 +1539,98 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
  * @param status новый статус сервера
  */
 void awh::server::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("state"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
-		// Если статус сервера изменился на "уничтожен"
-		if(status == event::status_t::DESTROYED){
-			// Если производится завершение работы текущего сервера или одного из поддерживаемых UDP-серверов
-			if((eid == this->_eid) || (this->_servers.find(eid) != this->_servers.end())){
-				// Если объект DNS-резолвера установлен
-				if(this->_dns != nullptr)
-					// Останавливаем событие DNS-резолвера
-					this->_dns->stop();
-				// Если производится завершение работы клиента подключенного к текущему серверу
-				else this->_server->stop();
-			// Если производится завершение работы клиента подключенного к одному из серверов
-			} else {
-				// Выполняем поиск пира, которому принадлежит идентификатор
-				auto i = this->_peers.find(eid);
-				// Если пир для этого идентификатора найден
-				if(i != this->_peers.end()){
-					// Выполняем поиск идентификатора клиента принадлежащего этому пиру
-					auto j = this->_clients.find(i->second.eid);
-					// Если идентификатор клиента найден в списке
-					if(j != this->_clients.end()){
-						// Удаляем подключённого клиента
-						this->_unit.destroy(j->first);
-						// Удаляем клиента из списка активных клиентов
-						this->_clients.erase(j);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
+		if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("state"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+			// Если статус сервера изменился на "уничтожен"
+			if(status == event::status_t::DESTROYED){
+				// Если производится завершение работы текущего сервера или одного из поддерживаемых UDP-серверов
+				if(eid == this->_eid){
+					// Если объект DNS-резолвера установлен
+					if(this->_dns != nullptr)
+						// Останавливаем событие DNS-резолвера
+						this->_dns->stop();
+					// Если производится завершение работы клиента подключенного к текущему серверу
+					else this->_server->stop();
+				// Если производится завершение работы клиента подключенного к одному из серверов
+				} else {
+					// Выполняем поиск пира, которому принадлежит идентификатор
+					auto i = this->_peers.find(eid);
+					// Если пир для этого идентификатора найден
+					if(i != this->_peers.end()){
+						// Выполняем поиск идентификатора клиента принадлежащего этому пиру
+						auto j = this->_clients.find(i->second.eid);
+						// Если идентификатор клиента найден в списке
+						if(j != this->_clients.end()){
+							// Удаляем подключённого клиента
+							this->_client.destroy(j->first);
+							// Удаляем клиента из списка активных клиентов
+							this->_clients.erase(j);
+						}
+						// Удаляем пира из списка активных пиров
+						this->_peers.erase(i);
 					}
-					// Удаляем пира из списка активных пиров
-					this->_peers.erase(i);
+					// Выполняем поиск идентификатора пира, для удаления принадлежащих ему UDP-сессий
+					auto j = this->_mapping.find(eid);
+					// Если идентификатор пира найден в списке
+					if(j != this->_mapping.end()){
+						// Выполняем поиск идентификатора пира в списке активных сессий
+						auto i = this->_sessions.find(* j->second);
+						// Если идентификатор пира найден в списке активных сессий
+						if(i != this->_sessions.end()){
+							// Выполняем поиск пира, которому принадлежит идентификатор
+							auto j = this->_peers.find(i->second.second);
+							// Если пир для этого идентификатора найден
+							if(j != this->_peers.end()){
+								// Выполняем поиск идентификатора клиента принадлежащего этому пиру
+								auto k = this->_clients.find(j->second.eid);
+								// Если идентификатор клиента найден в списке
+								if(k != this->_clients.end()){
+									// Удаляем подключённого клиента
+									this->_client.destroy(k->first);
+									// Удаляем клиента из списка активных клиентов
+									this->_clients.erase(k);
+								}
+								// Удаляем пира из списка активных пиров
+								this->_peers.erase(j);
+							}
+							// Запоминаем идентификатор пира для идентификатора события клиента
+							const event::id_t eid = i->second.second;
+							// Удаляем подключённого пира
+							this->_server->destroy(eid);
+							// Удаляем сессию из списка активных сессий
+							this->_sessions.erase(i);
+						}
+						// Удаляем всю UDP-сессию, принадлежащую этому пиру
+						this->_mapping.erase(j);
+					}
 				}
 			}
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 }
 /**
@@ -784,7 +1653,229 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 			if(i != this->_peers.end()){
 				// Если текущее состояние соответствует завершённому состоянию
 				if(i->second.ctx.state == proto::socks5_t::state_t::COMPLETED){
-
+					// Инициализируем объект заголовка UDP пакета
+					proto::socks5_t::udp_head_t udp{};
+					// Если парсинг данных от прокси-сервера выполнен успешно
+					if(this->_socks5.parse(buffer, size, udp)){
+						// Если хост клиента которому адресован UDP пакет установлен
+						if(udp.host != nullptr){
+							/**
+							 * Устанавливаем метку начала проверки инициализации клиента
+							 */
+							Begin:
+							// Если клиент для выполнения запросов ещё не инициализирован
+							if(i->second.eid == 0){
+								// Получаем семейство адресов для подключения к удалённому серверу
+								const event::family_t family = awh_cast <unit::unit_t *> (this->_server)->family(eid);
+								// Выполняем создание клиента для подключения к удалённому серверу
+								i->second.eid = this->_client.issue(family, event::type_t::DATAGRAM, event::protocol_t::UDP);
+								// Устананавливаем опции события
+								if(this->_client.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+									// Устанавливаем интерфейс для подключения к удалённому серверу
+									if(this->_client.setIface(i->second.eid, this->_iface)){
+										// Устанавливаем порт и адрес удалённого сервера для подключения
+										if(this->_client.setPort(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->port) &&
+										   this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())){
+											// Если функция обратного вызова установлена
+											if(this->_callback.is("ready")){
+												// Получаем IP-адрес для подключения к удалённому серверу
+												const string & address = this->_client.getTarget(i->second.eid);
+												// Выполняем функцию обратного вызова
+												this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, address, address);
+											}
+											// Выполняем фиксацию настроек события сервера
+											if(this->_client.commit(i->second.eid)){
+												// Выполняем запуск события
+												if(!this->_client.launch(i->second.eid)){
+													// Если функция обратного вызова не установлена
+													if(!this->_callback.is("error")){
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, eid);
+														#endif
+													}
+												// Если резолвинг хоста не выполнен
+												} else {
+													// Получаем опции события для идентификатора события клиента
+													uint16_t options = this->_client.getOptions(i->second.eid);
+													// Если опция KEEPALIVE установлена
+													if(options & event::options::KEEPALIVE){
+														// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
+														options &= ~event::options::KEEPALIVE;
+														// Устанавливаем опции события для идентификатора события клиента
+														this->_client.setOptions(i->second.eid, options);
+													}
+													// Добавляем связь между клиентом и пиром которому он принадлежит
+													this->_clients.emplace(i->second.eid, eid);
+													// Выполняем отправку данных клиенту
+													this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+													// Выходим из функции
+													return;
+												}
+											// Если фиксация настроек события сервера не выполнена
+											} else {
+												// Если функция обратного вызова не установлена
+												if(!this->_callback.is("error")){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
+													#endif
+												}
+											}
+										// Если установка порта и адреса удалённого сервера для подключения не выполнена
+										} else {
+											// Если функция обратного вызова не установлена
+											if(!this->_callback.is("error")){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
+												#endif
+											}
+										}
+									// Если установка интерфейса для подключения к удалённому серверу не выполнена
+									} else {
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, this->_iface.c_str(), eid);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, this->_iface.c_str(), eid);
+											#endif
+										}
+									}
+								// Если установка опций события не выполнена
+								} else {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, eid);
+										#endif
+									}
+								}
+								// Удаляем клиента принадлежащего пиру
+								this->_client.destroy(i->second.eid);
+							// Если клиент для выполнения запросов уже инициализирован
+							} else {
+								/**
+								 * Определяем семейство адресов для хоста сервера
+								 */
+								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(eid))){
+									// Если семейство адресов соответствует IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
+										if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+											// Создаём новый объект адреса клиента IPv4
+											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> (); 
+											// Извлекаем IP-адрес удалённого сервера для подключения
+											this->_client.getTarget(i->second.eid, ip);
+											// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
+											if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address == awh_cast <net::addr_net_ipv4_t *> (ip.get())->address)
+												// Выполняем отправку данных клиенту
+												this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+											// Если нужно инициализировать нового клиента
+											else {
+												// Удаляем клиента принадлежащего пиру
+												this->_client.destroy(i->second.eid);
+												// Устанавливаем идентификатор клиента для выполнения запросов
+												i->second.eid = 0;
+												// Выполняем переход к метке начала проверки инициализации клиента
+												goto Begin;
+											}
+										}
+									} break;
+									// Если семейство адресов соответствует IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
+										if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+											// Создаём новый объект адреса клиента IPv6
+											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> (); 
+											// Извлекаем IP-адрес удалённого сервера для подключения
+											this->_client.getTarget(i->second.eid, ip);
+											// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
+											if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], 16) == 0)
+												// Выполняем отправку данных клиенту
+												this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+											// Если нужно инициализировать нового клиента
+											else {
+												// Удаляем клиента принадлежащего пиру
+												this->_client.destroy(i->second.eid);
+												// Устанавливаем идентификатор клиента для выполнения запросов
+												i->second.eid = 0;
+												// Выполняем переход к метке начала проверки инициализации клиента
+												goto Begin;
+											}
+										}
+									} break;
+								}
+							}
+							// Выходим из функции
+							return;
+						}
+					}
+					// Создаём текст ошибки резолвинга доменного имени
+					const string error = "Client for whom the UDP packet was received was not found";
+					// Если функция обратного вызова не установлена
+					if(!this->_callback.is("error")){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+						#endif
+					// Выполняем функцию обратного вызова
+					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
 				// Если текущее состояние находится ещё в процессе общения с socks5 прокси-клиентом
 				} else {
 					// Если парсинг данных от прокси-клиента выполнен успешно
@@ -814,8 +1905,6 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(i->second.ctx.status));
 								// Удаляем подключённого пира
 								this->_server->destroy(eid);
-								// Удаляем пира из списка активных пиров
-								this->_peers.erase(i);
 							} break;
 							// Если текущее состояние соответствует выполненному рукопожатию
 							case static_cast <uint8_t> (proto::socks5_t::state_t::HANDSHAKE): {
@@ -871,31 +1960,31 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												// Получаем семейство адресов для подключения к удалённому серверу
 												const event::family_t family = awh_cast <unit::unit_t *> (this->_server)->family(eid);
 												// Выполняем создание клиента для подключения к удалённому серверу
-												i->second.eid = this->_unit.issue(family, event::type_t::STREAM, event::protocol_t::TCP);
+												i->second.eid = this->_client.issue(family, event::type_t::STREAM, event::protocol_t::TCP);
 												// Устананавливаем опции события
-												if(this->_unit.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+												if(this->_client.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 													// Устанавливаем интерфейс для подключения к удалённому серверу
-													if(this->_unit.setIface(i->second.eid, this->_interface)){
+													if(this->_client.setIface(i->second.eid, this->_iface)){
 														// Устанавливаем порт и адрес удалённого сервера для подключения
-														if(this->_unit.setPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port) &&
-														   this->_unit.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())){
+														if(this->_client.setPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port) &&
+														   this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())){
 															// Если функция обратного вызова установлена
 															if(this->_callback.is("ready")){
 																// Получаем IP-адрес для подключения к удалённому серверу
-																const string & address = this->_unit.getTarget(i->second.eid);
+																const string & address = this->_client.getTarget(i->second.eid);
 																// Выполняем функцию обратного вызова
 																this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, address, address);
 															}
 															// Если функция обратного вызова установлена
 															if(this->_callback.is("accept"))
 																// Выполняем функцию обратного вызова
-																this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", this->_eid, eid, 0);
+																this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_eid, eid);
 															// Выполняем фиксацию настроек события сервера
-															if(this->_unit.commit(i->second.eid)){
+															if(this->_client.commit(i->second.eid)){
 																// Если подключение к серверу прошло успешно
-																if(this->_unit.connect(i->second.eid)){
+																if(this->_client.connect(i->second.eid)){
 																	// Выполняем запуск события
-																	if(!this->_unit.launch(i->second.eid)){
+																	if(!this->_client.launch(i->second.eid)){
 																		// Если функция обратного вызова не установлена
 																		if(!this->_callback.is("error")){
 																			/**
@@ -903,7 +1992,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																			 */
 																			#if DEBUG_MODE
 																				// Выводим сообщение об ошибке
-																				this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING, eid);
+																				this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
 																			/**
 																			 * Если режим отладки не включён
 																			 */
@@ -914,6 +2003,15 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																		}
 																	// Если резолвинг хоста не выполнен
 																	} else {
+																		// Получаем опции события для идентификатора события клиента
+																		uint16_t options = this->_client.getOptions(i->second.eid);
+																		// Если опция KEEPALIVE установлена
+																		if(options & event::options::KEEPALIVE){
+																			// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
+																			options &= ~event::options::KEEPALIVE;
+																			// Устанавливаем опции события для идентификатора события клиента
+																			this->_client.setOptions(i->second.eid, options);
+																		}
 																		// Добавляем связь между клиентом и пиром которому он принадлежит
 																		this->_clients.emplace(i->second.eid, eid);
 																		// Выходим из функции
@@ -928,13 +2026,13 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																		 */
 																		#if DEBUG_MODE
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, this->_unit.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
+																			this->_log->debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, this->_client.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
 																			// Выводим сообщение об ошибке
-																			this->_log->print("Connection to the server \"%s:%u\" is failed", log_t::flag_t::WARNING, this->_unit.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
+																			this->_log->print("Connection to the server \"%s:%u\" is failed", log_t::flag_t::WARNING, this->_client.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
 																		#endif
 																	}
 																}
@@ -985,13 +2083,13 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, this->_interface.c_str(), eid);
+																this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, this->_iface.c_str(), eid);
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Выводим сообщение об ошибке
-																this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, this->_interface.c_str(), eid);
+																this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, this->_iface.c_str(), eid);
 															#endif
 														}
 													}
@@ -1015,7 +2113,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													}
 												}
 												// Удаляем клиента принадлежащего пиру
-												this->_unit.destroy(i->second.eid);
+												this->_client.destroy(i->second.eid);
 												// Устанавливаем статус ошибки, так как мы получили ошибку
 												i->second.ctx.status = proto::socks5_t::status_t::NOADDR;
 											} break;
@@ -1023,15 +2121,171 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									} break;
 									// Если команда соответствует UDP ASSOCIATE
 									case static_cast <uint8_t> (proto::socks5_t::command_t::UDP): {
-
-										cout << "^^^^^^^^^^^^^^^^^^^^ Received data from client ID=" << eid << ": " << size << " bytes" << " || " << (u_short) i->second.ctx.command << endl;
-									
+										// Если список поддерживаемых UDP-серверов пустой
+										if(!this->_udp.events.empty()){
+											// Создаём объект параметров подключения для идентификатора события клиента
+											unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+											/**
+											 * Определяем тип адреса хоста для подключения
+											 */
+											switch(static_cast <uint8_t> (i->second.ctx.host->type)){
+												// Если тип адреса соответствует IPv4
+												case static_cast <uint8_t> (net::type_t::IPV4): {
+													// Устанавливаем тип параметров подключения для идентификатора события клиента
+													attr->type = net::type_t::IPV4;
+													// Если IP-адрес которому разрешено подключаться к socks5 прокси-серверу соответствует
+													if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address == 0)
+														// Устанавливаем IP-адрес подключённого клиента для идентификатора события клиента
+														this->_server->getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (attr.get())->ip);
+													// Устанавливаем полученный IP-адрес
+													else awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+												} break;
+												// Если тип адреса соответствует IPv6
+												case static_cast <uint8_t> (net::type_t::IPV6): {
+													// Устанавливаем тип параметров подключения для идентификатора события клиента
+													attr->type = net::type_t::IPV6;
+													// Если IP-адрес которому разрешено подключаться к socks5 прокси-серверу соответствует
+													if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], (uint8_t[16]){0}, 16) == 0)
+														// Устанавливаем IP-адрес подключённого клиента для идентификатора события клиента
+														this->_server->getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (attr.get())->ip);
+													// Устанавливаем полученный IP-адрес
+													else awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+												} break;
+											}
+											// Если порт которому разрешено подключаться к socks5 прокси-серверу соответствует
+											if(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port == 0)
+												// Устанавливаем порт подключённого клиента для идентификатора события клиента
+												awh_cast <net::attr_net_t *> (attr.get())->port = this->_server->getPort(eid);
+											// Устанавливаем полученный порт
+											else awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+											// Создаём идентификатор конечной точки для идентификатора события клиента
+											const origin_t endpoint = origin_t().from(attr.get(), event::protocol_t::UDP);
+											// Выполняем блокировку потока для работы с TLS
+											const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+											// Добавляем идентификатор события клиента для конечной точки
+											this->_sessions.emplace(endpoint, make_pair(eid, 0));
+											// Устанавливаем статус успешного выполнения команды
+											i->second.ctx.status = proto::socks5_t::status_t::SUCCESS;
+											// Инициализируем генератор случайных чисел
+											static ::random_device randev;
+											// Инициализируем генератор случайных чисел с помощью устройства случайных чисел
+											static ::mt19937 gen(randev());
+											// Генерируем индекс от 0 до size - 1
+											::uniform_int_distribution <> distrib(0, this->_udp.events.size() - 1);
+											// Последовательно перебираем итераторы. Это операция O(N)!
+											const event::id_t sid = * ::next(this->_udp.events.begin(), distrib(gen));
+											// Устанавливаем порт для UDP-сервера
+											awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = this->_server->getPort(sid);
+											/**
+											 * Определяем тип адреса хоста для подключения
+											 */
+											switch(static_cast <uint8_t> (i->second.ctx.host->type)){
+												// Если тип адреса соответствует IPv4
+												case static_cast <uint8_t> (net::type_t::IPV4): {
+													// Если семейство адресов для этого сервера соответствует IPv4
+													if(this->_server->family(sid) == event::family_t::IPV4){
+														// Создаём новый объект адреса сервера IPv4
+														unique_ptr <net::addr_t> addr = nullptr;
+														// Извлекаем IP-адрес этого сервера
+														this->_server->getAddress(sid, event::address_t::IPV4, addr);
+														// Если IP-адрес которому разрешено подключаться к socks5 прокси-серверу установлен 
+														if(awh_cast <net::addr_net_ipv4_t *> (addr.get())->address == 0)
+															// Устанавливаем текущий IP-адрес этого сервера для установки подключения
+															this->_server->getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+														// Устанавливаем полученный IP-адрес
+														else awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = ::move(addr);
+													// Если семейство адресов для этого сервера не соответствует IPv4
+													} else {
+														// Устанавливаем статус ошибки, так как команда не поддерживается
+														i->second.ctx.status = proto::socks5_t::status_t::DENIED;
+														// Отправляем ответ прокси-клиенту, так как команда не поддерживается
+														goto End;
+													}
+												} break;
+												// Если тип адреса соответствует IPv6
+												case static_cast <uint8_t> (net::type_t::IPV6): {
+													// Если семейство адресов для этого сервера соответствует IPv6
+													if(this->_server->family(sid) == event::family_t::IPV6){
+														// Создаём новый объект адреса сервера IPv6
+														unique_ptr <net::addr_t> addr = nullptr;
+														// Извлекаем IP-адрес этого сервера
+														this->_server->getAddress(sid, event::address_t::IPV6, addr);
+														// Если IP-адрес которому разрешено подключаться к socks5 прокси-серверу установлен
+														if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+															// Устанавливаем текущий IP-адрес этого сервера для установки подключения
+															this->_server->getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+														// Устанавливаем полученный IP-адрес
+														else awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = ::move(addr);
+													// Если семейство адресов для этого сервера не соответствует IPv6
+													} else {
+														// Устанавливаем статус ошибки, так как команда не поддерживается
+														i->second.ctx.status = proto::socks5_t::status_t::DENIED;
+														// Отправляем ответ прокси-клиенту, так как команда не поддерживается
+														goto End;
+													}
+												} break;
+											}
+										// Если список поддерживаемых UDP-серверов пустой
+										} else {
+											// Устанавливаем статус успешного выполнения команды
+											i->second.ctx.status = proto::socks5_t::status_t::SUCCESS;
+											/**
+											 * Определяем тип адреса хоста для подключения
+											 */
+											switch(static_cast <uint8_t> (i->second.ctx.host->type)){
+												// Если тип адреса соответствует IPv4
+												case static_cast <uint8_t> (net::type_t::IPV4): {
+													// Если семейство адресов для этого сервера соответствует IPv4
+													if(this->_server->family(eid) == event::family_t::IPV4)
+														// Устанавливаем текущий IP-адрес этого сервера для установки фейковых параметров подключения
+														this->_server->getAddress(this->_eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+													// Если семейство адресов для этого сервера не соответствует IPv4
+													else {
+														// Устанавливаем статус ошибки, так как команда не поддерживается
+														i->second.ctx.status = proto::socks5_t::status_t::DENIED;
+														// Отправляем ответ прокси-клиенту, так как команда не поддерживается
+														goto End;
+													}
+												} break;
+												// Если тип адреса соответствует IPv6
+												case static_cast <uint8_t> (net::type_t::IPV6): {
+													// Если семейство адресов для этого сервера соответствует IPv6
+													if(this->_server->family(eid) == event::family_t::IPV6)
+														// Устанавливаем текущий IP-адрес этого сервера для установки фейковых параметров подключения
+														this->_server->getAddress(this->_eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+													// Если семейство адресов для этого сервера не соответствует IPv6
+													else {
+														// Устанавливаем статус ошибки, так как команда не поддерживается
+														i->second.ctx.status = proto::socks5_t::status_t::DENIED;
+														// Отправляем ответ прокси-клиенту, так как команда не поддерживается
+														goto End;
+													}
+												} break;
+											}
+											// Выделяем порт для UDP-сервера
+											auto port = ::__awh_port_allocator__.allocate();
+											// Если порт выделен успешно, устанавливаем его для UDP-сервера
+											if(port){
+												// Устанавливаем выделенный порт для UDP-сервера
+												awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = (* port);
+												// Возвращаем выделенный порт обратно в пул портов
+												::__awh_port_allocator__.release(* port);
+											}
+										}
 									} break;
 									// В остальных случаях
 									default:
 										// Устанавливаем статус ошибки, так как команда не поддерживается
 										i->second.ctx.status = proto::socks5_t::status_t::NOCOMMAND;
 								}
+								/**
+								 * Устанавливаем метку для формирования ответа прокси-сервером, который будет отправлен прокси-клиенту.
+								 * Эта метка будет указывать на то, что ответ должен быть отправлен после выполнения команды CONNECT или UDP ASSOCIATE,
+								 * так как эти команды требуют установления подключения к удалённому серверу и отправки ответа после выполнения этих действий.
+								 * В остальных случаях, ответ может быть отправлен сразу же после обработки данных от прокси-клиента,
+								 * так как эти команды не требуют установления подключения к удалённому серверу и могут быть обработаны в автоматическом режиме.
+								 */
+								End:
 								// Размер буфера данных
 								size_t size = 0;
 								// Буфер данных ответа
@@ -1058,8 +2312,6 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										}
 										// Удаляем подключённого пира
 										this->_server->destroy(eid);
-										// Удаляем пира из списка активных пиров
-										this->_peers.erase(i);
 									// Если отправка ответа прокси-клиенту выполнена успешно
 									} else {
 										// Если статус ответа от прокси-сервера соответствует успешному выполнению команды
@@ -1099,8 +2351,6 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										}
 										// Удаляем подключённого пира
 										this->_server->destroy(eid);
-										// Удаляем пира из списка активных пиров
-										this->_peers.erase(i);
 									}
 								}
 							}
@@ -1129,14 +2379,12 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						// Если идентификатор клиента найден в списке
 						if(j != this->_clients.end()){
 							// Удаляем подключённого клиента
-							this->_unit.destroy(j->first);
+							this->_client.destroy(j->first);
 							// Удаляем клиента из списка активных клиентов
 							this->_clients.erase(j);
 						}
 						// Удаляем подключённого пира
 						this->_server->destroy(eid);
-						// Удаляем пира из списка активных пиров
-						this->_peers.erase(i);
 					}
 				}
 			}
@@ -1166,14 +2414,12 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				// Если идентификатор клиента найден в списке
 				if(j != this->_clients.end()){
 					// Удаляем подключённого клиента
-					this->_unit.destroy(j->first);
+					this->_client.destroy(j->first);
 					// Удаляем клиента из списка активных клиентов
 					this->_clients.erase(j);
 				}
 				// Удаляем подключённого пира
 				this->_server->destroy(eid);
-				// Удаляем пира из списка активных пиров
-				this->_peers.erase(i);
 			}
 		}
 	}
@@ -1200,27 +2446,27 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 			// Если пир для этого идентификатора найден
 			if(j != this->_peers.end()){
 				// Выполняем создание клиента для подключения к удалённому серверу
-				j->second.eid = this->_unit.issue(awh_cast <unit::unit_t *> (this->_server)->family(i->second), event::type_t::STREAM, event::protocol_t::TCP);
+				j->second.eid = this->_client.issue(awh_cast <unit::unit_t *> (this->_server)->family(i->second), event::type_t::STREAM, event::protocol_t::TCP);
 				// Устананавливаем опции события
-				if(this->_unit.setOptions(j->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+				if(this->_client.setOptions(j->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 					// Устанавливаем интерфейс для подключения к удалённому серверу
-					if(this->_unit.setIface(j->second.eid, this->_interface)){
+					if(this->_client.setIface(j->second.eid, this->_iface)){
 						// Устанавливаем порт и адрес удалённого сервера для подключения
-						if(this->_unit.setPort(j->second.eid, awh_cast <net::attr_fqdn_t *> (j->second.ctx.host.get())->port) && this->_unit.setTarget(j->second.eid, addr)){
+						if(this->_client.setPort(j->second.eid, awh_cast <net::attr_fqdn_t *> (j->second.ctx.host.get())->port) && this->_client.setTarget(j->second.eid, addr)){
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("ready"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", i->second, family, domain, this->_unit.getTarget(j->second.eid));
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", i->second, family, domain, this->_client.getTarget(j->second.eid));
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("accept"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", this->_eid, i->second, 0);
+								this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_eid, i->second);
 							// Выполняем фиксацию настроек события сервера
-							if(this->_unit.commit(j->second.eid)){
+							if(this->_client.commit(j->second.eid)){
 								// Если подключение к серверу прошло успешно
-								if(this->_unit.connect(j->second.eid)){
+								if(this->_client.connect(j->second.eid)){
 									// Выполняем запуск события
-									if(!this->_unit.launch(j->second.eid)){
+									if(!this->_client.launch(j->second.eid)){
 										// Если функция обратного вызова не установлена
 										if(!this->_callback.is("error")){
 											/**
@@ -1239,6 +2485,15 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 										}
 									// Если резолвинг хоста не выполнен
 									} else {
+										// Получаем опции события для идентификатора события клиента
+										uint16_t options = this->_client.getOptions(j->second.eid);
+										// Если опция KEEPALIVE установлена
+										if(options & event::options::KEEPALIVE){
+											// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
+											options &= ~event::options::KEEPALIVE;
+											// Устанавливаем опции события для идентификатора события клиента
+											this->_client.setOptions(j->second.eid, options);
+										}
 										// Добавляем связь между клиентом и пиром которому он принадлежит
 										this->_clients.emplace(j->second.eid, i->second);
 										// Удаляем связь DNS-резолвера и идентификатора пира
@@ -1312,13 +2567,13 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, this->_interface.c_str(), i->second);
+								this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, this->_iface.c_str(), i->second);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Выводим сообщение об ошибке
-								this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, this->_interface.c_str(), i->second);
+								this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, this->_iface.c_str(), i->second);
 							#endif
 						}
 					}
@@ -1342,7 +2597,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 					}
 				}
 				// Удаляем клиента принадлежащего пиру
-				this->_unit.destroy(j->second.eid);
+				this->_client.destroy(j->second.eid);
 				// Устанавливаем статус ошибки, так как мы получили ошибку
 				j->second.ctx.status = proto::socks5_t::status_t::NOADDR;
 				// Размер буфера данных
@@ -1371,8 +2626,6 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 						}
 						// Удаляем подключённого пира
 						this->_server->destroy(i->second);
-						// Удаляем пира из списка активных пиров
-						this->_peers.erase(i->second);
 					// Если отправка ответа прокси-клиенту выполнена успешно, устанавливаем статус ответа от прокси-сервера
 					} else j->second.ctx.state = proto::socks5_t::state_t::BROKEN;
 				}
@@ -1404,12 +2657,9 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 			// Выполняем поиск пира, которому принадлежит идентификатор
 			auto j = this->_peers.find(i->second);
 			// Если пир для этого идентификатора найден
-			if(j != this->_peers.end()){
+			if(j != this->_peers.end())
 				// Удаляем подключённого пира
-				this->_server->destroy(i->second);
-				// Удаляем пира из списка активных пиров
-				this->_peers.erase(j);
-			}
+				this->_server->destroy(i->first);
 			// Удаляем связь DNS-резолвера и идентификатора пира
 			this->_resolves.erase(i);
 		}
@@ -1427,350 +2677,40 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 void awh::server::Socks5::resolveDNS(const unit::dns_t::id_t id, const event::id_t eid, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии
 	if(this->_dns->working()){
-		// Если идентификатор события сервера соответствует идентификатору сервера текущего объекта
-		if(eid == this->_eid){
-			/**
-			 * Определяем семейство адресов с которым работает сервер
-			 */
-			switch(static_cast <uint8_t> (family)){
-				// Если сервер работает с адресами IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Устанавливаем адрес хоста целевой текущей машины
-					if(this->_server->setAddress(this->_eid, event::address_t::IPV4, addr)){
-						/**
-						 * В зависимости от статуса события сервера выполняем запуск
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
-							// Если событие сервера не запущено, запускаем его
-							case static_cast <uint8_t> (event::status_t::NONE): {
-								// Если событие сервера не запущено, запускаем его
-								if(this->_server->commit(this->_eid)){
-									// Если функция обратного вызова установлена
-									if(this->_callback.is("ready"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_server->getAddress(this->_eid, event::address_t::IPV4));
-									// Если список поддерживаемых UDP-серверов пустой
-									if(this->_servers.empty())
-										// Запускаем сервер
-										this->_server->start();
-									// Если список поддерживаемых UDP-серверов не пустой
-									else {
-										// Получаем идентификатор UDP-сервера
-										const event::id_t eid = (* this->_servers.begin());
-										// Выполняем поиск хоста принадлежащему этому UDP-серверу
-										auto i = this->_hosts.find(eid);
-										// Если хост для этого UDP-сервера найден
-										if(i != this->_hosts.end()){
-											// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-											this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, eid, _2, _3, _4);
-											// Выполняем резолвинг хоста текущего сервера
-											if(!this->_dns->resolve(this->_dns->issue(), family, i->second)){
-												// Создаём текст ошибки резолвинга хоста текущего сервера
-												const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", i->second.c_str());
-												// Если функция обратного вызова не установлена
-												if(!this->_callback.is("error")){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												// Выполняем функцию обратного вызова
-												} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
-											}
-										}
-									}
-								}
-							} break;
-							// Если событие сервера инициализировано, запускаем его
-							case static_cast <uint8_t> (event::status_t::INITIAL):
-							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS): {
-								// Запускаем сервер
-								this->_server->start();
-							} break;
-						}
+		/**
+		 * Определяем семейство адресов с которым работает сервер
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Если сервер работает с адресами IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Устанавливаем адрес хоста целевой текущей машины
+				if(this->_server->setAddress(this->_eid, event::address_t::IPV4, addr)){
+					// Если событие сервера не запущено, запускаем его
+					if(this->_server->commit(this->_eid)){
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("ready"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_server->getAddress(this->_eid, event::address_t::IPV4));
+						// Запускаем сервер
+						this->_server->start();
 					}
-				} break;
-				// Если сервер работает с адресами IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Устанавливаем адрес хоста целевой текущей машины
-					if(this->_server->setAddress(this->_eid, event::address_t::IPV6, addr)){
-						/**
-						 * В зависимости от статуса события сервера выполняем запуск
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(this->_eid))){
-							// Если событие сервера не запущено, запускаем его
-							case static_cast <uint8_t> (event::status_t::NONE): {
-								// Если событие сервера не запущено, запускаем его
-								if(this->_server->commit(this->_eid)){
-									// Если функция обратного вызова установлена
-									if(this->_callback.is("ready"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_server->getAddress(this->_eid, event::address_t::IPV6));
-									// Если список поддерживаемых UDP-серверов пустой
-									if(this->_servers.empty())
-										// Запускаем сервер
-										this->_server->start();
-									// Если список поддерживаемых UDP-серверов не пустой
-									else {
-										// Получаем идентификатор UDP-сервера
-										const event::id_t eid = (* this->_servers.begin());
-										// Выполняем поиск хоста принадлежащему этому UDP-серверу
-										auto i = this->_hosts.find(eid);
-										// Если хост для этого UDP-сервера найден
-										if(i != this->_hosts.end()){
-											// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-											this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, eid, _2, _3, _4);
-											// Выполняем резолвинг хоста текущего сервера
-											if(!this->_dns->resolve(this->_dns->issue(), family, i->second)){
-												// Создаём текст ошибки резолвинга хоста текущего сервера
-												const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", i->second.c_str());
-												// Если функция обратного вызова не установлена
-												if(!this->_callback.is("error")){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
-												// Выполняем функцию обратного вызова
-												} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
-											}
-										}
-									}
-								}
-							} break;
-							// Если событие сервера инициализировано, запускаем его
-							case static_cast <uint8_t> (event::status_t::INITIAL):
-							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS): {
-								// Запускаем сервер
-								this->_server->start();
-							} break;
-						}
+				}
+			} break;
+			// Если сервер работает с адресами IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Устанавливаем адрес хоста целевой текущей машины
+				if(this->_server->setAddress(this->_eid, event::address_t::IPV6, addr)){
+					// Если событие сервера не запущено, запускаем его
+					if(this->_server->commit(this->_eid)){
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("ready"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_server->getAddress(this->_eid, event::address_t::IPV6));
+						// Запускаем сервер
+						this->_server->start();
 					}
-				} break;
-			}
-		// Если идентификатор события сервера принадлежит UDP-серверу текущего объекта
-		} else {
-			/**
-			 * Определяем семейство адресов с которым работает сервер
-			 */
-			switch(static_cast <uint8_t> (family)){
-				// Если сервер работает с адресами IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Выделяем порт для UDP-сервера
-					auto port = ::__awh_port_allocator__.allocate();
-					// Если порт выделен успешно, устанавливаем его для UDP-сервера
-					if(port)
-						// Устанавливаем выделенный порт для UDP-сервера
-						this->_server->setPort(eid, * port);
-					// Устанавливаем адрес хоста целевой текущей машины
-					if(this->_server->setAddress(eid, event::address_t::IPV4, addr)){
-						/**
-						 * В зависимости от статуса события сервера выполняем запуск
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(eid))){
-							// Если событие сервера не запущено, запускаем его
-							case static_cast <uint8_t> (event::status_t::NONE): {
-								// Если событие сервера не запущено, запускаем его
-								if(this->_server->commit(eid)){
-									// Если функция обратного вызова установлена
-									if(this->_callback.is("ready"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, domain, this->_server->getAddress(eid, event::address_t::IPV4));
-									// Выполняем запуск работы сервера, если сервер не запущен
-									if(!this->_server->launch(eid)){
-										// Если функция обратного вызова не установлена
-										if(!this->_callback.is("error")){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, eid);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, eid);
-											#endif
-										}
-									// Если сервер запущен удачно
-									} else {
-										// Если функция обратного вызова установлена
-										if(this->_callback.is("launch"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(eid, event::address_t::IPV4), this->_server->getPort(eid));
-									}
-									// Выполняем поиск хоста принадлежащему этому UDP-серверу
-									auto i = this->_servers.find(eid);
-									// Если хост для этого UDP-сервера найден
-									if(i != this->_servers.end()){
-										// Переходим к следующему UDP-серверу, если это не последний UDP-сервер в списке
-										if(++i != this->_servers.end()){
-											// Получаем идентификатор UDP-сервера
-											const event::id_t eid = (* i);
-											// Выполняем поиск хоста принадлежащему этому UDP-серверу
-											auto i = this->_hosts.find(eid);
-											// Если хост для этого UDP-сервера найден
-											if(i != this->_hosts.end()){
-												// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-												this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, eid, _2, _3, _4);
-												// Выполняем резолвинг хоста текущего сервера
-												if(!this->_dns->resolve(this->_dns->issue(), family, i->second)){
-													// Создаём текст ошибки резолвинга хоста текущего сервера
-													const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", i->second.c_str());
-													// Если функция обратного вызова не установлена
-													if(!this->_callback.is("error")){
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													// Выполняем функцию обратного вызова
-													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
-												}
-											}
-										// Если все UDP-серверы в списке были проверены, запускаем сервер
-										} else this->_server->start();
-									}
-								}
-							} break;
-							// Если событие сервера инициализировано, запускаем его
-							case static_cast <uint8_t> (event::status_t::INITIAL):
-							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS):
-								// Запускаем сервер
-								this->_server->start();
-							break;
-						}
-					}
-				} break;
-				// Если сервер работает с адресами IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Выделяем порт для UDP-сервера
-					auto port = ::__awh_port_allocator__.allocate();
-					// Если порт выделен успешно, устанавливаем его для UDP-сервера
-					if(port)
-						// Устанавливаем выделенный порт для UDP-сервера
-						this->_server->setPort(eid, * port);
-					// Устанавливаем адрес хоста целевой текущей машины
-					if(this->_server->setAddress(eid, event::address_t::IPV6, addr)){
-						/**
-						 * В зависимости от статуса события сервера выполняем запуск
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->status(eid))){
-							// Если событие сервера не запущено, запускаем его
-							case static_cast <uint8_t> (event::status_t::NONE): {
-								// Если событие сервера не запущено, запускаем его
-								if(this->_server->commit(eid)){
-									// Если функция обратного вызова установлена
-									if(this->_callback.is("ready"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, domain, this->_server->getAddress(eid, event::address_t::IPV6));
-									// Выполняем запуск работы сервера, если сервер не запущен
-									if(!this->_server->launch(eid)){
-										// Если функция обратного вызова не установлена
-										if(!this->_callback.is("error")){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("This server ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, eid);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("This server ID=%u cannot be started", log_t::flag_t::WARNING, eid);
-											#endif
-										}
-									// Если сервер запущен удачно
-									} else {
-										// Если функция обратного вызова установлена
-										if(this->_callback.is("launch"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_server->getAddress(eid, event::address_t::IPV6), this->_server->getPort(eid));
-									}
-									// Выполняем поиск хоста принадлежащему этому UDP-серверу
-									auto i = this->_servers.find(eid);
-									// Если хост для этого UDP-сервера найден
-									if(i != this->_servers.end()){
-										// Переходим к следующему UDP-серверу, если это не последний UDP-сервер в списке
-										if(++i != this->_servers.end()){
-											// Получаем идентификатор UDP-сервера
-											const event::id_t eid = (* i);
-											// Выполняем поиск хоста принадлежащему этому UDP-серверу
-											auto i = this->_hosts.find(eid);
-											// Если хост для этого UDP-сервера найден
-											if(i != this->_hosts.end()){
-												// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-												this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, eid, _2, _3, _4);
-												// Выполняем резолвинг хоста текущего сервера
-												if(!this->_dns->resolve(this->_dns->issue(), family, i->second)){
-													// Создаём текст ошибки резолвинга хоста текущего сервера
-													const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", i->second.c_str());
-													// Если функция обратного вызова не установлена
-													if(!this->_callback.is("error")){
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, error.c_str());
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Выводим сообщение об ошибке
-															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-														#endif
-													// Выполняем функцию обратного вызова
-													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
-												}
-											}
-										// Если все UDP-серверы в списке были проверены, запускаем сервер
-										} else this->_server->start();
-									}
-								}
-							} break;
-							// Если событие сервера инициализировано, запускаем его
-							case static_cast <uint8_t> (event::status_t::INITIAL):
-							// Если событие находится в состоянии успешного подключения
-							case static_cast <uint8_t> (event::status_t::SUCCESS):
-								// Запускаем сервер
-								this->_server->start();
-							break;
-						}
-					}
-				} break;
-			}
+				}
+			} break;
 		}
 	}
 }
@@ -1860,37 +2800,6 @@ void awh::server::Socks5::start() noexcept {
 								}
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_server->family(this->_eid), host, host);
-								// Если список серверов UDP не пустой
-								if(!this->_servers.empty()){
-									// Выполняем итерацию по списку серверов UDP
-									for(const auto & eid : this->_servers){
-										// Если событие сервера не запущено, запускаем его
-										if(this->_server->commit(eid)){
-											/**
-											 * Определяем семейство адресов с которым работает сервер
-											 */
-											switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(eid))){
-												// Если сервер работает с адресами Unix Domain Socket
-												case static_cast <uint8_t> (event::family_t::UDS):
-													// Извлекаем адрес хоста текущей машины для адресов Unix Domain Socket
-													host = ::move(this->_server->getAddress(eid, event::address_t::UDS));
-												break;
-												// Если сервер работает с адресами IPv4
-												case static_cast <uint8_t> (event::family_t::IPV4):
-													// Извлекаем адрес хоста текущей машины для адресов IPv4
-													host = ::move(this->_server->getAddress(eid, event::address_t::IPV4));
-												break;
-												// Если сервер работает с адресами IPv6
-												case static_cast <uint8_t> (event::family_t::IPV6):
-													// Извлекаем адрес хоста текущей машины для адресов IPv6
-													host = ::move(this->_server->getAddress(eid, event::address_t::IPV6));
-												break;
-											}
-											// Выполняем функцию обратного вызова для сервера UDP
-											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_server->family(eid), host, host);
-										}
-									}
-								}
 							}
 							// Запускаем сервер
 							this->_server->start();
@@ -1942,7 +2851,12 @@ void awh::server::Socks5::threadSafety(const bool mode) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::server::Socks5::callback(const callback_t & callback) noexcept {
-
+	// Устанавливаем функцию обратного вызова для родительского юнита
+	server_t::callback(callback);
+	// Выполняем установку функции обратного вызова на событие аутентификации клиента
+	this->_callback.set("auth", callback);
+	// Выполняем установку функции обратного вызова на событие успешного подключения к удалённому серверу
+	this->_callback.set("connect", callback);
 }
 /**
  * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
@@ -2057,14 +2971,9 @@ void awh::server::Socks5::destroy(const event::id_t eid) noexcept {
 		// Выполняем поиск идентификатор события подключённого пира
 		auto i = this->_peers.find(eid);
 		// Если идентификатор события подключённого пира найден
-		if(i != this->_peers.end()){
-			// Уничтожаем событие клиента, принадлежащего подключённому пиру
-			this->_server->destroy(i->second.eid);
+		if(i != this->_peers.end())
 			// Уничтожаем событие подключённого пира
 			this->_server->destroy(i->first);
-			// Удаляем идентификатор события подключённого пира из списка
-			this->_peers.erase(i);
-		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2241,7 +3150,7 @@ bool awh::server::Socks5::setOption(const event::id_t eid, const uint16_t option
  */
 string awh::server::Socks5::getIface() const noexcept {
 	// Выводим сетевой интерфейс для подключения к сети клиентов
-	return this->_interface;
+	return this->_iface;
 }
 /**
  * @brief Метод получения сетевого интерфейса сервера
@@ -2251,7 +3160,7 @@ string awh::server::Socks5::getIface() const noexcept {
  */
 string awh::server::Socks5::getIface(const event::id_t eid) const noexcept {
 	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+	if(eid == this->_eid)
 		// Извлекаем сетевой интерфейс для сервера
 		return this->_server->getIface(eid);
 	// Если идентификатор сервера не установлен
@@ -2296,7 +3205,7 @@ bool awh::server::Socks5::setIface(string_view name) noexcept {
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	if((result = (this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())))
 		// Устанавливаем сетевой интерфейс для подключения к сети клиентов
-		this->_interface = name;
+		this->_iface = name;
 	// Выводим результат
 	return result;
 }
@@ -2309,7 +3218,7 @@ bool awh::server::Socks5::setIface(string_view name) noexcept {
  */
 bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noexcept {
 	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+	if(eid == this->_eid){
 		// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 		if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
 			// Устанавливаем сетевой интерфейс сервера
@@ -2345,16 +3254,6 @@ bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noex
 	return false;
 }
 /**
- * @brief Метод установки диапазона портов для выделения портов UDP серверов
- *
- * @param start начальный порт диапазона для выделения
- * @param end   конечный порт диапазона для выделения
- */
-void awh::server::Socks5::setRangePorts(const uint16_t start, const uint16_t end) noexcept {
-	// Инициализируем пул портов для подключения к сети клиентов
-	::__awh_port_allocator__.init(start, end);
-}
-/**
  * @brief Метод получения порта удаленного клиента или текущего сервера
  *
  * @param eid идентификатор события клиента или сервера
@@ -2362,7 +3261,7 @@ void awh::server::Socks5::setRangePorts(const uint16_t start, const uint16_t end
  */
 uint16_t awh::server::Socks5::getPort(const event::id_t eid) const noexcept {
 	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+	if(eid == this->_eid)
 		// Получаем порт сервера
 		return this->_server->getPort(eid);
 	// Если идентификатор сервера не установлен
@@ -2396,39 +3295,6 @@ uint16_t awh::server::Socks5::getPort(const event::id_t eid) const noexcept {
 	return 0;
 }
 /**
- * @brief Метод установки порта сервера
- *
- * @param eid  идентификатор события сервера
- * @param port порт сервера для установки
- * @return     результат выполнения установки
- */
-bool awh::server::Socks5::setPort(const event::id_t eid, const uint16_t port) noexcept {
-	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
-		// Если DNS-резолвер или сервер находятся в нерабочем состоянии
-		if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
-			// Устанавливаем порт сервера
-			return this->_server->setPort(eid, port);
-	// Если идентификатор сервера не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(eid, port), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return false;
-}
-/**
  * @brief Метод получения внутреннего порта события
  *
  * @param eid идентификатор события клиента
@@ -2446,7 +3312,7 @@ uint16_t awh::server::Socks5::getInternalPort(const event::id_t eid) const noexc
 		// Если идентификатор события подключённого пира найден
 		if(i != this->_peers.end())
 			// Извлекаем внутренний порт события пира
-			return this->_unit.getPort(i->first);
+			return this->_client.getPort(i->first);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2469,210 +3335,6 @@ uint16_t awh::server::Socks5::getInternalPort(const event::id_t eid) const noexc
 	return 0;
 }
 /**
- * @brief Метод получения адреса хоста текущей машины
- *
- * @param eid идентификатор события сервера
- * @return    адрес хоста текущей машины
- */
-const string & awh::server::Socks5::getHost(const event::id_t eid) const noexcept {
-	// Результат работы функции
-	const static string result = "";
-	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-	if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
-		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-		if(this->_eid == eid)
-			// Возвращаем адрес хоста текущей машины для сервера
-			return this->_host;
-		// Возвращаем адрес хоста текущей машины для указанного UDP-сервера
-		else return this->_hosts.at(eid);
-	// Если идентификатор сервера не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return result;
-}
-/**
- * @brief Метод установки адреса хоста текущей машины
- *
- * @param eid  идентификатор события сервера
- * @param host адрес хоста текущей машины
- * @return     результат выполнения установки
- */
-bool awh::server::Socks5::setHost(const event::id_t eid, string_view host) noexcept {
-	// Результат работы функции
-	bool result = false;
-	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
-		/**
-		 * Определяем тип полученного IP-адреса
-		 */
-		switch(static_cast <uint8_t> (this->_addr.host(host))){
-			// Для типа Unix Domain Socket
-			case static_cast <uint8_t> (net_addr_t::type_t::FS): {
-				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
-					// Устанавливаем адрес хоста целевой машины для сервера
-					result = this->_server->setAddress(eid, event::address_t::UDS, host);
-					// Если адрес установлен успешно
-					if(result){
-						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-						if(this->_eid == eid)
-							// Сохраняем адрес хоста целевой машины для сервера
-							this->_host = this->_server->getAddress(eid, event::address_t::UDS);
-						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
-						else {
-							// Выполняем поиск идентификатор события UDP-сервера
-							auto i = this->_hosts.find(eid);
-							// Если идентификатор события UDP-сервера найден
-							if(i != this->_hosts.end())
-								// Сохраняем адрес хоста целевой машины для сервера
-								i->second = this->_server->getAddress(eid, event::address_t::UDS);
-							// Сохраняем его для указанного UDP-сервера
-							else this->_hosts.emplace(eid, this->_server->getAddress(eid, event::address_t::UDS));
-						}
-					}
-				// Если идентификатор сервера не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(eid, host), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-					#endif
-				}
-			} break;
-			// Для типа IPv4
-			case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
-					// Устанавливаем адрес хоста целевой машины для сервера
-					result = this->_server->setAddress(eid, event::address_t::IPV4, host);
-					// Если адрес установлен успешно
-					if(result){
-						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-						if(this->_eid == eid)
-							// Сохраняем адрес хоста целевой машины для сервера
-							this->_host = this->_server->getAddress(eid, event::address_t::IPV4);
-						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
-						else {
-							// Выполняем поиск идентификатор события UDP-сервера
-							auto i = this->_hosts.find(eid);
-							// Если идентификатор события UDP-сервера найден
-							if(i != this->_hosts.end())
-								// Сохраняем адрес хоста целевой машины для сервера
-								i->second = this->_server->getAddress(eid, event::address_t::IPV4);
-							// Сохраняем его для указанного UDP-сервера
-							else this->_hosts.emplace(eid, this->_server->getAddress(eid, event::address_t::IPV4));
-						}
-					}
-				// Если идентификатор сервера не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(eid, host), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-					#endif
-				}
-			} break;
-			// Для типа IPv6
-			case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
-					// Устанавливаем адрес хоста целевой машины для сервера
-					result = this->_server->setAddress(eid, event::address_t::IPV6, host);
-					// Если адрес установлен успешно, сохраняем его
-					if(result){
-						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-						if(this->_eid == eid)
-							// Сохраняем адрес хоста целевой машины для сервера
-							this->_host = this->_server->getAddress(eid, event::address_t::IPV6);
-						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
-						else {
-							// Выполняем поиск идентификатор события UDP-сервера
-							auto i = this->_hosts.find(eid);
-							// Если идентификатор события UDP-сервера найден
-							if(i != this->_hosts.end())
-								// Сохраняем адрес хоста целевой машины для сервера
-								i->second = this->_server->getAddress(eid, event::address_t::IPV6);
-							// Сохраняем его для указанного UDP-сервера
-							else this->_hosts.emplace(eid, this->_server->getAddress(eid, event::address_t::IPV6));
-						}
-					}
-				// Если идентификатор сервера не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, make_tuple(eid, host), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
-					#endif
-				}
-			} break;
-			// Для остальных типов адресов
-			default: {
-				// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-				if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
-					// Если адрес не является IP-адресом, устанавливаем его как есть
-					if((result = !host.empty())){
-						// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-						if(this->_eid == eid)
-							// Устанавливаем адрес хоста целевой машины для сервера
-							this->_host = host;
-						// Если идентификатор события сервера соответствует идентификатору UDP-сервера
-						else {
-							// Выполняем поиск идентификатор события UDP-сервера
-							auto i = this->_hosts.find(eid);
-							// Если идентификатор события UDP-сервера найден
-							if(i != this->_hosts.end())
-								// Сохраняем адрес хоста целевой машины для сервера
-								i->second = host;
-							// Сохраняем его для указанного UDP-сервера
-							else this->_hosts.emplace(eid, host);
-						}
-					}
-				}
-			}
-		}
-	}
-	// Выводим результат
-	return result;
-}
-/**
  * @brief Метод получения адреса хоста целевой машины
  *
  * @param eid идентификатор события клиента
@@ -2690,7 +3352,7 @@ string awh::server::Socks5::getTarget(const event::id_t eid) const noexcept {
 		// Если идентификатор события подключённого пира найден
 		if(i != this->_peers.end())
 			// Извлекаем адрес хоста целевой машины для клиента принадлежащего этому пиру
-			return this->_unit.getTarget(i->second.eid);
+			return this->_client.getTarget(i->second.eid);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2731,7 +3393,7 @@ bool awh::server::Socks5::getTarget(const event::id_t eid, unique_ptr <net::addr
 		// Если идентификатор события подключённого пира найден
 		if(i != this->_peers.end())
 			// Извлекаем адрес хоста целевой машины для клиента принадлежащего этому пиру
-			return this->_unit.getTarget(i->second.eid, target);
+			return this->_client.getTarget(i->second.eid, target);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -2792,7 +3454,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, string_view
 							// Если сетевой интерфейс успешно получен
 							if((result = !src.iface.empty()))
 								// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-								this->_interface = ::move(src.iface);
+								this->_iface = ::move(src.iface);
 						} break;
 						// Для семейства IPv6
 						case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -2805,7 +3467,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, string_view
 							// Если сетевой интерфейс успешно получен
 							if((result = !src.iface.empty()))
 								// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-								this->_interface = ::move(src.iface);
+								this->_iface = ::move(src.iface);
 						} break;
 					}
 				}
@@ -2823,7 +3485,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, string_view
 					// Если сетевой интерфейс успешно получен
 					if((result = !src.iface.empty()))
 						// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-						this->_interface = ::move(src.iface);
+						this->_iface = ::move(src.iface);
 				}
 			} break;
 			// Если тип адреса принадлежит к IPv6-адресам
@@ -2839,7 +3501,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, string_view
 					// Если сетевой интерфейс успешно получен
 					if((result = !src.iface.empty()))
 						// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-						this->_interface = ::move(src.iface);
+						this->_iface = ::move(src.iface);
 				}
 			} break;
 		}
@@ -2878,7 +3540,7 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
 	 */
 	try {
 		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+		if(eid == this->_eid){
 			// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 			if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
 				// Устанавливаем внутренний адрес socks5-сервера
@@ -2950,7 +3612,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, const net::
 						// Если сетевой интерфейс успешно получен
 						if((result = !src.iface.empty()))
 							// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-							this->_interface = ::move(src.iface);
+							this->_iface = ::move(src.iface);
 					} break;
 					// Для семейства IPv6
 					case static_cast <uint8_t> (event::family_t::IPV6): {
@@ -2963,7 +3625,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, const net::
 						// Если сетевой интерфейс успешно получен
 						if((result = !src.iface.empty()))
 							// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-							this->_interface = ::move(src.iface);
+							this->_iface = ::move(src.iface);
 					} break;
 				}
 			} break;
@@ -2976,7 +3638,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, const net::
 				// Если сетевой интерфейс успешно получен
 				if((result = !src.iface.empty()))
 					// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-					this->_interface = ::move(src.iface);
+					this->_iface = ::move(src.iface);
 			} break;
 			// Если тип адреса принадлежит к IPv6-адресам
 			case static_cast <uint8_t> (event::address_t::IPV6): {
@@ -2987,7 +3649,7 @@ bool awh::server::Socks5::setAddress(const event::address_t address, const net::
 				// Если сетевой интерфейс успешно получен
 				if((result = !src.iface.empty()))
 					// Устанавливаем внутренний сетевой интерфейс для подключения к сети клиентов
-					this->_interface = ::move(src.iface);
+					this->_iface = ::move(src.iface);
 			} break;
 		}
 	/**
@@ -3025,7 +3687,7 @@ bool awh::server::Socks5::setAddress(const event::id_t eid, const event::address
 	 */
 	try {
 		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end())){
+		if(eid == this->_eid){
 			// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 			if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
 				// Устанавливаем внутренний адрес socks5-сервера
@@ -3074,7 +3736,7 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
 	 */
 	try {
 		// Если сетевой интерфейс для подключения к сети клиентов установлен
-		if(!this->_interface.empty()){
+		if(!this->_iface.empty()){
 			/**
 			 * Определяем тип адреса события
 			 */
@@ -3090,7 +3752,7 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							src.iface = this->_interface;
+							src.iface = this->_iface;
 							// Выполняем извлечение сетевых параметров
 							this->_eth.addr.fillSource(src);
 							// Если MAC-адрес успешно получен
@@ -3108,7 +3770,7 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							src.iface = this->_interface;
+							src.iface = this->_iface;
 							// Выполняем извлечение сетевых параметров
 							this->_eth.addr.fillSource(src);
 							// Если MAC-адрес успешно получен
@@ -3128,7 +3790,7 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
 					// Временный объект для извлечения сетевого интерфейса
 					net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 					// Устанавливаем имя сетевого интерфейса
-					src.iface = this->_interface;
+					src.iface = this->_iface;
 					// Выполняем извлечение сетевых параметров
 					this->_eth.addr.fillSource(src);
 					// Если IP-адрес успешно получен
@@ -3146,7 +3808,7 @@ string awh::server::Socks5::getAddress(const event::address_t address) const noe
 					// Временный объект для извлечения сетевого интерфейса
 					net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 					// Устанавливаем имя сетевого интерфейса
-					src.iface = this->_interface;
+					src.iface = this->_iface;
 					// Выполняем извлечение сетевых параметров
 					this->_eth.addr.fillSource(src);
 					// Если IP-адрес успешно получен
@@ -3195,7 +3857,7 @@ string awh::server::Socks5::getAddress(const event::id_t eid, const event::addre
 	 */
 	try {
 		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+		if(eid == this->_eid)
 			// Получаем адрес внутренний адрес socks5-сервера
 			return this->_server->getAddress(eid, address);
 		// Если идентификатор события передан другой
@@ -3243,7 +3905,7 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
 	 */
 	try {
 		// Если сетевой интерфейс для подключения к сети клиентов установлен
-		if(!this->_interface.empty()){
+		if(!this->_iface.empty()){
 			/**
 			 * Определяем тип адреса события
 			 */
@@ -3259,7 +3921,7 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							src.iface = this->_interface;
+							src.iface = this->_iface;
 							// Выполняем извлечение сетевых параметров
 							this->_eth.addr.fillSource(src);
 							// Если MAC-адрес успешно получен
@@ -3272,7 +3934,7 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
 							// Временный объект для извлечения сетевого интерфейса
 							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 							// Устанавливаем имя сетевого интерфейса
-							src.iface = this->_interface;
+							src.iface = this->_iface;
 							// Выполняем извлечение сетевых параметров
 							this->_eth.addr.fillSource(src);
 							// Если MAC-адрес успешно получен
@@ -3287,7 +3949,7 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
 					// Временный объект для извлечения сетевого интерфейса
 					net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
 					// Устанавливаем имя сетевого интерфейса
-					src.iface = this->_interface;
+					src.iface = this->_iface;
 					// Выполняем извлечение сетевых параметров
 					this->_eth.addr.fillSource(src);
 					// Если IP-адрес успешно получен
@@ -3300,7 +3962,7 @@ bool awh::server::Socks5::getAddress(const event::address_t address, unique_ptr 
 					// Временный объект для извлечения сетевого интерфейса
 					net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
 					// Устанавливаем имя сетевого интерфейса
-					src.iface = this->_interface;
+					src.iface = this->_iface;
 					// Выполняем извлечение сетевых параметров
 					this->_eth.addr.fillSource(src);
 					// Если IP-адрес успешно получен
@@ -3345,7 +4007,7 @@ bool awh::server::Socks5::getAddress(const event::id_t eid, const event::address
 	 */
 	try {
 		// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-		if((this->_eid == eid) || (this->_servers.find(eid) != this->_servers.end()))
+		if(eid == this->_eid)
 			// Получаем адрес внутренний адрес socks5-сервера
 			return this->_server->getAddress(eid, address, value);
 		// Если идентификатор события передан другой
@@ -3675,14 +4337,17 @@ bool awh::server::Socks5::keepAlive(const event::id_t eid, const int32_t cnt, co
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем блокировку потока для работы с локальными данными
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-		// Выполняем поиск идентификатор события подключённого пира
-		auto i = this->_peers.find(eid);
-		// Если идентификатор события подключённого пира найден
-		if((i != this->_peers.end()) && this->_server->keepAlive(i->first, cnt, idle, intvl))
-			// Устанавливаем параметры жизни подключения для клиента принадлежащего этому пиру
-			return this->_server->keepAlive(i->second.eid, cnt, idle, intvl);
+		// Если протокол подключения клиента принадлежащего этому пиру является TCP
+		if(this->_server->protocol(eid) == event::protocol_t::TCP){
+			// Выполняем поиск идентификатор события подключённого пира
+			auto i = this->_peers.find(eid);
+			// Выполняем блокировку потока для работы с локальными данными
+			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Если идентификатор события подключённого пира найден
+			if((i != this->_peers.end()) && this->_server->keepAlive(i->first, cnt, idle, intvl))
+				// Устанавливаем параметры жизни подключения для клиента принадлежащего этому пиру
+				return this->_server->keepAlive(i->second.eid, cnt, idle, intvl);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -3716,46 +4381,33 @@ void awh::server::Socks5::setEventId(const event::id_t eid) noexcept {
 	try {
 		// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 		if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+			// Устанавливаем идентификатор события для сервера
+			this->_eid = eid;
 			/**
-			 * Определяем протокол протокол клиента
+			 * Определяем семейство адресов
 			 */
-			switch(static_cast <uint8_t> (this->_server->protocol(eid))){
-				// Если протокол соответствует UDP
-				case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Добавляем идентификатор события для сервера в список активных UDP серверов
-					this->_servers.emplace(eid);
-				break;
-				// Если протокол соответствует TCP
-				case static_cast <uint8_t> (event::protocol_t::TCP): {
-					// Устанавливаем идентификатор события для сервера
-					this->_eid = eid;
-					/**
-					 * Определяем семейство адресов
-					 */
-					switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
-						// Для семейства IPv4
-						case static_cast <uint8_t> (event::family_t::IPV4): {
-							// Временный объект для извлечения сетевого интерфейса
-							net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
-							// Выполняем извлечение сетевых параметров
-							this->_eth.addr.fillSource(event::node_t::NONE, src);
-							// Если MAC-адрес успешно получен
-							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
-								// Устанавливаем имя сетевого интерфейса для подключения к сети клиентов
-								this->_interface = ::move(src.iface);
-						} break;
-						// Для семейства IPv6
-						case static_cast <uint8_t> (event::family_t::IPV6): {
-							// Временный объект для извлечения сетевого интерфейса
-							net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
-							// Выполняем извлечение сетевых параметров
-							this->_eth.addr.fillSource(event::node_t::NONE, src);
-							// Если MAC-адрес успешно получен
-							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
-								// Устанавливаем имя сетевого интерфейса для подключения к сети клиентов
-								this->_interface = ::move(src.iface);
-						} break;
-					}
+			switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4): {
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv4_t> ());
+					// Выполняем извлечение сетевых параметров
+					this->_eth.addr.fillSource(event::node_t::NONE, src);
+					// Если MAC-адрес успешно получен
+					if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+						// Устанавливаем имя сетевого интерфейса для подключения к сети клиентов
+						this->_iface = ::move(src.iface);
+				} break;
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					// Временный объект для извлечения сетевого интерфейса
+					net::src_t src(::make_unique <net::addr_net_ipv6_t> ());
+					// Выполняем извлечение сетевых параметров
+					this->_eth.addr.fillSource(event::node_t::NONE, src);
+					// Если MAC-адрес успешно получен
+					if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+						// Устанавливаем имя сетевого интерфейса для подключения к сети клиентов
+						this->_iface = ::move(src.iface);
 				} break;
 			}
 		}
@@ -3779,6 +4431,151 @@ void awh::server::Socks5::setEventId(const event::id_t eid) noexcept {
 	}
 }
 /**
+ * @brief Метод установки диапазона портов для выделения портов UDP серверов
+ *
+ * @param count   количество портов для выделения
+ * @param begin   начальный порт диапазона для выделения
+ * @param end     конечный порт диапазона для выделения
+ * @param address адрес для запуска UDP-серверов
+ */
+void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const uint16_t end, string_view address) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+			// Устанавливаем начальный порт диапазона для выделения
+			this->_udp.begin = begin;
+			// Устанавливаем конечный порт диапазона для выделения
+			this->_udp.end = end;
+			// Устанавливаем количество портов для выделения
+			this->_udp.count = count;
+			// Если адрес для запуска UDP-серверов передан
+			if(!address.empty()){
+				// Выполняем парсинг IP-адреса
+				if(this->_addr.parse(address))
+					// Устанавливаем полученный IP-адрес
+					this->_udp.address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+			// Если адрес для запуска UDP-серверов не передан
+			} else {
+				/**
+				 * Определяем семейство адресов для запуска UDP сервера
+				 */
+				switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+					// Если процесс работает с адресами IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Создаём объект параметров подключения для идентификатора события клиента
+						this->_udp.address = make_unique <net::addr_net_ipv4_t> ();
+					break;
+					// Если процесс работает с адресами IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Создаём объект параметров подключения для идентификатора события клиента
+						this->_udp.address = make_unique <net::addr_net_ipv6_t> ();
+					break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count, begin, end), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки диапазона портов для выделения портов UDP серверов
+ *
+ * @param count   количество портов для выделения
+ * @param begin   начальный порт диапазона для выделения
+ * @param end     конечный порт диапазона для выделения
+ * @param address адрес для запуска UDP-серверов
+ */
+void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const uint16_t end, const net::addr_t * address) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если DNS-резолвер или сервер находятся в нерабочем состоянии
+		if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working()){
+			// Устанавливаем начальный порт диапазона для выделения
+			this->_udp.begin = begin;
+			// Устанавливаем конечный порт диапазона для выделения
+			this->_udp.end = end;
+			// Устанавливаем количество портов для выделения
+			this->_udp.count = count;
+			// Если адрес для запуска UDP-серверов передан
+			if(address != nullptr){
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(address->size){
+					// Для типа IPv4
+					case 4: {
+						// Создаём объект параметров подключения для идентификатора события клиента
+						this->_udp.address = make_unique <net::addr_net_ipv4_t> ();
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::addr_net_ipv4_t *> (this->_udp.address.get())->address = awh_cast <const net::addr_net_ipv4_t *> (address)->address;
+					} break;
+					// Для типа IPv6
+					case 16: {
+						// Создаём объект параметров подключения для идентификатора события клиента
+						this->_udp.address = make_unique <net::addr_net_ipv6_t> ();
+						// Устанавливаем полученный IP-адрес
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (this->_udp.address.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (address)->address[0], 16);
+					} break;
+				}
+			// Если адрес для запуска UDP-серверов не передан
+			} else {
+				/**
+				 * Определяем семейство адресов для запуска UDP сервера
+				 */
+				switch(static_cast <uint8_t> (this->_server->family(this->_eid))){
+					// Если процесс работает с адресами IPv4
+					case static_cast <uint8_t> (event::family_t::IPV4):
+						// Создаём объект параметров подключения для идентификатора события клиента
+						this->_udp.address = make_unique <net::addr_net_ipv4_t> ();
+					break;
+					// Если процесс работает с адресами IPv6
+					case static_cast <uint8_t> (event::family_t::IPV6):
+						// Создаём объект параметров подключения для идентификатора события клиента
+						this->_udp.address = make_unique <net::addr_net_ipv6_t> ();
+					break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count, begin, end), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Конструктор
  *
  * @param server объект юнита сервера
@@ -3786,17 +4583,23 @@ void awh::server::Socks5::setEventId(const event::id_t eid) noexcept {
  * @param log    объект для работы с логами
  */
 awh::server::Socks5::Socks5(unit::server_t * server, const fmk_t * fmk, const log_t * log) noexcept :
- server_t(server, fmk, log), _interface{""}, _unit(fmk, log), _eth(fmk, log), _socks5(fmk, log) {
+ server_t(server, fmk, log), _iface{""}, _eth(fmk, log), _client(fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-	this->_unit.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
+	this->_client.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
-	this->_unit.on <void (const event::id_t, const event::status_t)> ("state", &server::socks5_t::statusClient, this, _1, _2);
+	this->_client.on <void (const event::id_t, const event::status_t)> ("state", &server::socks5_t::statusClient, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения данных от клиента
+	this->_client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &server::socks5_t::readClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
-	this->_unit.on <void (const event::id_t, const event::error_t, const string &)> ("error", &server::socks5_t::errorClient, this, _1, _2, _3);
+	this->_client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &server::socks5_t::errorClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_unit.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
+	this->_client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие кластерных событий сервера
+	this->_server->on <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", &server::socks5_t::eventsCluster, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения кластерного сообщения
+	this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server::socks5_t::messageCluster, this, _1, _2, _3);
 }
 /**
  * @brief Конструктор
@@ -3807,17 +4610,23 @@ awh::server::Socks5::Socks5(unit::server_t * server, const fmk_t * fmk, const lo
  * @param log    объект для работы с логами
  */
 awh::server::Socks5::Socks5(unit::server_t * server, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- server_t(server, dns, fmk, log), _interface{""}, _unit(fmk, log), _eth(fmk, log), _socks5(fmk, log) {
+ server_t(server, dns, fmk, log), _iface{""}, _eth(fmk, log), _client(fmk, log), _socks5(fmk, log) {
 	// Деактивируем мьютекс на время инициализации
 	this->_mtx.enabled = false;
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-	this->_unit.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
+	this->_client.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
-	this->_unit.on <void (const event::id_t, const event::status_t)> ("state", &server::socks5_t::statusClient, this, _1, _2);
+	this->_client.on <void (const event::id_t, const event::status_t)> ("state", &server::socks5_t::statusClient, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения данных от клиента
+	this->_client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &server::socks5_t::readClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
-	this->_unit.on <void (const event::id_t, const event::error_t, const string &)> ("error", &server::socks5_t::errorClient, this, _1, _2, _3);
+	this->_client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &server::socks5_t::errorClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_unit.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
+	this->_client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие кластерных событий сервера
+	this->_server->on <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", &server::socks5_t::eventsCluster, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения кластерного сообщения
+	this->_server->on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server::socks5_t::messageCluster, this, _1, _2, _3);
 }
 /**
  * @brief Деструктор

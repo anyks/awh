@@ -159,15 +159,40 @@ namespace awh {
 					 */
 					explicit Peer() noexcept : eid(0) {};
 				} peer_t;
+				/**
+				 * @brief Структура для хранения информации о UDP-серверах
+				 *
+				 */
+				typedef struct UDP_Server {
+					// Начальный порт диапазона для выделения портов UDP серверов
+					uint16_t begin;
+					// Конечный порт диапазона для выделения портов UDP серверов
+					uint16_t end;
+					// Количество выделенных портов для UDP-серверов
+					uint16_t count;
+					// Адрес для запуска UDP-серверов
+					unique_ptr <net::addr_t> address;
+					// Список идентификаторов активных событий UDP-серверов
+					unordered_set <event::id_t> events;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit UDP_Server() noexcept :
+					 begin(0), end(0), count(0), address(nullptr) {};
+				} udp_server_t;
 			private:
 				// Сетевой интерфейс для подключения к сети клиентов
-				string _interface;
+				string _iface;
 			private:
 				// Объект работы с сетью
-				mutable eth_t _eth;
+				eth_t _eth;
 			private:
-				// Создаём объект юнита клиента
-				unit::client_t _unit;
+				// Объект UDP-серверов для socks5-прокси
+				udp_server_t _udp;
+			private:
+				// Объект юнита клиента
+				unit::client_t _client;
 			private:
 				// Объект для работы с протоколом SOCKS5
 				proto::server_socks5_t _socks5;
@@ -175,11 +200,6 @@ namespace awh {
 				// Мютекс для блокировки потоков
 				lock_state_t <std::shared_mutex> _mtx;
 			private:
-				// Список идентификаторов активных UDP-серверов
-				unordered_set <event::id_t> _servers;
-			private:
-				// Адрес хостов целевых UDP серверов
-				unordered_map <event::id_t, string> _hosts;
 				// Список для сопоставления идентификаторов пиров с удалёнными клиентами
 				unordered_map <event::id_t, peer_t> _peers;
 				// Список для сопоставления идентификаторов клиентов с пирами которым они принадлежат
@@ -190,7 +210,7 @@ namespace awh {
 				// Отображение идентификаторов событий клиентов для конечных точек
 				unordered_map <event::id_t, const origin_t *> _mapping;
 				// Активные сессии клиентов, работающих через прокси
-				unordered_map <origin_t, event::id_t, origin_hash_t> _sessions;
+				unordered_map <origin_t, pair <event::id_t, event::id_t>, origin_hash_t> _sessions;
 			private:
 				/**
 				 * @brief Метод изменения статуса сервера
@@ -199,6 +219,22 @@ namespace awh {
 				 * @param state  новое временное состояние сервера
 				 */
 				void status(const event::status_t status, const state_t state) noexcept;
+			private:
+				/**
+				 * @brief Метод инициализации запуска или остановки кластера
+				 *
+				 * @param pid   идентификатор процесса
+				 * @param event событие кластера
+				 */
+				void eventsCluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept;
+				/**
+				 * @brief Метод обработки события получения сообщения от процесса кластера
+				 *
+				 * @param pid  идентификатор процесса
+				 * @param data данные полученного сообщения
+				 * @param size размер данных полученного сообщения
+				 */
+				void messageCluster(const pid_t pid, const uint8_t * data, const size_t size) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки событий подключения клиента к удалённому серверу
@@ -214,6 +250,14 @@ namespace awh {
 				 * @param status новый статус события
 				 */
 				void statusClient(const event::id_t eid, const event::status_t status) noexcept;
+				/**
+				 * @brief Метод обработки событий получения данных клиентом
+				 *
+				 * @param eid    идентификатор клиента
+				 * @param buffer буфер данных клиента
+				 * @param size   размер данных клиента
+				 */
+				void readClient(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
 				 * @brief Метод получения события ошибок
 				 *
@@ -411,28 +455,12 @@ namespace awh {
 				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
 				/**
-				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
-				 *
-				 * @param start начальный порт диапазона для выделения
-				 * @param end   конечный порт диапазона для выделения
-				 */
-				void setRangePorts(const uint16_t start, const uint16_t end) noexcept;
-			public:
-				/**
 				 * @brief Метод получения порта удаленного клиента или текущего сервера
 				 *
 				 * @param eid идентификатор события клиента или сервера
 				 * @return    порт удаленного клиента или текущего сервера
 				 */
 				uint16_t getPort(const event::id_t eid) const noexcept;
-				/**
-				 * @brief Метод установки порта сервера
-				 *
-				 * @param eid  идентификатор события сервера
-				 * @param port порт сервера для установки
-				 * @return     результат выполнения установки
-				 */
-				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод получения внутреннего порта события
@@ -441,22 +469,6 @@ namespace awh {
 				 * @return    внутренний порт события
 				 */
 				uint16_t getInternalPort(const event::id_t eid) const noexcept;
-			public:
-				/**
-				 * @brief Метод получения адреса хоста текущей машины
-				 *
-				 * @param eid идентификатор события сервера
-				 * @return    адрес хоста текущей машины
-				 */
-				const string & getHost(const event::id_t eid) const noexcept;
-				/**
-				 * @brief Метод установки адреса хоста текущей машины
-				 *
-				 * @param eid  идентификатор события сервера
-				 * @param host адрес хоста текущей машины
-				 * @return     результат выполнения установки
-				 */
-				bool setHost(const event::id_t eid, string_view host) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины
@@ -622,6 +634,25 @@ namespace awh {
 				 * @param eid идентификатор события сервера для установки
 				 */
 				void setEventId(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
+				 *
+				 * @param count   количество портов для выделения
+				 * @param begin   начальный порт диапазона для выделения
+				 * @param end     конечный порт диапазона для выделения
+				 * @param address адрес для запуска UDP-серверов
+				 */
+				void udp(const uint16_t count, const uint16_t begin, const uint16_t end, string_view address) noexcept;
+				/**
+				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
+				 *
+				 * @param count   количество портов для выделения
+				 * @param begin   начальный порт диапазона для выделения
+				 * @param end     конечный порт диапазона для выделения
+				 * @param address адрес для запуска UDP-серверов
+				 */
+				void udp(const uint16_t count, const uint16_t begin, const uint16_t end, const net::addr_t * address) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)
