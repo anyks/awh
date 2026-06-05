@@ -56,7 +56,7 @@ namespace awh {
 			// Идентификатор сервера
 			event::id_t _eid;
 			// Идентификатор TLS шаблона
-			tls::coder_t::id_t _tid;
+			tls::coder_t::id_t _secId;
 		protected:
 			// Объект работы с сетевыми адресами
 			net_addr_t _addr;
@@ -68,12 +68,12 @@ namespace awh {
 			lock_state_t <std::shared_mutex> _mtx;
 		protected:
 			// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
-			unordered_map <event::id_t, tls::coder_t::id_t> _tls;
+			unordered_map <event::id_t, tls::coder_t::id_t> _safety;
 		protected:
 			// Объект DNS-резолвера
 			unit::dns_t * _dns;
 			// Объект транспортного уровня безопасности
-			tls::coder_t * _coder;
+			tls::coder_t * _tls;
 			// Объект сервера
 			unit::server_t * _server;
 		protected:
@@ -731,9 +731,9 @@ namespace awh {
 			/**
 			 * @brief Метод установки идентификатора TLS шаблона
 			 *
-			 * @param tid идентификатор TLS шаблона для установки
+			 * @param secId идентификатор TLS шаблона для установки
 			 */
-			virtual void setSecurityId(const tls::coder_t::id_t tid) noexcept;
+			virtual void setSecurityId(const tls::coder_t::id_t secId) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -759,11 +759,11 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param server объект юнита сервера
-			 * @param coder  объект транспортного уровня безопасности
+			 * @param tls    объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Server(unit::server_t * server, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(unit::server_t * server, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
@@ -778,11 +778,11 @@ namespace awh {
 			 *
 			 * @param server объект юнита сервера
 			 * @param dns    объект DNS-резолвера
-			 * @param coder  объект транспортного уровня безопасности
+			 * @param tls    объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

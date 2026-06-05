@@ -108,7 +108,7 @@ class Executor {
 					"GET / HTTP/1.1\r\n"
 					"Host: anyks.com\r\n"
 					"Connection: close\r\n"
-					"User-Agent: iouring-openssl-sample/1.0\r\n"
+					"User-Agent: iouring-opentls-sample/1.0\r\n"
 					"\r\n";
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(request.c_str(), request.size()) == 0)
@@ -176,13 +176,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
-	tls::coder_t coder(&fmk, &log);
+	tls::coder_t tls(&fmk, &log);
 	// Создаём объект юнита клиента
 	unit::client_t unit(&fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект клиента
-	client_t client(&unit, &dns, &coder, &fmk, &log);
+	client_t client(&unit, &dns, &tls, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
@@ -194,14 +194,14 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = coder.context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
-	coder.alpn(cts, {
+	tls.alpn(cts, {
 		{0,"http/1.1"},
 		{1,"h2"}
 	});
 	// Устанавливаем список доступных шифров TLS
-	coder.ciphers(cts, {
+	tls.ciphers(cts, {
 		tls::cipher_t::TLS_AES_128_GCM_SHA256,
 		tls::cipher_t::TLS_AES_256_GCM_SHA384,
 		tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
@@ -219,19 +219,19 @@ int32_t main(int32_t argc, char * argv[]){
 		tls::cipher_t::AES256_SHA
 	});
 	// Устанавливаем компрессор для транспортного уровня TLS
-	coder.compressors(cts, {
+	tls.compressors(cts, {
 		compressor_t::method_t::ZLIB,
 		compressor_t::method_t::ZSTD,
 		compressor_t::method_t::BROTLI
 	});
 	// Устанавливаем файл центра сертификации TLS
-	coder.ca(cts, "../sh/certificates", "ca.pem");
+	tls.ca(cts, "../sh/certificates", "ca.pem");
 	// Устанавливаем имя хоста TLS
-	coder.serverNameIndication(cts, "anyks.net");
+	tls.serverNameIndication(cts, "anyks.net");
 	// Включаем проверку имени хоста TLS
-	coder.validateServerNameIndication(cts, false);
+	tls.validateServerNameIndication(cts, false);
 	// Создаём идентификатор транспортного уровня TLS
-	const tls::coder_t::id_t ctl = coder.transport(cts);
+	const tls::coder_t::id_t ctl = tls.transport(cts);
 	// Устанавливаем идентификатор события клиента
 	client.setEventId(eid);
 	// Устанавливаем идентификатор TLS для клиента

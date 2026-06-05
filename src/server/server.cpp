@@ -220,18 +220,18 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 				// Если событие DNS-резолвера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED): {
 					// Если идентификатор TLS и объект TLS установлены
-					if((this->_tid > 0) && (this->_coder != nullptr) && !this->_tls.empty()){
+					if((this->_secId > 0) && (this->_tls != nullptr) && !this->_safety.empty()){
 						// Временный список идентификаторов TLS, которые нужно удалить
 						vector <tls::coder_t::id_t> garbage;
 						{
 							// Выполняем блокировку потока для работы с TLS
 							const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 							// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
-							for(auto i = this->_tls.begin(); i != this->_tls.end();){
+							for(auto i = this->_safety.begin(); i != this->_safety.end();){
 								// Формируем список идентификаторов TLS для удаления
 								garbage.push_back(i->second);
 								// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-								i = this->_tls.erase(i);
+								i = this->_safety.erase(i);
 							}
 						}
 						// Если список идентификаторов TLS для удаления не пустой
@@ -239,7 +239,7 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 							// Проходим по всем идентификаторам TLS для удаления
 							for(const auto & id : garbage)
 								// Уничтожаем объект TLS по найденному идентификатору TLS
-								this->_coder->destroy(id);
+								this->_tls->destroy(id);
 						}
 					}
 					// Останавливаем сервер
@@ -272,14 +272,14 @@ void awh::Server::write(const event::id_t eid, const size_t size) noexcept {
  */
 void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	// Если объект транспортного уровня безопасности установлен
-	if((this->_coder != nullptr) && (this->_tid > 0)){
+	if((this->_tls != nullptr) && (this->_secId > 0)){
 		// Создаём идентификатор транспортного уровня TLS/DTLS
-		tls::coder_t::id_t ctl = this->_coder->transport(this->_tid);
+		tls::coder_t::id_t ctl = this->_tls->transport(this->_secId);
 		{
 			// Выполняем блокировку потока для работы с TLS
 			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 			// Добавляем сопоставление идентификатора клиента с идентификатором TLS
-			this->_tls.emplace(cid, ctl);
+			this->_safety.emplace(cid, ctl);
 		}
 		/**
 		 * Определяем семейство адресов с которым работает клиент
@@ -288,24 +288,24 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 			// Если клиент работает с адресами IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4):
 				// Устанавливаем клиента TLS для события
-				this->_coder->peer(ctl, this->_server->getAddress(cid, event::address_t::IPV4), this->_server->getPort(cid));
+				this->_tls->peer(ctl, this->_server->getAddress(cid, event::address_t::IPV4), this->_server->getPort(cid));
 			break;
 			// Если клиент работает с адресами IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6):
 				// Устанавливаем клиента TLS для события
-				this->_coder->peer(ctl, this->_server->getAddress(cid, event::address_t::IPV6), this->_server->getPort(cid));
+				this->_tls->peer(ctl, this->_server->getAddress(cid, event::address_t::IPV6), this->_server->getPort(cid));
 			break;
 		}
 		// Регистрируем функцию обратного вызова на изменение состояния TLS
-		this->_coder->on(ctl, std::bind(&server_t::stateTLS, this, _1, cid, _2));
+		this->_tls->on(ctl, std::bind(&server_t::stateTLS, this, _1, cid, _2));
 		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_coder->on(ctl, std::bind(&server_t::errorTLS, this, _1, cid, _2, _3));
+		this->_tls->on(ctl, std::bind(&server_t::errorTLS, this, _1, cid, _2, _3));
 		// Регистрируем функцию обратного вызова на получение снимка браузера приславшего ClientHello
-		this->_coder->on(ctl, std::bind(&server_t::fingerprintTLS, this, _1, cid, _2));
+		this->_tls->on(ctl, std::bind(&server_t::fingerprintTLS, this, _1, cid, _2));
 		// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-		this->_coder->on(ctl, std::bind(&server_t::processTLS, this, _1, cid, _2, _3, _4));
+		this->_tls->on(ctl, std::bind(&server_t::processTLS, this, _1, cid, _2, _3, _4));
 		// Если рукопожатие TLS не выполнено
-		if(!this->_coder->handshake(ctl)){
+		if(!this->_tls->handshake(ctl)){
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error_tls")){
 				/**
@@ -355,18 +355,18 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 				// Если производится завершение работы клиента подключенного к текущему серверу
 				else {
 					// Если идентификатор TLS и объект TLS установлены
-					if((this->_tid > 0) && (this->_coder != nullptr) && !this->_tls.empty()){
+					if((this->_secId > 0) && (this->_tls != nullptr) && !this->_safety.empty()){
 						// Временный список идентификаторов TLS, которые нужно удалить
 						vector <tls::coder_t::id_t> garbage;
 						{
 							// Выполняем блокировку потока для работы с TLS
 							const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 							// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
-							for(auto i = this->_tls.begin(); i != this->_tls.end();){
+							for(auto i = this->_safety.begin(); i != this->_safety.end();){
 								// Формируем список идентификаторов TLS для удаления
 								garbage.push_back(i->second);
 								// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-								i = this->_tls.erase(i);
+								i = this->_safety.erase(i);
 							}
 						}
 						// Если список идентификаторов TLS для удаления не пустой
@@ -374,7 +374,7 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 							// Проходим по всем идентификаторам TLS для удаления
 							for(const auto & id : garbage)
 								// Уничтожаем объект TLS по найденному идентификатору TLS
-								this->_coder->destroy(id);
+								this->_tls->destroy(id);
 						}
 					}
 					// Останавливаем событие сервера
@@ -383,18 +383,18 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 			// Если производится завершение работы клиента подключенного к текущему серверу
 			} else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_tid > 0) && (this->_coder != nullptr) && !this->_tls.empty()){
+				if((this->_secId > 0) && (this->_tls != nullptr) && !this->_safety.empty()){
 					// Временный список идентификаторов TLS, которые нужно удалить
 					vector <tls::coder_t::id_t> garbage;
 					{
 						// Выполняем блокировку потока для работы с TLS
 						const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
-						for(auto i = this->_tls.begin(); i != this->_tls.end();){
+						for(auto i = this->_safety.begin(); i != this->_safety.end();){
 							// Формируем список идентификаторов TLS для удаления
 							garbage.push_back(i->second);
 							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-							i = this->_tls.erase(i);
+							i = this->_safety.erase(i);
 						}
 					}
 					// Если список идентификаторов TLS для удаления не пустой
@@ -402,7 +402,7 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 						// Проходим по всем идентификаторам TLS для удаления
 						for(const auto & id : garbage)
 							// Уничтожаем объект TLS по найденному идентификатору TLS
-							this->_coder->destroy(id);
+							this->_tls->destroy(id);
 					}
 				}
 			}
@@ -435,23 +435,23 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns != nullptr ? this->_dns->working() : this->_server->working()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_coder != nullptr) && (this->_tid > 0)){
+		if((this->_tls != nullptr) && (this->_secId > 0)){
 			// Идентификатор TLS для данного идентификатора события клиента
-			uint64_t tid = 0;
+			uint64_t secId = 0;
 			{
 				// Выполняем блокировку потока для работы с TLS
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 				// Выполняем поиск идентификатора TLS по идентификатору события клиента
-				auto i = this->_tls.find(eid);
+				auto i = this->_safety.find(eid);
 				// Если для данного идентификатора события клиента найден идентификатор TLS
-				if(i != this->_tls.end())
+				if(i != this->_safety.end())
 					// Получаем идентификатор TLS для данного идентификатора события клиента
-					tid = i->second;
+					secId = i->second;
 			}
 			// Если идентификатор TLS для данного идентификатора события клиента найден
-			if(tid > 0){
+			if(secId > 0){
 				// Если данные не расшифрованы
-				if(!this->_coder->decrypt(tid, buffer, size)){
+				if(!this->_tls->decrypt(secId, buffer, size)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error_tls")){
 						/**
@@ -686,15 +686,15 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 			// Если состояние уничтожения объекта транспортного уровня
 			case static_cast <uint8_t> (tls::coder_t::state_t::DESTROYED): {
 				// Если список сопоставлений идентификаторов клиентов с идентификаторами TLS не пустой
-				if(!this->_tls.empty()){
+				if(!this->_safety.empty()){
 					// Выполняем блокировку потока для работы с TLS
 					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск идентификатора TLS по идентификатору события клиента
-					auto i = this->_tls.find(eid);
+					auto i = this->_safety.find(eid);
 					// Если для данного идентификатора события клиента найден идентификатор TLS
-					if(i != this->_tls.end())
+					if(i != this->_safety.end())
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-						this->_tls.erase(i);
+						this->_safety.erase(i);
 				}
 			} break;
 			// Если состояние рукопожатия успешно завершено
@@ -908,18 +908,18 @@ void awh::Server::stop() noexcept {
 			// Если объект DNS-резолвера не установлен
 			else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_tid > 0) && (this->_coder != nullptr) && !this->_tls.empty()){
+				if((this->_secId > 0) && (this->_tls != nullptr) && !this->_safety.empty()){
 					// Временный список идентификаторов TLS, которые нужно удалить
 					vector <tls::coder_t::id_t> garbage;
 					{
 						// Выполняем блокировку потока для работы с TLS
 						const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 						// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
-						for(auto i = this->_tls.begin(); i != this->_tls.end();){
+						for(auto i = this->_safety.begin(); i != this->_safety.end();){
 							// Формируем список идентификаторов TLS для удаления
 							garbage.push_back(i->second);
 							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-							i = this->_tls.erase(i);
+							i = this->_safety.erase(i);
 						}
 					}
 					// Если список идентификаторов TLS для удаления не пустой
@@ -927,7 +927,7 @@ void awh::Server::stop() noexcept {
 						// Проходим по всем идентификаторам TLS для удаления
 						for(const auto & id : garbage)
 							// Уничтожаем объект TLS по найденному идентификатору TLS
-							this->_coder->destroy(id);
+							this->_tls->destroy(id);
 					}
 				}
 				// Останавливаем событие сервера
@@ -1079,11 +1079,11 @@ void awh::Server::threadSafety(const bool mode) noexcept {
 		// Устанавливаем режим безопасности работы потоков для объекта DNS-резолвера
 		this->_dns->threadSafety(mode);
 	// Если идентификатор TLS и объект TLS установлены
-	if((this->_tid > 0) && (this->_coder != nullptr))
+	if((this->_secId > 0) && (this->_tls != nullptr))
 		// Устанавливаем режим безопасности работы потоков для объекта TLS
-		this->_coder->threadSafety(this->_tid, mode);
+		this->_tls->threadSafety(this->_secId, mode);
 	// Если идентификатор TLS не установлен, но объект TLS установлен
-	else if((this->_tid == 0) && (this->_coder != nullptr)) {
+	else if((this->_secId == 0) && (this->_tls != nullptr)) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1349,26 +1349,26 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 	// Если идентификатор клиента найден в списке обслуживаемых клиентов
 	if((eid != this->_eid) && this->_server->isActual(eid)){
 		// Если идентификатор TLS и объект TLS установлены
-		if((this->_tid > 0) && (this->_coder != nullptr)){
+		if((this->_secId > 0) && (this->_tls != nullptr)){
 			// Временный идентификатор TLS для уничтожения объекта TLS
-			uint64_t tid = 0;
+			uint64_t secId = 0;
 			{
 				// Выполняем блокировку потока для работы с TLS
 				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем поиск идентификатора TLS по идентификатору события клиента
-				auto i = this->_tls.find(eid);
+				auto i = this->_safety.find(eid);
 				// Если для данного идентификатора события клиента найден идентификатор TLS
-				if(i != this->_tls.end()){
+				if(i != this->_safety.end()){
 					// Сохраняем идентификатор TLS для последующего уничтожения объекта TLS
-					tid = i->second;
+					secId = i->second;
 					// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-					this->_tls.erase(i);
+					this->_safety.erase(i);
 				}
 			}
 			// Если идентификатор TLS для уничтожения объекта TLS найден
-			if(tid > 0)
+			if(secId > 0)
 				// Уничтожаем объект TLS по найденному идентификатору TLS
-				this->_coder->destroy(tid);
+				this->_tls->destroy(secId);
 		}
 		// Уничтожаем событие клиента
 		this->_server->destroy(eid);
@@ -1421,23 +1421,23 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
 		if((eid != this->_eid) && this->_server->isActual(eid)){
 			// Если идентификатор TLS и объект TLS установлены
-			if((this->_tid > 0) && (this->_coder != nullptr)){
+			if((this->_secId > 0) && (this->_tls != nullptr)){
 				// Временный идентификатор TLS для шифрования данных TLS
-				uint64_t tid = 0;
+				uint64_t secId = 0;
 				{
 					// Выполняем блокировку потока для работы с TLS
 					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 					// Выполняем поиск идентификатора TLS по идентификатору события клиента
-					auto i = this->_tls.find(eid);
+					auto i = this->_safety.find(eid);
 					// Если для данного идентификатора события клиента найден идентификатор TLS
-					if(i != this->_tls.end())
+					if(i != this->_safety.end())
 						// Сохраняем идентификатор TLS для последующего шифрования данных TLS
-						tid = i->second;
+						secId = i->second;
 				}
 				// Если идентификатор TLS для шифрования данных TLS найден
-				if(tid > 0){
+				if(secId > 0){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_coder->encrypt(tid, buffer, size))
+					if(this->_tls->encrypt(secId, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 				}
@@ -2442,13 +2442,13 @@ void awh::Server::setEventId(const event::id_t eid) noexcept {
 /**
  * @brief Метод установки идентификатора TLS шаблона
  *
- * @param tid идентификатор TLS шаблона для установки
+ * @param secId идентификатор TLS шаблона для установки
  */
-void awh::Server::setSecurityId(const tls::coder_t::id_t tid) noexcept {
+void awh::Server::setSecurityId(const tls::coder_t::id_t secId) noexcept {
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	if(this->_dns != nullptr ? !this->_dns->working() : !this->_server->working())
 		// Устанавливаем идентификатор TLS шаблона для сервера
-		this->_tid = tid;
+		this->_secId = secId;
 }
 /**
  * @brief Конструктор
@@ -2458,8 +2458,8 @@ void awh::Server::setSecurityId(const tls::coder_t::id_t tid) noexcept {
  * @param log    объект для работы с логами
  */
 awh::Server::Server(unit::server_t * server, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
- _dns(nullptr), _coder(nullptr), _server(server), _fmk(fmk), _log(log)  {
+ _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
+ _dns(nullptr), _tls(nullptr), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Деактивируем мьютекс на время инициализации
@@ -2523,17 +2523,17 @@ awh::Server::Server(unit::server_t * server, const fmk_t * fmk, const log_t * lo
  * @brief Конструктор
  *
  * @param server объект юнита сервера
- * @param coder  объект транспортного уровня безопасности
+ * @param tls    объект транспортного уровня безопасности
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Server::Server(unit::server_t * server, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
- _dns(nullptr), _coder(coder), _server(server), _fmk(fmk), _log(log)  {
+awh::Server::Server(unit::server_t * server, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
+ _dns(nullptr), _tls(tls), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Если объект транспортного уровня безопасности не установлен
-		if(this->_coder == nullptr){
+		if(this->_tls == nullptr){
 			/**
 			 * Если включён режим отладки
 			 */
@@ -2616,8 +2616,8 @@ awh::Server::Server(unit::server_t * server, tls::coder_t * coder, const fmk_t *
  * @param log    объект для работы с логами
  */
 awh::Server::Server(unit::server_t * server, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
- _dns(dns), _coder(nullptr), _server(server), _fmk(fmk), _log(log)  {
+ _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
+ _dns(dns), _tls(nullptr), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Деактивируем мьютекс на время инициализации
@@ -2708,17 +2708,17 @@ awh::Server::Server(unit::server_t * server, unit::dns_t * dns, const fmk_t * fm
  *
  * @param server объект юнита сервера
  * @param dns    объект DNS-резолвера
- * @param coder  объект транспортного уровня безопасности
+ * @param tls    объект транспортного уровня безопасности
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::Server::Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _eid(0), _tid(0), _addr(fmk, log), _callback(fmk, log),
- _dns(dns), _coder(coder), _server(server), _fmk(fmk), _log(log)  {
+awh::Server::Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
+ _dns(dns), _tls(tls), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Если объект транспортного уровня безопасности не установлен
-		if(this->_coder == nullptr){
+		if(this->_tls == nullptr){
 			/**
 			 * Если включён режим отладки
 			 */

@@ -56,7 +56,7 @@ namespace awh {
 			// Идентификатор клиента для выполнения запросов к серверу
 			event::id_t _eid;
 			// Идентификатор TLS для выполнения запросов к серверу
-			tls::coder_t::id_t _tid;
+			tls::coder_t::id_t _secId;
 		protected:
 			// Объект работы с сетевыми адресами
 			net_addr_t _addr;
@@ -70,7 +70,7 @@ namespace awh {
 			// Объект DNS-резолвера
 			unit::dns_t * _dns;
 			// Объект транспортного уровня безопасности
-			tls::coder_t * _coder;
+			tls::coder_t * _tls;
 			// Объект клиента
 			unit::client_t * _client;
 		protected:
@@ -569,9 +569,9 @@ namespace awh {
 			/**
 			 * @brief Метод установки идентификатора TLS
 			 *
-			 * @param tid идентификатор TLS для установки
+			 * @param secId идентификатор TLS для установки
 			 */
-			virtual void setSecurityId(const tls::coder_t::id_t tid) noexcept;
+			virtual void setSecurityId(const tls::coder_t::id_t secId) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -597,11 +597,11 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param client объект юнита клиента
-			 * @param coder  объект транспортного уровня безопасности
+			 * @param tls    объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Client(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(unit::client_t * client, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
@@ -616,11 +616,11 @@ namespace awh {
 			 *
 			 * @param client объект юнита клиента
 			 * @param dns    объект DNS-резолвера
-			 * @param coder  объект транспортного уровня безопасности
+			 * @param tls    объект транспортного уровня безопасности
 			 * @param fmk    объект фреймворка
 			 * @param log    объект для работы с логами
 			 */
-			explicit Client(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(unit::client_t * client, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

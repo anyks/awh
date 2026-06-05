@@ -108,7 +108,7 @@ class Executor {
 					"GET / HTTP/1.1\r\n"
 					"Host: anyks.com\r\n"
 					"Connection: close\r\n"
-					"User-Agent: iouring-openssl-sample/1.0\r\n"
+					"User-Agent: iouring-opentls-sample/1.0\r\n"
 					"\r\n";
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(request.c_str(), request.size()) == 0)
@@ -176,13 +176,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
-	tls::coder_t coder(&fmk, &log);
+	tls::coder_t tls(&fmk, &log);
 	// Создаём объект юнита клиента
 	unit::client_t unit(&fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект клиента
-	client_t client(&unit, &dns, &coder, &fmk, &log);
+	client_t client(&unit, &dns, &tls, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
@@ -194,19 +194,19 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = coder.context(event::node_t::CLIENT, event::protocol_t::TCP);
+	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Устанавливаем хост сервера для подключения клиента
 	const string host = "anyks.com";
 	// Устанавливаем ALPN протоколы TLS
-	coder.alpn(cts, {{0,"http/1.1"}});
+	tls.alpn(cts, {{0,"http/1.1"}});
 	// Устанавливаем файл центра сертификации TLS
-	coder.ca(cts, "../sh/certificates", "ca.pem");
+	tls.ca(cts, "../sh/certificates", "ca.pem");
 	// Включаем проверку имени хоста TLS
-	coder.validateServerNameIndication(cts, true);
+	tls.validateServerNameIndication(cts, true);
 	// Устанавливаем имя хоста TLS
-	coder.serverNameIndication(cts, host);
+	tls.serverNameIndication(cts, host);
 	// Создаём идентификатор транспортного уровня TLS
-	const tls::coder_t::id_t ctl = coder.transport(cts);
+	const tls::coder_t::id_t ctl = tls.transport(cts);
 	// Устанавливаем идентификатор события клиента
 	client.setEventId(eid);
 	// Устанавливаем идентификатор TLS для клиента

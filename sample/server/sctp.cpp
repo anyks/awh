@@ -102,10 +102,10 @@ class Executor {
 		 * @param cid    идентификатор клиента
 		 * @param tid    идентификатор клиента TLS
 		 * @param server объект сервера
-		 * @param coder  объект TLS кодера
+		 * @param tls  объект TLS кодера
 		 * @param sctp   объект SCTP протокола
 		 */
-		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * coder, engine::sctp_t * sctp) noexcept {
+		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls, engine::sctp_t * sctp) noexcept {
 			// Выводим сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 			// Устананавливаем опции события
@@ -132,17 +132,17 @@ class Executor {
 				cout << "  - Unpack Data: " << status.unackdata << endl;
 				cout << "  - Pending Data: " << status.penddata << endl;
 				// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-				cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << coder->info(tid) << endl;
-				cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) coder->alpn(tid) << endl;
-				cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << coder->serverNameIndication(tid) << endl << endl;
+				cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls->info(tid) << endl;
+				cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls->alpn(tid) << endl;
+				cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls->serverNameIndication(tid) << endl << endl;
 				cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-				cout << "Версия OpenSSL: " << coder->version() << endl << endl;
-				cout << "Cipher: " << coder->cipherInfo(tid) << endl << endl;
-				cout << "Certificate: " << coder->certificateInfo(tid) << endl << endl;
-				cout << "CRL Info: " << coder->certificateRevocationListInfo(tid) << endl << endl;
-				cout << "Certificate Validation: " << (coder->validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
+				cout << "Версия OpenSSL: " << tls->version() << endl << endl;
+				cout << "Cipher: " << tls->cipherInfo(tid) << endl << endl;
+				cout << "Certificate: " << tls->certificateInfo(tid) << endl << endl;
+				cout << "CRL Info: " << tls->certificateRevocationListInfo(tid) << endl << endl;
+				cout << "Certificate Validation: " << (tls->validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
 				// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
-				this->_log->print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log_t::flag_t::INFO, tid, coder->alpn(tid));
+				this->_log->print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log_t::flag_t::INFO, tid, tls->alpn(tid));
 				// Выполняем подписку на SCTP события
 				sctp->eventsSubscribe(cid, {
 					net::sctp::event_type_t::ASSOC_CHANGE,
@@ -327,13 +327,13 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект отпечатка браузера
 	tls::fgp_t fgp(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
-	tls::coder_t coder(&fgp, &fmk, &log);
+	tls::coder_t tls(&fgp, &fmk, &log);
 	// Создаём объект юнита сервера
 	unit::server_t unit(&fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект сервера
-	server_t server(&unit, &dns, &coder, &fmk, &log);
+	server_t server(&unit, &dns, &tls, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие сервера и сохраняем его идентификатор
@@ -352,16 +352,16 @@ int32_t main(int32_t argc, char * argv[]){
 		net::sctp::event_type_t::REMOTE_ERROR
 	});
 	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = coder.context(event::node_t::SERVER, event::protocol_t::TCP);
+	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
-	coder.alpn(cts, {
+	tls.alpn(cts, {
 		{0,"h3"},
 		{1,"http/1.1"}
 	});
 	// Устанавливаем файл центра сертификации TLS
-	coder.ca(cts, "../sh/certificates", "ca.pem");
+	tls.ca(cts, "../sh/certificates", "ca.pem");
 	// Устанавливаем список доступных шифров TLS
-	coder.ciphers(cts, {
+	tls.ciphers(cts, {
 		tls::cipher_t::TLS_AES_128_GCM_SHA256,
 		tls::cipher_t::TLS_AES_256_GCM_SHA384,
 		tls::cipher_t::TLS_CHACHA20_POLY1305_SHA256,
@@ -379,17 +379,17 @@ int32_t main(int32_t argc, char * argv[]){
 		tls::cipher_t::AES256_SHA
 	});
 	// Устанавливаем компрессор для транспортного уровня TLS
-	coder.compressors(cts, {
+	tls.compressors(cts, {
 		compressor_t::method_t::ZLIB,
 		compressor_t::method_t::ZSTD,
 		compressor_t::method_t::BROTLI
 	});
 	// Включаем проверку имени хоста TLS
-	coder.validateServerNameIndication(cts, false);
+	tls.validateServerNameIndication(cts, false);
 	// Устанавливаем клиентский сертификат TLS
-	coder.certificate(cts, "../sh/certificates/server/cert.pem");
+	tls.certificate(cts, "../sh/certificates/server/cert.pem");
 	// Устанавливаем приватный ключ TLS
-	coder.privateKey(cts, "../sh/certificates/server/key.pem");
+	tls.privateKey(cts, "../sh/certificates/server/key.pem");
 	// Устанавливаем идентификатор события сервера
 	server.setEventId(eid);
 	// Устанавливаем идентификатор TLS для сервера
@@ -409,7 +409,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Регистрируем функцию обратного вызова на событие готовности сервера к работе
 		server.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
 		// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
-		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server, &coder, &sctp);
+		server.on <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", &Executor::accept, &executor, _1, _2, _3, &server, &tls, &sctp);
 		// Регистрируем функцию обратного вызова на событие ошибок транспортного уровня безопасности TLS
 		server.on <void (const tls::coder_t::id_t, const tls::coder_t::error_t, const string &)> ("error_tls", &Executor::errorTLS, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие TLS fingerprint клиента

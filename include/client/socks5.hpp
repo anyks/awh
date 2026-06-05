@@ -62,15 +62,13 @@ namespace awh {
 						// Идентификатор события клиента
 						event::id_t eid;
 					} udp;
-					// Идентификатор TLS для клиента
-					tls::coder_t::id_t tid;
 					// Атрибуты сети для конечной точки
 					unique_ptr <net::attr_t> attr;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Endpoint() noexcept : udp{0}, tid(0), attr(nullptr) {}
+					explicit Endpoint() noexcept : udp{0}, attr(nullptr) {}
 				} endpoint_t;
 			private:
 				// Конечная точка клиента, работающего через прокси
@@ -261,11 +259,11 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 * @param client объект юнита клиента
-				 * @param coder  объект транспортного уровня безопасности
+				 * @param tls    объект транспортного уровня безопасности
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
 				 */
-				explicit Socks5(unit::client_t * client, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(unit::client_t * client, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
@@ -280,11 +278,11 @@ namespace awh {
 				 *
 				 * @param client объект юнита клиента
 				 * @param dns    объект DNS-резолвера
-				 * @param coder  объект транспортного уровня безопасности
+				 * @param tls    объект транспортного уровня безопасности
 				 * @param fmk    объект фреймворка
 				 * @param log    объект для работы с логами
 				 */
-				explicit Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
 				/**
 				 * @brief Деструктор

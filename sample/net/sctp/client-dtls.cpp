@@ -50,7 +50,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект асинхронного движка ввода-вывода
 	engine::io_t io(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
-	tls::coder_t coder(&fmk, &log);
+	tls::coder_t tls(&fmk, &log);
 	// Добавляем новое событие клиента SCTP
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устанавливаем порт события
@@ -58,23 +58,23 @@ int32_t main(int32_t argc, char * argv[]){
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Регистрируем объект транспортного уровня безопасности
-		tls::coder_t::id_t cts = coder.context(event::node_t::CLIENT, event::protocol_t::UDP);
+		tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::UDP);
 		// Устанавливаем ALPN протоколы TLS
-		coder.alpn(cts, {{0,"http/1.1"},{2,"h3"}});
+		tls.alpn(cts, {{0,"http/1.1"},{2,"h3"}});
 		// Устанавливаем файл центра сертификации DTLS
-		coder.ca(cts, "../sh/certificates", "ca.pem");
+		tls.ca(cts, "../sh/certificates", "ca.pem");
 		// Включаем проверку имени хоста DTLS
-		coder.validateServerNameIndication(cts, false);
+		tls.validateServerNameIndication(cts, false);
 		// Устанавливаем имя хоста DTLS
-		coder.serverNameIndication(cts, "server.anyks.com");
+		tls.serverNameIndication(cts, "server.anyks.com");
 		// Устанавливаем клиентский сертификат DTLS
-		coder.certificate(cts, "../sh/certificates/client/cert.pem");
+		tls.certificate(cts, "../sh/certificates/client/cert.pem");
 		// Устанавливаем приватный ключ DTLS
-		coder.privateKey(cts, "../sh/certificates/client/key.pem");
+		tls.privateKey(cts, "../sh/certificates/client/key.pem");
 		// Создаём идентификатор транспортного уровня DTLS
-		tls::coder_t::id_t ctl = coder.transport(cts);
+		tls::coder_t::id_t ctl = tls.transport(cts);
 		// Регистрируем функцию обратного вызова на успешное завершение рукопожатия DTLS
-		coder.on(ctl, [&coder, &log](const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept -> void {
+		tls.on(ctl, [&tls, &log](const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept -> void {
 			/**
 			 * Обрабатываем входящие состояния DTLS
 			 */
@@ -92,27 +92,27 @@ int32_t main(int32_t argc, char * argv[]){
 				// Если состояние рукопожатия успешно завершено
 				case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED): {
 					// Выводим сообщение об успешном завершении рукопожатия DTLS и выводим выбранный ALPN протокол
-					cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << coder.info(id) << endl;
-					cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) coder.alpn(id) << endl;
+					cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls.info(id) << endl;
+					cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls.alpn(id) << endl;
 					cout << " !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n";
-					cout << "Версия OpenSSL: " << coder.version() << endl << endl;
-					cout << "Cipher: " << coder.cipherInfo(id) << endl << endl;
-					cout << "Certificate: " << coder.certificateInfo(id) << endl << endl;
-					cout << "CRL Info: " << coder.certificateRevocationListInfo(id) << endl << endl;
-					cout << "Certificate Validation: " << (coder.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
+					cout << "Версия OpenSSL: " << tls.version() << endl << endl;
+					cout << "Cipher: " << tls.cipherInfo(id) << endl << endl;
+					cout << "Certificate: " << tls.certificateInfo(id) << endl << endl;
+					cout << "CRL Info: " << tls.certificateRevocationListInfo(id) << endl << endl;
+					cout << "Certificate Validation: " << (tls.validateCertificate(id) ? "Valid" : "Invalid") << endl << endl;
 					// Выводим данные сертификата DTLS
-					cout << "Certificate data:\n" << coder.certificateExtract(id) << endl << endl;
+					cout << "Certificate data:\n" << tls.certificateExtract(id) << endl << endl;
 					// Выводим информацию о DTLS соединении
-					cout << coder.peerInfo(id) << endl;
+					cout << tls.peerInfo(id) << endl;
 					// Текст запроса к серверу
 					const string request =
 						"GET / HTTP/1.1\r\n"
 						"Host: www.google.com\r\n"
 						"Connection: close\r\n"
-						"User-Agent: iouring-openssl-sample/1.0\r\n"
+						"User-Agent: iouring-opentls-sample/1.0\r\n"
 						"\r\n";
 					// Если данные успешно зашифрованы DTLS
-					if(coder.encrypt(id, request.c_str(), request.size()))
+					if(tls.encrypt(id, request.c_str(), request.size()))
 						// Выводим сообщение об успешном шифровании данных DTLS
 						log.print("Успешно зашифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, id, request.size());
 					// Если данные не отправлены
@@ -121,12 +121,12 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Регистрируем функцию обратного вызова на получение ошибок DTLS
-		coder.on(ctl, [&log](const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept -> void {
+		tls.on(ctl, [&log](const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept -> void {
 			// Выводим сообщение о предупреждающей ошибке DTLS
 			log.print("Ошибка DTLS: ID=%" PRIu64 ", Сообщение=%s", log_t::flag_t::CRITICAL, id, message.c_str());
 		});
 		// Регистрируем функцию обратного вызова на запись данных DTLS
-		coder.on(ctl, [&log](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const size_t size) noexcept -> void {
+		tls.on(ctl, [&log](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события DTLS
 			 */
@@ -144,7 +144,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		});
 		// Регистрируем функцию обратного вызова на чтение данных DTLS
-		coder.on(ctl, [eid, &io, &log](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
+		tls.on(ctl, [eid, &io, &log](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 			/**
 			 * Обрабатываем тип события DTLS
 			 */
@@ -338,7 +338,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [ctl, &sctp, &coder, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+				io.on(eid, [ctl, &sctp, &tls, &io, &log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 					// Получаем информацию о сообщении SCTP-сокета
 					const net::sctp::minfo_t & minfo = sctp.messageInfo(eid);
 					// Выводим информацию о сообщении SCTP-сокета
@@ -361,7 +361,7 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Unpack Data: " << status.unackdata << endl;
 					cout << "  - Pending Data: " << status.penddata << endl;
 					// Если данные успешно дешифрованы DTLS
-					if(coder.decrypt(ctl, data, size))
+					if(tls.decrypt(ctl, data, size))
 						// Выводим сообщение об успешном дешифровании данных DTLS
 						log.print("Успешно дешифрованы данные DTLS: ID=%" PRIu64 ", %zu байт", log_t::flag_t::INFO, ctl, size);
 					// Если данные не отправлены
@@ -426,13 +426,13 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем функцию обратного вызова на удачное подключение к серверу
-				io.on(eid, static_cast <engine::callback::connect_t> ([ctl, &coder, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
+				io.on(eid, static_cast <engine::callback::connect_t> ([ctl, &tls, &io, &log](const event::id_t eid, const bool ok) noexcept -> void {
 					// Выводим сообщение о принятии события
 					log.print("Событие подключения: ID=%u, результат: %s", log_t::flag_t::INFO, eid, ok ? "YES" : "NO");
 					// Если подключение успешно
 					if(ok){
 						// Если рукопожатие DTLS успешно
-						if(coder.handshake(ctl))
+						if(tls.handshake(ctl))
 							// Выводим сообщение о начале рукопожатия DTLS
 							log.print("Начинаем процесс рукопожатия: ID=%u", log_t::flag_t::INFO, ctl);
 						// Если рукопожатие DTLS не выполнено
