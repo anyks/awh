@@ -21996,7 +21996,7 @@ namespace io {
 						ipc->transfer.queue.clear();
 						// Если дескриптор сокета инициализирован
 						if(ipc->transfer.fd != net::invalid_socket_t){
-							// Если процесс является основным процессом
+							// Если процесс является родительским
 							if(::__awh_pid__ == ::getpid()){
 								// Если в сокете нет ошибок
 								if(eth->socket.getError(ipc->transfer.fd) == 0){
@@ -22141,21 +22141,21 @@ namespace io {
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (node);
 						// Сбрасываем очередь передачи данных события
 						tunnel->queue.clear();
-						/**
-						 * Для операционной системы FreeBSD
-						 */
-						#if __FreeBSD__
-							// Если событие закрытия разрешено
-							if(tunnel->actions & ::action::CLOSE){
+						// Если процесс является родительским
+						if(::__awh_pid__ == ::getpid()){
+							/**
+							 * Для операционной системы FreeBSD
+							 */
+							#if __FreeBSD__
 								// Если туннель создан
 								if(!tunnel->iface.empty())
 									// Выполняем удаление сетевого интерфейса туннеля
 									eth->iface.destroy(tunnel->iface);
-							}
-						#endif
+							#endif
+						}
 						// Если дескриптор сокета инициализирован
 						if(tunnel->fd != net::invalid_socket_t){
-							// Если процесс является основным процессом
+							// Если процесс является родительским
 							if(::__awh_pid__ == ::getpid()){
 								// Если в сокете нет ошибок
 								if(eth->socket.getError(tunnel->fd) == 0){
@@ -23905,6 +23905,8 @@ namespace io {
 				if(client->callbacks.event != nullptr)
 					// Вызываем функцию обратного вызова с установленным флагом события
 					client->callbacks.event(client->id, event::action_t::CONNECT);
+				// Отмечаем активность чтения данных
+				client->activity |= ::activity::READ;
 				// Активируем событие на чтение данных из сокета
 				::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, log);
 				// Если событие является неблокирующим
@@ -24143,7 +24145,7 @@ namespace io {
 						#endif
 						// Если сокет не создан тогда выходим
 						if(sock == net::invalid_socket_t){
-							// Если процесс является основным процессом
+							// Если процесс является родительским
 							if(::__awh_pid__ == ::getpid()){
 								// Если установлена функция обратного вызова
 								if(server->callbacks.status != nullptr)
@@ -49449,6 +49451,8 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Отмечаем активность чтения данных
+								client->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если необходимо активировать таймаут на чтение для клиента
@@ -49527,6 +49531,8 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Устанавливаем статус события в состояние ожидания
 								client->state.status = event::status_t::PENDING;
+								// Отмечаем активность записи данных
+								client->activity |= ::activity::WRITE;
 								// Активируем событие на запись данных в сокет
 								::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если необходимо активировать таймаут на подключение к серверу
@@ -49602,6 +49608,8 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
+								// Отмечаем активность чтения данных
+								server->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Выводим положительный результат
@@ -49653,6 +49661,8 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 								// Устанавливаем статус события в состояние прослушивания
 								server->state.status = event::status_t::LISTENING;
+								// Отмечаем активность чтения данных
+								server->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Выполняем "пинок" для применения изменений
@@ -55211,6 +55221,8 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 										// Если в очереди передачи данных есть данные для отправки
 										if(!peer->transfer.queue.empty()){
+											// Отмечаем активность записи данных
+											peer->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
 											::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 											/**
@@ -55630,6 +55642,8 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 										// Если в очереди передачи данных есть данные для отправки
 										if(!client->transfer.queue.empty()){
+											// Отмечаем активность записи данных
+											client->activity |= ::activity::WRITE;
 											// Активируем событие на запись данных в сокет
 											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 											/**
@@ -56564,6 +56578,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							peer->state.status = event::status_t::RESUMED;
 							// Если событие чтения из сокета разрешено
 							if(peer->transfer.actions & ::action::READ){
+								// Отмечаем активность чтения данных
+								peer->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если событие является неблокирующим
@@ -56597,6 +56613,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 									// Если в очереди передачи данных есть данные для отправки
 									if(!peer->transfer.queue.empty()){
+										// Отмечаем активность записи данных
+										peer->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
 										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 										/**
@@ -56705,6 +56723,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							client->state.status = event::status_t::RESUMED;
 							// Если событие чтения из сокета разрешено
 							if(client->transfer.actions & ::action::READ){
+								// Отмечаем активность чтения данных
+								client->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если событие является неблокирующим
@@ -56738,6 +56758,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 									// Если в очереди передачи данных есть данные для отправки
 									if(!client->transfer.queue.empty()){
+										// Отмечаем активность записи данных
+										client->activity |= ::activity::WRITE;
 										// Активируем событие на запись данных в сокет
 										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 										/**
@@ -56777,6 +56799,8 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							if(server->state.stash == event::status_t::LAUNCHED){
 								// Если событие чтения из сокета разрешено
 								if(server->actions & ::action::READ){
+									// Отмечаем активность чтения данных
+									server->activity |= ::activity::READ;
 									// Активируем событие на чтение данных из сокета
 									::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 									// Если событие является блокирующим
@@ -56790,9 +56814,12 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 							// Если сервер находится в состоянии прослушивания и обрабатывает одноранговые узлы
 							} else if(server->state.stash == event::status_t::LISTENING) {
 								// Если событие принятия соединений разрешено
-								if(server->actions & ::action::ACCEPT)
+								if(server->actions & ::action::ACCEPT){
+									// Отмечаем активность чтения данных
+									server->activity |= ::activity::READ;
 									// Активируем событие на чтение данных из сокета
 									::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+								}
 							}
 							// Если событие записи в сокет разрешено
 							if(server->actions & ::action::WRITE){
@@ -57001,7 +57028,7 @@ void awh::engine::IO::clear() noexcept {
 							// Объект события для удаления из списка ожидания
 							struct kevent event{0};
 							// Снимаем событие из списка ожидания
-							EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
+							EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
 							// Выполняем удаление события из списка ожидания
 							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 							// Если каталог открыт
@@ -57029,7 +57056,7 @@ void awh::engine::IO::clear() noexcept {
 							// Объект события для удаления из списка ожидания
 							struct kevent event{0};
 							// Снимаем событие из списка ожидания
-							EV_SET(&event, i->first, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
+							EV_SET(&event, fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
 							// Выполняем удаление события из списка ожидания
 							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
@@ -57048,14 +57075,22 @@ void awh::engine::IO::clear() noexcept {
 					case static_cast <uint8_t> (event::node_t::IPC): {
 						// Получаем текущее значение объекта межпроцессного взаимодействия
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
+						// Сбрасываем очередь передачи данных события
+						ipc->transfer.queue.clear();
 						// Если дескриптор сокета действительный
 						if(ipc->transfer.fd != net::invalid_socket_t){
-							// Объекты событий для удаления из списка ожидания
-							struct kevent event{0};
-							// Снимаем событие на чтение из списка ожидания
-							EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-							// Выполняем удаление события из списка ожидания
-							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+							// Если процесс является родительским
+							if(::__awh_pid__ == ::getpid()){
+								// Если в сокете нет ошибок
+								if(this->_eth.socket.getError(ipc->transfer.fd) == 0){
+									// Создаём объект события для Kqueue
+									struct kevent event{};
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									// Выполняем удаление события из списка ожидания
+									::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+								}
+							}
 							// Закрываем дескриптор сокета
 							::close(ipc->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
@@ -57072,44 +57107,56 @@ void awh::engine::IO::clear() noexcept {
 					case static_cast <uint8_t> (event::node_t::PEER): {
 						// Получаем текущее значение объекта однорангового узла
 						::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+						// Сбрасываем очередь передачи данных события
+						peer->transfer.queue.clear();
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+								// Отменяем все установленные таймауты для данного однорангового узла
+								::timer1::cancel(
+									peer->timeouts.read,
+									peer->timeouts.write,
+									peer->bandwidth.read.timeout,
+									peer->bandwidth.write.timeout,
+									peer->id
+								);
+							} break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+								// Отменяем все установленные таймауты для данного однорангового узла
+								::timer2::cancel(
+									peer->timeouts.read,
+									peer->timeouts.write,
+									peer->bandwidth.read.timeout,
+									peer->bandwidth.write.timeout,
+									peer->id
+								);
+							break;
+						}
 						// Если дескриптор сокета действительный
 						if(peer->transfer.fd != net::invalid_socket_t){
-							// Количество событий для удаления
-							size_t count = 1;
-							// Объекты событий для удаления из списка ожидания
-							struct kevent events[5] = {0};
-							// Снимаем событие на чтение из списка ожидания
-							EV_SET(&events[0], peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-							// Если таймаут на чтение уже был активирован
-							if(peer->timeouts.read.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								peer->timeouts.read.status = event::status_t::NONE;
-								// Удаляем таймаут на получение данных
-								EV_SET(&events[count++], peer->timeouts.read.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
+							// Если в сокете нет ошибок
+							if(this->_eth.socket.getError(peer->transfer.fd) == 0){
+								// Количество событий для удаления
+								size_t count = 0;
+								// Объекты событий для удаления из списка ожидания
+								struct kevent events[2] = {0};
+								// Если активность на чтения данных установлена
+								if(peer->activity & ::activity::READ)
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&events[count++], peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+								// Если активность на запись данных установлена
+								if(peer->activity & ::activity::WRITE)
+									// Деактивируем событие на запись данных в сокет
+									EV_SET(&events[count++], peer->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+								// Если у нас есть события которые нужно удалить
+								if(count > 0)
+									// Выполняем удаление события из списка ожидания
+									::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							}
-							// Если таймаут на запись уже был активирован
-							if(peer->timeouts.write.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								peer->timeouts.write.status = event::status_t::NONE;
-								// Удаляем таймаут на запись данных
-								EV_SET(&events[count++], peer->timeouts.write.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на чтение уже был активирован
-							if(peer->bandwidth.read.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								peer->bandwidth.read.timeout.status = event::status_t::NONE;
-								// Удаляем таймаут на получение данных для ограничителя скорости
-								EV_SET(&events[count++], peer->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на запись уже был активирован
-							if(peer->bandwidth.write.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								peer->bandwidth.write.timeout.status = event::status_t::NONE;
-								// Удаляем таймаут на запись данных для ограничителя скорости
-								EV_SET(&events[count++], peer->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Выполняем удаление события из списка ожидания
-							::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(peer->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
@@ -57126,40 +57173,37 @@ void awh::engine::IO::clear() noexcept {
 					case static_cast <uint8_t> (event::node_t::ORIGIN): {
 						// Получаем текущее значение объекта однорангового узла-источника
 						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
-						// Если дескриптор сокета действительный
-						if(origin->transfer.fd != net::invalid_socket_t){
-							// Количество событий для удаления
-							size_t count = 0;
-							// Объекты событий для удаления из списка ожидания
-							struct kevent events[3] = {0};
-							// Если таймаут на чтение уже был активирован
-							if(origin->timeouts.read.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								origin->timeouts.read.status = event::status_t::NONE;
-								// Удаляем таймаут на получение данных
-								EV_SET(&events[count++], origin->timeouts.read.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут на запись уже был активирован
-							if(origin->timeouts.write.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								origin->timeouts.write.status = event::status_t::NONE;
-								// Удаляем таймаут на запись данных
-								EV_SET(&events[count++], origin->timeouts.write.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на запись уже был активирован
-							if(origin->wrate.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								origin->wrate.timeout.status = event::status_t::NONE;
-								// Удаляем таймаут на запись данных для ограничителя скорости
-								EV_SET(&events[count++], origin->wrate.timeout.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Выполняем удаление события из списка ожидания
-							::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
-							// Если установлена функция обратного вызова
-							if(origin->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова при уничтожении события
-								origin->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Сбрасываем очередь передачи данных события
+						origin->transfer.queue.clear();
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+								// Отменяем все установленные таймауты для данного однорангового узла-источника
+								::timer1::cancel(
+									origin->wrate.timeout,
+									origin->timeouts.read,
+									origin->timeouts.write,
+									origin->id
+								);
+							} break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+								// Отменяем все установленные таймауты для данного однорангового узла-источника
+								::timer2::cancel(
+									origin->wrate.timeout,
+									origin->timeouts.read,
+									origin->timeouts.write,
+									origin->id
+								);
+							break;
 						}
+						// Если установлена функция обратного вызова
+						if(origin->callbacks.status != nullptr)
+							// Вызываем функцию обратного вызова при уничтожении события
+							origin->callbacks.status(i->first, event::status_t::DESTROYED);
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -57167,31 +57211,42 @@ void awh::engine::IO::clear() noexcept {
 					case static_cast <uint8_t> (event::node_t::TUNNEL): {
 						// Получаем объект туннеля
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
-						// Если дескриптор сокета действительный
-						if(tunnel->fd != net::invalid_socket_t){
-							// Объекты событий для удаления из списка ожидания
-							struct kevent event{0};
-							// Снимаем событие на чтение из списка ожидания
-							EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-							// Выполняем удаление события из списка ожидания
-							::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
-							// Если установлена функция обратного вызова
-							if(tunnel->callbacks.status != nullptr)
-								// Вызываем функцию обратного вызова при уничтожении события
-								tunnel->callbacks.status(i->first, event::status_t::DESTROYED);
+						// Сбрасываем очередь передачи данных события
+						tunnel->queue.clear();
+						// Если процесс является родительским
+						if(::__awh_pid__ == ::getpid()){
 							/**
 							 * Для операционной системы FreeBSD
 							 */
 							#if __FreeBSD__
-								// Если имя сетевого интерфейса туннеля установлено
+								// Если туннель создан
 								if(!tunnel->iface.empty())
-									// Удаляем сетевой интерфейс туннеля
+									// Выполняем удаление сетевого интерфейса туннеля
 									this->_eth.iface.destroy(tunnel->iface);
 							#endif
+						}
+						// Если дескриптор сокета действительный
+						if(tunnel->fd != net::invalid_socket_t){
+							// Если процесс является родительским
+							if(::__awh_pid__ == ::getpid()){
+								// Если в сокете нет ошибок
+								if(this->_eth.socket.getError(tunnel->fd) == 0){
+									// Создаём объект события для Kqueue
+									struct kevent event{};
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									// Выполняем удаление события из списка ожидания
+									::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+								}
+							}
 							// Закрываем дескриптор сокета
 							::close(tunnel->fd);
 							// Сбрасываем значение дескриптора сокета
 							tunnel->fd = net::invalid_socket_t;
+							// Если установлена функция обратного вызова
+							if(tunnel->callbacks.status != nullptr)
+								// Вызываем функцию обратного вызова при уничтожении события
+								tunnel->callbacks.status(i->first, event::status_t::DESTROYED);
 						}
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
@@ -57211,58 +57266,73 @@ void awh::engine::IO::clear() noexcept {
 					case static_cast <uint8_t> (event::node_t::CLIENT): {
 						// Получаем текущее значение объекта клиента
 						::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+						// Сбрасываем очередь передачи данных события
+						client->transfer.queue.clear();
+						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							{
+								// Сохраняем объект функции обратного вызова SCTP
+								auto callbacks = ::move(client->transfer.sctp.callbacks);
+								// Выполняем зануление объекта информации SCTP
+								::memset(&client->transfer.sctp, 0, sizeof(client->transfer.sctp));
+								// Восстанавливаем объект функции обратного вызова SCTP
+								client->transfer.sctp.callbacks = ::move(callbacks);
+							}
+						#endif
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+								// Отменяем все установленные таймауты для данного клиента
+								::timer1::cancel(
+									client->timeouts.read,
+									client->timeouts.write,
+									client->timeouts.connect,
+									client->timeouts.reconnect,
+									client->bandwidth.read.timeout,
+									client->bandwidth.write.timeout,
+									client->id
+								);
+							} break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+								// Отменяем все установленные таймауты для данного клиента
+								::timer2::cancel(
+									client->timeouts.read,
+									client->timeouts.write,
+									client->timeouts.connect,
+									client->timeouts.reconnect,
+									client->bandwidth.read.timeout,
+									client->bandwidth.write.timeout,
+									client->id
+								);
+							break;
+						}
 						// Если дескриптор сокета действительный
 						if(client->transfer.fd != net::invalid_socket_t){
-							// Количество событий для удаления
-							size_t count = 1;
-							// Объекты событий для удаления из списка ожидания
-							struct kevent events[7] = {0};
-							// Снимаем событие на чтение из списка ожидания
-							EV_SET(&events[0], client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-							// Если таймаут на подключение уже был активирован
-							if(client->timeouts.connect.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								client->timeouts.connect.status = event::status_t::NONE;
-								// Удаляем таймаут на подключение к серверу
-								EV_SET(&events[count++], client->timeouts.connect.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
+							// Если в сокете нет ошибок
+							if(this->_eth.socket.getError(client->transfer.fd) == 0){
+								// Количество событий для удаления
+								size_t count = 0;
+								// Объекты событий для удаления из списка ожидания
+								struct kevent events[2] = {0};
+								// Если активность на чтения данных установлена
+								if(client->activity & ::activity::READ)
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&events[count++], client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+								// Если активность на запись данных установлена
+								if(client->activity & ::activity::WRITE)
+									// Деактивируем событие на запись данных в сокет
+									EV_SET(&events[count++], client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+								// Если у нас есть события которые нужно удалить
+								if(count > 0)
+									// Выполняем удаление события из списка ожидания
+									::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							}
-							// Если таймаут на переподключение уже был активирован
-							if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-								// Снимаем флаг ожидания работы таймаута
-								client->timeouts.reconnect.status = event::status_t::NONE;
-								// Удаляем таймаут на переподключение к серверу
-								EV_SET(&events[count++], client->timeouts.reconnect.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут на чтение уже был активирован
-							if(client->timeouts.read.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								client->timeouts.read.status = event::status_t::NONE;
-								// Удаляем таймаут на получение данных
-								EV_SET(&events[count++], client->timeouts.read.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут на запись уже был активирован
-							if(client->timeouts.write.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								client->timeouts.write.status = event::status_t::NONE;
-								// Удаляем таймаут на запись данных
-								EV_SET(&events[count++], client->timeouts.write.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на чтение уже был активирован
-							if(client->bandwidth.read.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								client->bandwidth.read.timeout.status = event::status_t::NONE;
-								// Удаляем таймаут на получение данных для ограничителя скорости
-								EV_SET(&events[count++], client->bandwidth.read.timeout.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Если таймаут ограничителя скорости на запись уже был активирован
-							if(client->bandwidth.write.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								client->bandwidth.write.timeout.status = event::status_t::NONE;
-								// Удаляем таймаут на запись данных для ограничителя скорости
-								EV_SET(&events[count++], client->bandwidth.write.timeout.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-							}
-							// Выполняем удаление события из списка ожидания
-							::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(client->transfer.fd);
 							// Сбрасываем значение дескриптора сокета
@@ -57294,7 +57364,7 @@ void awh::engine::IO::clear() noexcept {
 										// Если адрес получен
 										if(!address.empty())
 											// Удаляем файл сокета клиента
-										::unlink(address.c_str());
+											::unlink(address.c_str());
 									} break;
 								}
 							}
@@ -57306,23 +57376,45 @@ void awh::engine::IO::clear() noexcept {
 					case static_cast <uint8_t> (event::node_t::SERVER): {
 						// Получаем текущее значение объекта сервера
 						::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+						/**
+						 * Определяем тип таймера для событий сетевого движка
+						 */
+						switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+							// Если тип таймера для событий сетевого движка является простым
+							case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+								// Отменяем все установленные таймауты для данного сервера
+								::timer1::cancel(
+									server->wrate.timeout,
+									server->timeouts.read,
+									server->timeouts.write,
+									server->id
+								);
+							} break;
+							// Если тип таймера для событий сетевого движка является сложным
+							case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+								// Отменяем все установленные таймауты для данного сервера
+								::timer2::cancel(
+									server->wrate.timeout,
+									server->timeouts.read,
+									server->timeouts.write,
+									server->id
+								);
+							break;
+						}
 						// Если дескриптор сокета действительный
 						if(server->fd != net::invalid_socket_t){
-							// Количество событий для удаления
-							size_t count = 1;
-							// Объекты событий для удаления из списка ожидания
-							struct kevent events[2] = {0};
-							// Снимаем событие на чтение из списка ожидания
-							EV_SET(&events[0], server->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-							// Если таймаут ограничителя скорости на чтение уже был активирован
-							if(server->wrate.timeout.status == event::status_t::PENDING){
-								// Снимаем флаг ожидания работы таймаута
-								server->wrate.timeout.status = event::status_t::NONE;
-								// Удаляем таймаут на получение данных для ограничителя скорости
-								EV_SET(&events[count++], server->wrate.timeout.id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
+							// Если в сокете нет ошибок
+							if(this->_eth.socket.getError(server->fd) == 0){
+								// Если активность на чтения данных установлена
+								if(server->activity & ::activity::READ){
+									// Создаём объект события для Kqueue
+									struct kevent event{};
+									// Деактивируем событие на чтение данных из сокета
+									EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+									// Выполняем удаление события из списка ожидания
+									::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr);
+								}
 							}
-							// Выполняем удаление события из списка ожидания
-							::kevent(::__awh_kq__, &events[0], count, nullptr, 0, nullptr);
 							// Закрываем дескриптор сокета
 							::close(server->fd);
 							// Сбрасываем значение дескриптора сокета
@@ -57344,6 +57436,19 @@ void awh::engine::IO::clear() noexcept {
 									::unlink(address.c_str());
 							}
 						}
+						/**
+						 * Если операционной системой является FreeBSD
+						 */
+						#if __FreeBSD__
+							{
+								// Сохраняем объект функции обратного вызова SCTP
+								auto callbacks = ::move(server->sctp.callbacks);
+								// Выполняем зануление объекта информации SCTP
+								::memset(&server->sctp, 0, sizeof(server->sctp));
+								// Восстанавливаем объект функции обратного вызова SCTP
+								server->sctp.callbacks = ::move(callbacks);
+							}
+						#endif
 						// Производим удаление узла
 						i = ::__awh_nodes__.erase(i);
 					} break;
@@ -57463,7 +57568,7 @@ bool awh::engine::IO::reinitialize() noexcept {
 	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
-		// Если процесс является основным процессом
+		// Если процесс является родительским
 		if(::__awh_pid__ == ::getpid())
 			// Выполняем пинок Kqueue для разблокировки ожидания событий
 			this->kick();
@@ -57862,101 +57967,111 @@ bool awh::engine::IO::reinitialize() noexcept {
 						if((client->state.status == event::status_t::LAUNCHED) ||
 						   (client->state.status == event::status_t::CONNECTED) ||
 						   (client->state.status == event::status_t::RESUMED)){
-							// Если событие чтения из сокета разрешено
-							if(client->transfer.actions & ::action::READ){
-								// Отмечаем активность чтения данных
-								client->activity |= ::activity::READ;
-								// Активируем событие на чтение данных из сокета
-								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-								// Если событие является неблокирующим
-								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-									// Если таймаут на подключение уже был активирован
-									if(client->timeouts.connect.status == event::status_t::PENDING){
-										/**
-										 * Определяем тип таймера для событий сетевого движка
-										 */
-										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Добавляем таймаут на ожидание подключения к серверу
-												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
-											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Добавляем таймаут на ожидание подключения к серверу
-												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
-										}
-									// Если таймаут на переподключение уже был активирован
-									} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-										/**
-										 * Определяем тип таймера для событий сетевого движка
-										 */
-										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Добавляем таймаут на переподключение
-												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
-											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Добавляем таймаут на переподключение
-												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
-										}
-									// Если необходимо активировать таймаут на чтение для клиента
-									} else if(client->timeouts.read.delay > 0) {
-										/**
-										 * Определяем тип таймера для событий сетевого движка
-										 */
-										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Добавляем таймаут на ожидание получения данных
-												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
-											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Добавляем таймаут на ожидание получения данных
-												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
-										}
+							// Если таймаут на переподключение уже был активирован
+							if(client->timeouts.reconnect.status == event::status_t::PENDING) {
+								/**
+								 * Определяем тип таймера для событий сетевого движка
+								 */
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+									// Если тип таймера для событий сетевого движка является простым
+									case static_cast <uint8_t> (event::timer_t::SIMPLE):
+										// Добавляем таймаут на переподключение
+										::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+									break;
+									// Если тип таймера для событий сетевого движка является сложным
+									case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+										// Добавляем таймаут на переподключение
+										::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+									break;
+								}
+							// Если таймаут на подключение не был активирован
+							} else {
+								// Если таймаут на подключение не активирован
+								if(client->timeouts.connect.status != event::status_t::PENDING){
+									// Если событие чтения из сокета разрешено
+									if(client->transfer.actions & ::action::READ){
+										// Отмечаем активность чтения данных
+										client->activity |= ::activity::READ;
+										// Активируем событие на чтение данных из сокета
+										::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										// Если событие является неблокирующим
+										if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+											// Если необходимо активировать таймаут на чтение для клиента
+											if(client->timeouts.read.delay > 0){
+												/**
+												 * Определяем тип таймера для событий сетевого движка
+												 */
+												switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+													// Если тип таймера для событий сетевого движка является простым
+													case static_cast <uint8_t> (event::timer_t::SIMPLE):
+														// Добавляем таймаут на ожидание получения данных
+														::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+													break;
+													// Если тип таймера для событий сетевого движка является сложным
+													case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+														// Добавляем таймаут на ожидание получения данных
+														::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+													break;
+												}
+											}
+										// Если необходимо активировать таймаут на чтение для клиента
+										} else if(client->timeouts.read.delay > 0)
+											// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
+											this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 									}
-								// Если необходимо активировать таймаут на чтение для клиента
-								} else if(client->timeouts.read.delay > 0)
-									// Устанавливаем таймаут для действия чтения на указанное количество миллисекунд
-									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
-							}
-							// Если событие записи в сокет разрешено
-							if(client->transfer.actions & ::action::WRITE){
-								// Если событие является неблокирующим
-								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
-									// Если в очереди передачи данных есть данные для отправки
-									if(!client->transfer.queue.empty()){
-										// Отмечаем активность записи данных
-										client->activity |= ::activity::WRITE;
-										// Активируем событие на запись данных в сокет
-										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-										/**
-										 * Определяем тип таймера для событий сетевого движка
-										 */
-										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Добавляем таймаут на ожидание записи данных
-												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
-											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Добавляем таймаут на ожидание записи данных
-												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
-											break;
+								}
+								// Если событие записи в сокет разрешено
+								if(client->transfer.actions & ::action::WRITE){
+									// Если событие является неблокирующим
+									if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
+										// Если таймаут на подключение уже был активирован
+										if(client->timeouts.connect.status == event::status_t::PENDING){
+											// Отмечаем активность записи данных
+											client->activity |= ::activity::WRITE;
+											// Активируем событие на запись данных в сокет
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+											/**
+											 * Определяем тип таймера для событий сетевого движка
+											 */
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+												// Если тип таймера для событий сетевого движка является простым
+												case static_cast <uint8_t> (event::timer_t::SIMPLE):
+													// Добавляем таймаут на ожидание подключения к серверу
+													::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+												break;
+												// Если тип таймера для событий сетевого движка является сложным
+												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+													// Добавляем таймаут на ожидание подключения к серверу
+													::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+												break;
+											}
+										// Если в очереди передачи данных есть данные для отправки
+										} else if(!client->transfer.queue.empty()) {
+											// Отмечаем активность записи данных
+											client->activity |= ::activity::WRITE;
+											// Активируем событие на запись данных в сокет
+											::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+											/**
+											 * Определяем тип таймера для событий сетевого движка
+											 */
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+												// Если тип таймера для событий сетевого движка является простым
+												case static_cast <uint8_t> (event::timer_t::SIMPLE):
+													// Добавляем таймаут на ожидание записи данных
+													::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+												break;
+												// Если тип таймера для событий сетевого движка является сложным
+												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+													// Добавляем таймаут на ожидание записи данных
+													::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+												break;
+											}
 										}
-									}
-								// Если необходимо активировать таймаут на запись для клиента
-								} else if(client->timeouts.write.delay > 0)
-									// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
-									this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+									// Если необходимо активировать таймаут на запись для клиента
+									} else if(client->timeouts.write.delay > 0)
+										// Устанавливаем таймаут для действия записи на указанное количество миллисекунд
+										this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::WRITE, client->timeouts.write.delay);
+								}
 							}
 						}
 						// Увеличиваем значение итератора
@@ -58155,19 +58270,29 @@ bool awh::engine::IO::deinitialize() noexcept {
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
+					// Если процесс является родительским
+					if(::__awh_pid__ == ::getpid()){
+						/**
+						 * Для операционной системы FreeBSD
+						 */
+						#if __FreeBSD__
+							// Если имя сетевого интерфейса туннеля установлена
+							if(!tunnel->iface.empty())
+								// Удаляем сетевой интерфейс туннеля
+								this->_eth.iface.destroy(tunnel->iface);
+						#endif
+					}
+					// Если дескриптор сокета инициализирован
+					if(tunnel->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(tunnel->fd);
+						// Сбрасываем значение дескриптора сокета
+						tunnel->fd = net::invalid_socket_t;
+					}
 					// Если установлена функция обратного вызова
 					if(tunnel->callbacks.status != nullptr)
 						// Вызываем функцию обратного вызова при уничтожении события
 						tunnel->callbacks.status(i->first, event::status_t::DESTROYED);
-					/**
-					 * Для операционной системы FreeBSD
-					 */
-					#if __FreeBSD__
-						// Если имя сетевого интерфейса туннеля установлена
-						if(!tunnel->iface.empty())
-							// Удаляем сетевой интерфейс туннеля
-							this->_eth.iface.destroy(tunnel->iface);
-					#endif
 					// Производим удаление узла
 					i = ::__awh_nodes__.erase(i);
 				} break;
@@ -60010,15 +60135,25 @@ awh::engine::IO::~IO() noexcept {
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Получаем объект туннеля
 					::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
-					/**
-					 * Для операционной системы FreeBSD
-					 */
-					#if __FreeBSD__
-						// Если имя сетевого интерфейса туннеля установлена
-						if(!tunnel->iface.empty())
-							// Удаляем сетевой интерфейс туннеля
-							this->_eth.iface.destroy(tunnel->iface);
-					#endif
+					// Если процесс является родительским
+					if(::__awh_pid__ == ::getpid()){
+						/**
+						 * Для операционной системы FreeBSD
+						 */
+						#if __FreeBSD__
+							// Если имя сетевого интерфейса туннеля установлена
+							if(!tunnel->iface.empty())
+								// Удаляем сетевой интерфейс туннеля
+								this->_eth.iface.destroy(tunnel->iface);
+						#endif
+					}
+					// Если дескриптор сокета инициализирован
+					if(tunnel->fd != net::invalid_socket_t){
+						// Закрываем дескриптор сокета
+						::close(tunnel->fd);
+						// Сбрасываем значение дескриптора сокета
+						tunnel->fd = net::invalid_socket_t;
+					}
 					// Производим удаление узла
 					i = ::__awh_nodes__.erase(i);
 				} break;
