@@ -676,23 +676,6 @@ namespace awh {
 				void setEventId(const event::id_t eid) noexcept;
 			public:
 				/**
-				 * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
-				 *
-				 * @param addr  объект параметров подключения внутреннего адреса
-				 * @param alias объект параметров подключения алиаса для внутреннего адреса
-				 */
-				void setAlias(const net::attr_t * addr, const net::attr_t * alias) noexcept;
-				/**
-				 * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
-				 *
-				 * @param addr  внутренний адрес работающий за NAT
-				 * @param port  порт внутреннего адреса работающий за NAT
-				 * @param alias внешний адрес для алиаса внутреннего адреса
-				 * @param eport внешний порт для алиаса внутреннего адреса
-				 */
-				void setAlias(string_view addr, const uint16_t port, string_view alias, const uint16_t eport) noexcept;
-			public:
-				/**
 				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
 				 *
 				 * @param count количество портов для выделения
@@ -710,6 +693,23 @@ namespace awh {
 				 * @param addr  адрес для запуска UDP-серверов
 				 */
 				void udp(const uint16_t count, const uint16_t begin, const uint16_t end, const net::addr_t * addr) noexcept;
+			public:
+				/**
+				 * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
+				 *
+				 * @param addr  объект параметров подключения внутреннего адреса
+				 * @param alias объект параметров подключения алиаса для внутреннего адреса
+				 */
+				void setAlias(const net::attr_t * addr, const net::attr_t * alias) noexcept;
+				/**
+				 * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
+				 *
+				 * @param addr    внутренний адрес работающий за NAT
+				 * @param intPort порт внутреннего адреса работающий за NAT
+				 * @param alias   внешний адрес для алиаса внутреннего адреса
+				 * @param extPort внешний порт для алиаса внутреннего адреса
+				 */
+				void setAlias(string_view addr, const uint16_t intPort, string_view alias, const uint16_t extPort = 0) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)

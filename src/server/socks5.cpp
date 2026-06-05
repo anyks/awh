@@ -4830,246 +4830,6 @@ void awh::server::Socks5::setEventId(const event::id_t eid) noexcept {
 	}
 }
 /**
- * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
- *
- * @param addr  объект параметров подключения внутреннего адреса
- * @param alias объект параметров подключения алиаса для внутреннего адреса
- */
-void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t * alias) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если адреса для установки алиаса переданы
-		if((addr != nullptr) && (alias != nullptr)){
-			// Объект параметров подключения
-			unique_ptr <net::attr_t> attr = nullptr;
-			/**
-			 * Определяем тип полученного IP-адреса
-			 */
-			switch(static_cast <uint8_t> (addr->type)){
-				// Для типа IPv4
-				case static_cast <uint8_t> (net::type_t::IPV4): {
-					// Создаём объект параметров подключения
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения
-					attr->type = net::type_t::IPV4;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <const net::attr_net_t *> (addr)->port;
-					// Устанавливаем полученный IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address;
-				} break;
-				// Для типа IPv6
-				case static_cast <uint8_t> (net::type_t::IPV6): {
-					// Создаём объект параметров подключения
-					attr = make_unique <net::attr_net_t> ();
-					// Устанавливаем тип параметров подключения
-					attr->type = net::type_t::IPV6;
-					// Создаём новый объект адреса клиента IPv6
-					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <const net::attr_net_t *> (addr)->port;
-					// Устанавливаем полученный IP-адрес
-					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address[0], 16);
-				} break;
-			}
-			// Если объект параметров подключения успешно создан
-			if(attr != nullptr){
-				// Создаём идентификатор конечной точки для добавляемого адреса
-				const origin_t endpoint = origin_t().from(attr.get());
-				// Выполняем блокировку потока для работы с алиасами
-				const locker_t <std::shared_mutex> lock(this->_net.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Выполняем добавление идентификатора конечной точки в список алиасов
-				auto ret = this->_net.aliases.emplace(endpoint, nullptr);
-				/**
-				 * Определяем тип полученного IP-адреса
-				 */
-				switch(static_cast <uint8_t> (alias->type)){
-					// Для типа FQDN
-					case static_cast <uint8_t> (net::type_t::FQDN): {
-						// Создаём объект параметров подключения для алиаса
-						ret.first->second = make_unique <net::attr_fqdn_t> ();
-						// Устанавливаем тип параметров подключения
-						ret.first->second->type = net::type_t::FQDN;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->port = awh_cast <const net::attr_fqdn_t *> (alias)->port;
-						// Устанавливаем полученное доменное имя
-						awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->domain = awh_cast <const net::attr_fqdn_t *> (alias)->domain;
-					} break;
-					// Для типа IPv4
-					case static_cast <uint8_t> (net::type_t::IPV4): {
-						// Создаём объект параметров подключения для алиаса
-						ret.first->second = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения
-						ret.first->second->type = net::type_t::IPV4;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (ret.first->second.get())->port = awh_cast <const net::attr_net_t *> (alias)->port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (ret.first->second.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (alias)->ip.get())->address;
-					} break;
-					// Для типа IPv6
-					case static_cast <uint8_t> (net::type_t::IPV6): {
-						// Создаём объект параметров подключения для алиаса
-						ret.first->second = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения
-						ret.first->second->type = net::type_t::IPV6;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (ret.first->second.get())->port = awh_cast <const net::attr_net_t *> (alias)->port;
-						// Устанавливаем полученный IP-адрес
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (ret.first->second.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (alias)->ip.get())->address[0], 16);
-					} break;
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
- * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
- *
- * @param addr  внутренний адрес работающий за NAT
- * @param port  порт внутреннего адреса работающий за NAT
- * @param alias внешний адрес для алиаса внутреннего адреса
- * @param eport внешний порт для алиаса внутреннего адреса
- */
-void awh::server::Socks5::setAlias(string_view addr, const uint16_t port, string_view alias, const uint16_t eport) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если адреса для установки алиаса переданы
-		if(!addr.empty() && !alias.empty() && (port > 0)){
-			// Создаём объект параметров подключения
-			unique_ptr <net::attr_t> attr = nullptr;
-			// Выполняем блокировку потока для работы с локальными данными
-			const locker_t <> lock(this->_mtx);
-			// Выполняем парсинг переданного адреса
-			if(this->_addr.parse(addr)){
-				/**
-				 * Определяем тип полученного IP-адреса
-				 */
-				switch(static_cast <uint8_t> (this->_addr.type())){
-					// Для типа IPv4
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-						// Создаём объект параметров подключения
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения
-						attr->type = net::type_t::IPV4;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
-					// Для типа IPv6
-					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-						// Создаём объект параметров подключения
-						attr = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип параметров подключения
-						attr->type = net::type_t::IPV6;
-						// Устанавливаем полученный порт
-						awh_cast <net::attr_net_t *> (attr.get())->port = port;
-						// Устанавливаем полученный IP-адрес
-						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-					} break;
-				}
-			}
-			// Если объект параметров подключения создан
-			if(attr != nullptr){
-				// Создаём идентификатор конечной точки для добавляемого адреса
-				const origin_t endpoint = origin_t().from(attr.get());
-				// Выполняем блокировку потока для работы с алиасами
-				const locker_t <std::shared_mutex> lock(this->_net.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Выполняем добавление идентификатора конечной точки в список алиасов
-				auto ret = this->_net.aliases.emplace(endpoint, nullptr);
-				// Выполняем парсинг алиаса для внутреннего адреса
-				if(this->_addr.parse(alias)){
-					/**
-					 * Определяем тип полученного IP-адреса
-					 */
-					switch(static_cast <uint8_t> (this->_addr.type())){
-						// Для типа FQDN
-						case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
-							// Создаём объект параметров подключения
-							ret.first->second = make_unique <net::attr_fqdn_t> ();
-							// Устанавливаем тип параметров подключения
-							ret.first->second->type = net::type_t::FQDN;
-							// Устанавливаем полученный порт
-							awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->port = eport;
-							// Устанавливаем полученный доменное имя хоста для подключения
-							awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->domain = alias;
-						} break;
-						// Для типа IPv4
-						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-							// Создаём объект параметров подключения для алиаса
-							ret.first->second = make_unique <net::attr_net_t> ();
-							// Устанавливаем тип параметров подключения
-							ret.first->second->type = net::type_t::IPV4;
-							// Устанавливаем полученный порт
-							awh_cast <net::attr_net_t *> (ret.first->second.get())->port = eport;
-							// Устанавливаем полученный IP-адрес
-							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						} break;
-						// Для типа IPv6
-						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-							// Создаём объект параметров подключения для алиаса
-							ret.first->second = make_unique <net::attr_net_t> ();
-							// Устанавливаем тип параметров подключения
-							ret.first->second->type = net::type_t::IPV6;
-							// Устанавливаем полученный порт
-							awh_cast <net::attr_net_t *> (ret.first->second.get())->port = eport;
-							// Устанавливаем полученный IP-адрес
-							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						} break;
-					}
-				// Если распарсить адрес не удалось, значит будем считать, что это FQDN
-				} else {
-					// Создаём объект параметров подключения
-					ret.first->second = make_unique <net::attr_fqdn_t> ();
-					// Устанавливаем тип параметров подключения
-					ret.first->second->type = net::type_t::FQDN;
-					// Устанавливаем полученный порт
-					awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->port = eport;
-					// Устанавливаем полученный доменное имя хоста для подключения
-					awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->domain = alias;
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, port, alias, eport), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
  * @brief Метод установки диапазона портов для выделения портов UDP серверов
  *
  * @param count количество портов для выделения
@@ -5207,6 +4967,246 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count, begin, end), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
+ *
+ * @param addr  объект параметров подключения внутреннего адреса
+ * @param alias объект параметров подключения алиаса для внутреннего адреса
+ */
+void awh::server::Socks5::setAlias(const net::attr_t * addr, const net::attr_t * alias) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если адреса для установки алиаса переданы
+		if((addr != nullptr) && (alias != nullptr)){
+			// Объект параметров подключения
+			unique_ptr <net::attr_t> attr = nullptr;
+			/**
+			 * Определяем тип полученного IP-адреса
+			 */
+			switch(static_cast <uint8_t> (addr->type)){
+				// Для типа IPv4
+				case static_cast <uint8_t> (net::type_t::IPV4): {
+					// Создаём объект параметров подключения
+					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения
+					attr->type = net::type_t::IPV4;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <const net::attr_net_t *> (addr)->port;
+					// Устанавливаем полученный IP-адрес
+					awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address;
+				} break;
+				// Для типа IPv6
+				case static_cast <uint8_t> (net::type_t::IPV6): {
+					// Создаём объект параметров подключения
+					attr = make_unique <net::attr_net_t> ();
+					// Устанавливаем тип параметров подключения
+					attr->type = net::type_t::IPV6;
+					// Создаём новый объект адреса клиента IPv6
+					awh_cast <net::attr_net_t *> (attr.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <const net::attr_net_t *> (addr)->port;
+					// Устанавливаем полученный IP-адрес
+					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (addr)->ip.get())->address[0], 16);
+				} break;
+			}
+			// Если объект параметров подключения успешно создан
+			if(attr != nullptr){
+				// Создаём идентификатор конечной точки для добавляемого адреса
+				const origin_t endpoint = origin_t().from(attr.get());
+				// Выполняем блокировку потока для работы с алиасами
+				const locker_t <std::shared_mutex> lock(this->_net.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем добавление идентификатора конечной точки в список алиасов
+				auto ret = this->_net.aliases.emplace(endpoint, nullptr);
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(static_cast <uint8_t> (alias->type)){
+					// Для типа FQDN
+					case static_cast <uint8_t> (net::type_t::FQDN): {
+						// Создаём объект параметров подключения для алиаса
+						ret.first->second = make_unique <net::attr_fqdn_t> ();
+						// Устанавливаем тип параметров подключения
+						ret.first->second->type = net::type_t::FQDN;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->port = awh_cast <const net::attr_fqdn_t *> (alias)->port;
+						// Устанавливаем полученное доменное имя
+						awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->domain = awh_cast <const net::attr_fqdn_t *> (alias)->domain;
+					} break;
+					// Для типа IPv4
+					case static_cast <uint8_t> (net::type_t::IPV4): {
+						// Создаём объект параметров подключения для алиаса
+						ret.first->second = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения
+						ret.first->second->type = net::type_t::IPV4;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (ret.first->second.get())->port = awh_cast <const net::attr_net_t *> (alias)->port;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (ret.first->second.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (alias)->ip.get())->address;
+					} break;
+					// Для типа IPv6
+					case static_cast <uint8_t> (net::type_t::IPV6): {
+						// Создаём объект параметров подключения для алиаса
+						ret.first->second = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения
+						ret.first->second->type = net::type_t::IPV6;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (ret.first->second.get())->port = awh_cast <const net::attr_net_t *> (alias)->port;
+						// Устанавливаем полученный IP-адрес
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (ret.first->second.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (alias)->ip.get())->address[0], 16);
+					} break;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки алиаса для внутреннего адреса при работе за NAT
+ *
+ * @param addr    внутренний адрес работающий за NAT
+ * @param intPort порт внутреннего адреса работающий за NAT
+ * @param alias   внешний адрес для алиаса внутреннего адреса
+ * @param extPort внешний порт для алиаса внутреннего адреса
+ */
+void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, string_view alias, const uint16_t extPort) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если адреса для установки алиаса переданы
+		if(!addr.empty() && !alias.empty() && (intPort > 0)){
+			// Создаём объект параметров подключения
+			unique_ptr <net::attr_t> attr = nullptr;
+			// Выполняем блокировку потока для работы с локальными данными
+			const locker_t <> lock(this->_mtx);
+			// Выполняем парсинг переданного адреса
+			if(this->_addr.parse(addr)){
+				/**
+				 * Определяем тип полученного IP-адреса
+				 */
+				switch(static_cast <uint8_t> (this->_addr.type())){
+					// Для типа IPv4
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+						// Создаём объект параметров подключения
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения
+						attr->type = net::type_t::IPV4;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = intPort;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
+					// Для типа IPv6
+					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+						// Создаём объект параметров подключения
+						attr = make_unique <net::attr_net_t> ();
+						// Устанавливаем тип параметров подключения
+						attr->type = net::type_t::IPV6;
+						// Устанавливаем полученный порт
+						awh_cast <net::attr_net_t *> (attr.get())->port = intPort;
+						// Устанавливаем полученный IP-адрес
+						awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+					} break;
+				}
+			}
+			// Если объект параметров подключения создан
+			if(attr != nullptr){
+				// Создаём идентификатор конечной точки для добавляемого адреса
+				const origin_t endpoint = origin_t().from(attr.get());
+				// Выполняем блокировку потока для работы с алиасами
+				const locker_t <std::shared_mutex> lock(this->_net.mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+				// Выполняем добавление идентификатора конечной точки в список алиасов
+				auto ret = this->_net.aliases.emplace(endpoint, nullptr);
+				// Выполняем парсинг алиаса для внутреннего адреса
+				if(this->_addr.parse(alias)){
+					/**
+					 * Определяем тип полученного IP-адреса
+					 */
+					switch(static_cast <uint8_t> (this->_addr.type())){
+						// Для типа FQDN
+						case static_cast <uint8_t> (net_addr_t::type_t::FQDN): {
+							// Создаём объект параметров подключения
+							ret.first->second = make_unique <net::attr_fqdn_t> ();
+							// Устанавливаем тип параметров подключения
+							ret.first->second->type = net::type_t::FQDN;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->port = extPort;
+							// Устанавливаем полученный доменное имя хоста для подключения
+							awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->domain = alias;
+						} break;
+						// Для типа IPv4
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
+							// Создаём объект параметров подключения для алиаса
+							ret.first->second = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения
+							ret.first->second->type = net::type_t::IPV4;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (ret.first->second.get())->port = extPort;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+						// Для типа IPv6
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
+							// Создаём объект параметров подключения для алиаса
+							ret.first->second = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип параметров подключения
+							ret.first->second->type = net::type_t::IPV6;
+							// Устанавливаем полученный порт
+							awh_cast <net::attr_net_t *> (ret.first->second.get())->port = extPort;
+							// Устанавливаем полученный IP-адрес
+							awh_cast <net::attr_net_t *> (ret.first->second.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+						} break;
+					}
+				// Если распарсить адрес не удалось, значит будем считать, что это FQDN
+				} else {
+					// Создаём объект параметров подключения
+					ret.first->second = make_unique <net::attr_fqdn_t> ();
+					// Устанавливаем тип параметров подключения
+					ret.first->second->type = net::type_t::FQDN;
+					// Устанавливаем полученный порт
+					awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->port = extPort;
+					// Устанавливаем полученный доменное имя хоста для подключения
+					awh_cast <net::attr_fqdn_t *> (ret.first->second.get())->domain = alias;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, intPort, alias, extPort), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

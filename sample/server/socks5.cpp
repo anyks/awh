@@ -210,9 +210,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем диапазон портов для выделения портов UDP серверов
 	server.udp(25, 62000, 62002, "0.0.0.0");
 	// Устанавливаем алиасы для внутренних адресов при работе за NAT
-	server.setAlias("127.0.0.1", 62000, "anyks.com", 0);
-	server.setAlias("127.0.0.1", 62001, "anyks.com", 0);
-	server.setAlias("127.0.0.1", 62002, "anyks.com", 0);
+	server.setAlias("127.0.0.1", 62000, "anyks.com");
+	server.setAlias("127.0.0.1", 62001, "anyks.com");
+	server.setAlias("127.0.0.1", 62002, "anyks.com");
 	*/
 	// Устанавливаем порт и хост сервера
 	if(server.setPort(2222) && server.setHost("localhost")){
