@@ -28,6 +28,7 @@
 	 * Стандартные библиотеки
 	 */
 	#include <sys/wait.h>
+	#include <execinfo.h>
 #endif
 
 /**
@@ -64,6 +65,43 @@ using namespace placeholders;
 		 */
 		static awh::unit::cluster_t * __awh_cluster__ = nullptr;
 	};
+#endif
+
+/**
+ * Для операционных систем, отличных от MS Windows
+ */
+#if !_WIN32 && !_WIN64
+	/**
+	 * Если включён режим отладки
+	 */
+	#if DEBUG_MODE
+		/**
+		 * Инкапсулируем статические параметры локального кэша в пространство имён
+		 */
+		namespace {
+			/**
+			 * @brief Функция выводи трейса ошибок дочернего потока
+			 *
+			 * @param sig номер сигнала вызвавшего краш
+			 */
+			void childCrashHandler(const int32_t sig) noexcept {
+				// Буфер для формирования ошибки
+				void * array[50];
+				// Определяем размер бэктрейса
+				const int32_t size = ::backtrace(array, 50);
+				// Выводим информацию в консоль
+				cerr << "Child PID " << ::getpid() << " crashed with signal " << sig << "\nBacktrace:" << endl;
+				// Извлекаем в буфер данные бэктрейса
+				::backtrace_symbols_fd(array, size, STDERR_FILENO);
+				// Возвращаем стандартный обработчик, чтобы операционная система создала полноценный Crash Report
+				::signal(sig, SIG_DFL);
+				// Повторно вызываем сигнал
+				::kill(::getpid(), sig);
+				// Завершаем вывод результата бэкстрейса
+				cerr << endl;
+			}
+		}
+	#endif
 #endif
 
 /**
@@ -133,6 +171,29 @@ void awh::unit::Cluster::create() noexcept {
 					} break;
 					// Если процесс является дочерним
 					case 0: {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							{
+								// Создаём объект перехвата сигнала
+								struct sigaction sa{};
+								// Устанавливаем обрабочик перехвата сигнала
+								sa.sa_handler = ::childCrashHandler;
+								// Зануляем маску объекта перехватчика
+								sigemptyset(&sa.sa_mask);
+								// Сбрасываем флаги перехватчика
+								sa.sa_flags = 0;
+								// Устанавливаем перехват сигнала SIGSEGV
+								::sigaction(SIGSEGV, &sa, nullptr);
+								// Устанавливаем перехват сигнала SIGBUS
+								::sigaction(SIGBUS, &sa, nullptr);
+								// Устанавливаем перехват сигнала SIGILL
+								::sigaction(SIGILL, &sa, nullptr);
+								// Устанавливаем перехват сигнала SIGABRT
+								::sigaction(SIGABRT, &sa, nullptr);
+							}
+						#endif
 						// Если родительский процесс живой
 						if(this->_pid == ::getppid()){
 							// Выполняем переинициализацию асинхронного движка ввода-вывода
@@ -379,6 +440,29 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 				} break;
 				// Если процесс является дочерним
 				case 0: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						{
+							// Создаём объект перехвата сигнала
+							struct sigaction sa{};
+							// Устанавливаем обрабочик перехвата сигнала
+							sa.sa_handler = ::childCrashHandler;
+							// Зануляем маску объекта перехватчика
+							sigemptyset(&sa.sa_mask);
+							// Сбрасываем флаги перехватчика
+							sa.sa_flags = 0;
+							// Устанавливаем перехват сигнала SIGSEGV
+							::sigaction(SIGSEGV, &sa, nullptr);
+							// Устанавливаем перехват сигнала SIGBUS
+							::sigaction(SIGBUS, &sa, nullptr);
+							// Устанавливаем перехват сигнала SIGILL
+							::sigaction(SIGILL, &sa, nullptr);
+							// Устанавливаем перехват сигнала SIGABRT
+							::sigaction(SIGABRT, &sa, nullptr);
+						}
+					#endif
 					// Если родительский процесс живой
 					if(this->_pid == ::getppid()){
 						// Выполняем переинициализацию асинхронного движка ввода-вывода

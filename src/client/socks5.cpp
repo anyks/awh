@@ -15,6 +15,7 @@
 /**
  * Если размер MTU для UDP сообщений в IPv4 не определён
  */
+#include <net/event.hpp>
 #ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
 	/**
 	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
@@ -470,9 +471,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								/**
 								 * Определяем тип данных сесии клиента, работающего через прокси
 								 */
-								switch(static_cast <uint8_t> (this->_endpoint.attr->type)){
+								switch(static_cast <uint8_t> (this->_client->family(this->_endpoint.udp.eid))){
 									// Если тип данных соответствует IPv4
-									case static_cast <uint8_t> (net::type_t::IPV4): {
+									case static_cast <uint8_t> (event::family_t::IPV4): {
 										// Выполняем инициализацию объекта хоста
 										this->_ctx.host = make_unique <net::attr_net_t> ();
 										// Устанавливаем тип адреса события
@@ -486,9 +487,11 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Устанавливаем внутренний порт клиента
 											this->_client->setInternalPort(this->_endpoint.udp.eid, port);
 										}
+										// Устанавливаем внутренний порт клиента
+										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
 									} break;
 									// Если тип данных соответствует IPv6
-									case static_cast <uint8_t> (net::type_t::IPV6): {
+									case static_cast <uint8_t> (event::family_t::IPV6): {
 										// Выполняем инициализацию объекта хоста
 										this->_ctx.host = make_unique <net::attr_net_t> ();
 										// Устанавливаем тип адреса события
@@ -502,10 +505,10 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Устанавливаем внутренний порт клиента
 											this->_client->setInternalPort(this->_endpoint.udp.eid, port);
 										}
+										// Устанавливаем внутренний порт клиента
+										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
 									} break;
 								}
-								// Устанавливаем внутренний порт клиента
-								awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
 							// Если клиент для работы с UDP-протоколом не активирован
 							} else {
 								// Устанавливаем команду для TCP протокола

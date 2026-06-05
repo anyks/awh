@@ -24685,6 +24685,8 @@ namespace io {
 								EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
 								// Добавляем новое событие в список изменений
 								::events::add(::move(event));
+								// Отмечаем активность чтения данных
+								peer->activity |= ::activity::READ;
 								// Если установлен таймаут на чтение данных
 								if(peer->timeouts.read.delay > 0){
 									// Если событие является неблокирующим
@@ -25435,12 +25437,13 @@ namespace io {
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем текущее значение объекта однорангового узла
 							::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-							// Снимаем статус активности на чтение данных
-							peer->activity &= ~::activity::READ;
 							// Если установлено ограничение пропускной способности на чтение данных из сокета
-							if(peer->bandwidth.read.limit > 0)
+							if(peer->bandwidth.read.limit > 0){
+								// Снимаем статус активности на чтение данных
+								peer->activity &= ~::activity::READ;
 								// Деактивируем событие на чтение данных из сокета
 								::events::read(peer->transfer.fd, peer, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+							}
 							// Если таймаут ожидания чтения данных установлен
 							if(peer->timeouts.read.delay > 0){
 								/**
@@ -25464,12 +25467,13 @@ namespace io {
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем текущее значение объекта клиента
 							::io::client_t * client = awh_cast <::io::client_t *> (node);
-							// Снимаем статус активности на чтение данных
-							client->activity &= ~::activity::READ;
 							// Если установлено ограничение пропускной способности на чтение данных из сокета
-							if(client->bandwidth.read.limit > 0)
+							if(client->bandwidth.read.limit > 0){
+								// Снимаем статус активности на чтение данных
+								client->activity &= ~::activity::READ;
 								// Деактивируем событие на чтение данных из сокета
 								::events::read(client->transfer.fd, client, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+							}
 							// Если таймаут ожидания чтения данных установлен
 							if(client->timeouts.read.delay > 0){
 								/**
@@ -25493,12 +25497,13 @@ namespace io {
 						case static_cast <uint8_t> (event::node_t::SERVER): {
 							// Получаем текущее значение объекта сервера
 							::io::server_t * server = awh_cast <::io::server_t *> (node);
-							// Снимаем статус активности на чтение данных
-							server->activity &= ~::activity::READ;
 							// Если установлено ограничение пропускной способности на чтение данных из сокета
-							if(server->wrate.limit > 0)
+							if(server->wrate.limit > 0){
+								// Снимаем статус активности на чтение данных
+								server->activity &= ~::activity::READ;
 								// Деактивируем событие на чтение данных из сокета
 								::events::read(server->fd, server, event::mode_t::DISABLED, event::rate_t::INSTANT, log);
+							}
 						} break;
 					}
 					// Обрабатываем событие доступности сокета на чтение
@@ -57650,27 +57655,31 @@ bool awh::engine::IO::reinitialize() noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							// Устанавливаем событие на чтение и активируем его
-							EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_ADD, 0, 0, peer);
+							EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_ADD | EV_DISABLE, 0, 0, peer);
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
 							// Если событие чтения из сокета разрешено
 							if(peer->transfer.actions & ::action::READ){
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Активируем событие на чтение данных
-								EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, peer);
-								// Добавляем новое событие в список изменений
-								::events::add(::move(event));
+								// Отмечаем активность чтения данных
+								peer->activity |= ::activity::READ;
+								// Активируем событие на чтение данных из сокета
+								::events::read(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если событие является неблокирующим
 								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
-									// Если необходимо активировать таймаут на чтение для однорангового узла
-									if(peer->timeouts.read.delay > 0){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&event, peer->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (peer->timeouts.read.delay), peer);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
+									/**
+									 * Определяем тип таймера для событий сетевого движка
+									 */
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+										// Если тип таймера для событий сетевого движка является простым
+										case static_cast <uint8_t> (event::timer_t::SIMPLE):
+											// Добавляем таймаут на ожидание получения данных
+											::timer1::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+										break;
+										// Если тип таймера для событий сетевого движка является сложным
+										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+											// Добавляем таймаут на ожидание получения данных
+											::timer2::set({::timer::flag_t::SIMPLE, peer->timeouts.read}, peer->id, event::rate_t::DEFERRED, this->_log);
+										break;
 									}
 								// Если необходимо активировать таймаут на чтение для однорангового узла
 								} else if(peer->timeouts.read.delay > 0)
@@ -57683,20 +57692,24 @@ bool awh::engine::IO::reinitialize() noexcept {
 								if((peer->state.options & event::options::NO_IO_BLOCK) || (peer->state.options & event::options::SM_IO_BLOCK)){
 									// Если в очереди передачи данных есть данные для отправки
 									if(!peer->transfer.queue.empty()){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Активируем событие на ожидание готовности сокета на запись
-										EV_SET(&event, peer->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, peer);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
-										// Если необходимо активировать таймаут на запись для однорангового узла
-										if(peer->timeouts.write.delay > 0){
-											// Создаём объект события для Kqueue
-											struct kevent event{};
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&event, peer->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (peer->timeouts.write.delay), peer);
-											// Добавляем новое событие в список изменений
-											::events::add(::move(event));
+										// Отмечаем активность записи данных
+										peer->activity |= ::activity::WRITE;
+										// Активируем событие на запись данных в сокет
+										::events::write(peer->transfer.fd, peer, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										/**
+										 * Определяем тип таймера для событий сетевого движка
+										 */
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+											// Если тип таймера для событий сетевого движка является простым
+											case static_cast <uint8_t> (event::timer_t::SIMPLE):
+												// Добавляем таймаут на ожидание записи данных
+												::timer1::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+											break;
+											// Если тип таймера для событий сетевого движка является сложным
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+												// Добавляем таймаут на ожидание записи данных
+												::timer2::set({::timer::flag_t::SIMPLE, peer->timeouts.write}, peer->id, event::rate_t::DEFERRED, this->_log);
+											break;
 										}
 									}
 								// Если необходимо активировать таймаут на запись для однорангового узла
@@ -57734,14 +57747,20 @@ bool awh::engine::IO::reinitialize() noexcept {
 							if(origin->transfer.actions & ::action::READ){
 								// Если событие является неблокирующим
 								if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
-									// Если необходимо активировать таймаут на чтение для однорангового узла
-									if(origin->timeouts.read.delay > 0){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&event, origin->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (origin->timeouts.read.delay), origin);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
+									/**
+									 * Определяем тип таймера для событий сетевого движка
+									 */
+									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+										// Если тип таймера для событий сетевого движка является простым
+										case static_cast <uint8_t> (event::timer_t::SIMPLE):
+											// Добавляем таймаут на ожидание получения данных
+											::timer1::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+										break;
+										// Если тип таймера для событий сетевого движка является сложным
+										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+											// Добавляем таймаут на ожидание получения данных
+											::timer2::set({::timer::flag_t::SIMPLE, origin->timeouts.read}, origin->id, event::rate_t::DEFERRED, this->_log);
+										break;
 									}
 								}
 							}
@@ -57751,20 +57770,22 @@ bool awh::engine::IO::reinitialize() noexcept {
 								if((origin->state.options & event::options::NO_IO_BLOCK) || (origin->state.options & event::options::SM_IO_BLOCK)){
 									// Если в очереди передачи данных есть данные для отправки
 									if(!origin->transfer.queue.empty()){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Активируем событие на ожидание готовности сокета на запись
-										EV_SET(&event, origin->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, origin);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
-										// Если необходимо активировать таймаут на запись для однорангового узла
-										if(origin->timeouts.write.delay > 0){
-											// Создаём объект события для Kqueue
-											struct kevent event{};
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&event, origin->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (origin->timeouts.write.delay), origin);
-											// Добавляем новое событие в список изменений
-											::events::add(::move(event));
+										// Активируем событие на запись данных в сокет
+										::events::write(origin->transfer.fd, origin, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										/**
+										 * Определяем тип таймера для событий сетевого движка
+										 */
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+											// Если тип таймера для событий сетевого движка является простым
+											case static_cast <uint8_t> (event::timer_t::SIMPLE):
+												// Добавляем таймаут на ожидание записи данных
+												::timer1::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+											break;
+											// Если тип таймера для событий сетевого движка является сложным
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+												// Добавляем таймаут на ожидание записи данных
+												::timer2::set({::timer::flag_t::SIMPLE, origin->timeouts.write}, origin->id, event::rate_t::DEFERRED, this->_log);
+											break;
 										}
 									}
 								}
@@ -57843,38 +57864,63 @@ bool awh::engine::IO::reinitialize() noexcept {
 						   (client->state.status == event::status_t::RESUMED)){
 							// Если событие чтения из сокета разрешено
 							if(client->transfer.actions & ::action::READ){
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Активируем событие на чтение данных
-								EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_ENABLE, 0, 0, client);
-								// Добавляем новое событие в список изменений
-								::events::add(::move(event));
+								// Отмечаем активность чтения данных
+								client->activity |= ::activity::READ;
+								// Активируем событие на чтение данных из сокета
+								::events::read(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если событие является неблокирующим
 								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 									// Если таймаут на подключение уже был активирован
 									if(client->timeouts.connect.status == event::status_t::PENDING){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Устанавливаем таймаут на подключение к серверу
-										EV_SET(&event, client->timeouts.connect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (client->timeouts.connect.delay), client);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
+										/**
+										 * Определяем тип таймера для событий сетевого движка
+										 */
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+											// Если тип таймера для событий сетевого движка является простым
+											case static_cast <uint8_t> (event::timer_t::SIMPLE):
+												// Добавляем таймаут на ожидание подключения к серверу
+												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
+											// Если тип таймера для событий сетевого движка является сложным
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+												// Добавляем таймаут на ожидание подключения к серверу
+												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.connect}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
+										}
 									// Если таймаут на переподключение уже был активирован
 									} else if(client->timeouts.reconnect.status == event::status_t::PENDING) {
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Устанавливаем таймаут на переподключение к серверу
-										EV_SET(&event, client->timeouts.reconnect.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (client->timeouts.reconnect.delay), client);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
+										/**
+										 * Определяем тип таймера для событий сетевого движка
+										 */
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+											// Если тип таймера для событий сетевого движка является простым
+											case static_cast <uint8_t> (event::timer_t::SIMPLE):
+												// Добавляем таймаут на переподключение
+												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
+											// Если тип таймера для событий сетевого движка является сложным
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+												// Добавляем таймаут на переподключение
+												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
+										}
 									// Если необходимо активировать таймаут на чтение для клиента
 									} else if(client->timeouts.read.delay > 0) {
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Устанавливаем таймаут на получение данных
-										EV_SET(&event, client->timeouts.read.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (client->timeouts.read.delay), client);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
+										/**
+										 * Определяем тип таймера для событий сетевого движка
+										 */
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+											// Если тип таймера для событий сетевого движка является простым
+											case static_cast <uint8_t> (event::timer_t::SIMPLE):
+												// Добавляем таймаут на ожидание получения данных
+												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
+											// Если тип таймера для событий сетевого движка является сложным
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+												// Добавляем таймаут на ожидание получения данных
+												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.read}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
+										}
 									}
 								// Если необходимо активировать таймаут на чтение для клиента
 								} else if(client->timeouts.read.delay > 0)
@@ -57887,20 +57933,24 @@ bool awh::engine::IO::reinitialize() noexcept {
 								if((client->state.options & event::options::NO_IO_BLOCK) || (client->state.options & event::options::SM_IO_BLOCK)){
 									// Если в очереди передачи данных есть данные для отправки
 									if(!client->transfer.queue.empty()){
-										// Создаём объект события для Kqueue
-										struct kevent event{};
-										// Активируем событие на ожидание готовности сокета на запись
-										EV_SET(&event, client->transfer.fd, EVFILT_WRITE, EV_ADD | EV_ONESHOT, 0, 0, client);
-										// Добавляем новое событие в список изменений
-										::events::add(::move(event));
-										// Если необходимо активировать таймаут на запись для клиента
-										if(client->timeouts.write.delay > 0){
-											// Создаём объект события для Kqueue
-											struct kevent event{};
-											// Устанавливаем таймаут на получение данных
-											EV_SET(&event, client->timeouts.write.id, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (client->timeouts.write.delay), client);
-											// Добавляем новое событие в список изменений
-											::events::add(::move(event));
+										// Отмечаем активность записи данных
+										client->activity |= ::activity::WRITE;
+										// Активируем событие на запись данных в сокет
+										::events::write(client->transfer.fd, client, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
+										/**
+										 * Определяем тип таймера для событий сетевого движка
+										 */
+										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+											// Если тип таймера для событий сетевого движка является простым
+											case static_cast <uint8_t> (event::timer_t::SIMPLE):
+												// Добавляем таймаут на ожидание записи данных
+												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
+											// Если тип таймера для событий сетевого движка является сложным
+											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+												// Добавляем таймаут на ожидание записи данных
+												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.write}, client->id, event::rate_t::DEFERRED, this->_log);
+											break;
 										}
 									}
 								// Если необходимо активировать таймаут на запись для клиента
@@ -57945,12 +57995,10 @@ bool awh::engine::IO::reinitialize() noexcept {
 						   (server->state.status == event::status_t::RESUMED)){
 							// Если событие чтения из сокета разрешено
 							if(server->actions & ::action::READ){
-								// Создаём объект события для Kqueue
-								struct kevent event{};
-								// Активируем событие на чтение данных
-								EV_SET(&event, server->fd, EVFILT_READ, EV_ENABLE, 0, 0, server);
-								// Добавляем новое событие в список изменений
-								::events::add(::move(event));
+								// Отмечаем активность чтения данных
+								server->activity |= ::activity::READ;
+								// Активируем событие на чтение данных из сокета
+								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
 								// Если событие является блокирующим
 								if(!(server->state.options & event::options::NO_IO_BLOCK) && !(server->state.options & event::options::SM_IO_BLOCK)){
 									// Если необходимо активировать таймаут на чтение для сервера

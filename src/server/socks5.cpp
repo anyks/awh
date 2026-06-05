@@ -195,6 +195,41 @@ namespace {
 };
 
 /**
+ * Инкапсулируем статические параметры локального кэша в пространство имён
+ */
+namespace {
+	/**
+	 * @brief Структура для хранения данных в локальном кэше
+	 *
+	 */
+	typedef struct Cache {
+		// Размер данных в буфере
+		size_t size;
+		// Доменное имя для рузолвинга
+		string domain;
+		// Идентификатор события сервера которому принадлежит клиент
+		event::id_t eid;
+		// Параметры подключения к удалённому серверу
+		unique_ptr <net::attr_net_t> attr;
+		// Буфер для хранения данных
+		uint8_t buffer[AWH_MTU_UDP_IPV4_PAYLOAD_SIZE];
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit Cache() noexcept :
+		 size(0), domain{""}, eid(0),
+		 attr(nullptr), buffer{0} {}
+	} cache_t;
+
+	/**
+	 * @brief Локальный кэш для хранения данных UDP сообщений, индексируемый по идентификатору события клиента
+	 *
+	 */
+	thread_local unordered_map <event::id_t, cache_t> __awh_cache__;
+};
+
+/**
  * Инкапсулируем статические параметры в пространство имён
  */
 namespace {
@@ -1698,6 +1733,12 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
 								auto k = this->_clients.find(j->second.eid);
 								// Если идентификатор клиента найден в списке
 								if(k != this->_clients.end()){
+									// Выполняем поиск кэша для идентификатора пира
+									auto l = ::__awh_cache__.find(k->first);
+									// Если кэш для этого идентификатора найден
+									if(l != ::__awh_cache__.end())
+										// Удаляем кэш для идентификатора пира
+										::__awh_cache__.erase(l);
 									// Удаляем подключённого клиента
 									this->_client.destroy(k->first);
 									// Удаляем клиента из списка активных клиентов
@@ -1778,20 +1819,49 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								if(this->_client.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 									// Устанавливаем интерфейс для подключения к удалённому серверу
 									if(this->_client.setIface(i->second.eid, this->_net.iface)){
-										// Устанавливаем порт и адрес удалённого сервера для подключения
-										if(this->_client.setPort(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->port) &&
-										   this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())){
-											// Если функция обратного вызова установлена
-											if(this->_callback.is("ready")){
-												// Получаем IP-адрес для подключения к удалённому серверу
-												const string & address = this->_client.getTarget(i->second.eid);
-												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, address, address);
-											}
-											// Выполняем фиксацию настроек события сервера
-											if(this->_client.commit(i->second.eid)){
-												// Выполняем запуск события
-												if(!this->_client.launch(i->second.eid)){
+										/**
+										 * Определяем тип данных сесии клиента, работающего через прокси
+										 */
+										switch(static_cast <uint8_t> (udp.host->type)){
+											// Если тип данных соответствует FQDN
+											case static_cast <uint8_t> (net::type_t::FQDN): {
+												// Выполняем поиск кэша для идентификатора пира
+												auto j = ::__awh_cache__.find(i->second.eid);
+												// Если кэш для этого идентификатора найден
+												if(j != ::__awh_cache__.end()){
+													// Устанавливаем идентификатор пира для кэша
+													j->second.eid = eid;
+													// Устанавливаем размер буфера данных в кэше
+													j->second.size = (size - udp.size);
+													// Копируем данные запроса в кэш
+													::memcpy(j->second.buffer, buffer + udp.size, size - udp.size);
+													// Устанавливаем порт удалённого сервера для подключения
+													j->second.attr->port = awh_cast <net::attr_fqdn_t *> (udp.host.get())->port;
+													// Устанавливаем доменное имя хоста для подключения
+													j->second.domain = awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain;
+												// Если кэш для этого идентификатора не найден
+												} else {
+													// Добавляем кэш для идентификатора пира
+													auto ret = ::__awh_cache__.emplace(i->second.eid, cache_t{});
+													// Устанавливаем идентификатор пира для кэша
+													ret.first->second.eid = eid;
+													// Устанавливаем размер буфера данных в кэше
+													ret.first->second.size = (size - udp.size);
+													// Копируем данные запроса в кэш
+													::memcpy(ret.first->second.buffer, buffer + udp.size, size - udp.size);
+													// Создаём новый объект атрибутов сети для кэша
+													ret.first->second.attr = make_unique <net::attr_net_t> ();
+													// Устанавливаем порт удалённого сервера для подключения
+													ret.first->second.attr->port = awh_cast <net::attr_fqdn_t *> (udp.host.get())->port;
+													// Устанавливаем доменное имя хоста для подключения из данных запроса в кэше
+													ret.first->second.domain = awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain;
+												}
+												// Выполняем добавление связи DNS-резолвера и идентификатора пира
+												auto ret = this->_resolves.emplace(this->_dns->issue(), i->second.eid);
+												// Выполняем резолвинг хоста текущего сервера
+												if(!this->_dns->resolve(ret.first->first, awh_cast <unit::unit_t *> (this->_server)->family(eid), awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain)){
+													// Создаём текст ошибки резолвинга хоста текущего сервера
+													const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain.c_str());
 													// Если функция обратного вызова не установлена
 													if(!this->_callback.is("error")){
 														/**
@@ -1799,70 +1869,110 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, eid);
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													// Выполняем функцию обратного вызова
+													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+												// Если резолвинг хоста не выполнен, выходим
+												} else return;
+											} break;
+											// Если тип данных соответствует IPv6
+											case static_cast <uint8_t> (net::type_t::IPV6):
+											// Если тип данных соответствует IPv4
+											case static_cast <uint8_t> (net::type_t::IPV4): {
+												// Устанавливаем порт и адрес удалённого сервера для подключения
+												if(this->_client.setPort(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->port) &&
+												   this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())){
+													// Если функция обратного вызова установлена
+													if(this->_callback.is("ready")){
+														// Получаем IP-адрес для подключения к удалённому серверу
+														const string & address = this->_client.getTarget(i->second.eid);
+														// Выполняем функцию обратного вызова
+														this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, address, address);
+													}
+													// Выполняем фиксацию настроек события сервера
+													if(this->_client.commit(i->second.eid)){
+														// Выполняем запуск события
+														if(!this->_client.launch(i->second.eid)){
+															// Если функция обратного вызова не установлена
+															if(!this->_callback.is("error")){
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Выводим сообщение об ошибке
+																	this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Выводим сообщение об ошибке
+																	this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, eid);
+																#endif
+															}
+														// Если резолвинг хоста не выполнен
+														} else {
+															// Получаем опции события для идентификатора события клиента
+															uint16_t options = this->_client.getOptions(i->second.eid);
+															// Если опция KEEPALIVE установлена
+															if(options & event::options::KEEPALIVE){
+																// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
+																options &= ~event::options::KEEPALIVE;
+																// Устанавливаем опции события для идентификатора события клиента
+																this->_client.setOptions(i->second.eid, options);
+															}
+															// Добавляем связь между клиентом и пиром которому он принадлежит
+															this->_clients.emplace(i->second.eid, eid);
+															// Выполняем отправку данных клиенту
+															this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+															// Выходим из функции
+															return;
+														}
+													// Если фиксация настроек события сервера не выполнена
+													} else {
+														// Если функция обратного вызова не установлена
+														if(!this->_callback.is("error")){
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
+															#endif
+														}
+													}
+												// Если установка порта и адреса удалённого сервера для подключения не выполнена
+												} else {
+													// Если функция обратного вызова не установлена
+													if(!this->_callback.is("error")){
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
 														#endif
 													}
-												// Если резолвинг хоста не выполнен
-												} else {
-													// Получаем опции события для идентификатора события клиента
-													uint16_t options = this->_client.getOptions(i->second.eid);
-													// Если опция KEEPALIVE установлена
-													if(options & event::options::KEEPALIVE){
-														// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-														options &= ~event::options::KEEPALIVE;
-														// Устанавливаем опции события для идентификатора события клиента
-														this->_client.setOptions(i->second.eid, options);
-													}
-													// Добавляем связь между клиентом и пиром которому он принадлежит
-													this->_clients.emplace(i->second.eid, eid);
-													// Выполняем отправку данных клиенту
-													this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
-													// Выходим из функции
-													return;
 												}
-											// Если фиксация настроек события сервера не выполнена
-											} else {
-												// Если функция обратного вызова не установлена
-												if(!this->_callback.is("error")){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
-													#endif
-												}
-											}
-										// Если установка порта и адреса удалённого сервера для подключения не выполнена
-										} else {
-											// Если функция обратного вызова не установлена
-											if(!this->_callback.is("error")){
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
-												#endif
-											}
+											} break;
 										}
 									// Если установка интерфейса для подключения к удалённому серверу не выполнена
 									} else {
@@ -1907,23 +2017,62 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							// Если клиент для выполнения запросов уже инициализирован
 							} else {
 								/**
-								 * Определяем семейство адресов для хоста сервера
+								 * Определяем тип данных сесии клиента, работающего через прокси
 								 */
-								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(eid))){
-									// Если семейство адресов соответствует IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4): {
+								switch(static_cast <uint8_t> (udp.host->type)){
+									// Если тип данных соответствует FQDN
+									case static_cast <uint8_t> (net::type_t::FQDN): {
 										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-										if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
-											// Создаём новый объект адреса клиента IPv4
-											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
-											// Извлекаем IP-адрес удалённого сервера для подключения
-											this->_client.getTarget(i->second.eid, ip);
-											// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
-											if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address == awh_cast <net::addr_net_ipv4_t *> (ip.get())->address)
-												// Выполняем отправку данных клиенту
-												this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
-											// Если нужно инициализировать нового клиента
-											else {
+										if(awh_cast <net::attr_fqdn_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+											// Выполняем поиск кэша для идентификатора пира
+											auto j = ::__awh_cache__.find(i->second.eid);
+											// Если кэш для этого идентификатора найден
+											if(j != ::__awh_cache__.end()){
+												// Если доменные имена хоста сервера и удалённого сервера для подключения соответствуют друг другу
+												if(this->_fmk->compare(j->second.domain, awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain)){
+													/**
+													 * Если доменное имя уже разрезолвено, выполняем запрос,
+													 * если новый запрос пришёл раньше, просто дропаем пакет.
+													 */
+													if(j->second.attr != nullptr)
+														// Выполняем отправку данных клиенту
+														this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+													// Выходим из функции
+													return;
+												}
+											}
+										}
+										// Удаляем клиента принадлежащего пиру
+										this->_client.destroy(i->second.eid);
+										// Устанавливаем идентификатор клиента для выполнения запросов
+										i->second.eid = 0;
+										// Выполняем переход к метке начала проверки инициализации клиента
+										goto Begin;
+									}
+									// Если тип данных соответствует IPv6
+									case static_cast <uint8_t> (net::type_t::IPV6):
+									// Если тип данных соответствует IPv4
+									case static_cast <uint8_t> (net::type_t::IPV4): {
+										/**
+										 * Определяем семейство адресов для хоста сервера
+										 */
+										switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_server)->family(eid))){
+											// Если семейство адресов соответствует IPv4
+											case static_cast <uint8_t> (event::family_t::IPV4): {
+												// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
+												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+													// Создаём новый объект адреса клиента IPv4
+													unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
+													// Извлекаем IP-адрес удалённого сервера для подключения
+													this->_client.getTarget(i->second.eid, ip);
+													// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
+													if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address == awh_cast <net::addr_net_ipv4_t *> (ip.get())->address){
+														// Выполняем отправку данных клиенту
+														this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+														// Выходим из функции
+														return;
+													}
+												}
 												// Удаляем клиента принадлежащего пиру
 												this->_client.destroy(i->second.eid);
 												// Устанавливаем идентификатор клиента для выполнения запросов
@@ -1931,22 +2080,22 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												// Выполняем переход к метке начала проверки инициализации клиента
 												goto Begin;
 											}
-										}
-									} break;
-									// Если семейство адресов соответствует IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6): {
-										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-										if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
-											// Создаём новый объект адреса клиента IPv6
-											unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
-											// Извлекаем IP-адрес удалённого сервера для подключения
-											this->_client.getTarget(i->second.eid, ip);
-											// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
-											if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], 16) == 0)
-												// Выполняем отправку данных клиенту
-												this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
-											// Если нужно инициализировать нового клиента
-											else {
+											// Если семейство адресов соответствует IPv6
+											case static_cast <uint8_t> (event::family_t::IPV6): {
+												// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
+												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+													// Создаём новый объект адреса клиента IPv6
+													unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
+													// Извлекаем IP-адрес удалённого сервера для подключения
+													this->_client.getTarget(i->second.eid, ip);
+													// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
+													if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], 16) == 0){
+														// Выполняем отправку данных клиенту
+														this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+														// Выходим из функции
+														return;
+													}
+												}
 												// Удаляем клиента принадлежащего пиру
 												this->_client.destroy(i->second.eid);
 												// Устанавливаем идентификатор клиента для выполнения запросов
@@ -2696,68 +2845,31 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 		auto i = this->_resolves.find(id);
 		// Если идентификатор DNS-запроса найден
 		if(i != this->_resolves.end()){
-			// Выполняем поиск пира, которому принадлежит идентификатор пира
-			auto j = this->_peers.find(i->second);
-			// Если пир для этого идентификатора найден
-			if(j != this->_peers.end()){
-				// Выполняем создание клиента для подключения к удалённому серверу
-				j->second.eid = this->_client.issue(awh_cast <unit::unit_t *> (this->_server)->family(i->second), event::type_t::STREAM, event::protocol_t::TCP);
-				// Устананавливаем опции события
-				if(this->_client.setOptions(j->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
-					// Устанавливаем интерфейс для подключения к удалённому серверу
-					if(this->_client.setIface(j->second.eid, this->_net.iface)){
+			/**
+			 * Определяем протокол для идентификатора клиента, которому принадлежит этот DNS-запрос
+			 */
+			switch(static_cast <uint8_t> (this->_client.protocol(i->second))){
+				// Если протокол для идентификатора клиента соответствует UDP
+				case static_cast <uint8_t> (event::protocol_t::UDP): {
+					// Выполняем поиск кэша для идентификатора пира
+					auto j = ::__awh_cache__.find(i->second);
+					// Если кэш для этого идентификатора найден
+					if(j != ::__awh_cache__.end()){
 						// Устанавливаем порт и адрес удалённого сервера для подключения
-						if(this->_client.setPort(j->second.eid, awh_cast <net::attr_fqdn_t *> (j->second.ctx.host.get())->port) && this->_client.setTarget(j->second.eid, addr)){
+						if(this->_client.setTarget(i->second, addr) && this->_client.setPort(i->second, j->second.attr->port)){
+							// Устанавливаем IP-адрес удалённого сервера для подключения
+							this->_client.getTarget(i->second, j->second.attr->ip);
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("ready"))
+							if(this->_callback.is("ready")){
+								// Получаем IP-адрес для подключения к удалённому серверу
+								const string & address = this->_client.getTarget(i->second);
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", i->second, family, domain, this->_client.getTarget(j->second.eid));
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("accept"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_eid, i->second);
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", j->second.eid, family, domain, address);
+							}
 							// Выполняем фиксацию настроек события сервера
-							if(this->_client.commit(j->second.eid)){
-								// Если подключение к серверу прошло успешно
-								if(this->_client.connect(j->second.eid)){
-									// Выполняем запуск события
-									if(!this->_client.launch(j->second.eid)){
-										// Если функция обратного вызова не установлена
-										if(!this->_callback.is("error")){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, i->second);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, i->second);
-											#endif
-										}
-									// Если резолвинг хоста не выполнен
-									} else {
-										// Получаем опции события для идентификатора события клиента
-										uint16_t options = this->_client.getOptions(j->second.eid);
-										// Если опция KEEPALIVE установлена
-										if(options & event::options::KEEPALIVE){
-											// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-											options &= ~event::options::KEEPALIVE;
-											// Устанавливаем опции события для идентификатора события клиента
-											this->_client.setOptions(j->second.eid, options);
-										}
-										// Добавляем связь между клиентом и пиром которому он принадлежит
-										this->_clients.emplace(j->second.eid, i->second);
-										// Удаляем связь DNS-резолвера и идентификатора пира
-										this->_resolves.erase(i);
-										// Выходим из функции
-										return;
-									}
-								// Если подключение к серверу не прошло успешно
-								} else {
+							if(this->_client.commit(i->second)){
+								// Выполняем запуск события
+								if(!this->_client.launch(i->second)){
 									// Если функция обратного вызова не установлена
 									if(!this->_callback.is("error")){
 										/**
@@ -2765,15 +2877,30 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, domain.c_str(), awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port);
+											this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, i->second);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
 											// Выводим сообщение об ошибке
-											this->_log->print("Connection to the server \"%s:%u\" is failed", log_t::flag_t::WARNING, domain.c_str(), awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port);
+											this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, i->second);
 										#endif
 									}
+								// Если резолвинг хоста не выполнен
+								} else {
+									// Получаем опции события для идентификатора события клиента
+									uint16_t options = this->_client.getOptions(i->second);
+									// Если опция KEEPALIVE установлена
+									if(options & event::options::KEEPALIVE){
+										// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
+										options &= ~event::options::KEEPALIVE;
+										// Устанавливаем опции события для идентификатора события клиента
+										this->_client.setOptions(i->second, options);
+									}
+									// Добавляем связь между клиентом и пиром которому он принадлежит
+									this->_clients.emplace(i->second, j->second.eid);
+									// Выполняем отправку данных клиенту
+									this->_client.send(i->second, j->second.buffer, j->second.size);
 								}
 							// Если фиксация настроек события сервера не выполнена
 							} else {
@@ -2813,77 +2940,200 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 								#endif
 							}
 						}
-					// Если установка интерфейса для подключения к удалённому серверу не выполнена
-					} else {
-						// Если функция обратного вызова не установлена
-						if(!this->_callback.is("error")){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, this->_net.iface.c_str(), i->second);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, this->_net.iface.c_str(), i->second);
-							#endif
+					}
+				} break;
+				// Если протокол для идентификатора клиента соответствует TCP
+				case static_cast <uint8_t> (event::protocol_t::TCP): {
+					// Выполняем поиск пира, которому принадлежит идентификатор пира
+					auto j = this->_peers.find(i->second);
+					// Если пир для этого идентификатора найден
+					if(j != this->_peers.end()){
+						// Выполняем создание клиента для подключения к удалённому серверу
+						j->second.eid = this->_client.issue(awh_cast <unit::unit_t *> (this->_server)->family(i->second), event::type_t::STREAM, event::protocol_t::TCP);
+						// Устананавливаем опции события
+						if(this->_client.setOptions(j->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+							// Устанавливаем интерфейс для подключения к удалённому серверу
+							if(this->_client.setIface(j->second.eid, this->_net.iface)){
+								// Устанавливаем порт и адрес удалённого сервера для подключения
+								if(this->_client.setPort(j->second.eid, awh_cast <net::attr_fqdn_t *> (j->second.ctx.host.get())->port) && this->_client.setTarget(j->second.eid, addr)){
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("ready"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", i->second, family, domain, this->_client.getTarget(j->second.eid));
+									// Если функция обратного вызова установлена
+									if(this->_callback.is("accept"))
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_eid, i->second);
+									// Выполняем фиксацию настроек события сервера
+									if(this->_client.commit(j->second.eid)){
+										// Если подключение к серверу прошло успешно
+										if(this->_client.connect(j->second.eid)){
+											// Выполняем запуск события
+											if(!this->_client.launch(j->second.eid)){
+												// Если функция обратного вызова не установлена
+												if(!this->_callback.is("error")){
+													/**
+													 * Если включён режим отладки
+													 */
+													#if DEBUG_MODE
+														// Выводим сообщение об ошибке
+														this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, i->second);
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Выводим сообщение об ошибке
+														this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, i->second);
+													#endif
+												}
+											// Если резолвинг хоста не выполнен
+											} else {
+												// Получаем опции события для идентификатора события клиента
+												uint16_t options = this->_client.getOptions(j->second.eid);
+												// Если опция KEEPALIVE установлена
+												if(options & event::options::KEEPALIVE){
+													// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
+													options &= ~event::options::KEEPALIVE;
+													// Устанавливаем опции события для идентификатора события клиента
+													this->_client.setOptions(j->second.eid, options);
+												}
+												// Добавляем связь между клиентом и пиром которому он принадлежит
+												this->_clients.emplace(j->second.eid, i->second);
+												// Удаляем связь DNS-резолвера и идентификатора пира
+												this->_resolves.erase(i);
+												// Выходим из функции
+												return;
+											}
+										// Если подключение к серверу не прошло успешно
+										} else {
+											// Если функция обратного вызова не установлена
+											if(!this->_callback.is("error")){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, domain.c_str(), awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("Connection to the server \"%s:%u\" is failed", log_t::flag_t::WARNING, domain.c_str(), awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port);
+												#endif
+											}
+										}
+									// Если фиксация настроек события сервера не выполнена
+									} else {
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, i->second);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, i->second);
+											#endif
+										}
+									}
+								// Если установка порта и адреса удалённого сервера для подключения не выполнена
+								} else {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, i->second);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, i->second);
+										#endif
+									}
+								}
+							// Если установка интерфейса для подключения к удалённому серверу не выполнена
+							} else {
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, this->_net.iface.c_str(), i->second);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, this->_net.iface.c_str(), i->second);
+									#endif
+								}
+							}
+						// Если установка опций события не выполнена
+						} else {
+							// Если функция обратного вызова не установлена
+							if(!this->_callback.is("error")){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Выводим сообщение об ошибке
+									this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, i->second);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Выводим сообщение об ошибке
+									this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, i->second);
+								#endif
+							}
+						}
+						// Удаляем клиента принадлежащего пиру
+						this->_client.destroy(j->second.eid);
+						// Устанавливаем статус ошибки, так как мы получили ошибку
+						j->second.ctx.status = proto::socks5_t::status_t::NOADDR;
+						// Размер буфера данных
+						size_t size = 0;
+						// Буфер данных ответа
+						uint8_t * buffer = nullptr;
+						// Если извлечение буфера данных ответа выполнено успешно
+						if(this->_socks5.buffer(&buffer, size, j->second.ctx)){
+							// Если отправка ответа прокси-клиенту не выполнена
+							if(this->_server->send(i->second, buffer, size) != size){
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Failed to send data to client", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
+									#endif
+								}
+								// Удаляем подключённого пира
+								this->_server->destroy(i->second);
+							// Если отправка ответа прокси-клиенту выполнена успешно, устанавливаем статус ответа от прокси-сервера
+							} else j->second.ctx.state = proto::socks5_t::state_t::BROKEN;
 						}
 					}
-				// Если установка опций события не выполнена
-				} else {
-					// Если функция обратного вызова не установлена
-					if(!this->_callback.is("error")){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
-							this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING, i->second);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Выводим сообщение об ошибке
-							this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, i->second);
-						#endif
-					}
-				}
-				// Удаляем клиента принадлежащего пиру
-				this->_client.destroy(j->second.eid);
-				// Устанавливаем статус ошибки, так как мы получили ошибку
-				j->second.ctx.status = proto::socks5_t::status_t::NOADDR;
-				// Размер буфера данных
-				size_t size = 0;
-				// Буфер данных ответа
-				uint8_t * buffer = nullptr;
-				// Если извлечение буфера данных ответа выполнено успешно
-				if(this->_socks5.buffer(&buffer, size, j->second.ctx)){
-					// Если отправка ответа прокси-клиенту не выполнена
-					if(this->_server->send(i->second, buffer, size) != size){
-						// Если функция обратного вызова не установлена
-						if(!this->_callback.is("error")){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to send data to client", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
-							#endif
-						}
-						// Удаляем подключённого пира
-						this->_server->destroy(i->second);
-					// Если отправка ответа прокси-клиенту выполнена успешно, устанавливаем статус ответа от прокси-сервера
-					} else j->second.ctx.state = proto::socks5_t::state_t::BROKEN;
-				}
+				} break;
 			}
 			// Удаляем связь DNS-резолвера и идентификатора пира
 			this->_resolves.erase(i);
