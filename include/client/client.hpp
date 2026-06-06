@@ -83,6 +83,24 @@ namespace awh {
 				 */
 				explicit Identifier() noexcept : eid(0), sid(0) {}
 			} __attribute__((packed)) id_t;
+			/**
+			 * @brief Структура юнита клиента
+			 *
+			 */
+			typedef struct Unit {
+				// Объект работы с сетевыми адресами
+				net_addr_t addr;
+				// Объект юнита клиента
+				unit::client_t client;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept :
+				 addr(fmk, log), client(fmk, log) {}
+			} unit_t;
 		protected:
 			// Идентификатор клиента
 			id_t _id;
@@ -93,14 +111,11 @@ namespace awh {
 			// Адрес хоста целевой машины
 			string _host;
 		protected:
-			// Объект работы с сетевыми адресами
-			net_addr_t _addr;
-		protected:
 			// Функция обратного вызова для обработки клиента
 			callback_t _callback;
 		protected:
 			// Объект юнита клиента
-			unique_ptr <unit::client_t> _client;
+			unique_ptr <unit_t> _unit;
 		protected:
 			// Объект транспортного уровня безопасности
 			tls::coder_t * _tls;
