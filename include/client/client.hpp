@@ -41,16 +41,6 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Client {
 		protected:
 			/**
-			 * @brief Временное состояние клиента
-			 *
-			 */
-			enum class state_t : uint8_t {
-				NONE     = 0x00, // Нет состояния
-				CLIENT   = 0x01, // Состояние запуска клиента
-				RESOLVER = 0x02  // Состояние запуска DNS-резолвера
-			};
-		protected:
-			/**
 			 * @brief Структура для хранения параметров DNS-резолвера
 			 *
 			 */
@@ -128,10 +118,10 @@ namespace awh {
 			/**
 			 * @brief Метод изменения статуса клиента
 			 *
+			 * @param index  индекс очереди запускаемого события
 			 * @param status новый статус клиента
-			 * @param state  новое временное состояние клиента
 			 */
-			virtual void status(const event::status_t status, const state_t state) noexcept;
+			virtual void status(const uint8_t index, const event::status_t status) noexcept;
 		protected:
 			/**
 			 * @brief Метод обработки событий подключения клиента к удалённому серверу
@@ -201,6 +191,14 @@ namespace awh {
 			 * @return       нужно ли завершить клиента после истечения таймаута
 			 */
 			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+			/**
+			 * @brief Метод обработки неудачного резолвинга доменного имени
+			 *
+			 * @param id     идентификатор DNS-запроса
+			 * @param record тип записи DNS
+			 * @param domain доменное имя
+			 */
+			virtual void failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept;
 			/**
 			 * @brief Метод обработки события неотправленных данных клиента
 			 *

@@ -83,10 +83,10 @@ namespace awh {
 				/**
 				 * @brief Метод изменения статуса клиента
 				 *
+				 * @param index  индекс очереди запускаемого события
 				 * @param status новый статус клиента
-				 * @param state  новое временное состояние клиента
 				 */
-				void status(const event::status_t status, const state_t state) noexcept;
+				void status(const uint8_t index, const event::status_t status) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки событий подключения клиента к удалённому серверу

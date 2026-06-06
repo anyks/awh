@@ -16,7 +16,6 @@
  * Стандартные модули
  */
 #include <array>
-#include <net/event.hpp>
 #include <vector>
 #include <random>
 #include <cerrno>
@@ -2185,14 +2184,10 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 				auto i = this->_transfer.waiting.find(id);
 				// Если пакет найден в контейнере активных пакетов
 				if(i != this->_transfer.waiting.end()){
-					// Декодируем доменное имя
-					char name[256];
 					// Получаем размер запроса
 					size_t offset = sizeof(::dns::head_t);
 					// Выполняем декодирование доменного имени из бинарных данных запроса
-					if(::dns::decodeDomainName(i->second.payload.buffer.get(), i->second.payload.size, offset, name, sizeof(name)))
-						// Получаем доменное имя из сохраненного запроса текущего DNS-резолвера для логирования
-						domain = name;
+					domain = ::move(::dns::decodeDomainName(i->second.payload.buffer.get(), i->second.payload.size, offset));
 					// Удаляем пакет из контейнера активных пакетов
 					this->_transfer.waiting.erase(i);
 				}
@@ -2764,12 +2759,12 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 		if(action == event::action_t::READ){
 			// Идентификатор DNS-запроса
 			id_t id = 0;
+			// Декодируем доменное имя
+			string domain = "";
 			// Количество попыток повторной отправки DNS-запроса
 			uint8_t attempt = 0;
-			// Результат извлечения доменного имени
-			bool result = false;
-			// Декодируем доменное имя
-			char domain[256];
+			// Тип DNS-записи
+			record_t record = record_t::NONE;
 			{
 				// Выполняем блокировку потока для работы с контейнером активных пакетов
 				const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
@@ -2799,7 +2794,11 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						// Получаем размер запроса
 						size_t offset = sizeof(::dns::head_t);
 						// Выполняем декодирование доменного имени из бинарных данных запроса
-						result = ::dns::decodeDomainName(j->second.payload.buffer.get(), j->second.payload.size, offset, domain, sizeof(domain));
+						domain = ::move(::dns::decodeDomainName(j->second.payload.buffer.get(), j->second.payload.size, offset));
+						// Создаём части флагов вопроса пакета запроса
+						::dns::q_flags_t * qflags = reinterpret_cast <::dns::q_flags_t *> (&j->second.payload.buffer.get()[offset]);
+						// Извлекаем тип запроса из флагов запроса
+						record = static_cast <record_t> (ntohs(qflags->type));
 						// Удаляем пакет из контейнера активных пакетов
 						this->_transfer.waiting.erase(j);
 						// Если в очереди на отправку есть пакеты
@@ -2833,7 +2832,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 			 */
 			End:
 			// Если декодирование доменного имени прошло успешно
-			if(result){
+			if(!domain.empty()){
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("attempts"))
 					// Выполняем функцию обратного вызова
@@ -2850,16 +2849,20 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 							__PRETTY_FUNCTION__,
 							make_tuple(eid, static_cast <uint16_t> (action), delay),
 							log_t::flag_t::WARNING,
-							domain, attempt
+							domain.c_str(), attempt
 						);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, domain, attempt);
+						this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, domain.c_str(), attempt);
 					#endif
 				}
+				// Если функция обратного вызова установлена
+				if(this->_callback.is("failure"))
+					// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+					this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::PTR, domain);
 			}
 		}
 	/**
@@ -2939,6 +2942,8 @@ void awh::unit::DNS::callback(const callback_t & callback) noexcept {
 	this->_callback.set("rname", callback);
 	// Выполняем установку функции обратного вызова при получении канонического имени
 	this->_callback.set("cname", callback);
+	// Выполняем установку функции обратного вызова при неудачном резолвинге доменного имени
+	this->_callback.set("failure", callback);
 	// Выполняем установку функции обратного вызова при получении IP-адресов
 	this->_callback.set("address", callback);
 	// Устанавливаем обработчик исчерпания числа попыток DNS-запроса
@@ -6510,18 +6515,28 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 				{
 					// Выполняем блокировку потока для работы с контейнером активных пакетов
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
-					if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+					// Если в очереди не осталось свободных резолверов для выполнения запроса
+					if(this->_resolver.queue.size() == 0){
 						// Если очередь ожидания выполнения запроса переполнена
 						if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
 							// Формируем текст выводимой ошибки DNS-резолвера
 							const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
+							if(this->_callback.is("error")){
+								// Идентификатор события клиента DNS-резолвера
+								event::id_t eid = 0;
+								// Если список DNS-резолверов для семейства IPv4 не пустой
+								if(!this->_resolver.idv4.empty())
+									// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv4
+									eid = this->_resolver.idv4.front();
+								// Если список DNS-резолверов для семейства IPv6 не пустой
+								else if(!this->_resolver.idv6.empty())
+									// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv6
+									eid = this->_resolver.idv6.front();
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
 							// Если функция вывода ошибки не установлена
-							else {
+							} else {
 								/**
 								 * Если включён режим отладки
 								 */
@@ -6536,6 +6551,10 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("failure"))
+								// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+								this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::PTR, domain);
 							// Выводим отрицательный результат
 							return false;
 						// Если очередь ещё может вместить в себя новый пакет
@@ -6559,14 +6578,31 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Добавляем пакет в контейнер активных пакетов
 					auto ret = this->_transfer.waiting.emplace(id, packet_t());
-					// Устанавливаем размер полезной нагрузки
-					ret.first->second.payload.size = size;
-					// Выделяем новый буфер для полезной нагрузки
-					ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
-					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
-					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
-					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					// Если пакет успешно добавлен в контейнер активных пакетов
+					if(ret.second){
+						// Устанавливаем размер полезной нагрузки
+						ret.first->second.payload.size = size;
+						// Выделяем новый буфер для полезной нагрузки
+						ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+						::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
+						ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					// Если пакет не добавлен в контейнер активных пакетов
+					} else {
+						// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+						this->_transfer.packets.push(packet_t());
+						// Устанавливаем размер полезной нагрузки
+						this->_transfer.packets.back().payload.size = size;
+						// Выделяем новый буфер для полезной нагрузки
+						this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+						::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
+						this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+						// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+						return true;
+					}
 				}
 				// Идентификатор события клиента DNS-резолвера
 				event::id_t eid = 0;
@@ -6758,18 +6794,28 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 				{
 					// Выполняем блокировку потока для работы с контейнером активных пакетов
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
-					if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+					// Если в очереди не осталось свободных резолверов для выполнения запроса
+					if(this->_resolver.queue.size() == 0){
 						// Если очередь ожидания выполнения запроса переполнена
 						if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
 							// Формируем текст выводимой ошибки DNS-резолвера
 							const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
+							if(this->_callback.is("error")){
+								// Идентификатор события клиента DNS-резолвера
+								event::id_t eid = 0;
+								// Если список DNS-резолверов для семейства IPv4 не пустой
+								if(!this->_resolver.idv4.empty())
+									// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv4
+									eid = this->_resolver.idv4.front();
+								// Если список DNS-резолверов для семейства IPv6 не пустой
+								else if(!this->_resolver.idv6.empty())
+									// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv6
+									eid = this->_resolver.idv6.front();
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
 							// Если функция вывода ошибки не установлена
-							else {
+							} else {
 								/**
 								 * Если включён режим отладки
 								 */
@@ -6784,6 +6830,10 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("failure"))
+								// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+								this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::PTR, string{ip});
 							// Выводим отрицательный результат
 							return false;
 						// Если очередь ещё может вместить в себя новый пакет
@@ -6807,14 +6857,31 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Добавляем пакет в контейнер активных пакетов
 					auto ret = this->_transfer.waiting.emplace(id, packet_t());
-					// Устанавливаем размер полезной нагрузки
-					ret.first->second.payload.size = size;
-					// Выделяем новый буфер для полезной нагрузки
-					ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
-					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
-					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
-					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					// Если пакет успешно добавлен в контейнер активных пакетов
+					if(ret.second){
+						// Устанавливаем размер полезной нагрузки
+						ret.first->second.payload.size = size;
+						// Выделяем новый буфер для полезной нагрузки
+						ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+						::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
+						ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					// Если пакет не добавлен в контейнер активных пакетов
+					} else {
+						// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+						this->_transfer.packets.push(packet_t());
+						// Устанавливаем размер полезной нагрузки
+						this->_transfer.packets.back().payload.size = size;
+						// Выделяем новый буфер для полезной нагрузки
+						this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+						::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
+						this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+						// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+						return true;
+					}
 				}
 				// Идентификатор события клиента DNS-резолвера
 				event::id_t eid = 0;
@@ -6881,18 +6948,28 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 			{
 				// Выполняем блокировку потока для работы с контейнером активных пакетов
 				const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
-				if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+				// Если в очереди не осталось свободных резолверов для выполнения запроса
+				if(this->_resolver.queue.size() == 0){
 					// Если очередь ожидания выполнения запроса переполнена
 					if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
 						// Формируем текст выводимой ошибки DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("error"))
+						if(this->_callback.is("error")){
+							// Идентификатор события клиента DNS-резолвера
+							event::id_t eid = 0;
+							// Если список DNS-резолверов для семейства IPv4 не пустой
+							if(!this->_resolver.idv4.empty())
+								// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv4
+								eid = this->_resolver.idv4.front();
+							// Если список DNS-резолверов для семейства IPv6 не пустой
+							else if(!this->_resolver.idv6.empty())
+								// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv6
+								eid = this->_resolver.idv6.front();
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
 						// Если функция вывода ошибки не установлена
-						else {
+						} else {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -6907,6 +6984,10 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("failure"))
+							// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+							this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record, string{domain});
 						// Выводим отрицательный результат
 						return false;
 					// Если очередь ещё может вместить в себя новый пакет
@@ -6930,14 +7011,31 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Добавляем пакет в контейнер активных пакетов
 				auto ret = this->_transfer.waiting.emplace(id, packet_t());
-				// Устанавливаем размер полезной нагрузки
-				ret.first->second.payload.size = size;
-				// Выделяем новый буфер для полезной нагрузки
-				ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
-				// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
-				::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
-				// Устанавливаем время жизни пакета для отслеживания его выполнения
-				ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+				// Если пакет успешно добавлен в контейнер активных пакетов
+				if(ret.second){
+					// Устанавливаем размер полезной нагрузки
+					ret.first->second.payload.size = size;
+					// Выделяем новый буфер для полезной нагрузки
+					ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+					// Устанавливаем время жизни пакета для отслеживания его выполнения
+					ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+				// Если пакет не добавлен в контейнер активных пакетов
+				} else {
+					// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+					this->_transfer.packets.push(packet_t());
+					// Устанавливаем размер полезной нагрузки
+					this->_transfer.packets.back().payload.size = size;
+					// Выделяем новый буфер для полезной нагрузки
+					this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+					::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
+					// Устанавливаем время жизни пакета для отслеживания его выполнения
+					this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+					return true;
+				}
 			}
 			// Идентификатор события клиента DNS-резолвера
 			event::id_t eid = 0;
@@ -7107,11 +7205,21 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 						// Формируем текст выводимой ошибки DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver family is undefined for domain %s", string(domain).c_str());
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("error"))
+						if(this->_callback.is("error")){
+							// Идентификатор события клиента DNS-резолвера
+							event::id_t eid = 0;
+							// Если список DNS-резолверов для семейства IPv4 не пустой
+							if(!this->_resolver.idv4.empty())
+								// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv4
+								eid = this->_resolver.idv4.front();
+							// Если список DNS-резолверов для семейства IPv6 не пустой
+							else if(!this->_resolver.idv6.empty())
+								// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv6
+								eid = this->_resolver.idv6.front();
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
 						// Если функция вывода ошибки не установлена
-						else {
+						} else {
 							/**
 							 * Если включён режим отладки
 							 */
@@ -7126,6 +7234,10 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("failure"))
+							// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+							this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::NONE, string{domain});
 						// Выводим отрицательный результат
 						return false;
 					}
@@ -7137,18 +7249,28 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 				{
 					// Выполняем блокировку потока для работы с контейнером активных пакетов
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxPackets, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Если в очереди на отправку есть пакеты или очередь ожидания выполнения запроса к DNS-серверу пуста
-					if(!this->_transfer.packets.empty() || (this->_resolver.queue.size() == 0)){
+					// Если в очереди не осталось свободных резолверов для выполнения запроса
+					if(this->_resolver.queue.size() == 0){
 						// Если очередь ожидания выполнения запроса переполнена
 						if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
 							// Формируем текст выводимой ошибки DNS-резолвера
 							const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
 							// Если функция обратного вызова установлена
-							if(this->_callback.is("error"))
+							if(this->_callback.is("error")){
+								// Идентификатор события клиента DNS-резолвера
+								event::id_t eid = 0;
+								// Если список DNS-резолверов для семейства IPv4 не пустой
+								if(!this->_resolver.idv4.empty())
+									// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv4
+									eid = this->_resolver.idv4.front();
+								// Если список DNS-резолверов для семейства IPv6 не пустой
+								else if(!this->_resolver.idv6.empty())
+									// Извлекаем идентификатор события клиента DNS-резолвера для семейства IPv6
+									eid = this->_resolver.idv6.front();
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", id, event::error_t::CONNECTION_FAIL, error);
+								this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::ACCESS_DENIED, error);
 							// Если функция вывода ошибки не установлена
-							else {
+							} else {
 								/**
 								 * Если включён режим отладки
 								 */
@@ -7162,6 +7284,24 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 									// Выводим сообщение об ошибке
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
+							}
+							// Если функция обратного вызова установлена
+							if(this->_callback.is("failure")){
+								/**
+								 * Определяем семейство события
+								 */
+								switch(static_cast <uint8_t> (family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4):
+										// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+										this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::A, string{domain});
+									break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6):
+										// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+										this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::AAAA, string{domain});
+									break;
+								}
 							}
 							// Выводим отрицательный результат
 							return false;
@@ -7186,14 +7326,31 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Добавляем пакет в контейнер активных пакетов
 					auto ret = this->_transfer.waiting.emplace(id, packet_t());
-					// Устанавливаем размер полезной нагрузки
-					ret.first->second.payload.size = size;
-					// Выделяем новый буфер для полезной нагрузки
-					ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
-					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
-					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
-					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					// Если пакет успешно добавлен в контейнер активных пакетов
+					if(ret.second){
+						// Устанавливаем размер полезной нагрузки
+						ret.first->second.payload.size = size;
+						// Выделяем новый буфер для полезной нагрузки
+						ret.first->second.payload.buffer = make_unique <uint8_t []> (size);
+						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+						::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
+						ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+					// Если пакет не добавлен в контейнер активных пакетов
+					} else {
+						// Добавляем новый пакет в контейнер очереди ожидания выполнения запроса к DNS-серверу
+						this->_transfer.packets.push(packet_t());
+						// Устанавливаем размер полезной нагрузки
+						this->_transfer.packets.back().payload.size = size;
+						// Выделяем новый буфер для полезной нагрузки
+						this->_transfer.packets.back().payload.buffer = make_unique <uint8_t []> (size);
+						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
+						::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
+						// Устанавливаем время жизни пакета для отслеживания его выполнения
+						this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
+						// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
+						return true;
+					}
 				}
 				// Идентификатор события клиента DNS-резолвера
 				event::id_t eid = 0;

@@ -77,16 +77,16 @@ namespace {
 /**
  * @brief Метод изменения статуса клиента
  *
+ * @param index  индекс очереди запускаемого события
  * @param status новый статус клиента
- * @param state  новое временное состояние клиента
  */
-void awh::client::Socks5::status(const event::status_t status, const state_t state) noexcept {
+void awh::client::Socks5::status(const uint8_t index, const event::status_t status) noexcept {
 	/**
 	 * Временное состояние клиента
 	 */
-	switch(static_cast <uint8_t> (state)){
+	switch(index){
 		// Если мы получили статус события клиента
-		case static_cast <uint8_t> (state_t::CLIENT): {
+		case 0: {
 			/**
 			 * Определяем состояние клиента
 			 */
@@ -102,7 +102,7 @@ void awh::client::Socks5::status(const event::status_t status, const state_t sta
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to connect to remote server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING);
+								this->_log->debug("Failed to connect to remote server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -122,7 +122,7 @@ void awh::client::Socks5::status(const event::status_t status, const state_t sta
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, this->_id.eid);
+									this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING, this->_id.eid);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -150,7 +150,7 @@ void awh::client::Socks5::status(const event::status_t status, const state_t sta
 			}
 		} break;
 		// Если мы получили статус события DNS-резолвера
-		case static_cast <uint8_t> (state_t::RESOLVER): {
+		case 1: {
 			/**
 			 * В зависимости от статуса события DNS-резолвера выполняем определённые действия
 			 */
@@ -207,7 +207,7 @@ void awh::client::Socks5::status(const event::status_t status, const state_t sta
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
