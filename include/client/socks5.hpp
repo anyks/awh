@@ -117,16 +117,14 @@ namespace awh {
 				 * @param size   размер данных клиента
 				 */
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
-			private:
 				/**
 				 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
 				 *
-				 * @param id     идентификатор DNS-запроса
 				 * @param family семейство адресов (IPv4/IPv6)
 				 * @param domain доменное имя для резолвинга
 				 * @param addr   указатель на структуру для хранения результата резолвинга
 				 */
-				void resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+				void resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 			private:
 				/**
 				 * @brief Метод получения состояния TLS
@@ -187,6 +185,13 @@ namespace awh {
 				size_t send(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
+				 * @brief Метод объединения данных между клиентом и другим событием (заглушка для клиента SOCKS5)
+				 *
+				 * @return результат выполнения объединения
+				 */
+				bool splice(const event::id_t, const event::direct_t) noexcept;
+			public:
+				/**
 				 * @brief Метод установки пропускной способности клиента
 				 *
 				 * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
@@ -194,6 +199,19 @@ namespace awh {
 				 * @return          результат выполнения установки
 				 */
 				bool bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
+			public:
+				/**
+				 * @brief Метод активации/деактивации мультикаст группы (заглушка для клиента SOCKS5)
+				 *
+				 * @return результат выполнения установки
+				 */
+				bool membership(const event::mode_t, string_view, string_view, const uint16_t) noexcept;
+				/**
+				 * @brief Метод активации/деактивации мультикаст группы (заглушка для клиента SOCKS5)
+				 *
+				 * @return результат выполнения установки
+				 */
+				bool membership(const event::mode_t, const net::addr_t *, const net::addr_t *, const uint16_t) noexcept;
 			public:
 				/**
 				 * @brief Метод установки параметров авторизации
@@ -250,39 +268,35 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param client объект юнита клиента
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit Socks5(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param client объект юнита клиента
-				 * @param tls    объект транспортного уровня безопасности
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param tls объект транспортного уровня безопасности
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit Socks5(unit::client_t * client, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param client объект юнита клиента
-				 * @param dns    объект DNS-резолвера
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param dns объект DNS-резолвера
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit Socks5(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param client объект юнита клиента
-				 * @param dns    объект DNS-резолвера
-				 * @param tls    объект транспортного уровня безопасности
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param dns объект DNS-резолвера
+				 * @param tls объект транспортного уровня безопасности
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit Socks5(unit::client_t * client, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
 				/**
 				 * @brief Деструктор

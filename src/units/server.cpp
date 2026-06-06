@@ -830,16 +830,16 @@ size_t awh::unit::Server::send(const event::id_t eid, const void * buffer, const
 	return this->_io->send(eid, buffer, size);
 }
 /**
- * @brief Метод перемещения данных между сервером и другим событием
+ * @brief Метод объединения данных между сервером и другим событием
  *
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
- * @return     результат выполнения перемещения
+ * @return     результат выполнения объединения
  */
 bool awh::unit::Server::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	// Выполняем блокировку потока для работы с событием сервера
 	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-	// Выполняем перемещение данных между событием сервера и другим событием
+	// Выполняем объединение данных между событием сервера и другим событием
 	return this->_io->splice(eid, dest);
 }
 /**

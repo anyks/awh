@@ -1180,10 +1180,10 @@ namespace dns {
  * @return       текущие параметры пакета
  */
 awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) noexcept {
+	// Копируем время жизни из объекта параметров пакета
+	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
 	this->attempt = packet.attempt;
-	// Копируем время жизни из объекта параметров пакета
-	this->lifetime = packet.lifetime;
 	// Копируем размер полезной нагрузки из объекта параметров пакета
 	this->payload.size = packet.payload.size;
 	// Перемещаем буфер полезной нагрузки из объекта параметров пакета
@@ -1191,7 +1191,7 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) n
 	// Зануляем количество попыток в объекте параметров пакета
 	packet.attempt = 0;
 	// Зануляем время жизни в объекте параметров пакета
-	packet.lifetime = 0;
+	packet.alive = 0;
 	// Зануляем размер полезной нагрузки в объекте параметров пакета
 	packet.payload.size = 0;
 	// Зануляем буфер полезной нагрузки в объекте параметров пакета, чтобы избежать двойного освобождения памяти
@@ -1206,10 +1206,10 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) n
  * @return        текущие параметры пакета
  */
 awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (const Packet & packet) noexcept {
+	// Копируем время жизни из объекта параметров пакета
+	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
 	this->attempt = packet.attempt;
-	// Копируем время жизни из объекта параметров пакета
-	this->lifetime = packet.lifetime;
 	// Копируем размер полезной нагрузки из объекта параметров пакета
 	this->payload.size = packet.payload.size;
 	// Выделяем новый буфер для полезной нагрузки и копируем данные из объекта параметров пакета
@@ -1225,18 +1225,18 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (const Packet & pack
  * @param packet объект параметров пакета
  */
 awh::unit::DNS::Packet::Packet(Packet && packet) noexcept {
+	// Копируем время жизни из объекта параметров пакета
+	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
 	this->attempt = packet.attempt;
-	// Копируем время жизни из объекта параметров пакета
-	this->lifetime = packet.lifetime;
 	// Копируем размер полезной нагрузки из объекта параметров пакета
 	this->payload.size = packet.payload.size;
 	// Перемещаем буфер полезной нагрузки из объекта параметров пакета
 	this->payload.buffer = ::move(packet.payload.buffer);
+	// Зануляем время жизни в объекте параметров пакета
+	packet.alive = 0;
 	// Зануляем количество попыток в объекте параметров пакета
 	packet.attempt = 0;
-	// Зануляем время жизни в объекте параметров пакета
-	packet.lifetime = 0;
 	// Зануляем размер полезной нагрузки в объекте параметров пакета
 	packet.payload.size = 0;
 	// Зануляем буфер полезной нагрузки в объекте параметров пакета, чтобы избежать двойного освобождения памяти
@@ -1248,10 +1248,10 @@ awh::unit::DNS::Packet::Packet(Packet && packet) noexcept {
  * @param packet объект параметров пакета
  */
 awh::unit::DNS::Packet::Packet(const Packet & packet) noexcept {
+	// Копируем время жизни из объекта параметров пакета
+	this->alive = packet.alive;
 	// Копируем количество попыток из объекта параметров пакета
 	this->attempt = packet.attempt;
-	// Копируем время жизни из объекта параметров пакета
-	this->lifetime = packet.lifetime;
 	// Копируем размер полезной нагрузки из объекта параметров пакета
 	this->payload.size = packet.payload.size;
 	// Выделяем новый буфер для полезной нагрузки и копируем данные из объекта параметров пакета
@@ -1263,7 +1263,7 @@ awh::unit::DNS::Packet::Packet(const Packet & packet) noexcept {
  * @brief Конструктор
  *
  */
-awh::unit::DNS::Packet::Packet() noexcept : attempt(0), lifetime(0) {}
+awh::unit::DNS::Packet::Packet() noexcept : alive(0), attempt(0) {}
 
 /**
  * @brief Метод очистки очереди идентификаторов событий
@@ -2706,7 +2706,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					// Выполняем блокировку потока для работы с контейнером активных пакетов
 					const locker_t <std::shared_mutex> lock(this->_transfer.mtxWaiting, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 					// Если время жизни пакета ещё не истекло
-					if(this->_transfer.packets.front().lifetime > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
+					if(this->_transfer.packets.front().alive > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
 						// Получаем объект заголовка запроса
 						::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 						// Добавляем пакет в контейнер активных пакетов
@@ -2805,7 +2805,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						// Если в очереди на отправку есть пакеты
 						if(!this->_transfer.packets.empty()){
 							// Если время жизни пакета ещё не истекло
-							if(this->_transfer.packets.front().lifetime > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
+							if(this->_transfer.packets.front().alive > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
 								// Получаем объект заголовка запроса
 								::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 								// Добавляем пакет в контейнер активных пакетов
@@ -5019,25 +5019,25 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 /**
  * @brief Метод установки таймаута для ожидания ответа от DNS-сервера
  *
- * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+ * @param delay время ожидания ответа от DNS-сервера (в миллисекундах)
  */
-void awh::unit::DNS::setTimeout(const uint32_t timeout) noexcept {
+void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
 		// Выполняем блокировку потока для работы с событием DNS-резолвера
 		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Устанавливаем таймаут для ожидания ответа от DNS-сервера
-		this->_resolver.timeout = timeout;
+		// Устанавливаем время ожидания ответа от DNS-сервера
+		this->_resolver.delay = delay;
 		// Если DNS-резолверы IPv4 уже инициализированы
 		if(!this->_resolver.idv4.empty()){
 			/**
 			 * Выполняем перебор всех событий DNS-резолвера для семейство IPv4
 			 */
 			for(auto & eid : this->_resolver.idv4)
-				// Устанавливаем таймаут для ожидания ответа от DNS-сервера
-				this->_io->setTimeout(eid, event::action_t::READ, this->_resolver.timeout);
+				// Устанавливаем время ожидания ответа от DNS-сервера
+				this->_io->setTimeout(eid, event::action_t::READ, this->_resolver.delay);
 		}
 		// Если DNS-резолверы IPv6 уже инициализированы
 		if(!this->_resolver.idv6.empty()){
@@ -5045,8 +5045,8 @@ void awh::unit::DNS::setTimeout(const uint32_t timeout) noexcept {
 			 * Выполняем перебор всех событий DNS-резолвера для семейство IPv6
 			 */
 			for(auto & eid : this->_resolver.idv6)
-				// Устанавливаем таймаут для ожидания ответа от DNS-сервера
-				this->_io->setTimeout(eid, event::action_t::READ, this->_resolver.timeout);
+				// Устанавливаем время ожидания ответа от DNS-сервера
+				this->_io->setTimeout(eid, event::action_t::READ, this->_resolver.delay);
 		}
 	/**
 	 * Если возникает ошибка
@@ -5057,7 +5057,7 @@ void awh::unit::DNS::setTimeout(const uint32_t timeout) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5170,8 +5170,8 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 							if(this->_io->setPort(this->_resolver.idv4[i], this->_resolver.port)){
 								// Сбрасываем результат
 								result = false;
-								// Устанавливаем таймаут для ожидания ответа от DNS-сервера
-								this->_io->setTimeout(this->_resolver.idv4[i], event::action_t::READ, this->_resolver.timeout);
+								// Устанавливаем время ожидания ответа от DNS-сервера
+								this->_io->setTimeout(this->_resolver.idv4[i], event::action_t::READ, this->_resolver.delay);
 								// Если префикс для переменных окружения установлен
 								if(!this->_resolver.prefix.empty()){
 									// Получаем значение переменной
@@ -5261,8 +5261,8 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 							if(this->_io->setPort(this->_resolver.idv6[i], this->_resolver.port)){
 								// Сбрасываем результат
 								result = false;
-								// Устанавливаем таймаут для ожидания ответа от DNS-сервера
-								this->_io->setTimeout(this->_resolver.idv6[i], event::action_t::READ, this->_resolver.timeout);
+								// Устанавливаем время ожидания ответа от DNS-сервера
+								this->_io->setTimeout(this->_resolver.idv6[i], event::action_t::READ, this->_resolver.delay);
 								// Если префикс для переменных окружения установлен
 								if(!this->_resolver.prefix.empty()){
 									// Получаем значение переменной
@@ -6374,32 +6374,32 @@ awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
 /**
  * @brief Метод поиска доменного имени по IP-адресу
  *
- * @param id      идентификатор DNS-запроса
- * @param ip      адрес для поиска доменного имени
- * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
- * @return        результат выполнения запроса
+ * @param id    идентификатор DNS-запроса
+ * @param ip    адрес для поиска доменного имени
+ * @param alive время жизни запроса (в миллисекундах)
+ * @return      результат выполнения запроса
  */
-bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t alive) noexcept {
 	// Если список резолверов для семейства IPv6 не пустой
 	if(!this->_resolver.idv6.empty())
 		// Выполняем обратный DNS-запрос для IPv6
-		return this->search(id, event::family_t::IPV6, ip, timeout);
+		return this->search(id, event::family_t::IPV6, ip, alive);
 	// Если список резолверов для семейства IPv4 не пустой
 	if(!this->_resolver.idv4.empty())
 		// Выполняем обратный DNS-запрос для IPv4
-		return this->search(id, event::family_t::IPV4, ip, timeout);
+		return this->search(id, event::family_t::IPV4, ip, alive);
 	// Выводим отрицательный результат
 	return false;
 }
 /**
  * @brief Метод поиска доменного имени по IP-адресу
  *
- * @param id      идентификатор DNS-запроса
- * @param ip      адрес для поиска доменного имени
- * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
- * @return        результат выполнения запроса
+ * @param id    идентификатор DNS-запроса
+ * @param ip    адрес для поиска доменного имени
+ * @param alive время жизни запроса (в миллисекундах)
+ * @return      результат выполнения запроса
  */
-bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_t alive) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6527,7 +6527,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alive), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -6549,7 +6549,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 							// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 							::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 							// Устанавливаем время жизни пакета для отслеживания его выполнения
-							this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+							this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 							// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 							return true;
 						}
@@ -6566,7 +6566,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+					ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 				}
 				// Идентификатор события клиента DNS-резолвера
 				event::id_t eid = 0;
@@ -6596,7 +6596,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6611,13 +6611,13 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 /**
  * @brief Метод поиска доменного имени по IP-адресу
  *
- * @param id      идентификатор DNS-запроса
- * @param family  тип интернет-протокола IPv4/IPv6
- * @param ip      адрес для поиска доменного имени
- * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
- * @return        результат выполнения запроса
+ * @param id     идентификатор DNS-запроса
+ * @param family тип интернет-протокола IPv4/IPv6
+ * @param ip     адрес для поиска доменного имени
+ * @param alive  время жизни запроса (в миллисекундах)
+ * @return       результат выполнения запроса
  */
-bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_view ip, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_view ip, const uint32_t alive) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6775,7 +6775,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, alive), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -6797,7 +6797,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 							// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 							::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 							// Устанавливаем время жизни пакета для отслеживания его выполнения
-							this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+							this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 							// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 							return true;
 						}
@@ -6814,7 +6814,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+					ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 				}
 				// Идентификатор события клиента DNS-резолвера
 				event::id_t eid = 0;
@@ -6844,7 +6844,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6859,13 +6859,13 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 /**
  * @brief Метод выполнения произвольного DNS-запроса
  *
- * @param id      идентификатор DNS-запроса
- * @param record  тип DNS-записи, которую необходимо получить
- * @param domain  доменное имя
- * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
- * @return        результат выполнения запроса
+ * @param id     идентификатор DNS-запроса
+ * @param record тип DNS-записи, которую необходимо получить
+ * @param domain доменное имя
+ * @param alive  время жизни запроса (в миллисекундах)
+ * @return       результат выполнения запроса
  */
-bool awh::unit::DNS::request(const id_t id, const record_t record, string_view domain, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::request(const id_t id, const record_t record, string_view domain, const uint32_t alive) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -6898,7 +6898,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, alive), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -6920,7 +6920,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 						// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 						::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 						// Устанавливаем время жизни пакета для отслеживания его выполнения
-						this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+						this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 						// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 						return true;
 					}
@@ -6937,7 +6937,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 				// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 				::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
 				// Устанавливаем время жизни пакета для отслеживания его выполнения
-				ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+				ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 			}
 			// Идентификатор события клиента DNS-резолвера
 			event::id_t eid = 0;
@@ -6966,7 +6966,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6981,33 +6981,33 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 /**
  * @brief Метод разрешения доменного имени
  *
- * @param id      идентификатор DNS-запроса
- * @param domain  доменное имя
- * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
- * @return        результат выполнения запроса
+ * @param id     идентификатор DNS-запроса
+ * @param domain доменное имя
+ * @param alive  время жизни запроса (в миллисекундах)
+ * @return       результат выполнения запроса
  */
-bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t alive) noexcept {
 	// Если список резолверов для семейства IPv6 не пустой
 	if(!this->_resolver.idv6.empty())
 		// Выполняем разрешение доменного имени
-		return this->resolve(id, event::family_t::IPV6, domain, timeout);
+		return this->resolve(id, event::family_t::IPV6, domain, alive);
 	// Если список резолверов для семейства IPv4 не пустой
 	if(!this->_resolver.idv4.empty())
 		// Выполняем разрешение доменного имени
-		return this->resolve(id, event::family_t::IPV4, domain, timeout);
+		return this->resolve(id, event::family_t::IPV4, domain, alive);
 	// Выводим отрицательный результат
 	return false;
 }
 /**
  * @brief Метод разрешения доменного имени
  *
- * @param id      идентификатор DNS-запроса
- * @param family  тип интернет-протокола IPv4/IPv6
- * @param domain  доменное имя
- * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
- * @return        результат выполнения запроса
+ * @param id     идентификатор DNS-запроса
+ * @param family тип интернет-протокола IPv4/IPv6
+ * @param domain доменное имя
+ * @param alive  время жизни запроса (в миллисекундах)
+ * @return       результат выполнения запроса
  */
-bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t timeout) noexcept {
+bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t alive) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -7117,7 +7117,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, alive), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -7154,7 +7154,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, alive), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7176,7 +7176,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 							// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 							::memcpy(this->_transfer.packets.back().payload.buffer.get(), ::dns::buffer, size);
 							// Устанавливаем время жизни пакета для отслеживания его выполнения
-							this->_transfer.packets.back().lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+							this->_transfer.packets.back().alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 							// Выходим из функции, так как пакет успешно добавлен в очередь на отправку
 							return true;
 						}
@@ -7193,7 +7193,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 					::memcpy(ret.first->second.payload.buffer.get(), ::dns::buffer, size);
 					// Устанавливаем время жизни пакета для отслеживания его выполнения
-					ret.first->second.lifetime = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (timeout > 0 ? timeout : 15000));
+					ret.first->second.alive = (this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) + (alive > 0 ? alive : 15000));
 				}
 				// Идентификатор события клиента DNS-резолвера
 				event::id_t eid = 0;
@@ -7223,7 +7223,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

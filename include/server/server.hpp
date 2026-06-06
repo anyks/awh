@@ -64,6 +64,9 @@ namespace awh {
 			// Функция обратного вызова для обработки сервера
 			callback_t _callback;
 		protected:
+			// Время жизни DNS запроса (в миллисекундах)
+			atomic_uint32_t _aliveDNS;
+		protected:
 			// Мютекс для блокировки потоков при работе с TLS
 			lock_state_t <std::shared_mutex> _mtx;
 		protected:
@@ -384,11 +387,11 @@ namespace awh {
 			virtual size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 		public:
 			/**
-			 * @brief Метод перемещения данных между сервером и другим событием
+			 * @brief Метод объединения данных между сервером и другим событием
 			 *
 			 * @param eid  идентификатор события-источника
 			 * @param dest идентификатор события-приёмника
-			 * @return     результат выполнения перемещения
+			 * @return     результат выполнения объединения
 			 */
 			virtual bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 		public:
@@ -519,6 +522,19 @@ namespace awh {
 			 * @return       результат выполнения установки
 			 */
 			virtual bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод получения времени жизни DNS запроса
+			 *
+			 * @return время жизни DNS запроса в миллисекундах
+			 */
+			virtual uint32_t getAliveDNS() const noexcept;
+			/**
+			 * @brief Метод установки времени жизни DNS запроса
+			 *
+			 * @param alive время жизни DNS запроса в миллисекундах
+			 */
+			virtual void setAliveDNS(const uint32_t alive) noexcept;
 		public:
 			/**
 			 * @brief Метод получения режима использования таймаута на чтение события

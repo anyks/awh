@@ -164,20 +164,16 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект исполнителя для обработки событий клиента
 	Executor executor(&fmk, &log);
-	// Создаём объект юнита клиента
-	unit::client_t unit(&fmk, &log);
 	// Создаём объект клиента
-	client_t client(&unit, &fmk, &log);
+	client_t client(&fmk, &log);
 	// Создаём событие клиента и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
-	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options!" << endl;
-	// Устанавливаем идентификатор события клиента
-	client.setEventId(eid);
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setPort(2222) && client.setTarget("127.0.0.1")){
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд

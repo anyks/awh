@@ -47,7 +47,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 			// Если работа клиента запущена
 			if(status == event::status_t::LAUNCHED){
 				// Выполняем запуск работы клиента, если клиент не запущен
-				if(!this->_client->launch(this->_eid)){
+				if(!this->_client->launch(this->_id.eid)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
 						/**
@@ -55,13 +55,13 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, this->_eid);
+							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (state)), log_t::flag_t::WARNING, this->_id.eid);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_eid);
+							this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_id.eid);
 						#endif
 					}
 				// Если клиент запущен удачно
@@ -69,7 +69,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("launch"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_client->getTarget(this->_eid), this->_client->getPort(this->_eid));
+						this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_client->getTarget(this->_id.eid), this->_client->getPort(this->_id.eid));
 				}
 			}
 		} break;
@@ -89,31 +89,19 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-							// Устанавливаем адрес хоста целевой машины для клиента
-							if(this->_client->setTarget(this->_eid, this->_host)){
-								/**
-								 * В зависимости от статуса события клиента выполняем запуск
-								 */
-								switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
+							// Если событие клиента не запущено, запускаем его
+							if(awh_cast <unit::unit_t *> (this->_client.get())->status(this->_id.eid) == event::status_t::NONE){
+								// Устанавливаем адрес хоста целевой машины для клиента
+								if(this->_client->setTarget(this->_id.eid, this->_host)){
 									// Если событие клиента не запущено, запускаем его
-									case static_cast <uint8_t> (event::status_t::NONE): {
-										// Если событие клиента не запущено, запускаем его
-										if(this->_client->commit(this->_eid)){
-											// Если функция обратного вызова установлена
-											if(this->_callback.is("ready"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_client->family(this->_eid), this->_host, this->_client->getTarget(this->_eid));
-											// Запускаем клиента
-											this->_client->start();
-										}
-									} break;
-									// Если событие клиента инициализировано, запускаем его
-									case static_cast <uint8_t> (event::status_t::INITIAL):
-									// Если событие находится в состоянии успешного подключения
-									case static_cast <uint8_t> (event::status_t::SUCCESS):
+									if(this->_client->commit(this->_id.eid)){
+										// Если функция обратного вызова установлена
+										if(this->_callback.is("ready"))
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_client->family(this->_id.eid), this->_host, this->_client->getTarget(this->_id.eid));
 										// Запускаем клиента
 										this->_client->start();
-									break;
+									}
 								}
 							}
 							// Выходим из функции
@@ -121,7 +109,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 						}
 					}
 					// Выполняем резолвинг доменного имени
-					if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_client)->family(this->_eid), this->_host, this->_timeoutDNS.load(std::memory_order_acquire))){
+					if(!this->_dns.client->resolve(this->_dns.id, this->_client->family(this->_id.eid), this->_host, this->_dns.alive.load(std::memory_order_acquire))){
 						// Создаём текст ошибки резолвинга доменного имени
 						const string error = this->_fmk->format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
 						// Если функция обратного вызова не установлена
@@ -140,7 +128,7 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						// Выполняем функцию обратного вызова
-						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_eid, event::error_t::NOT_FOUND, error);
+						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_id.eid, event::error_t::NOT_FOUND, error);
 					}
 				} break;
 				// Если событие DNS-резолвера остановлено
@@ -160,13 +148,13 @@ void awh::Client::status(const event::status_t status, const state_t state) noex
  */
 void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_tls != nullptr) && (this->_secId > 0)){
+		if((this->_tls != nullptr) && (this->_id.sid > 0)){
 			// Если подключение успешно
 			if(ok){
 				// Если рукопожатие TLS не выполнено
-				if(!this->_tls->handshake(this->_secId)){
+				if(!this->_tls->handshake(this->_id.sid)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error_tls")){
 						/**
@@ -202,7 +190,7 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
  */
 void awh::Client::write(const event::id_t eid, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("write"))
 			// Выполняем функцию обратного вызова
@@ -217,17 +205,19 @@ void awh::Client::write(const event::id_t eid, const size_t size) noexcept {
  */
 void awh::Client::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("state"))
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 		// Если статус клиента изменился на "уничтожен"
 		if(status == event::status_t::DESTROYED){
+			// Обнуляем идентификатор клиента
+			this->_id.eid = 0;
 			// Если объект DNS-резолвера установлен
-			if(this->_dns != nullptr)
+			if(this->_dns.client != nullptr)
 				// Останавливаем событие DNS-резолвера
-				this->_dns->stop();
+				this->_dns.client->stop();
 			// Останавливаем событие клиента
 			else this->_client->stop();
 		}
@@ -241,7 +231,7 @@ void awh::Client::state(const event::id_t eid, const event::status_t status) noe
  */
 void awh::Client::action(const event::id_t eid, const event::action_t action) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("action"))
 			// Выполняем функцию обратного вызова
@@ -257,11 +247,11 @@ void awh::Client::action(const event::id_t eid, const event::action_t action) no
  */
 void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_tls != nullptr) && (this->_secId > 0)){
+		if((this->_tls != nullptr) && (this->_id.sid > 0)){
 			// Если данные не расшифрованы
-			if(!this->_tls->decrypt(this->_secId, buffer, size)){
+			if(!this->_tls->decrypt(this->_id.sid, buffer, size)){
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error_tls")){
 					/**
@@ -297,11 +287,26 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
  */
 void awh::Client::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
+	}
+}
+/**
+ * @brief Метод обработки попыток подключения клиента к удалённому серверу
+ *
+ * @param domain   доменное имя для резолвинга
+ * @param attempts количество попыток подключения
+ */
+void awh::Client::attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии
+	if(this->_dns.client->working()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("attempts_dns"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const string &, const uint8_t)> ("attempts_dns", domain, attempts);
 	}
 }
 /**
@@ -313,7 +318,7 @@ void awh::Client::error(const event::id_t eid, const event::error_t error, const
  */
 void awh::Client::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("available"))
 			// Выполняем функцию обратного вызова
@@ -330,7 +335,7 @@ void awh::Client::available(const event::id_t eid, const event::status_t status,
  */
 bool awh::Client::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("timeout"))
 			// Выполняем функцию обратного вызова
@@ -349,11 +354,38 @@ bool awh::Client::timeout(const event::id_t eid, const event::action_t action, c
  */
 void awh::Client::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("spool"))
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, buffer, size);
+	}
+}
+/**
+ * @brief Метод резолвинга доменного имени в сетевой адрес
+ *
+ * @param family семейство адресов (IPv4/IPv6)
+ * @param domain доменное имя для резолвинга
+ * @param addr   указатель на структуру для хранения результата резолвинга
+ */
+void awh::Client::resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии
+	if(this->_dns.client->working()){
+		// Если событие клиента не запущено, запускаем его
+		if(awh_cast <unit::unit_t *> (this->_client.get())->status(this->_id.eid) == event::status_t::NONE){
+			// Устанавливаем адрес хоста целевой машины для клиента
+			if(this->_client->setTarget(this->_id.eid, addr)){
+				// Если событие клиента не запущено, запускаем его
+				if(this->_client->commit(this->_id.eid)){
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("ready"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_client->getTarget(this->_id.eid));
+					// Запускаем клиента
+					this->_client->start();
+				}
+			}
+		}
 	}
 }
 /**
@@ -364,7 +396,7 @@ void awh::Client::spool(const event::id_t eid, const event::send_error_t error, 
  */
 void awh::Client::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("state_tls"))
 			// Выполняем функцию обратного вызова
@@ -374,7 +406,7 @@ void awh::Client::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::stat
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("connect"))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_eid, true);
+				this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
 		}
 	}
 }
@@ -387,7 +419,7 @@ void awh::Client::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::stat
  */
 void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если функция обратного вызова не установлена
 		if(!this->_callback.is("error_tls")){
 			/**
@@ -410,14 +442,13 @@ void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::erro
 /**
   @brief Метод получения событий шифрования/дешифрования данных TLS
  *
- * @param id     идентификатор TLS
  * @param event  тип события TLS
  * @param size   размер данных для события шифрования/дешифрования TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
  */
-void awh::Client::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
+void awh::Client::processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		/**
 		 * Обрабатываем тип события TLS
 		 */
@@ -425,7 +456,7 @@ void awh::Client::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const
 			// Если событие шифрования данных TLS
 			case static_cast <uint8_t> (tls::coder_t::event_t::ENCRYPTION): {
 				// Отправляем данные обратно клиенту, которые были зашифрованы TLS
-				if(!this->_client->send(this->_eid, reinterpret_cast <const char *> (buffer), size)){
+				if(!this->_client->send(this->_id.eid, reinterpret_cast <const char *> (buffer), size)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
 						/**
@@ -433,7 +464,7 @@ void awh::Client::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -449,64 +480,8 @@ void awh::Client::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("read"))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_eid, buffer, size);
+					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer, size);
 			} break;
-		}
-	}
-}
-/**
- * @brief Метод обработки попыток подключения клиента к удалённому серверу
- *
- * @param id       идентификатор DNS-запроса
- * @param domain   доменное имя для резолвинга
- * @param attempts количество попыток подключения
- */
-void awh::Client::attemptsDNS([[maybe_unused]] const unit::dns_t::id_t id, const string & domain, const uint8_t attempts) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии
-	if(this->_dns->working()){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("attempts_dns"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const string &, const uint8_t)> ("attempts_dns", domain, attempts);
-	}
-}
-/**
- * @brief Метод резолвинга доменного имени в сетевой адрес
- *
- * @param id     идентификатор DNS-запроса
- * @param family семейство адресов (IPv4/IPv6)
- * @param domain доменное имя для резолвинга
- * @param addr   указатель на структуру для хранения результата резолвинга
- */
-void awh::Client::resolveDNS([[maybe_unused]] const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии
-	if(this->_dns->working()){
-		// Устанавливаем адрес хоста целевой машины для клиента
-		if(this->_client->setTarget(this->_eid, addr)){
-			/**
-			 * В зависимости от статуса события клиента выполняем запуск
-			 */
-			switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
-				// Если событие клиента не запущено, запускаем его
-				case static_cast <uint8_t> (event::status_t::NONE): {
-					// Если событие клиента не запущено, запускаем его
-					if(this->_client->commit(this->_eid)){
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("ready"))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, family, domain, this->_client->getTarget(this->_eid));
-						// Запускаем клиента
-						this->_client->start();
-					}
-				} break;
-				// Если событие клиента инициализировано, запускаем его
-				case static_cast <uint8_t> (event::status_t::INITIAL):
-				// Если событие находится в состоянии успешного подключения
-				case static_cast <uint8_t> (event::status_t::SUCCESS):
-					// Запускаем клиента
-					this->_client->start();
-				break;
-			}
 		}
 	}
 }
@@ -516,13 +491,13 @@ void awh::Client::resolveDNS([[maybe_unused]] const unit::dns_t::id_t id, const 
  */
 void awh::Client::stop() noexcept {
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0){
+		if(this->_id.eid > 0){
 			// Если объект DNS-резолвера установлен
-			if(this->_dns != nullptr)
+			if(this->_dns.client != nullptr)
 				// Останавливаем событие DNS-резолвера
-				this->_dns->stop();
+				this->_dns.client->stop();
 			// Останавливаем событие клиента
 			else this->_client->stop();
 		// Если идентификатор клиента не установлен
@@ -532,13 +507,13 @@ void awh::Client::stop() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -549,29 +524,29 @@ void awh::Client::stop() noexcept {
  */
 void awh::Client::start() noexcept {
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0){
+		if(this->_id.eid > 0){
 			// Если объект DNS-резолвера установлен
-			if(this->_dns != nullptr)
+			if(this->_dns.client != nullptr)
 				// Запускаем событие DNS-резолвера
-				this->_dns->start();
+				this->_dns.client->start();
 			// Если объект DNS-резолвера не установлен
 			else {
 				/**
 				 * В зависимости от статуса события клиента выполняем запуск
 				 */
-				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client)->status(this->_eid))){
+				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (this->_client.get())->status(this->_id.eid))){
 					// Если событие клиента не запущено, запускаем его
 					case static_cast <uint8_t> (event::status_t::NONE): {
 						// Если событие клиента не запущено, запускаем его
-						if(this->_client->commit(this->_eid)){
+						if(this->_client->commit(this->_id.eid)){
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("ready")){
 								// Получаем адрес хоста целевой машины для клиента
-								const string & host = this->_client->getTarget(this->_eid);
+								const string & host = this->_client->getTarget(this->_id.eid);
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_eid, this->_client->family(this->_eid), host, host);
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_client->family(this->_id.eid), host, host);
 							}
 							// Запускаем клиента
 							this->_client->start();
@@ -593,13 +568,13 @@ void awh::Client::start() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -611,11 +586,11 @@ void awh::Client::start() noexcept {
  */
 bool awh::Client::pause() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Приостанавливаем событие клиента
-			return this->_client->pause(this->_eid);
+			return this->_client->pause(this->_id.eid);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -623,13 +598,13 @@ bool awh::Client::pause() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -643,11 +618,11 @@ bool awh::Client::pause() noexcept {
  */
 bool awh::Client::resume() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Возобновляем событие клиента
-			return this->_client->resume(this->_eid);
+			return this->_client->resume(this->_id.eid);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -655,18 +630,56 @@ bool awh::Client::resume() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
 	// Выводим результат по умолчанию
 	return false;
+}
+/**
+ * @brief Метод уничтожения события клиента
+ *
+ */
+void awh::Client::destroy() noexcept {
+	// Если DNS-резолвер или клиент находятся в рабочем состоянии
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0)
+			// Уничтожаем событие клиента
+			return this->_client->destroy(this->_id.eid);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+}
+/**
+ * @brief Метод проверки, жив ли клиент
+ *
+ * @return результат проверки
+ */
+bool awh::Client::isAlive() const noexcept {
+	// Выводим результат проверки, жив ли клиент, на основе наличия идентификатора клиента
+	return (this->_id.eid > 0);
 }
 /**
  * @brief Метод мультиподключения клиентов к удалённым хостам
@@ -675,11 +688,11 @@ bool awh::Client::resume() noexcept {
  */
 bool awh::Client::connect() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Подключаем клиента к удалённому серверу
-			return this->_client->connect(this->_eid);
+			return this->_client->connect(this->_id.eid);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -687,13 +700,13 @@ bool awh::Client::connect() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -707,11 +720,11 @@ bool awh::Client::connect() noexcept {
  */
 bool awh::Client::disconnect() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Отключаем клиента от удалённого сервера
-			return this->_client->disconnect(this->_eid);
+			return this->_client->disconnect(this->_id.eid);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -719,13 +732,13 @@ bool awh::Client::disconnect() noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -743,15 +756,15 @@ void awh::Client::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности работы потоков для объекта клиента
 	this->_client->threadSafety(mode);
 	// Если объект DNS-резолвера установлен
-	if(this->_dns != nullptr)
+	if(this->_dns.client != nullptr)
 		// Устанавливаем режим безопасности работы потоков для объекта DNS-резолвера
-		this->_dns->threadSafety(mode);
+		this->_dns.client->threadSafety(mode);
 	// Если идентификатор TLS и объект TLS установлены
-	if((this->_secId > 0) && (this->_tls != nullptr))
+	if((this->_id.sid > 0) && (this->_tls != nullptr))
 		// Устанавливаем режим безопасности работы потоков для объекта TLS
-		this->_tls->threadSafety(this->_secId, mode);
+		this->_tls->threadSafety(this->_id.sid, mode);
 	// Если идентификатор TLS не установлен, но объект TLS установлен
-	else if((this->_secId == 0) && (this->_tls != nullptr)) {
+	else if((this->_id.sid == 0) && (this->_tls != nullptr)) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -811,9 +824,28 @@ void awh::Client::callback(const callback_t & callback) noexcept {
  */
 bool awh::Client::recv() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working())
-		// Выполняем получение данных от сервера
-		return this->_client->recv(this->_eid);
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0)
+			// Выполняем получение данных от сервера
+			return this->_client->recv(this->_id.eid);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -826,21 +858,233 @@ bool awh::Client::recv() noexcept {
  */
 size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns != nullptr ? this->_dns->working() : this->_client->working()){
-		// Если идентификатор TLS и объект TLS установлены
-		if((this->_secId > 0) && (this->_tls != nullptr)){
-			// Если шифрование данных TLS выполнено успешно
-			if(this->_tls->encrypt(this->_secId, buffer, size))
-				// Возвращаем размер отправленных данных
-				return size;
-			// Выводим результат по умолчанию
-			return 0;
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0){
+			// Если идентификатор TLS и объект TLS установлены
+			if((this->_id.sid > 0) && (this->_tls != nullptr)){
+				// Если шифрование данных TLS выполнено успешно
+				if(this->_tls->encrypt(this->_id.sid, buffer, size))
+					// Возвращаем размер отправленных данных
+					return size;
+				// Выводим результат по умолчанию
+				return 0;
+			}
+			// Выполняем отправку данных серверу
+			return this->_client->send(this->_id.eid, buffer, size);
+		// Если идентификатор клиента не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
 		}
-		// Выполняем отправку данных серверу
-		return this->_client->send(this->_eid, buffer, size);
 	}
 	// Выводим результат по умолчанию
 	return 0;
+}
+/**
+ * @brief Метод объединения данных между клиентом и другим событием
+ *
+ * @param eid    идентификатор события
+ * @param direct направление объединения данных (клиент -> событие, событие -> клиент)
+ * @return       результат выполнения объединения
+ */
+bool awh::Client::splice(const event::id_t eid, const event::direct_t direct) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0){
+		/**
+		 * Обрабатываем направление объединения данных
+		 */
+		switch(static_cast <uint8_t> (direct)){
+			// Если направление объединения данных от клиента к событию
+			case static_cast <uint8_t> (event::direct_t::FORWARD):
+				// Выполняем объединение данных между клиентом и другим событием
+				return this->_client->splice(this->_id.eid, eid);
+			// Если направление объединения данных от события к клиенту
+			case static_cast <uint8_t> (event::direct_t::REVERSE):
+				// Выполняем объединение данных между другим событием и клиентом
+				return this->_client->splice(eid, this->_id.eid);
+		}
+	// Если идентификатор клиента не установлен
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (direct)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения опций клиента
+ *
+ * @return опции клиента
+ */
+uint16_t awh::Client::getOptions() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Извлекаем опции клиента
+		return this->_client->getOptions(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки опций клиента
+ *
+ * @param options опции клиента для установки
+ * @return        результат выполнения установки
+ */
+bool awh::Client::setOptions(const uint16_t options) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Устанавливаем опции клиента
+		return this->_client->setOptions(this->_id.eid, options);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(options), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод установки опции клиента
+ *
+ * @param option опция клиента для установки
+ * @param mode   режим установки опции клиента
+ * @return       результат выполнения установки
+ */
+bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Устанавливаем опцию клиента
+		return this->_client->setOption(this->_id.eid, option, mode);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(option, mode), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+ *
+ * @return максимальное количество хопов
+ */
+awh::event::hops_t awh::Client::getHops() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Получаем максимальное количество хопов
+		return this->_client->getHops(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::hops_t::LOOPBACK;
+}
+/**
+ * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+ *
+ * @param hops максимальное количество хопов
+ * @return     результат работы функции
+ */
+bool awh::Client::setHops(const event::hops_t hops) noexcept {
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0)
+			// Устанавливаем максимальное количество хопов
+			return this->_client->setHops(this->_id.eid, hops);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hops)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
 }
 /**
  * @brief Метод получения сетевого интерфейса клиента
@@ -849,9 +1093,9 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
  */
 string awh::Client::getIface() const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем сетевой интерфейс клиента
-		return this->_client->getIface(this->_eid);
+		return this->_client->getIface(this->_id.eid);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -859,13 +1103,13 @@ string awh::Client::getIface() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -879,11 +1123,11 @@ string awh::Client::getIface() const noexcept {
  */
 bool awh::Client::setIface(string_view name) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Устанавливаем сетевой интерфейс клиента
-			return this->_client->setIface(this->_eid, name);
+			return this->_client->setIface(this->_id.eid, name);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -891,13 +1135,13 @@ bool awh::Client::setIface(string_view name) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -911,9 +1155,9 @@ bool awh::Client::setIface(string_view name) noexcept {
  */
 uint16_t awh::Client::getPort() const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем порт удаленного сервера для клиента
-		return this->_client->getPort(this->_eid);
+		return this->_client->getPort(this->_id.eid);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -921,13 +1165,13 @@ uint16_t awh::Client::getPort() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -941,11 +1185,11 @@ uint16_t awh::Client::getPort() const noexcept {
  */
 bool awh::Client::setPort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Устанавливаем порт удаленного сервера для клиента
-			return this->_client->setPort(this->_eid, port);
+			return this->_client->setPort(this->_id.eid, port);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -953,13 +1197,13 @@ bool awh::Client::setPort(const uint16_t port) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -973,9 +1217,9 @@ bool awh::Client::setPort(const uint16_t port) noexcept {
  */
 uint16_t awh::Client::getInternalPort() const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем внутренний порт события для клиента
-		return this->_client->getInternalPort(this->_eid);
+		return this->_client->getInternalPort(this->_id.eid);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -983,13 +1227,13 @@ uint16_t awh::Client::getInternalPort() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1003,11 +1247,11 @@ uint16_t awh::Client::getInternalPort() const noexcept {
  */
 bool awh::Client::setInternalPort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Устанавливаем внутренний порт события для клиента
-			return this->_client->setInternalPort(this->_eid, port);
+			return this->_client->setInternalPort(this->_id.eid, port);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1015,13 +1259,13 @@ bool awh::Client::setInternalPort(const uint16_t port) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1039,9 +1283,9 @@ string awh::Client::getTarget() const noexcept {
 		// Возвращаем сохранённый адрес хоста целевой машины для клиента
 		return this->_host;
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем адрес хоста целевой машины для клиента
-		return this->_client->getTarget(this->_eid);
+		return this->_client->getTarget(this->_id.eid);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1049,13 +1293,13 @@ string awh::Client::getTarget() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1071,7 +1315,7 @@ bool awh::Client::setTarget(string_view target) noexcept {
 	// Результат работы функции
 	bool result = false;
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		/**
 		 * Определяем тип полученного IP-адреса
 		 */
@@ -1083,13 +1327,13 @@ bool awh::Client::setTarget(string_view target) noexcept {
 			// Для типа IPv6
 			case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 				// Если идентификатор клиента установлен
-				if(this->_eid > 0){
+				if(this->_id.eid > 0){
 					// Устанавливаем адрес хоста целевой машины для клиента
-					result = this->_client->setTarget(this->_eid, target);
+					result = this->_client->setTarget(this->_id.eid, target);
 					// Если адрес установлен успешно, сохраняем его
 					if(result)
 						// Сохраняем адрес хоста целевой машины для клиента
-						this->_host = this->_client->getTarget(this->_eid);
+						this->_host = this->_client->getTarget(this->_id.eid);
 				// Если идентификатор клиента не установлен
 				} else {
 					/**
@@ -1097,13 +1341,13 @@ bool awh::Client::setTarget(string_view target) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(target), log_t::flag_t::WARNING);
+						this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(target), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+						this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 					#endif
 				}
 			} break;
@@ -1127,15 +1371,15 @@ bool awh::Client::setTarget(string_view target) noexcept {
  */
 bool awh::Client::setTarget(const net::addr_t * target) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0){
+		if(this->_id.eid > 0){
 			// Устанавливаем адрес хоста целевой машины для клиента
-			const bool result = this->_client->setTarget(this->_eid, target);
+			const bool result = this->_client->setTarget(this->_id.eid, target);
 			// Если адрес установлен успешно, сохраняем его
 			if(result)
 				// Сохраняем адрес хоста целевой машины для клиента
-				this->_host = this->_client->getTarget(this->_eid);
+				this->_host = this->_client->getTarget(this->_id.eid);
 			// Возвращаем результат установки адреса хоста целевой машины для клиента
 			return result;
 		// Если идентификатор клиента не установлен
@@ -1145,13 +1389,13 @@ bool awh::Client::setTarget(const net::addr_t * target) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1166,9 +1410,9 @@ bool awh::Client::setTarget(const net::addr_t * target) noexcept {
  */
 bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем адрес хоста целевой машины для клиента
-		return this->_client->getTarget(this->_eid, target);
+		return this->_client->getTarget(this->_id.eid, target);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1176,13 +1420,13 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1196,9 +1440,9 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
  */
 string awh::Client::getAddress(const event::address_t address) const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем адрес клиента
-		return this->_client->getAddress(this->_eid, address);
+		return this->_client->getAddress(this->_id.eid, address);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1206,13 +1450,13 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1227,11 +1471,11 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
  */
 bool awh::Client::setAddress(const event::address_t address, string_view value) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Устанавливаем адрес клиента
-			return this->_client->setAddress(this->_eid, address, value);
+			return this->_client->setAddress(this->_id.eid, address, value);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1239,13 +1483,13 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1261,11 +1505,11 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
  */
 bool awh::Client::setAddress(const event::address_t address, const net::addr_t * value) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор клиента установлен
-		if(this->_eid > 0)
+		if(this->_id.eid > 0)
 			// Устанавливаем адрес клиента
-			return this->_client->setAddress(this->_eid, address, value);
+			return this->_client->setAddress(this->_id.eid, address, value);
 		// Если идентификатор клиента не установлен
 		else {
 			/**
@@ -1273,13 +1517,13 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
@@ -1295,9 +1539,9 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
  */
 bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем адрес клиента
-		return this->_client->getAddress(this->_eid, address, value);
+		return this->_client->getAddress(this->_id.eid, address, value);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1305,14 +1549,76 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения режима трансляции пакетов клиента
+ *
+ * @return режим трансляции пакетов (unicast, multicast, broadcast)
+ */
+awh::event::delivery_mode_t awh::Client::getDelivery() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Извлекаем режим трансляции пакетов клиента
+		return this->_client->getDelivery(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::delivery_mode_t::NONE;
+}
+/**
+ * @brief Метод установки режима трансляции пакетов клиента
+ *
+ * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+ * @return         результат выполнения установки
+ */
+bool awh::Client::setDelivery(const event::delivery_mode_t delivery) noexcept {
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0)
+			// Устанавливаем режим трансляции пакетов клиента
+			return this->_client->setDelivery(this->_id.eid, delivery);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (delivery)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
+		}
 	}
 	// Выводим результат по умолчанию
 	return false;
@@ -1325,9 +1631,9 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
  */
 size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем размер буфера клиента
-		return this->_client->getBufferSize(this->_eid, action);
+		return this->_client->getBufferSize(this->_id.eid, action);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1335,13 +1641,13 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1356,9 +1662,9 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
  */
 bool awh::Client::setBufferSize(const event::action_t action, const size_t size) noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Устанавливаем размер буфера клиента
-		return this->_client->setBufferSize(this->_eid, action, size);
+		return this->_client->setBufferSize(this->_id.eid, action, size);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1366,28 +1672,28 @@ bool awh::Client::setBufferSize(const event::action_t action, const size_t size)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
 }
 /**
- * @brief Метод получения таймаута резолвинга доменного имени
+ * @brief Метод получения времени жизни DNS запроса
  *
- * @return таймаут резолвинга доменного имени в миллисекундах
+ * @return время жизни DNS запроса в миллисекундах
  */
-uint32_t awh::Client::getTimeoutDNS() const noexcept {
+uint32_t awh::Client::getAliveDNS() const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
-		// Возвращаем таймаут резолвинга доменного имени для клиента
-		return this->_timeoutDNS.load(std::memory_order_acquire);
+	if(this->_id.eid > 0)
+		// Возвращаем время жизни DNS запроса для клиента
+		return this->_dns.alive.load(std::memory_order_acquire);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1395,26 +1701,26 @@ uint32_t awh::Client::getTimeoutDNS() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
 	return 0;
 }
 /**
- * @brief Метод установки таймаута резолвинга доменного имени
+ * @brief Метод установки времени жизни DNS запроса
  *
- * @param timeout таймаут резолвинга доменного имени в миллисекундах
+ * @param alive время жизни DNS запроса в миллисекундах
  */
-void awh::Client::setTimeoutDNS(const uint32_t timeout) noexcept {
-	// Устанавливаем таймаут резолвинга доменного имени для клиента
-	this->_timeoutDNS.store(timeout, std::memory_order_release);
+void awh::Client::setAliveDNS(const uint32_t alive) noexcept {
+	// Устанавливаем время жизни DNS запроса для клиента
+	this->_dns.alive.store(alive, std::memory_order_release);
 }
 /**
  * @brief Метод получения режима использования таймаута на чтение события
@@ -1423,9 +1729,9 @@ void awh::Client::setTimeoutDNS(const uint32_t timeout) noexcept {
  */
 awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем режим использования таймаута на чтение события
-		return this->_client->getUsageReadTimeout(this->_eid);
+		return this->_client->getUsageReadTimeout(this->_id.eid);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1433,13 +1739,13 @@ awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1452,9 +1758,9 @@ awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
  */
 void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Устанавливаем режим использования таймаута на чтение события
-		this->_client->setUsageReadTimeout(this->_eid, usage);
+		this->_client->setUsageReadTimeout(this->_id.eid, usage);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1462,13 +1768,13 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 }
@@ -1480,9 +1786,9 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
  */
 uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Извлекаем таймаут клиента
-		return this->_client->getTimeout(this->_eid, action);
+		return this->_client->getTimeout(this->_id.eid, action);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1490,13 +1796,13 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1510,9 +1816,9 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
  */
 void awh::Client::setTimeout(const event::action_t action, const uint32_t timeout) noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Устанавливаем таймаут клиента
-		this->_client->setTimeout(this->_eid, action, timeout);
+		this->_client->setTimeout(this->_id.eid, action, timeout);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1520,13 +1826,13 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 }
@@ -1539,9 +1845,9 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
  */
 bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Устанавливаем пропускную способность клиента
-		return this->_client->bandwidth(this->_eid, limiting, bandwidth);
+		return this->_client->bandwidth(this->_id.eid, limiting, bandwidth);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1549,13 +1855,13 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
@@ -1571,9 +1877,9 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
  */
 bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если идентификатор клиента установлен
-	if(this->_eid > 0)
+	if(this->_id.eid > 0)
 		// Устанавливаем параметры keep-alive для клиента
-		return this->_client->keepAlive(this->_eid, cnt, idle, intvl);
+		return this->_client->keepAlive(this->_id.eid, cnt, idle, intvl);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1581,96 +1887,401 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client ID is not set", __PRETTY_FUNCTION__, make_tuple(cnt, idle, intvl), log_t::flag_t::WARNING);
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(cnt, idle, intvl), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client ID is not set", log_t::flag_t::WARNING);
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию
 	return false;
 }
 /**
- * @brief Метод установки идентификатора события клиента
+ * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
  *
- * @param eid идентификатор события для установки
+ * @return значение DSCP
  */
-void awh::Client::setEventId(const event::id_t eid) noexcept {
+awh::event::dscp_t awh::Client::getDifferentiatedServicesCodePoint() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Получаем значение DSCP для клиента
+		return this->_client->getDifferentiatedServicesCodePoint(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::dscp_t::CS0;
+}
+/**
+ * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+ *
+ * @param dscp значение DSCP
+ * @return     результат работы функции
+ */
+bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Устанавливаем значение DSCP для клиента
+		return this->_client->setDifferentiatedServicesCodePoint(this->_id.eid, dscp);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (dscp)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения обнаружения максимального размера пакета (MTU)
+ *
+ * @return режим обнаружения максимального размера пакета (MTU)
+ */
+awh::event::mtu_discover_t awh::Client::getMaximumTransmissionUnitDiscover() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Получаем режим обнаружения максимального размера пакета (MTU) для клиента
+		return this->_client->getMaximumTransmissionUnitDiscover(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::mtu_discover_t::NONE;
+}
+/**
+ * @brief Метод установки обнаружения максимального размера пакета (MTU)
+ *
+ * @param mode режим обнаружения максимального размера пакета (MTU)
+ * @return     результат работы функции
+ */
+bool awh::Client::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t mode) const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Устанавливаем режим обнаружения максимального размера пакета (MTU) для клиента
+		return this->_client->setMaximumTransmissionUnitDiscover(this->_id.eid, mode);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод активации/деактивации мультикаст группы
+ *
+ * @param mode   режим активации/деактивации
+ * @param group  мультикаст-группа для активации/деактивации
+ * @param source адрес сетевого интерфейса с которого выполняется подписка
+ * @param port   порт мультикаст-группы с которого выполняется подписка
+ * @return       результат выполнения установки
+ */
+bool awh::Client::membership(const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working())
-		// Устанавливаем идентификатор события для клиента
-		this->_eid = eid;
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0)
+			// Устанавливаем активацию/деактивацию мультикаст группы для клиента
+			return this->_client->membership(this->_id.eid, mode, group, source, port);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод активации/деактивации мультикаст группы
+ *
+ * @param mode   режим активации/деактивации
+ * @param group  мультикаст-группа для активации/деактивации
+ * @param source адрес сетевого интерфейса с которого выполняется подписка
+ * @param port   порт мультикаст-группы с которого выполняется подписка
+ * @return       результат выполнения установки
+ */
+bool awh::Client::membership(const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0)
+			// Устанавливаем активацию/деактивацию мультикаст группы для клиента
+			return this->_client->membership(this->_id.eid, mode, group, source, port);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод инициализации клиента
+ *
+ * @param family   семейство адресов
+ * @param type     тип события
+ * @param protocol протокол события
+ * @return         идентификатор созданного клиента
+ */
+awh::event::id_t awh::Client::init(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
+	// Если идентификатор клиента не установлен
+	if(this->_id.eid == 0){
+		// Выдаём новый идентификатор DNS-резолвера для клиента
+		this->_dns.id = this->_dns.client->issue();
+		// Инициализируем нового события клиента
+		this->_id.eid = this->_client->issue(family, type, protocol);
+	// Если идентификатор клиента не установлен
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("This client has already been initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("This client has already been initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return this->_id.eid;
 }
 /**
  * @brief Метод установки идентификатора TLS
  *
- * @param secId идентификатор TLS для установки
+ * @param sid идентификатор TLS для установки
  */
-void awh::Client::setSecurityId(const tls::coder_t::id_t secId) noexcept {
+void awh::Client::setSecurityId(const tls::coder_t::id_t sid) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns != nullptr ? !this->_dns->working() : !this->_client->working()){
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_client->working()){
 		// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-		if((secId > 0) && (this->_tls != nullptr)){
+		if((sid > 0) && (this->_tls != nullptr)){
 			// Устанавливаем идентификатор TLS для клиента
-			this->_secId = secId;
+			this->_id.sid = sid;
 			// Устанавливаем функцию обратного вызова на событие состояния TLS
-			this->_tls->on(this->_secId, std::bind(&client_t::stateTLS, this, _1, _2));
+			this->_tls->on(this->_id.sid, std::bind(&client_t::stateTLS, this, _1, _2));
 			// Устанавливаем функцию обратного вызова на событие ошибок TLS
-			this->_tls->on(this->_secId, std::bind(&client_t::errorTLS, this, _1, _2, _3));
+			this->_tls->on(this->_id.sid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
 			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-			this->_tls->on(this->_secId, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
+			this->_tls->on(this->_id.sid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
 		}
 	}
 }
 /**
  * @brief Конструктор
  *
- * @param client объект юнита клиента
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
  */
-awh::Client::Client(unit::client_t * client, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _dns(nullptr), _tls(nullptr), _client(client), _fmk(fmk), _log(log) {
-	// Если объект клиента установлен
-	if(this->_client != nullptr){
-		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
-		// Устанавливаем функцию обратного вызова на событие записи данных!
-		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
-		this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие обработки действий клиента
-		this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие получения данных клиентом
-		this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие ошибок клиента
-		this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-		this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-		this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-		this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
-		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-		this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
-	// Если объект клиента не установлен
+awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _addr(fmk, log), _callback(fmk, log), _client(nullptr), _tls(nullptr), _fmk(fmk), _log(log) {
+	// Создаём объект клиента
+	this->_client = make_unique <unit::client_t> (fmk, log);
+	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+	this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
+	// Устанавливаем функцию обратного вызова на событие записи данных!
+	this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
+	this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
+	this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
+	this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие ошибок клиента
+	this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+	this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+	this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+	this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+	this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param tls объект транспортного уровня безопасности
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Client::Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _addr(fmk, log), _callback(fmk, log), _client(nullptr), _tls(tls), _fmk(fmk), _log(log) {
+	// Если объект транспортного уровня безопасности не установлен
+	if(this->_tls == nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("TLS object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
+		#endif
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	}
+	// Создаём объект клиента
+	this->_client = make_unique <unit::client_t> (fmk, log);
+	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+	this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
+	// Устанавливаем функцию обратного вызова на событие записи данных!
+	this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
+	this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
+	this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
+	this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие ошибок клиента
+	this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+	this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+	this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+	this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+	this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param dns объект DNS-резолвера
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _addr(fmk, log), _callback(fmk, log), _client(nullptr), _tls(nullptr), _fmk(fmk), _log(log) {
+	// Создаём объект клиента
+	this->_client = make_unique <unit::client_t> (fmk, log);
+	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+	this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
+	// Устанавливаем функцию обратного вызова на событие записи данных!
+	this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
+	this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
+	this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
+	this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие ошибок клиента
+	this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+	this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+	this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+	this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+	this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
+	// Устанавливаем переданный объект DNS-резолвера для клиента
+	this->_dns.client = dns;
+	// Если объект DNS-резолвера установлен
+	if(this->_dns.client != nullptr){
+		// Устанавливаем функции обратного вызова для обработки событий статуса DNS-резолвера
+		this->_dns.client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::RESOLVER);
+		// Устанавливаем функции обратного вызова для обработки событий ошибок DNS-резолвера
+		this->_dns.client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
+		// Устанавливаем функции обратного вызова для обработки попыток подключения клиента к удалённому серверу
+		this->_dns.client->on <void (const unit::dns_t::id_t, const string &, const uint8_t)> ("attempts", &client_t::attempts, this, _1, _2, _3);
+		// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+		this->_dns.client->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &client_t::resolve, this, _1, _2, _3, _4);
+	// Если объект DNS-резолвера не установлен
 	} else {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			this->_log->debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client object not set", log_t::flag_t::CRITICAL);
+			this->_log->print("DNS resolver object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
@@ -1679,247 +2290,79 @@ awh::Client::Client(unit::client_t * client, const fmk_t * fmk, const log_t * lo
 /**
  * @brief Конструктор
  *
- * @param client объект юнита клиента
- * @param tls    объект транспортного уровня безопасности
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
+ * @param dns объект DNS-резолвера
+ * @param tls объект транспортного уровня безопасности
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
  */
-awh::Client::Client(unit::client_t * client, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _dns(nullptr), _tls(tls), _client(client), _fmk(fmk), _log(log) {
-	// Если объект клиента установлен
-	if(this->_client != nullptr){
-		// Если объект транспортного уровня безопасности не установлен
-		if(this->_tls == nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("TLS object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("TLS object not set", log_t::flag_t::CRITICAL);
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
-		// Устанавливаем функцию обратного вызова на событие записи данных!
-		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
-		this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие обработки действий клиента
-		this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие получения данных клиентом
-		this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие ошибок клиента
-		this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-		this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-		this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-		this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
-		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-		this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
-	// Если объект клиента не установлен
-	} else {
+awh::Client::Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _addr(fmk, log), _callback(fmk, log), _client(nullptr), _tls(tls), _fmk(fmk), _log(log) {
+	// Если объект транспортного уровня безопасности не установлен
+	if(this->_tls == nullptr){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			this->_log->debug("TLS object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client object not set", log_t::flag_t::CRITICAL);
+			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
 	}
-}
-/**
- * @brief Конструктор
- *
- * @param client объект юнита клиента
- * @param dns    объект DNS-резолвера
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
- */
-awh::Client::Client(unit::client_t * client, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""},  _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _dns(dns), _tls(nullptr), _client(client), _fmk(fmk), _log(log) {
-	// Если объект клиента установлен
-	if(this->_client != nullptr){
-		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
-		// Устанавливаем функцию обратного вызова на событие записи данных!
-		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
-		this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие обработки действий клиента
-		this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие получения данных клиентом
-		this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие ошибок клиента
-		this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-		this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-		this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-		this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
-		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-		this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
-		// Если объект DNS-резолвера установлен
-		if(this->_dns != nullptr){
-			// Устанавливаем функции обратного вызова для обработки событий статуса DNS-резолвера
-			this->_dns->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::RESOLVER);
-			// Устанавливаем функции обратного вызова для обработки событий ошибок DNS-резолвера
-			this->_dns->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
-			// Устанавливаем функции обратного вызова для обработки попыток подключения клиента к удалённому серверу
-			this->_dns->on <void (const unit::dns_t::id_t, const string &, const uint8_t)> ("attempts", &client_t::attemptsDNS, this, _1, _2, _3);
-			// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-			this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &client_t::resolveDNS, this, _1, _2, _3, _4);
-		// Если объект DNS-резолвера не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("DNS resolver object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("DNS resolver object not set", log_t::flag_t::CRITICAL);
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-	// Если объект клиента не установлен
+	// Создаём объект клиента
+	this->_client = make_unique <unit::client_t> (fmk, log);
+	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+	this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
+	// Устанавливаем функцию обратного вызова на событие записи данных!
+	this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
+	this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
+	this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
+	this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие ошибок клиента
+	this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+	this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+	this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+	this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+	this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
+	// Устанавливаем переданный объект DNS-резолвера для клиента
+	this->_dns.client = dns;
+	// Если объект DNS-резолвера установлен
+	if(this->_dns.client != nullptr){
+		// Устанавливаем функции обратного вызова для обработки событий статуса DNS-резолвера
+		this->_dns.client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::RESOLVER);
+		// Устанавливаем функции обратного вызова для обработки событий ошибок DNS-резолвера
+		this->_dns.client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
+		// Устанавливаем функции обратного вызова для обработки попыток подключения клиента к удалённому серверу
+		this->_dns.client->on <void (const unit::dns_t::id_t, const string &, const uint8_t)> ("attempts", &client_t::attempts, this, _1, _2, _3);
+		// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+		this->_dns.client->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &client_t::resolve, this, _1, _2, _3, _4);
+	// Если объект DNS-резолвера не установлен
 	} else {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Client object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			this->_log->debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Client object not set", log_t::flag_t::CRITICAL);
-		#endif
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
-	}
-}
-/**
- * @brief Конструктор
- *
- * @param client объект юнита клиента
- * @param dns    объект DNS-резолвера
- * @param tls    объект транспортного уровня безопасности
- * @param fmk    объект фреймворка
- * @param log    объект для работы с логами
- */
-awh::Client::Client(unit::client_t * client, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _timeoutDNS(3000), _dns(dns), _tls(tls), _client(client), _fmk(fmk), _log(log) {
-	// Если объект клиента установлен
-	if(this->_client != nullptr){
-		// Если объект транспортного уровня безопасности не установлен
-		if(this->_tls == nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("TLS object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("TLS object not set", log_t::flag_t::CRITICAL);
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-		this->_client->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::CLIENT);
-		// Устанавливаем функцию обратного вызова на событие записи данных!
-		this->_client->on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
-		this->_client->on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие обработки действий клиента
-		this->_client->on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
-		// Устанавливаем функцию обратного вызова на событие получения данных клиентом
-		this->_client->on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие ошибок клиента
-		this->_client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-		this->_client->on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-		this->_client->on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
-		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-		this->_client->on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
-		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-		this->_client->on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
-		// Если объект DNS-резолвера установлен
-		if(this->_dns != nullptr){
-			// Устанавливаем функции обратного вызова для обработки событий статуса DNS-резолвера
-			this->_dns->on <void (const event::status_t)> ("status", &client_t::status, this, _1, state_t::RESOLVER);
-			// Устанавливаем функции обратного вызова для обработки событий ошибок DNS-резолвера
-			this->_dns->on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
-			// Устанавливаем функции обратного вызова для обработки попыток подключения клиента к удалённому серверу
-			this->_dns->on <void (const unit::dns_t::id_t, const string &, const uint8_t)> ("attempts", &client_t::attemptsDNS, this, _1, _2, _3);
-			// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
-			this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &client_t::resolveDNS, this, _1, _2, _3, _4);
-		// Если объект DNS-резолвера не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("DNS resolver object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("DNS resolver object not set", log_t::flag_t::CRITICAL);
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-	// Если объект клиента не установлен
-	} else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client object not set", log_t::flag_t::CRITICAL);
+			this->_log->print("DNS resolver object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
 		::exit(EXIT_FAILURE);
@@ -1929,4 +2372,7 @@ awh::Client::Client(unit::client_t * client, unit::dns_t * dns, tls::coder_t * t
  * @brief Деструктор
  *
  */
-awh::Client::~Client() noexcept {}
+awh::Client::~Client() noexcept {
+	// Удаляем объект юнита клиента
+	this->_client.reset(nullptr);
+}

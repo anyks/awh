@@ -812,7 +812,7 @@ void awh::server::Socks5::status(const event::status_t status, const state_t sta
 						// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
 						this->_dns->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server::Socks5::resolveDNS, this, _1, this->_eid, _2, _3, _4);
 						// Выполняем резолвинг хоста текущего сервера
-						if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_server)->family(this->_eid), this->_host)){
+						if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_server)->family(this->_eid), this->_host, this->_aliveDNS.load(std::memory_order_acquire))){
 							// Создаём текст ошибки резолвинга хоста текущего сервера
 							const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", this->_host.c_str());
 							// Если функция обратного вызова не установлена
@@ -1859,7 +1859,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												// Выполняем добавление связи DNS-резолвера и идентификатора пира
 												auto ret = this->_resolves.emplace(this->_dns->issue(), i->second.eid);
 												// Выполняем резолвинг хоста текущего сервера
-												if(!this->_dns->resolve(ret.first->first, awh_cast <unit::unit_t *> (this->_server)->family(eid), awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain)){
+												if(!this->_dns->resolve(ret.first->first, awh_cast <unit::unit_t *> (this->_server)->family(eid), awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain, this->_aliveDNS.load(std::memory_order_acquire))){
 													// Создаём текст ошибки резолвинга хоста текущего сервера
 													const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain.c_str());
 													// Если функция обратного вызова не установлена
@@ -2183,7 +2183,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													// Выполняем добавление связи DNS-резолвера и идентификатора пира
 													auto ret = this->_resolves.emplace(this->_dns->issue(), eid);
 													// Выполняем резолвинг хоста текущего сервера
-													if(!this->_dns->resolve(ret.first->first, awh_cast <unit::unit_t *> (this->_server)->family(eid), awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain)){
+													if(!this->_dns->resolve(ret.first->first, awh_cast <unit::unit_t *> (this->_server)->family(eid), awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain, this->_aliveDNS.load(std::memory_order_acquire))){
 														// Создаём текст ошибки резолвинга хоста текущего сервера
 														const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain.c_str());
 														// Если функция обратного вызова не установлена

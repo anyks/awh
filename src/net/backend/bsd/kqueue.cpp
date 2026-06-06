@@ -48289,11 +48289,11 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 	return result;
 }
 /**
- * @brief Метод перемещения данных между событиями
+ * @brief Метод объединения данных между событиями
  *
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
- * @return     результат выполнения перемещения
+ * @return     результат выполнения объединения
  */
 bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	/**

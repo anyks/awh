@@ -301,14 +301,12 @@ int32_t main(int32_t argc, char * argv[]){
 	Executor executor(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
 	tls::coder_t tls(&fmk, &log);
-	// Создаём объект юнита клиента
-	unit::client_t unit(&fmk, &log);
 	// Создаём объект клиента
-	client_t client(&unit, &tls, &fmk, &log);
+	client_t client(&tls, &fmk, &log);
 	// Создаём событие клиента и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
+	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устананавливаем опции события
-	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
@@ -357,12 +355,8 @@ int32_t main(int32_t argc, char * argv[]){
 	tls.serverNameIndication(cts, "anyks.com");
 	// Включаем проверку имени хоста TLS
 	tls.validateServerNameIndication(cts, false);
-	// Создаём идентификатор транспортного уровня TLS
-	const tls::coder_t::id_t ctl = tls.transport(cts);
-	// Устанавливаем идентификатор события клиента
-	client.setEventId(eid);
 	// Устанавливаем идентификатор TLS для клиента
-	client.setSecurityId(ctl);
+	client.setSecurityId(tls.transport(cts));
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setPort(3333) && client.setTarget("127.0.0.1")){
 		// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета

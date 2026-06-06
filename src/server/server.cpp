@@ -195,7 +195,7 @@ void awh::Server::status(const event::status_t status, const state_t state) noex
 						} break;
 					}
 					// Выполняем резолвинг хоста текущего сервера
-					if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_server)->family(this->_eid), this->_host)){
+					if(!this->_dns->resolve(this->_dns->issue(), awh_cast <unit::unit_t *> (this->_server)->family(this->_eid), this->_host, this->_aliveDNS.load(std::memory_order_acquire))){
 						// Создаём текст ошибки резолвинга хоста текущего сервера
 						const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", this->_host.c_str());
 						// Если функция обратного вызова не установлена
@@ -1467,16 +1467,16 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
 	return 0;
 }
 /**
- * @brief Метод перемещения данных между сервером и другим событием
+ * @brief Метод объединения данных между сервером и другим событием
  *
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
- * @return     результат выполнения перемещения
+ * @return     результат выполнения объединения
  */
 bool awh::Server::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	// Если идентификатор клиента найден в списке обслуживаемых клиентов
 	if((eid != this->_eid) && this->_server->isActual(eid))
-		// Перемещаем данные между событиями
+		// Объединяем данные между событиями
 		return this->_server->splice(eid, dest);
 	// Если идентификатор клиента не найден в списке обслуживаемых клиентов
 	else {
@@ -2101,6 +2101,44 @@ bool awh::Server::setBufferSize(const event::id_t eid, const event::action_t act
 	return false;
 }
 /**
+ * @brief Метод получения времени жизни DNS запроса
+ *
+ * @return время жизни DNS запроса в миллисекундах
+ */
+uint32_t awh::Server::getAliveDNS() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_eid > 0)
+		// Возвращаем время жизни DNS запроса
+		return this->_aliveDNS.load(std::memory_order_acquire);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Server ID is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Server ID is not set", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки времени жизни DNS запроса
+ *
+ * @param alive время жизни DNS запроса в миллисекундах
+ */
+void awh::Server::setAliveDNS(const uint32_t alive) noexcept {
+	// Устанавливаем время жизни DNS запроса
+	this->_aliveDNS.store(alive, std::memory_order_release);
+}
+/**
  * @brief Метод получения режима использования таймаута на чтение события
  *
  * @return режим использования таймаута на чтение события
@@ -2459,7 +2497,7 @@ void awh::Server::setSecurityId(const tls::coder_t::id_t secId) noexcept {
  */
 awh::Server::Server(unit::server_t * server, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _dns(nullptr), _tls(nullptr), _server(server), _fmk(fmk), _log(log) {
+ _aliveDNS(10000), _dns(nullptr), _tls(nullptr), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Деактивируем мьютекс на время инициализации
@@ -2529,7 +2567,7 @@ awh::Server::Server(unit::server_t * server, const fmk_t * fmk, const log_t * lo
  */
 awh::Server::Server(unit::server_t * server, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _dns(nullptr), _tls(tls), _server(server), _fmk(fmk), _log(log) {
+ _aliveDNS(10000), _dns(nullptr), _tls(tls), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Если объект транспортного уровня безопасности не установлен
@@ -2617,7 +2655,7 @@ awh::Server::Server(unit::server_t * server, tls::coder_t * tls, const fmk_t * f
  */
 awh::Server::Server(unit::server_t * server, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _dns(dns), _tls(nullptr), _server(server), _fmk(fmk), _log(log) {
+ _aliveDNS(10000), _dns(dns), _tls(nullptr), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Деактивируем мьютекс на время инициализации
@@ -2714,7 +2752,7 @@ awh::Server::Server(unit::server_t * server, unit::dns_t * dns, const fmk_t * fm
  */
 awh::Server::Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _eid(0), _secId(0), _addr(fmk, log), _callback(fmk, log),
- _dns(dns), _tls(tls), _server(server), _fmk(fmk), _log(log) {
+ _aliveDNS(10000), _dns(dns), _tls(tls), _server(server), _fmk(fmk), _log(log) {
 	// Если объект сервера установлен
 	if(this->_server != nullptr){
 		// Если объект транспортного уровня безопасности не установлен

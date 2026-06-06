@@ -331,11 +331,11 @@ namespace awh {
 			virtual bool setOption(const event::id_t id, const uint16_t option, const bool mode) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод перемещения данных между событиями
+			 * @brief Метод объединения данных между событиями
 			 *
 			 * @param eid  идентификатор события-источника
 			 * @param dest идентификатор события-приёмника
-			 * @return     результат выполнения перемещения
+			 * @return     результат выполнения объединения
 			 */
 			virtual bool splice(const event::id_t eid, const event::id_t dest) noexcept = 0;
 		public:

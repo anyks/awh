@@ -363,11 +363,11 @@ namespace awh {
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * @brief Метод перемещения данных между сервером и другим событием
+				 * @brief Метод объединения данных между сервером и другим событием
 				 *
 				 * @param eid  идентификатор события-источника
 				 * @param dest идентификатор события-приёмника
-				 * @return     результат выполнения перемещения
+				 * @return     результат выполнения объединения
 				 */
 				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 			public:

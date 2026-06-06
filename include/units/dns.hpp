@@ -100,10 +100,10 @@ namespace awh {
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Packet {
 					public:
+						// Время жизни DNS-записи (в миллисекундах)
+						uint64_t alive;
 						// Количество попыток DNS-запроса
 						uint8_t attempt;
-						// Время жизни DNS-записи (в миллисекундах)
-						uint64_t lifetime;
 						// Полезная нагрузка для отправки DNS-запроса
 						payload_t payload;
 					public:
@@ -259,8 +259,8 @@ namespace awh {
 					string prefix;
 					// Порт сервера DNS-резолвера
 					uint16_t port;
-					// Таймаут для ожидания ответа от DNS-сервера (в миллисекундах)
-					uint32_t timeout;
+					// Задержка ожидания ответа от DNS-сервера (в миллисекундах)
+					uint32_t delay;
 					// Очередь свободных идентификаторов событий DNS-резолверов
 					queue_t queue;
 					// Адрес DNS-сервера для выполнения запросов
@@ -278,7 +278,7 @@ namespace awh {
 					 *
 					 */
 					explicit Resolver() noexcept :
-					 prefix{AWH_SHORT_NAME}, port(53), timeout(5000),
+					 prefix{AWH_SHORT_NAME}, port(53), delay(5000),
 					 sourceIPv4(nullptr), sourceIPv6(nullptr) {}
 				} resolver_t;
 				/**
@@ -588,9 +588,9 @@ namespace awh {
 				/**
 				 * @brief Метод установки таймаута для ожидания ответа от DNS-сервера
 				 *
-				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
+				 * @param delay время ожидания ответа от DNS-сервера (в миллисекундах)
 				 */
-				void setTimeout(const uint32_t timeout) noexcept;
+				void setTimeout(const uint32_t delay) noexcept;
 			public:
 				/**
 				 * @brief Метод получения количества DNS-резолверов для выполнения запросов к DNS-серверам
@@ -712,62 +712,62 @@ namespace awh {
 				/**
 				 * @brief Метод поиска доменного имени по IP-адресу
 				 *
-				 * @param id      идентификатор DNS-запроса
-				 * @param ip      адрес для поиска доменного имени
-				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
-				 * @return        результат выполнения запроса
+				 * @param id    идентификатор DNS-запроса
+				 * @param ip    адрес для поиска доменного имени
+				 * @param alive время жизни запроса (в миллисекундах)
+				 * @return      результат выполнения запроса
 				 */
-				bool search(const id_t id, string_view ip, const uint32_t timeout = 0) noexcept;
+				bool search(const id_t id, string_view ip, const uint32_t alive = 0) noexcept;
 				/**
 				 * @brief Метод поиска доменного имени по IP-адресу
 				 *
-				 * @param id      идентификатор DNS-запроса
-				 * @param ip      адрес для поиска доменного имени
-				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
-				 * @return        результат выполнения запроса
+				 * @param id    идентификатор DNS-запроса
+				 * @param ip    адрес для поиска доменного имени
+				 * @param alive время жизни запроса (в миллисекундах)
+				 * @return      результат выполнения запроса
 				 */
-				bool search(const id_t id, const net::addr_t * ip, const uint32_t timeout = 0) noexcept;
+				bool search(const id_t id, const net::addr_t * ip, const uint32_t alive = 0) noexcept;
 				/**
 				 * @brief Метод поиска доменного имени по IP-адресу
 				 *
-				 * @param id      идентификатор DNS-запроса
-				 * @param family  тип интернет-протокола IPv4/IPv6
-				 * @param ip      адрес для поиска доменного имени
-				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
-				 * @return        результат выполнения запроса
+				 * @param id     идентификатор DNS-запроса
+				 * @param family тип интернет-протокола IPv4/IPv6
+				 * @param ip     адрес для поиска доменного имени
+				 * @param alive  время жизни запроса (в миллисекундах)
+				 * @return       результат выполнения запроса
 				 */
-				bool search(const id_t id, const event::family_t family, string_view ip, const uint32_t timeout = 0) noexcept;
+				bool search(const id_t id, const event::family_t family, string_view ip, const uint32_t alive = 0) noexcept;
 			public:
 				/**
 				 * @brief Метод выполнения произвольного DNS-запроса
 				 *
-				 * @param id      идентификатор DNS-запроса
-				 * @param record  тип DNS-записи, которую необходимо получить
-				 * @param domain  доменное имя
-				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
-				 * @return        результат выполнения запроса
+				 * @param id     идентификатор DNS-запроса
+				 * @param record тип DNS-записи, которую необходимо получить
+				 * @param domain доменное имя
+				 * @param alive  время жизни запроса (в миллисекундах)
+				 * @return       результат выполнения запроса
 				 */
-				bool request(const id_t id, const record_t record, string_view domain, const uint32_t timeout = 0) noexcept;
+				bool request(const id_t id, const record_t record, string_view domain, const uint32_t alive = 0) noexcept;
 			public:
 				/**
 				 * @brief Метод разрешения доменного имени
 				 *
-				 * @param id      идентификатор DNS-запроса
-				 * @param domain  доменное имя
-				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
-				 * @return        результат выполнения запроса
+				 * @param id     идентификатор DNS-запроса
+				 * @param domain доменное имя
+				 * @param alive  время жизни запроса (в миллисекундах)
+				 * @return       результат выполнения запроса
 				 */
-				bool resolve(const id_t id, string_view domain, const uint32_t timeout = 0) noexcept;
+				bool resolve(const id_t id, string_view domain, const uint32_t alive = 0) noexcept;
 				/**
 				 * @brief Метод разрешения доменного имени
 				 *
-				 * @param id      идентификатор DNS-запроса
-				 * @param family  тип интернет-протокола IPv4/IPv6
-				 * @param domain  доменное имя
-				 * @param timeout время ожидания ответа от DNS-сервера (в миллисекундах)
-				 * @return        результат выполнения запроса
+				 * @param id     идентификатор DNS-запроса
+				 * @param family тип интернет-протокола IPv4/IPv6
+				 * @param domain доменное имя
+				 * @param alive  время жизни запроса (в миллисекундах)
+				 * @return       результат выполнения запроса
 				 */
-				bool resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t timeout = 0) noexcept;
+				bool resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t alive = 0) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)

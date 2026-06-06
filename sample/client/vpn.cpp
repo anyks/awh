@@ -352,8 +352,6 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект логирования
 	log_t log(&fmk);
-	// Создаём объект юнита клиента
-	unit::client_t unit(&fmk, &log);
 	// Создаём объект тоннеля
 	unit::tunnel_t tunnel(&fmk, &log);
 	// Создаём объект посредника между сервером и туннелем
@@ -361,21 +359,19 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект клиента
-	client_t client(&unit, &dns, &fmk, &log);
+	client_t client(&dns, &fmk, &log);
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor(&tunnel, &mediator, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
-	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options!" << endl;
-	// Устанавливаем идентификатор события клиента
-	client.setEventId(eid);
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setPort(3333) && client.setTarget("anyks.com")){
 		// Регистрируем функцию обратного вызова на событие изменения статуса тоннеля
