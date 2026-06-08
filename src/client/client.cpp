@@ -55,7 +55,7 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING, this->_id.eid);
+							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_id.eid);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -119,7 +119,7 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status), static_cast <uint16_t> (index)), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -150,11 +150,11 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_tls != nullptr) && (this->_id.sid > 0)){
+		if((this->_coder != nullptr) && (this->_id.sid > 0)){
 			// Если подключение успешно
 			if(ok){
 				// Если рукопожатие TLS не выполнено
-				if(!this->_tls->handshake(this->_id.sid)){
+				if(!this->_coder->handshake(this->_id.sid)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error_tls")){
 						/**
@@ -249,9 +249,9 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_tls != nullptr) && (this->_id.sid > 0)){
+		if((this->_coder != nullptr) && (this->_id.sid > 0)){
 			// Если данные не расшифрованы
-			if(!this->_tls->decrypt(this->_id.sid, buffer, size)){
+			if(!this->_coder->decrypt(this->_id.sid, buffer, size)){
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error_tls")){
 					/**
@@ -395,7 +395,7 @@ void awh::Client::resolve(const unit::dns_t::id_t, const event::family_t family,
 		if(awh_cast <unit::unit_t *> (&this->_unit->client)->status(this->_id.eid) == event::status_t::NONE){
 			// Устанавливаем адрес хоста целевой машины для клиента
 			if(this->_unit->client.setTarget(this->_id.eid, addr)){
-				// Если событие клиента не запущено, запускаем его
+				// Выполняем фиксацию параметров клиента
 				if(this->_unit->client.commit(this->_id.eid)){
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("ready"))
@@ -553,32 +553,20 @@ void awh::Client::start() noexcept {
 				this->_dns.client->start();
 			// Если объект DNS-резолвера не установлен
 			else {
-				/**
-				 * В зависимости от статуса события клиента выполняем запуск
-				 */
-				switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (&this->_unit->client)->status(this->_id.eid))){
-					// Если событие клиента не запущено, запускаем его
-					case static_cast <uint8_t> (event::status_t::NONE): {
-						// Если событие клиента не запущено, запускаем его
-						if(this->_unit->client.commit(this->_id.eid)){
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("ready")){
-								// Получаем адрес хоста целевой машины для клиента
-								const string & host = this->_unit->client.getTarget(this->_id.eid);
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_unit->client.family(this->_id.eid), host, host);
-							}
-							// Запускаем клиента
-							this->_unit->client.start();
+				// Если событие клиента не запущено, запускаем его
+				if(awh_cast <unit::unit_t *> (&this->_unit->client)->status(this->_id.eid) == event::status_t::NONE){
+					// Выполняем фиксацию параметров клиента
+					if(this->_unit->client.commit(this->_id.eid)){
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("ready")){
+							// Получаем адрес хоста целевой машины для клиента
+							const string & host = this->_unit->client.getTarget(this->_id.eid);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_unit->client.family(this->_id.eid), host, host);
 						}
-					} break;
-					// Если событие клиента инициализировано, запускаем его
-					case static_cast <uint8_t> (event::status_t::INITIAL):
-					// Если событие находится в состоянии успешного подключения
-					case static_cast <uint8_t> (event::status_t::SUCCESS):
 						// Запускаем клиента
 						this->_unit->client.start();
-					break;
+					}
 				}
 			}
 		// Если идентификатор клиента не установлен
@@ -780,11 +768,11 @@ void awh::Client::threadSafety(const bool mode) noexcept {
 		// Устанавливаем режим безопасности работы потоков для объекта DNS-резолвера
 		this->_dns.client->threadSafety(mode);
 	// Если идентификатор TLS и объект TLS установлены
-	if((this->_id.sid > 0) && (this->_tls != nullptr))
+	if((this->_id.sid > 0) && (this->_coder != nullptr))
 		// Устанавливаем режим безопасности работы потоков для объекта TLS
-		this->_tls->threadSafety(this->_id.sid, mode);
+		this->_coder->threadSafety(this->_id.sid, mode);
 	// Если идентификатор TLS не установлен, но объект TLS установлен
-	else if((this->_id.sid == 0) && (this->_tls != nullptr)) {
+	else if((this->_id.sid == 0) && (this->_coder != nullptr)) {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -884,9 +872,9 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
 			// Если идентификатор TLS и объект TLS установлены
-			if((this->_id.sid > 0) && (this->_tls != nullptr)){
+			if((this->_id.sid > 0) && (this->_coder != nullptr)){
 				// Если шифрование данных TLS выполнено успешно
-				if(this->_tls->encrypt(this->_id.sid, buffer, size))
+				if(this->_coder->encrypt(this->_id.sid, buffer, size))
 					// Возвращаем размер отправленных данных
 					return size;
 				// Выводим результат по умолчанию
@@ -2154,15 +2142,15 @@ void awh::Client::setSecurityId(const tls::coder_t::id_t sid) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
 	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
 		// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-		if((sid > 0) && (this->_tls != nullptr)){
+		if((sid > 0) && (this->_coder != nullptr)){
 			// Устанавливаем идентификатор TLS для клиента
 			this->_id.sid = sid;
 			// Устанавливаем функцию обратного вызова на событие состояния TLS
-			this->_tls->on(this->_id.sid, std::bind(&client_t::stateTLS, this, _1, _2));
+			this->_coder->on(this->_id.sid, std::bind(&client_t::stateTLS, this, _1, _2));
 			// Устанавливаем функцию обратного вызова на событие ошибок TLS
-			this->_tls->on(this->_id.sid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
+			this->_coder->on(this->_id.sid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
 			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-			this->_tls->on(this->_id.sid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
+			this->_coder->on(this->_id.sid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
 		}
 	}
 }
@@ -2173,7 +2161,7 @@ void awh::Client::setSecurityId(const tls::coder_t::id_t sid) noexcept {
  * @param log объект для работы с логами
  */
 awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _tls(nullptr), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr), _fmk(fmk), _log(log) {
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -2205,9 +2193,9 @@ awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
  * @param log объект для работы с логами
  */
 awh::Client::Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _tls(tls), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(tls), _fmk(fmk), _log(log) {
 	// Если объект транспортного уровня безопасности не установлен
-	if(this->_tls == nullptr){
+	if(this->_coder == nullptr){
 		/**
 		 * Если включён режим отладки
 		 */
@@ -2255,7 +2243,7 @@ awh::Client::Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) no
  * @param log объект для работы с логами
  */
 awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _tls(nullptr), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr), _fmk(fmk), _log(log) {
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -2320,9 +2308,9 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
  * @param log объект для работы с логами
  */
 awh::Client::Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _tls(tls), _fmk(fmk), _log(log) {
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(tls), _fmk(fmk), _log(log) {
 	// Если объект транспортного уровня безопасности не установлен
-	if(this->_tls == nullptr){
+	if(this->_coder == nullptr){
 		/**
 		 * Если включён режим отладки
 		 */

@@ -180,30 +180,26 @@ int32_t main(int32_t argc, char * argv[]){
 	log_t log(&fmk);
 	// Создаём объект исполнителя для обработки событий сервера
 	Executor executor(&fmk, &log);
-	// Создаём объект юнита сервера
-	unit::server_t unit(&fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Создаём объект сервера
-	server::socks5_t server(&unit, &dns, &fmk, &log);
+	server::socks5_t server(&dns, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Устанавливаем имя кластера для сервера
-	unit.clusterName("ANYKS");
+	server.clusterName("ANYKS");
 	// Устанавливаем количество вокеров кластера для сервера
-	unit.clusterCount(4);
+	server.clusterCount(4);
 	// Включаем режим кластера для сервера
-	unit.clusterMode(event::mode_t::ENABLED);
+	server.clusterMode(event::mode_t::ENABLED);
 	// Создаём событие сервера TCP и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
+	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
-	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+	if(server.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
 		cout << " Successfully set event options for TCP event!" << endl;
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options TCP event!" << endl;
-	// Устанавливаем идентификатор события TCP сервера
-	server.setEventId(eid);
 	// Устанавливаем диапазон портов для выделения портов UDP серверов
 	server.udp(25, 62000, 63000, "0.0.0.0");
 	/*

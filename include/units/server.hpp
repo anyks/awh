@@ -76,7 +76,7 @@ namespace awh {
 				lock_state_t <std::shared_mutex> _mtx;
 			private:
 				// Список идентификаторов событий сервера
-				unordered_set <event::id_t> _events;
+				unordered_map <event::id_t, event::id_t> _events;
 			private:
 				/**
 				 * @brief Метод запуска/остановки работы сервера
@@ -638,6 +638,12 @@ namespace awh {
 				 * @return       результат выполнения установки
 				 */
 				bool membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept;
+			public:
+				/**
+				 * @brief Метод очистки событий сервера
+				 *
+				 */
+				void clear() noexcept;
 			public:
 				/**
 				 * @brief Метод остановки сервера

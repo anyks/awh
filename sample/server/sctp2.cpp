@@ -351,14 +351,12 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::fgp_t fgp(&fmk, &log);
 	// Создаём объект транспортного уровня безопасности
 	tls::coder_t tls(&fgp, &fmk, &log);
-	// Создаём объект юнита сервера
-	unit::server_t unit(&fmk, &log);
 	// Создаём объект сервера
-	server_t server(&unit, &tls, &fmk, &log);
+	server_t server(&tls, &fmk, &log);
 	// Создаём событие сервера и сохраняем его идентификатор
-	const event::id_t eid = unit.issue(event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
+	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устананавливаем опции события
-	if(unit.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+	if(server.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
 		// Выводим сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
 	// Выводим сообщение об ошибке установки опций события
@@ -409,8 +407,6 @@ int32_t main(int32_t argc, char * argv[]){
 	tls.certificate(cts, "../sh/certificates/server/cert.pem");
 	// Устанавливаем приватный ключ TLS
 	tls.privateKey(cts, "../sh/certificates/server/key.pem");
-	// Устанавливаем идентификатор события сервера
-	server.setEventId(eid);
 	// Устанавливаем идентификатор TLS для сервера
 	server.setSecurityId(cts);
 	// Устанавливаем порт и хост сервера

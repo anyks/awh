@@ -41,44 +41,93 @@ namespace awh {
 	typedef class __AWH_SHARED_EXPORT__ Server {
 		protected:
 			/**
-			 * @brief Временное состояние сервера
+			 * @brief Структура для хранения параметров DNS-резолвера
 			 *
 			 */
-			enum class state_t : uint8_t {
-				NONE     = 0x00, // Нет состояния
-				SERVER   = 0x01, // Состояние запуска сервера
-				RESOLVER = 0x02  // Состояние запуска DNS-резолвера
-			};
+			typedef struct Domain_Name_System {
+				// Идентификатор DNS-резолвера
+				unit::dns_t::id_t id;
+				// Время жизни DNS запроса (в миллисекундах)
+				atomic_uint32_t alive;
+				// Объект DNS-резолвера
+				unit::dns_t * client;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Domain_Name_System() noexcept :
+				 id(0), alive(15000), client(nullptr) {}
+			} dns_t;
+			/**
+			 * @brief Структура идентификаторов клиента
+			 *
+			 */
+			typedef struct Identifier {
+				// Идентификатор клиента
+				event::id_t eid;
+				// Идентификатор безопасности
+				tls::coder_t::id_t sid;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Identifier() noexcept : eid(0), sid(0) {}
+			} __attribute__((packed)) id_t;
+			/**
+			 * @brief Структура для хранения параметров транспортного уровня безопасности
+			 *
+			 */
+			typedef struct TLS {
+				// Объект транспортного уровня безопасности
+				tls::coder_t * coder;
+				// Мютекс для блокировки потоков при работе с TLS
+				lock_state_t <std::shared_mutex> mtx;
+				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
+				unordered_map <event::id_t, tls::coder_t::id_t> safety;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit TLS() noexcept : coder(nullptr) {}
+			} tls_t;
+			/**
+			 * @brief Структура юнита сервера
+			 *
+			 */
+			typedef struct Unit {
+				// Объект работы с сетевыми адресами
+				net_addr_t addr;
+				// Объект юнита сервера
+				unit::server_t server;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
+				 */
+				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept :
+				 addr(fmk, log), server(fmk, log) {}
+			} unit_t;
+		protected:
+			// Идентификатор сервера
+			id_t _id;
+		protected:
+			// Объект DNS-резолвера
+			dns_t _dns;
+		protected:
+			// Объект параметров TLS
+			tls_t _tls;
 		protected:
 			// Адрес хоста целевой машины
 			string _host;
 		protected:
-			// Идентификатор сервера
-			event::id_t _eid;
-			// Идентификатор TLS шаблона
-			tls::coder_t::id_t _secId;
-		protected:
-			// Объект работы с сетевыми адресами
-			net_addr_t _addr;
-		protected:
 			// Функция обратного вызова для обработки сервера
 			callback_t _callback;
 		protected:
-			// Время жизни DNS запроса (в миллисекундах)
-			atomic_uint32_t _aliveDNS;
-		protected:
-			// Мютекс для блокировки потоков при работе с TLS
-			lock_state_t <std::shared_mutex> _mtx;
-		protected:
-			// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
-			unordered_map <event::id_t, tls::coder_t::id_t> _safety;
-		protected:
-			// Объект DNS-резолвера
-			unit::dns_t * _dns;
-			// Объект транспортного уровня безопасности
-			tls::coder_t * _tls;
-			// Объект сервера
-			unit::server_t * _server;
+			// Объект юнита сервера
+			unique_ptr <unit_t> _unit;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -88,10 +137,10 @@ namespace awh {
 			/**
 			 * @brief Метод изменения статуса сервера
 			 *
+			 * @param index  индекс очереди запускаемого события
 			 * @param status новый статус сервера
-			 * @param state  новое временное состояние сервера
 			 */
-			virtual void status(const event::status_t status, const state_t state) noexcept;
+			virtual void status(const uint8_t index, const event::status_t status) noexcept;
 		protected:
 			/**
 			 * @brief Метод обработки событий записи данных клиентом
@@ -138,6 +187,13 @@ namespace awh {
 			 */
 			virtual void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
 			/**
+			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
+			 *
+			 * @param domain   доменное имя для резолвинга
+			 * @param attempts количество попыток подключения
+			 */
+			virtual void attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept;
+			/**
 			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
 			 *
 			 * @param eid    идентификатор клиента
@@ -155,6 +211,14 @@ namespace awh {
 			 */
 			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			/**
+			 * @brief Метод обработки неудачного резолвинга доменного имени
+			 *
+			 * @param id     идентификатор DNS-запроса
+			 * @param record тип записи DNS
+			 * @param domain доменное имя
+			 */
+			virtual void failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept;
+			/**
 			 * @brief Метод обработки события неотправленных данных клиенту
 			 *
 			 * @param eid   идентификатор клиента
@@ -163,6 +227,14 @@ namespace awh {
 			 * @param size  размер данных, которые не получилось отправить
 			 */
 			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+			 *
+			 * @param family семейство адресов (IPv4/IPv6)
+			 * @param domain доменное имя для резолвинга
+			 * @param addr   указатель на структуру для хранения результата резолвинга
+			 */
+			virtual void resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 		protected:
 			/**
 			 * @brief Метод обработки события пересоздания процесса
@@ -259,25 +331,70 @@ namespace awh {
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 */
 			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
-		protected:
+		public:
 			/**
-			 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+			 * @brief Метод очистки чёрного списка события
 			 *
-			 * @param id     идентификатор DNS-запроса
-			 * @param family семейство адресов (IPv4/IPv6)
-			 * @param domain доменное имя для резолвинга
-			 * @param addr   указатель на структуру для хранения результата резолвинга
+			 * @param eid идентификатор события
+			 * @return    результат выполнения очистки
 			 */
-			virtual void resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+			bool clearBlacklist(const event::id_t eid) noexcept;
 			/**
-			 * @brief Метод резолвинга доменного имени в сетевой адрес
+			 * @brief Метод очистки белого списка события
 			 *
-			 * @param id     идентификатор DNS-запроса
-			 * @param family семейство адресов (IPv4/IPv6)
-			 * @param domain доменное имя для резолвинга
-			 * @param addr   указатель на структуру для хранения результата резолвинга
+			 * @param eid идентификатор события
+			 * @return    результат выполнения очистки
 			 */
-			virtual void resolveDNS(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+			bool clearWhitelist(const event::id_t eid) noexcept;
+		public:
+			/**
+			 * @brief Метод добавления адреса в чёрный список события
+			 *
+			 * @param eid   идентификатор события
+			 * @param value значение адреса события
+			 * @return      результат выполнения установки
+			 */
+			bool addToBlacklist(const event::id_t eid, string_view value) noexcept;
+			/**
+			 * @brief Метод добавления адреса в белый список события
+			 *
+			 * @param eid   идентификатор события
+			 * @param value значение адреса события
+			 * @return      результат выполнения установки
+			 */
+			bool addToWhitelist(const event::id_t eid, string_view value) noexcept;
+		public:
+			/**
+			 * @brief Метод удаления адреса из чёрного списка события
+			 *
+			 * @param eid   идентификатор события
+			 * @param value адрес для удаления из чёрного списка
+			 * @return      результат выполнения удаления
+			 */
+			bool removeFromBlacklist(const event::id_t eid, string_view value) noexcept;
+			/**
+			 * @brief Метод удаления адреса из белого списка события
+			 *
+			 * @param eid   идентификатор события
+			 * @param value адрес для удаления из белого списка
+			 * @return      результат выполнения удаления
+			 */
+			bool removeFromWhitelist(const event::id_t eid, string_view value) noexcept;
+		public:
+			/**
+			 * @brief Метод получения чёрного списка события
+			 *
+			 * @param eid идентификатор события
+			 * @return    чёрный список события
+			 */
+			const std::unordered_map <string, event::address_t> & getFromBlacklist(const event::id_t eid) const noexcept;
+			/**
+			 * @brief Метод получения белого списка события
+			 *
+			 * @param eid идентификатор события
+			 * @return    белый список события
+			 */
+			const std::unordered_map <string, event::address_t> & getFromWhitelist(const event::id_t eid) const noexcept;
 		public:
 			/**
 			 * @brief Метод остановки сервера
@@ -289,6 +406,36 @@ namespace awh {
 			 *
 			 */
 			virtual void start() noexcept;
+		public:
+			/**
+			 * @brief Метод приостановки работы клиента
+			 *
+			 * @param eid идентификатор события клиента
+			 * @return    результат выполнения приостановки работы
+			 */
+			virtual bool pause(const event::id_t eid) noexcept;
+			/**
+			 * @brief Метод возобновления работы клиента
+			 *
+			 * @param eid идентификатор события клиента
+			 * @return    результат выполнения возобновления работы
+			 */
+			virtual bool resume(const event::id_t eid) noexcept;
+		public:
+			/**
+			 * @brief Метод уничтожения события клиента или сервера
+			 *
+			 * @param eid идентификатор события клиента для уничтожения
+			 */
+			virtual void destroy(const event::id_t eid) noexcept;
+		public:
+			/**
+			 * @brief Метод проверки, жив ли клиент или сервер
+			 *
+			 * @param eid идентификатор события клиента для проверки
+			 * @return    результат проверки
+			 */
+			virtual bool isAlive(const event::id_t eid) const noexcept;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений
@@ -311,63 +458,6 @@ namespace awh {
 			 * @param callback функции обратного вызова
 			 */
 			virtual void callback(const callback_t & callback) noexcept;
-		public:
-			/**
-			 * @brief Метод получения сетевого интерфейса сервера
-			 *
-			 * @return сетевой интерфейс сервера
-			 */
-			virtual string getIface() const noexcept;
-			/**
-			 * @brief Метод установки сетевого интерфейса сервера
-			 *
-			 * @param name имя сетевого интерфейса для установки
-			 * @return     результат выполнения установки
-			 */
-			virtual bool setIface(string_view name) noexcept;
-		public:
-			/**
-			 * @brief Метод активации/деактивации мультикаст группы
-			 *
-			 * @param mode   режим активации/деактивации
-			 * @param group  мультикаст-группа для активации/деактивации
-			 * @param source адрес сетевого интерфейса с которого выполняется подписка
-			 * @param port   порт мультикаст-группы с которого выполняется подписка
-			 * @return       результат выполнения установки
-			 */
-			virtual bool membership(const event::mode_t mode, string_view group, string_view source, const uint16_t port = 0) noexcept;
-			/**
-			 * @brief Метод активации/деактивации мультикаст группы
-			 *
-			 * @param mode   режим активации/деактивации
-			 * @param group  мультикаст-группа для активации/деактивации
-			 * @param source адрес сетевого интерфейса с которого выполняется подписка
-			 * @param port   порт мультикаст-группы с которого выполняется подписка
-			 * @return       результат выполнения установки
-			 */
-			virtual bool membership(const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept;
-		public:
-			/**
-			 * @brief Метод приостановки работы клиента
-			 *
-			 * @param eid идентификатор события клиента
-			 * @return    результат выполнения приостановки работы
-			 */
-			virtual bool pause(const event::id_t eid) noexcept;
-			/**
-			 * @brief Метод возобновления работы клиента
-			 *
-			 * @param eid идентификатор события клиента
-			 * @return    результат выполнения возобновления работы
-			 */
-			virtual bool resume(const event::id_t eid) noexcept;
-		public:
-			/**
-			 * @brief Метод уничтожения события клиента
-			 *
-			 * @param eid идентификатор события клиента для уничтожения
-			 */
-			virtual void destroy(const event::id_t eid) noexcept;
 		public:
 			/**
 			 * @brief Метод получения данных от клиента
@@ -396,29 +486,59 @@ namespace awh {
 			virtual bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 		public:
 			/**
-			 * @brief Метод получения опций клиента
+			 * @brief Метод получения опций сервера или клиента
 			 *
-			 * @param eid идентификатор события клиента
-			 * @return    опции клиента
+			 * @param eid идентификатор события сервера или клиента
+			 * @return    опции сервера или клиента
 			 */
 			virtual uint16_t getOptions(const event::id_t eid) const noexcept;
 			/**
-			 * @brief Метод установки опций клиента
+			 * @brief Метод установки опций сервера или клиента
 			 *
-			 * @param eid     идентификатор события клиента
-			 * @param options опции клиента для установки
+			 * @param eid     идентификатор события сервера или клиента
+			 * @param options опции сервера или клиента для установки
 			 * @return        результат выполнения установки
 			 */
 			virtual bool setOptions(const event::id_t eid, const uint16_t options) noexcept;
 			/**
-			 * @brief Метод установки опции клиента
+			 * @brief Метод установки опции сервера или клиента
 			 *
-			 * @param eid    идентификатор события клиента
-			 * @param option опция клиента для установки
-			 * @param mode   режим установки опции клиента
+			 * @param eid    идентификатор события сервера или клиента
+			 * @param option опция сервера или клиента для установки
+			 * @param mode   режим установки опции сервера или клиента
 			 * @return       результат выполнения установки
 			 */
 			virtual bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
+		public:
+			/**
+			 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+			 *
+			 * @param eid идентификатор события сервера
+			 * @return    максимальное количество хопов
+			 */
+			virtual event::hops_t getHops(const event::id_t eid) const noexcept;
+			/**
+			 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+			 *
+			 * @param eid  идентификатор события сервера
+			 * @param hops максимальное количество хопов
+			 * @return     результат работы функции
+			 */
+			virtual bool setHops(const event::id_t eid, const event::hops_t hops) noexcept;
+		public:
+			/**
+			 * @brief Метод получения сетевого интерфейса сервера
+			 *
+			 * @return сетевой интерфейс сервера
+			 */
+			virtual string getIface() const noexcept;
+			/**
+			 * @brief Метод установки сетевого интерфейса сервера
+			 *
+			 * @param name имя сетевого интерфейса для установки
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setIface(string_view name) noexcept;
 		public:
 			/**
 			 * @brief Метод получения порта сервера
@@ -434,10 +554,10 @@ namespace awh {
 			 */
 			virtual bool setPort(const uint16_t port) noexcept;
 			/**
-			 * @brief Метод получения порта удаленного клиента
+			 * @brief Метод получения порта удаленного сервера или клиента
 			 *
-			 * @param eid идентификатор события клиента
-			 * @return    порт удаленного клиента
+			 * @param eid идентификатор события сервера или клиента
+			 * @return    порт удаленного сервера или клиента
 			 */
 			virtual uint16_t getPort(const event::id_t eid) const noexcept;
 		public:
@@ -471,11 +591,11 @@ namespace awh {
 			 */
 			virtual bool setAddress(const event::address_t address, string_view value) noexcept;
 			/**
-			 * @brief Метод получения адреса клиента
+			 * @brief Метод получения адреса сервера или клиента
 			 *
-			 * @param eid     идентификатор события клиента
-			 * @param address тип адреса клиента
-			 * @return        значение адреса клиента
+			 * @param eid     идентификатор события сервера или клиента
+			 * @param address тип адреса сервера или клиента
+			 * @return        значение адреса сервера или клиента
 			 */
 			virtual string getAddress(const event::id_t eid, const event::address_t address) const noexcept;
 		public:
@@ -496,29 +616,61 @@ namespace awh {
 			 */
 			virtual bool getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 			/**
-			 * @brief Метод получения адреса клиента
+			 * @brief Метод получения адреса сервера или клиента
 			 *
-			 * @param eid     идентификатор события клиента
-			 * @param address тип адреса клиента
-			 * @param value   объект для извлечения адреса клиента
-			 * @return        результат выполнения извлечения адреса клиента
+			 * @param eid     идентификатор события сервера или клиента
+			 * @param address тип адреса сервера или клиента
+			 * @param value   объект для извлечения адреса сервера или клиента
+			 * @return        результат выполнения извлечения адреса сервера или клиента
 			 */
 			virtual bool getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения размера буфера клиента
+			 * @brief Метод получения MTU сетевого интерфейса
 			 *
-			 * @param eid    идентификатор события клиента
-			 * @param action тип действия клиента
-			 * @return       размер буфера клиента
+			 * @param eid идентификатор события сервера
+			 * @return    MTU сетевого интерфейса
+			 */
+			virtual uint16_t getMaximumTransmissionUnit(const event::id_t eid) const noexcept;
+			/**
+			 * @brief Метод установки MTU сетевого интерфейса
+			 *
+			 * @param eid идентификатор события сервера
+			 * @param mtu размер MTU интерфейса
+			 * @return    результат установки MTU сетевого интерфейса
+			 */
+			virtual bool setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения режима трансляции пакетов сервера или клиента
+			 *
+			 * @param eid идентификатор события сервера или клиента
+			 * @return    режим трансляции пакетов (unicast, multicast, broadcast)
+			 */
+			virtual event::delivery_mode_t getDelivery(const event::id_t eid) const noexcept;
+			/**
+			 * @brief Метод установки режима трансляции пакетов сервера или клиента
+			 *
+			 * @param eid      идентификатор события сервера или клиента
+			 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
+			 * @return         результат выполнения установки
+			 */
+			virtual bool setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept;
+		public:
+			/**
+			 * @brief Метод получения размера буфера сервера или клиента
+			 *
+			 * @param eid    идентификатор события сервера или клиента
+			 * @param action тип действия сервера или клиента
+			 * @return       размер буфера сервера или клиента
 			 */
 			virtual size_t getBufferSize(const event::id_t eid, const event::action_t action) const noexcept;
 			/**
-			 * @brief Метод установки размера буфера клиента
+			 * @brief Метод установки размера буфера сервера или клиента
 			 *
-			 * @param eid    идентификатор события клиента
-			 * @param action тип действия клиента
-			 * @param size   размер буфера клиента
+			 * @param eid    идентификатор события сервера или клиента
+			 * @param action тип действия сервера или клиента
+			 * @param size   размер буфера сервера или клиента
 			 * @return       результат выполнения установки
 			 */
 			virtual bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
@@ -543,10 +695,10 @@ namespace awh {
 			 */
 			virtual event::usage_t getUsageReadTimeout() const noexcept;
 			/**
-			 * @brief Метод получения режима использования таймаута на чтение события клиента
+			 * @brief Метод получения режима использования таймаута на чтение события сервера или клиента
 			 *
-			 * @param eid идентификатор события клиента
-			 * @return    режим использования таймаута на чтение события клиента
+			 * @param eid идентификатор события сервера или клиента
+			 * @return    режим использования таймаута на чтение события сервера или клиента
 			 */
 			virtual event::usage_t getUsageReadTimeout(const event::id_t eid) const noexcept;
 		public:
@@ -557,10 +709,10 @@ namespace awh {
 			 */
 			virtual void setUsageReadTimeout(const event::usage_t usage) noexcept;
 			/**
-			 * @brief Метод установки режима использования таймаута на чтение события клиента
+			 * @brief Метод установки режима использования таймаута на чтение события сервера или клиента
 			 *
-			 * @param eid   идентификатор события клиента
-			 * @param usage режим использования таймаута на чтение события клиента (reusable или disposable)
+			 * @param eid   идентификатор события сервера или клиента
+			 * @param usage режим использования таймаута на чтение события сервера или клиента (reusable или disposable)
 			 */
 			virtual void setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept;
 		public:
@@ -572,10 +724,10 @@ namespace awh {
 			 */
 			virtual uint32_t getTimeout(const event::action_t action) const noexcept;
 			/**
-			 * @brief Метод получения таймаута клиента
+			 * @brief Метод получения таймаута сервера или клиента
 			 *
-			 * @param eid    идентификатор события клиента
-			 * @param action тип действия клиента
+			 * @param eid    идентификатор события сервера или клиента
+			 * @param action тип действия сервера или клиента
 			 * @return       значение таймаута в миллисекундах
 			 */
 			virtual uint32_t getTimeout(const event::id_t eid, const event::action_t action) const noexcept;
@@ -588,10 +740,10 @@ namespace awh {
 			 */
 			virtual void setTimeout(const event::action_t action, const uint32_t timeout) noexcept;
 			/**
-			 * @brief Метод установки таймаута клиента
+			 * @brief Метод установки таймаута сервера или клиента
 			 *
-			 * @param eid     идентификатор события клиента
-			 * @param action  тип действия клиента
+			 * @param eid     идентификатор события сервера или клиента
+			 * @param action  тип действия сервера или клиента
 			 * @param timeout значение таймаута в миллисекундах
 			 */
 			virtual void setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept;
@@ -605,25 +757,184 @@ namespace awh {
 			 */
 			virtual bool bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
 			/**
-			 * @brief Метод установки пропускной способности клиента
+			 * @brief Метод установки пропускной способности сервера или клиента
 			 *
-			 * @param eid       идентификатор события клиента
-			 * @param limiting  режим ограничения пропускной способности клиента (egress или ingress)
-			 * @param bandwidth пропускная способность клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+			 * @param eid       идентификатор события сервера или клиента
+			 * @param limiting  режим ограничения пропускной способности сервера или клиента (egress или ingress)
+			 * @param bandwidth пропускная способность сервера или клиента для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
 			 * @return          результат выполнения установки
 			 */
 			virtual bool bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept;
 		public:
 			/**
-			 * @brief Метод установки параметров keep-alive для клиента
+			 * @brief Метод установки параметров keep-alive для сервера или клиента
 			 *
-			 * @param eid   идентификатор события клиента
+			 * @param eid   идентификатор события сервера или клиента
 			 * @param cnt   количество пакетов keep-alive
 			 * @param idle  время простоя перед отправкой первого пакета keep-alive в секундах
 			 * @param intvl интервал между пакетами keep-alive в секундах
 			 * @return      результат выполнения установки
 			 */
 			virtual bool keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
+		public:
+			/**
+			 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @return значение DSCP
+			 */
+			virtual event::dscp_t getDifferentiatedServicesCodePoint() const noexcept;
+			/**
+			 * @brief Метод установки значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
+			 *
+			 * @param dscp значение DSCP
+			 * @return     результат работы функции
+			 */
+			virtual bool setDifferentiatedServicesCodePoint(const event::dscp_t dscp) const noexcept;
+		public:
+			/**
+			 * @brief Метод получения обнаружения максимального размера пакета (MTU)
+			 *
+			 * @return режим обнаружения максимального размера пакета (MTU)
+			 */
+			virtual event::mtu_discover_t getMaximumTransmissionUnitDiscover() const noexcept;
+			/**
+			 * @brief Метод установки обнаружения максимального размера пакета (MTU)
+			 *
+			 * @param mode режим обнаружения максимального размера пакета (MTU)
+			 * @return     результат работы функции
+			 */
+			virtual bool setMaximumTransmissionUnitDiscover(const event::mtu_discover_t mode) const noexcept;
+		public:
+			/**
+			 * @brief Метод активации/деактивации мультикаст группы
+			 *
+			 * @param mode   режим активации/деактивации
+			 * @param group  мультикаст-группа для активации/деактивации
+			 * @param source адрес сетевого интерфейса с которого выполняется подписка
+			 * @param port   порт мультикаст-группы с которого выполняется подписка
+			 * @return       результат выполнения установки
+			 */
+			virtual bool membership(const event::mode_t mode, string_view group, string_view source, const uint16_t port = 0) noexcept;
+			/**
+			 * @brief Метод активации/деактивации мультикаст группы
+			 *
+			 * @param mode   режим активации/деактивации
+			 * @param group  мультикаст-группа для активации/деактивации
+			 * @param source адрес сетевого интерфейса с которого выполняется подписка
+			 * @param port   порт мультикаст-группы с которого выполняется подписка
+			 * @return       результат выполнения установки
+			 */
+			virtual bool membership(const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept;
+		public:
+			/**
+			 * @brief Метод инициализации сервера
+			 *
+			 * @param family   семейство адресов
+			 * @param type     тип события
+			 * @param protocol протокол события
+			 * @return         идентификатор созданного сервера
+			 */
+			virtual event::id_t init(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
+		public:
+			/**
+			 * @brief Метод установки флага автоматического возрождения процессов
+			 *
+			 * @param mode флаг возрождения процессов
+			 */
+			virtual void clusterRebirth(const bool mode) noexcept;
+		public:
+			/**
+			 * @brief Метод установки названия кластера
+			 *
+			 * @param name название кластера для установки
+			 */
+			virtual void clusterName(string_view name) noexcept;
+		public:
+			/**
+			 * @brief Метод получения семейства кластера
+			 *
+			 * @return семейство к которому принадлежит кластер (MASTER или CHILDREN)
+			 */
+			virtual unit::cluster_t::family_t clusterFamily() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения режима активации кластера
+			 *
+			 * @return режим активации кластера
+			 */
+			virtual event::mode_t clusterMode() const noexcept;
+			/**
+			 * @brief Метод установки количества процессов кластера
+			 *
+			 * @param mode флаг активации/деактивации кластера
+			 * @param size количество рабочих процессов
+			 */
+			virtual void clusterMode(const event::mode_t mode) noexcept;
+		public:
+			/**
+			 * @brief Метод получения максимального количества процессов
+			 *
+			 * @return максимальное количество процессов
+			 */
+			virtual uint16_t clusterCount() const noexcept;
+			/**
+			 * @brief Метод установки максимального количества процессов
+			 *
+			 * @param count максимальное количество процессов
+			 */
+			virtual void clusterCount(const uint16_t count) noexcept;
+		public:
+			/**
+			 * @brief Метод получения списка дочерних процессов
+			 *
+			 * @return список дочерних процессов
+			 */
+			virtual unordered_set <pid_t> clusterWorkers() const noexcept;
+		public:
+			/**
+			 * @brief Метод отправки сообщения родительскому процессу
+			 *
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
+			 * @return       количество байт отправленного сообщения
+			 */
+			virtual size_t clusterSend(const void * buffer, const size_t size) noexcept;
+			/**
+			 * @brief Метод отправки сообщения дочернему процессу
+			 *
+			 * @param pid    идентификатор процесса для получения сообщения
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
+			 * @return       количество байт отправленного сообщения
+			 */
+			virtual size_t clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод отправки сообщения всем дочерним процессам
+			 *
+			 * @param buffer бинарный буфер для отправки сообщения
+			 * @param size   размер бинарного буфера для отправки сообщения
+			 * @return       количество байт отправленного сообщения
+			 */
+			virtual size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод получения размера буфера события
+			 *
+			 * @param pid    идентификатор процесса
+			 * @param action тип действия события
+			 * @return       размер буфера события
+			 */
+			virtual size_t clusterGetBufferSize(const pid_t pid, const event::action_t action) const noexcept;
+			/**
+			 * @brief Метод установки размера буфера события
+			 *
+			 * @param pid    идентификатор процесса
+			 * @param action тип действия события
+			 * @param size   размер буфера события
+			 * @return       результат выполнения установки
+			 */
+			virtual bool clusterSetBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -738,18 +1049,11 @@ namespace awh {
 			}
 		public:
 			/**
-			 * @brief Метод установки идентификатора события сервера
-			 *
-			 * @param eid идентификатор события для установки
-			 */
-			virtual void setEventId(const event::id_t eid) noexcept;
-		public:
-			/**
 			 * @brief Метод установки идентификатора TLS шаблона
 			 *
-			 * @param secId идентификатор TLS шаблона для установки
+			 * @param sid идентификатор TLS шаблона для установки
 			 */
-			virtual void setSecurityId(const tls::coder_t::id_t secId) noexcept;
+			virtual void setSecurityId(const tls::coder_t::id_t sid) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -766,39 +1070,35 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param server объект юнита сервера
-			 * @param fmk    объект фреймворка
-			 * @param log    объект для работы с логами
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			explicit Server(unit::server_t * server, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param server объект юнита сервера
-			 * @param tls    объект транспортного уровня безопасности
-			 * @param fmk    объект фреймворка
-			 * @param log    объект для работы с логами
+			 * @param tls объект транспортного уровня безопасности
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			explicit Server(unit::server_t * server, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param server объект юнита сервера
-			 * @param dns    объект DNS-резолвера
-			 * @param fmk    объект фреймворка
-			 * @param log    объект для работы с логами
+			 * @param dns объект DNS-резолвера
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			explicit Server(unit::server_t * server, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param server объект юнита сервера
-			 * @param dns    объект DNS-резолвера
-			 * @param tls    объект транспортного уровня безопасности
-			 * @param fmk    объект фреймворка
-			 * @param log    объект для работы с логами
+			 * @param dns объект DNS-резолвера
+			 * @param tls объект транспортного уровня безопасности
+			 * @param fmk объект фреймворка
+			 * @param log объект для работы с логами
 			 */
-			explicit Server(unit::server_t * server, unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

@@ -338,9 +338,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				// Если идентификатор клиента соответствует идентификатору socks5 клиента
 				if(eid == this->_id.eid){
 					// Если объект транспортного уровня безопасности установлен
-					if((this->_tls != nullptr) && (this->_id.sid > 0)){
+					if((this->_coder != nullptr) && (this->_id.sid > 0)){
 						// Если данные не расшифрованы
-						if(!this->_tls->decrypt(this->_id.sid, buffer, size)){
+						if(!this->_coder->decrypt(this->_id.sid, buffer, size)){
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error_tls")){
 								/**
@@ -374,9 +374,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						// Если хост клиента которому адресован UDP пакет установлен
 						if(udp.host != nullptr){
 							// Если объект транспортного уровня безопасности установлен
-							if((this->_tls != nullptr) && (this->_id.sid > 0)){
+							if((this->_coder != nullptr) && (this->_id.sid > 0)){
 								// Если данные не расшифрованы
-								if(!this->_tls->decrypt(this->_id.sid, buffer + udp.size, size - udp.size)){
+								if(!this->_coder->decrypt(this->_id.sid, buffer + udp.size, size - udp.size)){
 									// Если функция обратного вызова не установлена
 									if(!this->_callback.is("error_tls")){
 										/**
@@ -758,9 +758,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									// Выполняем функцию обратного вызова
 									this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", eid, target, port);
 								// Если объект транспортного уровня безопасности установлен
-								if((this->_tls != nullptr) && (this->_id.sid > 0)){
+								if((this->_coder != nullptr) && (this->_id.sid > 0)){
 									// Если рукопожатие TLS не выполнено
-									if(!this->_tls->handshake(this->_id.sid)){
+									if(!this->_coder->handshake(this->_id.sid)){
 										// Если функция обратного вызова не установлена
 										if(!this->_callback.is("error_tls")){
 											/**
@@ -944,9 +944,9 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 									// Выполняем функцию обратного вызова
 									this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, target, port);
 								// Если объект транспортного уровня безопасности установлен
-								if((this->_tls != nullptr) && (this->_id.sid > 0)){
+								if((this->_coder != nullptr) && (this->_id.sid > 0)){
 									// Если рукопожатие TLS не выполнено
-									if(!this->_tls->handshake(this->_id.sid)){
+									if(!this->_coder->handshake(this->_id.sid)){
 										// Если функция обратного вызова не установлена
 										if(!this->_callback.is("error_tls")){
 											/**
@@ -1472,9 +1472,9 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 			// Если клиент для работы с UDP протоколом не инициализирован
 			if(this->_endpoint.udp.eid == 0){
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_tls != nullptr)){
+				if((this->_id.sid > 0) && (this->_coder != nullptr)){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_tls->encrypt(this->_id.sid, buffer, size))
+					if(this->_coder->encrypt(this->_id.sid, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 					// Выводим результат по умолчанию
@@ -1485,9 +1485,9 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 			// Если клиент для работы с UDP протоколом инициализирован
 			} else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_tls != nullptr)){
+				if((this->_id.sid > 0) && (this->_coder != nullptr)){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_tls->encrypt(this->_id.sid, buffer, size))
+					if(this->_coder->encrypt(this->_id.sid, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 					// Выводим результат по умолчанию

@@ -142,36 +142,21 @@ namespace awh {
 				} origin_hash_t;
 			private:
 				/**
-				 * @brief Структура для хранения информации о сетевой конфигурации
-				 *
-				 */
-				typedef struct Network {
-					// Сетевой интерфейс для подключения к сети клиентов
-					string iface;
-					// Мютекс для блокировки потоков
-					lock_state_t <std::shared_mutex> mtx;
-					// Алиасы для внутренних адресов если мы работаем за NAT
-					unordered_map <origin_t, unique_ptr <net::attr_t>, origin_hash_t> aliases;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Network() noexcept : iface{""} {};
-				} net_t;
-				/**
 				 * @brief Структура для хранения информации о пирах
 				 *
 				 */
 				typedef struct Peer {
 					// Идентификатор события клиента для конечной точки
 					event::id_t eid;
+					// Идентификатор DNS-резолвера
+					unit::dns_t::id_t did;
 					// Контекст для хранения параметров сообщений
 					proto::socks5_t::ctx_t ctx;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Peer() noexcept : eid(0) {};
+					explicit Peer() noexcept : eid(0), did(0) {};
 				} peer_t;
 				/**
 				 * @brief Структура для хранения информации о UDP-серверах
@@ -196,8 +181,6 @@ namespace awh {
 					 begin(0), end(0), count(0), address(nullptr) {};
 				} udp_server_t;
 			private:
-				// Объект работы с сетью для сервера
-				net_t _net;
 				// Объект работы с сетью
 				eth_t _eth;
 			private:
@@ -222,16 +205,18 @@ namespace awh {
 			private:
 				// Отображение идентификаторов событий клиентов для конечных точек
 				unordered_map <event::id_t, const origin_t *> _mapping;
+				// Алиасы для внутренних адресов если мы работаем за NAT
+				unordered_map <origin_t, unique_ptr <net::attr_t>, origin_hash_t> _aliases;
 				// Активные сессии клиентов, работающих через прокси
 				unordered_map <origin_t, pair <event::id_t, event::id_t>, origin_hash_t> _sessions;
 			private:
 				/**
 				 * @brief Метод изменения статуса сервера
 				 *
+				 * @param index  индекс очереди запускаемого события
 				 * @param status новый статус сервера
-				 * @param state  новое временное состояние сервера
 				 */
-				void status(const event::status_t status, const state_t state) noexcept;
+				void status(const uint8_t index, const event::status_t status) noexcept;
 			private:
 				/**
 				 * @brief Метод инициализации запуска или остановки кластера
@@ -313,6 +298,14 @@ namespace awh {
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			private:
 				/**
+				 * @brief Метод обработки неудачного резолвинга доменного имени
+				 *
+				 * @param id     идентификатор DNS-запроса
+				 * @param record тип записи DNS
+				 * @param domain доменное имя
+				 */
+				void failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept;
+				/**
 				 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
 				 *
 				 * @param id     идентификатор DNS-запроса
@@ -321,16 +314,6 @@ namespace awh {
 				 * @param addr   указатель на структуру для хранения результата резолвинга
 				 */
 				void resolve(const unit::dns_t::id_t id, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
-				/**
-				 * @brief Метод резолвинга доменного имени в сетевой адрес
-				 *
-				 * @param id     идентификатор DNS-запроса
-				 * @param eid    идентификатор события сервера
-				 * @param family семейство адресов (IPv4/IPv6)
-				 * @param domain доменное имя для резолвинга
-				 * @param addr   указатель на структуру для хранения результата резолвинга
-				 */
-				void resolveDNS(const unit::dns_t::id_t id, const event::id_t eid, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 			public:
 				/**
 				 * @brief Метод остановки сервера
@@ -342,33 +325,6 @@ namespace awh {
 				 *
 				 */
 				void start() noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
-			public:
-				/**
-				 * @brief Метод установки функций обратного вызова
-				 *
-				 * @param callback функции обратного вызова
-				 */
-				void callback(const callback_t & callback) noexcept;
-			public:
-				/**
-				 * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
-				 *
-				 * @return результат выполнения установки
-				 */
-				bool membership(const event::mode_t, string_view, string_view, const uint16_t) noexcept;
-				/**
-				 * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
-				 *
-				 * @return результат выполнения установки
-				 */
-				bool membership(const event::mode_t, const net::addr_t *, const net::addr_t *, const uint16_t) noexcept;
 			public:
 				/**
 				 * @brief Метод приостановки работы клиента
@@ -393,6 +349,20 @@ namespace awh {
 				void destroy(const event::id_t eid) noexcept;
 			public:
 				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
+			public:
+				/**
+				 * @brief Метод установки функций обратного вызова
+				 *
+				 * @param callback функции обратного вызова
+				 */
+				void callback(const callback_t & callback) noexcept;
+			public:
+				/**
 				 * @brief Метод получения данных от клиента (заглушка для сервера SOCKS5)
 				 *
 				 * @return результат получения данных
@@ -404,33 +374,6 @@ namespace awh {
 				 * @return количество байт данных, отправленных клиенту
 				 */
 				size_t send(const event::id_t, const void *, const size_t) noexcept;
-			public:
-				/**
-				 * @brief Метод отправки сообщения родительскому процессу
-				 *
-				 * @param buffer бинарный буфер для отправки сообщения
-				 * @param size   размер бинарного буфера для отправки сообщения
-				 * @return       количество байт отправленного сообщения
-				 */
-				size_t clusterSend(const void * buffer, const size_t size) noexcept;
-				/**
-				 * @brief Метод отправки сообщения дочернему процессу
-				 *
-				 * @param pid    идентификатор процесса для получения сообщения
-				 * @param buffer бинарный буфер для отправки сообщения
-				 * @param size   размер бинарного буфера для отправки сообщения
-				 * @return       количество байт отправленного сообщения
-				 */
-				size_t clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept;
-			public:
-				/**
-				 * @brief Метод отправки сообщения всем дочерним процессам
-				 *
-				 * @param buffer бинарный буфер для отправки сообщения
-				 * @param size   размер бинарного буфера для отправки сообщения
-				 * @return       количество байт отправленного сообщения
-				 */
-				size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод перемещения данных между сервером и другим событием (заглушка для сервера SOCKS5)
@@ -495,6 +438,19 @@ namespace awh {
 				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
 				/**
+				 * @brief Метод получения порта сервера
+				 *
+				 * @return порт сервера
+				 */
+				uint16_t getPort() const noexcept;
+				/**
+				 * @brief Метод установки порта сервера
+				 *
+				 * @param port порт сервера для установки
+				 * @return     результат выполнения установки
+				 */
+				bool setPort(const uint16_t port) noexcept;
+				/**
 				 * @brief Метод получения порта удаленного клиента или текущего сервера
 				 *
 				 * @param eid идентификатор события клиента или сервера
@@ -528,7 +484,7 @@ namespace awh {
 				bool getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept;
 			public:
 				/**
-				 * @brief Метод установки адреса для подключения к сети клиентов
+				 * @brief Метод установки адреса сервера
 				 *
 				 * @param address тип адреса сервера
 				 * @param value   значение адреса сервера
@@ -538,21 +494,21 @@ namespace awh {
 				/**
 				 * @brief Метод установки адреса сервера
 				 *
+				 * @param address тип адреса сервера
+				 * @param value   значение адреса сервера
+				 * @return        результат выполнения установки
+				 */
+				bool setAddress(const event::address_t address, const net::addr_t * value) noexcept;
+			public:
+				/**
+				 * @brief Метод установки адреса сервера
+				 *
 				 * @param eid     идентификатор события сервера
 				 * @param address тип адреса сервера
 				 * @param value   значение адреса сервера
 				 * @return        результат выполнения установки
 				 */
 				bool setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept;
-			public:
-				/**
-				 * @brief Метод установки адреса для подключения к сети клиентов
-				 *
-				 * @param address тип адреса сервера
-				 * @param value   значение адреса сервера
-				 * @return        результат выполнения установки
-				 */
-				bool setAddress(const event::address_t address, const net::addr_t * value) noexcept;
 				/**
 				 * @brief Метод установки адреса сервера
 				 *
@@ -564,12 +520,21 @@ namespace awh {
 				bool setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept;
 			public:
 				/**
-				 * @brief Метод получения адреса для подключения к сети клиентов
+				 * @brief Метод получения адреса сервера
 				 *
-				 * @param address тип адреса клиента или сервера
-				 * @return        значение адреса клиента или сервера
+				 * @param address тип адреса сервера
+				 * @return        значение адреса сервера
 				 */
 				string getAddress(const event::address_t address) const noexcept;
+				/**
+				 * @brief Метод получения адреса сервера
+				 *
+				 * @param address тип адреса сервера
+				 * @param value   объект для извлечения адреса сервера
+				 * @return        результат выполнения извлечения адреса сервера
+				 */
+				bool getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
+			public:
 				/**
 				 * @brief Метод получения адреса клиента или текущего сервера
 				 *
@@ -578,15 +543,6 @@ namespace awh {
 				 * @return        значение адреса клиента или сервера
 				 */
 				string getAddress(const event::id_t eid, const event::address_t address) const noexcept;
-			public:
-				/**
-				 * @brief Метод получения адреса для подключения к сети клиентов
-				 *
-				 * @param address тип адреса клиента или сервера
-				 * @param value   объект для извлечения адреса клиента или сервера
-				 * @return        результат выполнения извлечения адреса клиента или сервера
-				 */
-				bool getAddress(const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept;
 				/**
 				 * @brief Метод получения адреса клиента или текущего сервера
 				 *
@@ -616,12 +572,25 @@ namespace awh {
 				bool setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept;
 			public:
 				/**
+				 * @brief Метод получения режима использования таймаута на чтение события
+				 *
+				 * @return режим использования таймаута на чтение события
+				 */
+				event::usage_t getUsageReadTimeout() const noexcept;
+				/**
 				 * @brief Метод получения режима использования таймаута на чтение события клиента
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    режим использования таймаута на чтение события клиента
 				 */
 				event::usage_t getUsageReadTimeout(const event::id_t eid) const noexcept;
+			public:
+				/**
+				 * @brief Метод установки режима использования таймаута на чтение события
+				 *
+				 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+				 */
+				void setUsageReadTimeout(const event::usage_t usage) noexcept;
 				/**
 				 * @brief Метод установки режима использования таймаута на чтение события клиента
 				 *
@@ -631,6 +600,13 @@ namespace awh {
 				void setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept;
 			public:
 				/**
+				 * @brief Метод получения таймаута сервера
+				 *
+				 * @param action тип действия сервера
+				 * @return       значение таймаута в миллисекундах
+				 */
+				uint32_t getTimeout(const event::action_t action) const noexcept;
+				/**
 				 * @brief Метод получения таймаута клиента
 				 *
 				 * @param eid    идентификатор события клиента
@@ -638,6 +614,14 @@ namespace awh {
 				 * @return       значение таймаута в миллисекундах
 				 */
 				uint32_t getTimeout(const event::id_t eid, const event::action_t action) const noexcept;
+			public:
+				/**
+				 * @brief Метод установки таймаута сервера
+				 *
+				 * @param action  тип действия сервера
+				 * @param timeout значение таймаута в миллисекундах
+				 */
+				void setTimeout(const event::action_t action, const uint32_t timeout) noexcept;
 				/**
 				 * @brief Метод установки таймаута клиента
 				 *
@@ -647,6 +631,14 @@ namespace awh {
 				 */
 				void setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept;
 			public:
+				/**
+				 * @brief Метод установки пропускной способности сервера
+				 *
+				 * @param limiting  режим ограничения пропускной способности сервера (egress или ingress)
+				 * @param bandwidth пропускная способность сервера для установки (например, "65536bps", "1280kbps", "100Mbps", "1Gbps", "10Gbps" или "auto")
+				 * @return          результат выполнения установки
+				 */
+				bool bandwidth(const event::limiting_t limiting, string_view bandwidth) noexcept;
 				/**
 				 * @brief Метод установки пропускной способности клиента
 				 *
@@ -669,11 +661,44 @@ namespace awh {
 				bool keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept;
 			public:
 				/**
-				 * @brief Метод установки идентификатора события сервера
+				 * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
 				 *
-				 * @param eid идентификатор события сервера для установки
+				 * @return результат выполнения установки
 				 */
-				void setEventId(const event::id_t eid) noexcept;
+				bool membership(const event::mode_t, string_view, string_view, const uint16_t) noexcept;
+				/**
+				 * @brief Метод активации/деактивации мультикаст группы (заглушка для сервера SOCKS5)
+				 *
+				 * @return результат выполнения установки
+				 */
+				bool membership(const event::mode_t, const net::addr_t *, const net::addr_t *, const uint16_t) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки сообщения родительскому процессу
+				 *
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 */
+				size_t clusterSend(const void * buffer, const size_t size) noexcept;
+				/**
+				 * @brief Метод отправки сообщения дочернему процессу
+				 *
+				 * @param pid    идентификатор процесса для получения сообщения
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 */
+				size_t clusterSend(const pid_t pid, const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки сообщения всем дочерним процессам
+				 *
+				 * @param buffer бинарный буфер для отправки сообщения
+				 * @param size   размер бинарного буфера для отправки сообщения
+				 * @return       количество байт отправленного сообщения
+				 */
+				size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки диапазона портов для выделения портов UDP серверов
@@ -726,20 +751,18 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param server объект юнита сервера
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit Socks5(unit::server_t * server, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param server объект юнита сервера
-				 * @param dns    объект DNS-резолвера
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param dns объект DNS-резолвера
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit Socks5(unit::server_t * server, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 			public:
 				/**
 				 * @brief Деструктор

@@ -108,7 +108,7 @@ namespace awh {
 			unique_ptr <unit_t> _unit;
 		protected:
 			// Объект транспортного уровня безопасности
-			tls::coder_t * _tls;
+			tls::coder_t * _coder;
 		protected:
 			// Объект фреймворка
 			const fmk_t * _fmk;

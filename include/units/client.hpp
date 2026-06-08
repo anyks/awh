@@ -127,6 +127,14 @@ namespace awh {
 				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept;
 			public:
 				/**
+				 * @brief Метод проверки актуальности события
+				 *
+				 * @param eid идентификатор события
+				 * @return    результат проверки актуальности события
+				 */
+				bool isActual(const event::id_t eid) const noexcept;
+			public:
+				/**
 				 * @brief Метод установки безопасности работы потоков
 				 *
 				 * @param mode флаг режима безопасности потоков
@@ -298,18 +306,18 @@ namespace awh {
 				/**
 				 * @brief Метод получения внутреннего порта события
 				 *
-				 * @param id идентификатор события
-				 * @return   внутренний порт события
+				 * @param eid идентификатор события
+				 * @return    внутренний порт события
 				 */
-				uint16_t getInternalPort(const event::id_t id) const noexcept;
+				uint16_t getInternalPort(const event::id_t eid) const noexcept;
 				/**
 				 * @brief Метод установки внутреннего порта события
 				 *
-				 * @param id   идентификатор события
+				 * @param eid  идентификатор события
 				 * @param port внутренний порт события
 				 * @return     результат выполнения установки
 				 */
-				bool setInternalPort(const event::id_t id, const uint16_t port) noexcept;
+				bool setInternalPort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины
