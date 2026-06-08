@@ -13,7 +13,7 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного включения заголовка
  */
 #ifndef __AWH_SERVER_SOCKS5__
 #define __AWH_SERVER_SOCKS5__
@@ -26,7 +26,7 @@
 #include <unordered_map>
 
 /**
- * Наши модули
+ * Заголовки проекта
  */
 #include "server.hpp"
 #include "../units/client.hpp"
@@ -47,7 +47,7 @@ namespace awh {
 	 */
 	namespace server {
 		/**
-		 * @brief Класс сервера socks5 прокси
+		 * @brief Класс сервера SOCKS5-прокси
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Socks5 : public server_t {
@@ -184,7 +184,7 @@ namespace awh {
 				// Объект работы с сетью
 				eth_t _eth;
 			private:
-				// Объект UDP-серверов для socks5-прокси
+				// Объект UDP-серверов для SOCKS5-прокси
 				udp_server_t _udp;
 			private:
 				// Объект юнита клиента
@@ -195,7 +195,7 @@ namespace awh {
 			private:
 				// Список для сопоставления идентификаторов пиров с удалёнными клиентами
 				unordered_map <event::id_t, peer_t> _peers;
-				// Список для сопоставления идентификаторов клиентов с пирами которым они принадлежат
+				// Список для сопоставления идентификаторов клиентов с пирами, которым они принадлежат
 				unordered_map <event::id_t, event::id_t> _clients;
 				// Список для сопоставления идентификаторов DNS-запросов с пирами
 				unordered_map <unit::dns_t::id_t, event::id_t> _resolves;
@@ -449,10 +449,10 @@ namespace awh {
 				bool setSourcePort(const uint16_t port) noexcept;
 			public:
 				/**
-				 * @brief Метод получения порта удаленного клиента или текущего сервера
+				 * @brief Метод получения порта удалённого клиента или текущего сервера
 				 *
 				 * @param eid идентификатор события клиента или сервера
-				 * @return    порт удаленного клиента или текущего сервера
+				 * @return    порт удалённого клиента или текущего сервера
 				 */
 				uint16_t getDestinationPort(const event::id_t eid) const noexcept;
 			public:
