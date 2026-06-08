@@ -169,6 +169,8 @@ namespace awh {
 					uint16_t end;
 					// Количество выделенных портов для UDP-серверов
 					uint16_t count;
+					// Объект контекста заголовка UDP пакета
+					proto::socks5_t::udp_head_t ctx;
 					// Адрес для запуска UDP-серверов
 					unique_ptr <net::addr_t> address;
 					// Список идентификаторов активных событий UDP-серверов

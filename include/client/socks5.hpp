@@ -13,7 +13,7 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного включения заголовка
  */
 #ifndef __AWH_CLIENT_SOCKS5__
 #define __AWH_CLIENT_SOCKS5__
@@ -44,7 +44,7 @@ namespace awh {
 	 */
 	namespace client {
 		/**
-		 * @brief Класс клиента socks5 прокси
+		 * @brief Класс клиента SOCKS5-прокси
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Socks5 : public client_t {
@@ -58,9 +58,11 @@ namespace awh {
 					 * @brief Идентификатор события UDP-клиента
 					 *
 					 */
-					union {
+					struct {
 						// Идентификатор события клиента
-						event::id_t eid;
+						event::id_t eid = 0;
+						// Объект контекста заголовка UDP пакета
+						proto::socks5_t::udp_head_t ctx;
 					} udp;
 					// Атрибуты сети для конечной точки
 					unique_ptr <net::attr_t> attr;
@@ -68,7 +70,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Endpoint() noexcept : udp{0}, attr(nullptr) {}
+					explicit Endpoint() noexcept : attr(nullptr) {}
 				} endpoint_t;
 			private:
 				// Конечная точка клиента, работающего через прокси
@@ -118,11 +120,11 @@ namespace awh {
 				 */
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 				/**
-				 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+				 * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
 				 *
 				 * @param family семейство адресов (IPv4/IPv6)
-				 * @param domain доменное имя для резолвинга
-				 * @param addr   указатель на структуру для хранения результата резолвинга
+				 * @param domain доменное имя для разрешения
+				 * @param addr   указатель на структуру для хранения результата разрешения
 				 */
 				void resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 			private:
@@ -224,14 +226,14 @@ namespace awh {
 				/**
 				 * @brief Метод установки исходящего адреса для UDP-клиента
 				 *
-				 * @param addr искходящий адрес для UDP-клиента
+				 * @param addr исходящий адрес для UDP-клиента
 				 * @return 	   результат выполнения установки исходящего адреса для UDP-клиента
 				 */
 				bool udp(const net::attr_net_t * addr) noexcept;
 				/**
 				 * @brief Метод установки исходящего адреса для UDP-клиента
 				 *
-				 * @param addr искходящий адрес для UDP-клиента
+				 * @param addr исходящий адрес для UDP-клиента
 				 * @param port исходящий порт для UDP-клиента
 				 * @return     результат выполнения установки исходящего адреса для UDP-клиента
 				 */
@@ -254,12 +256,12 @@ namespace awh {
 				bool endpoint(string_view addr, const uint16_t port) noexcept;
 			private:
 				/**
-				 * @brief Конструктор копирования (запрещаем)
+				 * @brief Конструктор копирования (запрещён)
 				 *
 				 */
 				Socks5(const Socks5 &) = delete;
 				/**
-				 * @brief Оператор копирования (запрещаем)
+				 * @brief Оператор копирования (запрещён)
 				 *
 				 * @return текущее значение объекта
 				 */

@@ -17,12 +17,12 @@
  */
 #ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
 	/**
-	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
-	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1472 - 72 = 1400 байт, с запасом на возможную инкапсуляцию
+	 * Устанавливаем размер полезной нагрузки UDP для IPv4 в 1400 байт
+	 * Значение выбрано как безопасный запас относительно стандартного MTU Ethernet (1500)
 	 *
-	 * 1500 - 20 (IP) - 8 (UDP) = 1472 максимум без фрагментации
-	 * Запас 72 байта на возможную инкапсуляцию (туннели, провайдерские заголовки)
-	 * Больше → фрагментация → потеря пакетов
+	 * Теоретический максимум без фрагментации: 1500 - 20 (IPv4) - 8 (UDP) = 1472
+	 * Дополнительный запас 72 байта оставляем под инкапсуляцию (туннели, служебные заголовки)
+	 * Превышение может приводить к фрагментации и снижению надёжности доставки
 	 */
 	#define AWH_MTU_UDP_IPV4_PAYLOAD_SIZE 0x578
 #endif
@@ -32,18 +32,18 @@
  */
 #ifndef AWH_MTU_UDP_IPV6_PAYLOAD_SIZE
 	/**
-	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
-	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1452 - 72 = 1380 байт, с запасом на возможную инкапсуляцию
+	 * Устанавливаем размер полезной нагрузки UDP для IPv6 в 1380 байт
+	 * Значение выбрано как безопасный запас относительно стандартного MTU Ethernet (1500)
 	 *
-	 * 1500 - 40 (IPv6) - 8 (UDP) = 1452 максимум без фрагментации
-	 * Запас 72 байта на инкапсуляцию (туннели часто используют двойную инкапсуляцию)
-	 * IPv6 не фрагментирует на маршрутизаторах → фрагментированные пакеты отбрасываются
+	 * Теоретический максимум без фрагментации: 1500 - 40 (IPv6) - 8 (UDP) = 1452
+	 * Дополнительный запас 72 байта оставляем под инкапсуляцию
+	 * В IPv6 маршрутизаторы не фрагментируют пакеты, поэтому запас особенно важен
 	 */
 	#define AWH_MTU_UDP_IPV6_PAYLOAD_SIZE 0x564
 #endif
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл модуля
  */
 #include <client/socks5.hpp>
 
@@ -196,9 +196,9 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 							return;
 						}
 					}
-					// Выполняем резолвинг доменного имени
+					// Выполняем разрешение доменного имени
 					if(!this->_dns.client->resolve(this->_dns.id, this->_unit->client.family(this->_id.eid), this->_host, this->_dns.alive.load(std::memory_order_acquire))){
-						// Создаём текст ошибки резолвинга доменного имени
+						// Создаём текст ошибки разрешения доменного имени
 						const string error = this->_fmk->format("It was not possible to obtain an IP address for the domain name \"%s\"", this->_host.c_str());
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
@@ -307,9 +307,12 @@ void awh::client::Socks5::state(const event::id_t eid, const event::status_t sta
 			// Обнуляем идентификатор клиента
 			this->_id.eid = 0;
 			// Если идентификатор UDP-клиента установлен
-			if(this->_endpoint.udp.eid > 0)
+			if(this->_endpoint.udp.eid > 0){
 				// Уничтожаем UDP-клиента
 				this->_unit->client.destroy(this->_endpoint.udp.eid);
+				// Обнуляем идентификатор UDP-клиента
+				this->_endpoint.udp.eid = 0;
+			}
 			// Если объект DNS-резолвера установлен
 			if(this->_dns.client != nullptr)
 				// Останавливаем событие DNS-резолвера
@@ -367,16 +370,14 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 					}
 				// Если идентификатор клиента соответствует идентификатору UDP-клиента
 				} else if(eid == this->_endpoint.udp.eid) {
-					// Инициализируем объект заголовка UDP пакета
-					proto::socks5_t::udp_head_t udp{};
 					// Если парсинг данных от прокси-сервера выполнен успешно
-					if(this->_socks5.parse(buffer, size, udp)){
-						// Если хост клиента которому адресован UDP пакет установлен
-						if(udp.host != nullptr){
+					if(this->_socks5.parse(buffer, size, this->_endpoint.udp.ctx)){
+						// Если установлен хост клиента, которому адресован UDP-пакет
+						if(this->_endpoint.udp.ctx.host != nullptr){
 							// Если объект транспортного уровня безопасности установлен
 							if((this->_coder != nullptr) && (this->_id.sid > 0)){
 								// Если данные не расшифрованы
-								if(!this->_coder->decrypt(this->_id.sid, buffer + udp.size, size - udp.size)){
+								if(!this->_coder->decrypt(this->_id.sid, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size)){
 									// Если функция обратного вызова не установлена
 									if(!this->_callback.is("error_tls")){
 										/**
@@ -399,13 +400,13 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("read"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer + udp.size, size - udp.size);
+									this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size);
 							}
 							// Выходим из функции
 							return;
 						}
 					}
-					// Создаём текст ошибки резолвинга доменного имени
+					// Создаём текст ошибки обработки UDP-пакета
 					const string error = "Client for whom the UDP packet was received was not found";
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
@@ -459,6 +460,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						} break;
 						// Если текущее состояние соответствует ожиданию выполнения подключения
 						case static_cast <uint8_t> (proto::socks5_t::state_t::CONNECT): {
+							// Устанавливаем пустую команду
+							this->_ctx.command = proto::socks5_t::command_t::NONE;
 							// Если клиент для работы с UDP-протоколом активирован
 							if(this->_endpoint.udp.eid > 0){
 								// Устанавливаем команду для UDP протокола
@@ -466,7 +469,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Получаем порт клиента для подключения, работающего через прокси
 								uint16_t port = this->_unit->client.getSourcePort(this->_endpoint.udp.eid);
 								/**
-								 * Определяем тип данных сесии клиента, работающего через прокси
+								 * Определяем тип данных сессии клиента, работающего через прокси
 								 */
 								switch(static_cast <uint8_t> (this->_unit->client.family(this->_endpoint.udp.eid))){
 									// Если тип данных соответствует IPv4
@@ -507,11 +510,11 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									} break;
 								}
 							// Если клиент для работы с UDP-протоколом не активирован
-							} else {
+							} else if(this->_endpoint.attr != nullptr) {
 								// Устанавливаем команду для TCP протокола
 								this->_ctx.command = proto::socks5_t::command_t::CONNECT;
 								/**
-								 * Определяем тип данных сесии клиента, работающего через прокси
+								 * Определяем тип данных сессии клиента, работающего через прокси
 								 */
 								switch(static_cast <uint8_t> (this->_endpoint.attr->type)){
 									// Если тип данных соответствует FQDN
@@ -551,39 +554,42 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									} break;
 								}
 							}
-							// Размер буфера данных
-							size_t size = 0;
-							// Буфер данных запроса
-							uint8_t * buffer = nullptr;
-							// Если извлечение буфера данных запроса выполнено успешно
-							if(this->_socks5.buffer(&buffer, size, this->_ctx)){
-								// Если отправка запроса на прокси-сервер не выполнена
-								if(this->_unit->client.send(this->_id.eid, buffer, size) != size){
-									// Если функция обратного вызова не установлена
-									if(!this->_callback.is("error")){
-										/**
-										 * Если включён режим отладки
-										 */
-										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
-											this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-										/**
-										 * Если режим отладки не включён
-										 */
-										#else
-											// Выводим сообщение об ошибке
-											this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
-										#endif
-									}
-								// Выходим из функции
-								} else return;
+							// Если команда для работы с прокси-сервером установлена
+							if(this->_ctx.command != proto::socks5_t::command_t::NONE){
+								// Размер буфера данных
+								size_t size = 0;
+								// Буфер данных запроса
+								uint8_t * buffer = nullptr;
+								// Если извлечение буфера данных запроса выполнено успешно
+								if(this->_socks5.buffer(&buffer, size, this->_ctx)){
+									// Если отправка запроса на прокси-сервер не выполнена
+									if(this->_unit->client.send(this->_id.eid, buffer, size) != size){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("Failed to send data to remote server", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
+											#endif
+										}
+									// Выходим из функции
+									} else return;
+								}
 							}
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("connect"))
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 						} break;
-						// Если текущее состояние соответствует выполненному рукопожатию
+						// Если текущее состояние соответствует успешному завершению рукопожатия
 						case static_cast <uint8_t> (proto::socks5_t::state_t::HANDSHAKE): {
 							// Порт хоста для подключения к удалённому серверу
 							uint16_t port = 0;
@@ -591,76 +597,97 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							string target = "";
 							// Если клиент для работы с UDP-протоколом активирован
 							if(this->_endpoint.udp.eid > 0){
-								/**
-								 * Определяем тип данных адреса полученного от socks5 прокси-сервера
-								 */
-								switch(static_cast <uint8_t> (this->_ctx.host->type)){
-									// Если тип данных соответствует FQDN
-									case static_cast <uint8_t> (net::type_t::FQDN): {
-										// Если DNS-резолвер подключён
-										if(this->_dns.client != nullptr){
-											// Выполняем резолвинг хоста текущего сервера
-											if(!this->_dns.client->resolve(this->_dns.id, this->_unit->client.family(this->_endpoint.udp.eid), awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain, this->_dns.alive.load(std::memory_order_acquire))){
-												// Создаём текст ошибки резолвинга хоста текущего сервера
-												const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain.c_str());
-												// Если функция обратного вызова не установлена
-												if(!this->_callback.is("error")){
-													/**
-													 * Если включён режим отладки
-													 */
-													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
-													/**
-													 * Если режим отладки не включён
-													 */
-													#else
-														// Выводим сообщение об ошибке
-														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-													#endif
+								// Если хост для подключения к удалённому серверу установлен
+								if(this->_ctx.host != nullptr){
+									/**
+									 * Определяем тип данных адреса полученного от socks5 прокси-сервера
+									 */
+									switch(static_cast <uint8_t> (this->_ctx.host->type)){
+										// Если тип данных соответствует FQDN
+										case static_cast <uint8_t> (net::type_t::FQDN): {
+											// Если DNS-резолвер подключён
+											if(this->_dns.client != nullptr){
+												// Выполняем разрешение хоста текущего сервера
+												if(!this->_dns.client->resolve(this->_dns.id, this->_unit->client.family(this->_endpoint.udp.eid), awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain, this->_dns.alive.load(std::memory_order_acquire))){
+													// Создаём текст ошибки разрешения хоста текущего сервера
+													const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->domain.c_str());
+													// Если функция обратного вызова не установлена
+													if(!this->_callback.is("error")){
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Выводим сообщение об ошибке
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Выводим сообщение об ошибке
+															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+														#endif
+													// Выполняем функцию обратного вызова
+													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+												// Если разрешение хоста не выполнено, выходим
+												} else return;
+											// Если DNS-резолвер не подключён
+											} else {
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Выводим сообщение об ошибке
+													this->_log->debug("This client does not support working with domain names, since the DNS resolver is not found", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Выводим сообщение об ошибке
+													this->_log->print("This client does not support working with domain names, since the DNS resolver is not found", log_t::flag_t::WARNING);
+												#endif
+											}
+											// Если функция обратного вызова установлена
+											if(this->_callback.is("connect"))
 												// Выполняем функцию обратного вызова
-												} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
-											// Если резолвинг хоста не выполнен, выходим
-											} else return;
-										// Если DNS-резолвер не подключён
-										} else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
-												this->_log->debug("This client does not support working with domain names, since the DNS resolver is not found", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Выводим сообщение об ошибке
-												this->_log->print("This client does not support working with domain names, since the DNS resolver is not found", log_t::flag_t::WARNING);
-											#endif
+												this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+											// Выходим из функции
+											return;
 										}
-										// Если функция обратного вызова установлена
-										if(this->_callback.is("connect"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
-										// Выходим из фукнции
-										return;
-									}
-									// Если тип данных соответствует IPv4
-									case static_cast <uint8_t> (net::type_t::IPV4):
-									// Если тип данных соответствует IPv6
-									case static_cast <uint8_t> (net::type_t::IPV6): {
-										// Устанавливаем порт и хост для подключения к удалённому серверу
-										if(this->_unit->client.setTarget(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get()) &&
-										   this->_unit->client.setDestinationPort(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
-											// Выполняем фиксацию изменений для клиента, работающего через прокси
-											if(this->_unit->client.commit(this->_endpoint.udp.eid)){
-												// Выполняем запуск работы клиента, работающего через прокси
-												if(this->_unit->client.launch(this->_endpoint.udp.eid)){
-													// Получаем адрес хоста для подключения к удалённому серверу
-													target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
-													// Получаем порт хоста для подключения к удалённому серверу
-													port = this->_unit->client.getDestinationPort(this->_endpoint.udp.eid);
-												// Если запуск работы клиента, работающего через прокси, не выполнен
+										// Если тип данных соответствует IPv4
+										case static_cast <uint8_t> (net::type_t::IPV4):
+										// Если тип данных соответствует IPv6
+										case static_cast <uint8_t> (net::type_t::IPV6): {
+											// Устанавливаем порт и хост для подключения к удалённому серверу
+											if(this->_unit->client.setTarget(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get()) &&
+											   this->_unit->client.setDestinationPort(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
+												// Выполняем фиксацию изменений для клиента, работающего через прокси
+												if(this->_unit->client.commit(this->_endpoint.udp.eid)){
+													// Выполняем запуск работы клиента, работающего через прокси
+													if(this->_unit->client.launch(this->_endpoint.udp.eid)){
+														// Получаем адрес хоста для подключения к удалённому серверу
+														target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
+														// Получаем порт хоста для подключения к удалённому серверу
+														port = this->_unit->client.getDestinationPort(this->_endpoint.udp.eid);
+													// Если запуск работы клиента, работающего через прокси, не выполнен
+													} else {
+														// Если функция обратного вызова не установлена
+														if(!this->_callback.is("error")){
+															/**
+															 * Если включён режим отладки
+															 */
+															#if DEBUG_MODE
+																// Выводим сообщение об ошибке
+																this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+															/**
+															 * Если режим отладки не включён
+															 */
+															#else
+																// Выводим сообщение об ошибке
+																this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+															#endif
+														}
+													}
+												// Если фиксация настроек события сервера не выполнена
 												} else {
 													// Если функция обратного вызова не установлена
 													if(!this->_callback.is("error")){
@@ -669,17 +696,17 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+															this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
 															// Выводим сообщение об ошибке
-															this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, eid);
+															this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
 														#endif
 													}
 												}
-											// Если фиксация настроек события сервера не выполнена
+											// Если установка порта и адреса удалённого сервера для подключения не выполнена
 											} else {
 												// Если функция обратного вызова не установлена
 												if(!this->_callback.is("error")){
@@ -688,41 +715,23 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+														this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
 														// Выводим сообщение об ошибке
-														this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
+														this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
 													#endif
 												}
 											}
-										// Если установка порта и адреса удалённого сервера для подключения не выполнена
-										} else {
-											// Если функция обратного вызова не установлена
-											if(!this->_callback.is("error")){
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
-													this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Выводим сообщение об ошибке
-													this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
-												#endif
-											}
-										}
-									} break;
+										} break;
+									}
 								}
 							// Если клиент для работы с UDP-протоколом не активирован
-							} else {
+							} else if(this->_endpoint.attr != nullptr) {
 								/**
-								 * Определяем тип данных сесии клиента, работающего через прокси
+								 * Определяем тип данных сессии клиента, работающего через прокси
 								 */
 								switch(static_cast <uint8_t> (this->_endpoint.attr->type)){
 									// Если тип данных соответствует FQDN
@@ -886,11 +895,11 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 	}
 }
 /**
- * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+ * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
  *
  * @param family семейство адресов (IPv4/IPv6)
- * @param domain доменное имя для резолвинга
- * @param addr   указатель на структуру для хранения результата резолвинга
+ * @param domain доменное имя для разрешения
+ * @param addr   указатель на структуру для хранения результата разрешения
  */
 void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
 	/**
@@ -1097,46 +1106,53 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 					if(this->_endpoint.udp.eid > 0){
 						// Сбрасываем размер буфера полезной нагрузки
 						::__awh_size__ = 0;
-						// Инициализируем объект заголовка UDP пакета
-						proto::socks5_t::udp_head_t udp{};
 						/**
-						 * Определяем тип данных сесии клиента, работающего через прокси
+						 * Определяем тип данных сессии клиента, работающего через прокси
 						 */
 						switch(static_cast <uint8_t> (this->_endpoint.attr->type)){
 							// Если тип данных соответствует FQDN
 							case static_cast <uint8_t> (net::type_t::FQDN): {
-								// Выполняем инициализацию объекта хоста
-								udp.host = make_unique <net::attr_fqdn_t> ();
-								// Устанавливаем тип адреса события
-								udp.host->type = net::type_t::FQDN;
+								// Если хост для подключения к удалённому серверу не установлен или его тип данных не соответствует FQDN
+								if((this->_endpoint.udp.ctx.host == nullptr) || (this->_endpoint.udp.ctx.host->type != net::type_t::FQDN)){
+									// Выполняем инициализацию объекта хоста
+									this->_endpoint.udp.ctx.host = make_unique <net::attr_fqdn_t> ();
+									// Устанавливаем тип адреса события
+									this->_endpoint.udp.ctx.host->type = net::type_t::FQDN;
+								}
 								// Устанавливаем порт хоста для подключения
-								awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->port;
+								awh_cast <net::attr_fqdn_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->port;
 								// Устанавливаем доменное имя хоста для подключения
-								awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->domain;
+								awh_cast <net::attr_fqdn_t *> (this->_endpoint.udp.ctx.host.get())->domain = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->domain;
 							} break;
 							// Если тип данных соответствует IPv4
 							case static_cast <uint8_t> (net::type_t::IPV4): {
-								// Выполняем инициализацию объекта хоста
-								udp.host = make_unique <net::attr_net_t> ();
-								// Устанавливаем тип адреса события
-								udp.host->type = net::type_t::IPV4;
+								// Если хост для подключения к удалённому серверу не установлен или его тип данных не соответствует IPv4
+								if((this->_endpoint.udp.ctx.host == nullptr) || (this->_endpoint.udp.ctx.host->type != net::type_t::IPV4)){
+									// Выполняем инициализацию объекта хоста
+									this->_endpoint.udp.ctx.host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса события
+									this->_endpoint.udp.ctx.host->type = net::type_t::IPV4;
+								}
 								// Устанавливаем порт хоста для подключения
-								awh_cast <net::attr_net_t *> (udp.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
+								awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
 								// Устанавливаем IP-адрес хоста для подключения
-								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address;
+								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address;
 							} break;
 							// Если тип данных соответствует IPv6
 							case static_cast <uint8_t> (net::type_t::IPV6): {
-								// Выполняем инициализацию объекта хоста
-								udp.host = make_unique <net::attr_net_t> ();
-								// Устанавливаем тип адреса события
-								udp.host->type = net::type_t::IPV6;
+								// Если хост для подключения к удалённому серверу не установлен или его тип данных не соответствует IPv6
+								if((this->_endpoint.udp.ctx.host == nullptr) || (this->_endpoint.udp.ctx.host->type != net::type_t::IPV6)){
+									// Выполняем инициализацию объекта хоста
+									this->_endpoint.udp.ctx.host = make_unique <net::attr_net_t> ();
+									// Устанавливаем тип адреса события
+									this->_endpoint.udp.ctx.host->type = net::type_t::IPV6;
+									// Создаём новый объект адреса клиента IPv6
+									awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+								}
 								// Устанавливаем порт хоста для подключения
-								awh_cast <net::attr_net_t *> (udp.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
-								// Создаём новый объект адреса клиента IPv6
-								awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+								awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
 								// Устанавливаем IP-адрес хоста для подключения
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address[0], 16);
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address[0], 16);
 							} break;
 						}
 						// Размер буфера данных
@@ -1144,9 +1160,9 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 						// Буфер данных запроса
 						uint8_t * data = nullptr;
 						// Если извлечение буфера данных запроса выполнено успешно
-						if(this->_socks5.buffer(&data, length, udp)){
+						if(this->_socks5.buffer(&data, length, this->_endpoint.udp.ctx)){
 							/**
-							 * Определяем тип данных сесии клиента, работающего через прокси
+							 * Определяем тип данных сессии клиента, работающего через прокси
 							 */
 							switch(static_cast <uint8_t> (this->_endpoint.attr->type)){
 								// Если тип данных соответствует FQDN
@@ -1162,13 +1178,13 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 									::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
 								break;
 							}
-							// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+							// Если размер буфера полезной нагрузки достаточен для отправки всех данных
 							if(::__awh_size__ == (size + length)){
 								// Копируем данные запроса в буфер полезной нагрузки
 								::memcpy(&::__awh_buffer__[0], data, length);
 								// Добавляем к буферу данных для отправки полезную нагрузку
 								::memcpy(&::__awh_buffer__[length], buffer, size);
-							// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+							// Если размер буфера полезной нагрузки недостаточен для отправки всех данных
 							} else {
 								/**
 								 * Если включён режим отладки
@@ -1493,46 +1509,53 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 					// Выводим результат по умолчанию
 					return 0;
 				}
-				// Инициализируем объект заголовка UDP пакета
-				proto::socks5_t::udp_head_t udp{};
 				/**
-				 * Определяем тип данных сесии клиента, работающего через прокси
+				 * Определяем тип данных сессии клиента, работающего через прокси
 				 */
 				switch(static_cast <uint8_t> (this->_endpoint.attr->type)){
 					// Если тип данных соответствует FQDN
 					case static_cast <uint8_t> (net::type_t::FQDN): {
-						// Выполняем инициализацию объекта хоста
-						udp.host = make_unique <net::attr_fqdn_t> ();
-						// Устанавливаем тип адреса события
-						udp.host->type = net::type_t::FQDN;
+						// Если объект хоста для подключения не инициализирован или тип данных сессии клиента, работающего через прокси, не соответствует FQDN
+						if((this->_endpoint.udp.ctx.host == nullptr) || (this->_endpoint.udp.ctx.host->type != net::type_t::FQDN)){
+							// Выполняем инициализацию объекта хоста
+							this->_endpoint.udp.ctx.host = make_unique <net::attr_fqdn_t> ();
+							// Устанавливаем тип адреса события
+							this->_endpoint.udp.ctx.host->type = net::type_t::FQDN;
+						}
 						// Устанавливаем порт хоста для подключения
-						awh_cast <net::attr_fqdn_t *> (udp.host.get())->port = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->port;
+						awh_cast <net::attr_fqdn_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->port;
 						// Устанавливаем доменное имя хоста для подключения
-						awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->domain;
+						awh_cast <net::attr_fqdn_t *> (this->_endpoint.udp.ctx.host.get())->domain = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->domain;
 					} break;
 					// Если тип данных соответствует IPv4
 					case static_cast <uint8_t> (net::type_t::IPV4): {
-						// Выполняем инициализацию объекта хоста
-						udp.host = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип адреса события
-						udp.host->type = net::type_t::IPV4;
+						// Если объект хоста для подключения не инициализирован или тип данных сессии клиента, работающего через прокси, не соответствует IPv4
+						if((this->_endpoint.udp.ctx.host == nullptr) || (this->_endpoint.udp.ctx.host->type != net::type_t::IPV4)){
+							// Выполняем инициализацию объекта хоста
+							this->_endpoint.udp.ctx.host = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип адреса события
+							this->_endpoint.udp.ctx.host->type = net::type_t::IPV4;
+						}
 						// Устанавливаем порт хоста для подключения
-						awh_cast <net::attr_net_t *> (udp.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
+						awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
 						// Устанавливаем IP-адрес хоста для подключения
-						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address;
+						awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address;
 					} break;
 					// Если тип данных соответствует IPv6
 					case static_cast <uint8_t> (net::type_t::IPV6): {
-						// Выполняем инициализацию объекта хоста
-						udp.host = make_unique <net::attr_net_t> ();
-						// Устанавливаем тип адреса события
-						udp.host->type = net::type_t::IPV6;
+						// Если объект хоста для подключения не инициализирован или тип данных сессии клиента, работающего через прокси, не соответствует IPv6
+						if((this->_endpoint.udp.ctx.host == nullptr) || (this->_endpoint.udp.ctx.host->type != net::type_t::IPV6)){
+							// Выполняем инициализацию объекта хоста
+							this->_endpoint.udp.ctx.host = make_unique <net::attr_net_t> ();
+							// Устанавливаем тип адреса события
+							this->_endpoint.udp.ctx.host->type = net::type_t::IPV6;
+							// Создаём новый объект адреса клиента IPv6
+							awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+						}
 						// Устанавливаем порт хоста для подключения
-						awh_cast <net::attr_net_t *> (udp.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
-						// Создаём новый объект адреса клиента IPv6
-						awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+						awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->port = awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->port;
 						// Устанавливаем IP-адрес хоста для подключения
-						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address[0], 16);
+						::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.udp.ctx.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_endpoint.attr.get())->ip.get())->address[0], 16);
 					} break;
 				}
 				// Размер буфера данных
@@ -1540,9 +1563,9 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 				// Буфер данных запроса
 				uint8_t * data = nullptr;
 				// Если извлечение буфера данных запроса выполнено успешно
-				if(this->_socks5.buffer(&data, length, udp)){
+				if(this->_socks5.buffer(&data, length, this->_endpoint.udp.ctx)){
 					/**
-					 * Определяем тип данных сесии клиента, работающего через прокси
+					 * Определяем тип данных сессии клиента, работающего через прокси
 					 */
 					switch(static_cast <uint8_t> (this->_endpoint.attr->type)){
 						// Если тип данных соответствует FQDN
@@ -1558,7 +1581,7 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 							::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
 						break;
 					}
-					// Если размер буфера полезной нагрузки достаточно для отправки всех данных
+					// Если размер буфера полезной нагрузки достаточен для отправки всех данных
 					if(::__awh_size__ == (size + length)){
 						// Копируем данные запроса в буфер полезной нагрузки
 						::memcpy(&::__awh_buffer__[0], data, length);
@@ -1566,7 +1589,7 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 						::memcpy(&::__awh_buffer__[length], buffer, size);
 						// Выполняем отправку данных серверу
 						return this->_unit->client.send(this->_endpoint.udp.eid, ::__awh_buffer__, ::__awh_size__);
-					// Если размер буфера полезной нагрузки недостаточно для отправки всех данных
+					// Если размер буфера полезной нагрузки недостаточен для отправки всех данных
 					} else {
 						/**
 						 * Если включён режим отладки
@@ -1723,7 +1746,7 @@ void awh::client::Socks5::setUser(const string & username, const string & passwo
 /**
  * @brief Метод установки исходящего адреса для UDP-клиента
  *
- * @param addr искходящий адрес для UDP-клиента
+ * @param addr исходящий адрес для UDP-клиента
  * @return 	   результат выполнения установки исходящего адреса для UDP-клиента
  */
 bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
@@ -1739,70 +1762,118 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 			if(addr != nullptr){
 				// Если клиент для работы с UDP протоколом инициализирован
 				if(this->_endpoint.udp.eid > 0)
-					// Удаляем клиента принадлежащего пиру
+					// Удаляем клиент, принадлежащий пиру
 					this->_unit->client.destroy(this->_endpoint.udp.eid);
 				/**
 				 * Определяем тип полученного IP-адреса
 				 */
 				switch(addr->ip->size){
 					// Для типа IPv4
-					case 4:
+					case 4: {
 						// Выполняем создание клиента для подключения к удалённому серверу
 						this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-					break;
+						// Если клиент для работы с UDP протоколом инициализирован
+						if(this->_endpoint.udp.eid > 0){
+							// Устанавливаем опции события
+							if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+								// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
+								if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, addr->ip.get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, addr->port)))){
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										// Устанавливаем исходящий адрес для UDP-клиента
+										this->_unit->addr.source(addr->ip.get());
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+										#endif
+									}
+								// Если установка опций события выполнена, возвращаем положительный результат
+								} else return result;
+							// Если установка опций события не выполнена
+							} else {
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+									#endif
+								}
+							}
+							// Удаляем клиент, принадлежащий пиру
+							this->_unit->client.destroy(this->_endpoint.udp.eid);
+						}
+					} break;
 					// Для типа IPv6
-					case 16:
+					case 16: {
 						// Выполняем создание клиента для подключения к удалённому серверу
 						this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP);
-					break;
-				}
-				// Если клиент для работы с UDP протоколом инициализирован
-				if(this->_endpoint.udp.eid > 0){
-					// Устананавливаем опции события
-					if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
-						// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
-						if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, addr->ip.get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, addr->port)))){
-							// Если функция обратного вызова не установлена
-							if(!this->_callback.is("error")){
-								// Устанавливаем исходящий адрес для UDP-клиента
-								this->_unit->addr.source(addr->ip.get());
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
-								#endif
+						// Если клиент для работы с UDP протоколом инициализирован
+						if(this->_endpoint.udp.eid > 0){
+							// Устанавливаем опции события
+							if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+								// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
+								if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV6, addr->ip.get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, addr->port)))){
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										// Устанавливаем исходящий адрес для UDP-клиента
+										this->_unit->addr.source(addr->ip.get());
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, static_cast <string> (this->_unit->addr).c_str(), this->_endpoint.udp.eid);
+										#endif
+									}
+								// Если установка опций события выполнена, возвращаем положительный результат
+								} else return result;
+							// Если установка опций события не выполнена
+							} else {
+								// Если функция обратного вызова не установлена
+								if(!this->_callback.is("error")){
+									/**
+									 * Если включён режим отладки
+									 */
+									#if DEBUG_MODE
+										// Выводим сообщение об ошибке
+										this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+									/**
+									 * Если режим отладки не включён
+									 */
+									#else
+										// Выводим сообщение об ошибке
+										this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+									#endif
+								}
 							}
-						// Если установка опций события выполнена, возвращаем положительный результат
-						} else return result;
-					// Если установка опций события не выполнена
-					} else {
-						// Если функция обратного вызова не установлена
-						if(!this->_callback.is("error")){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, this->_endpoint.udp.eid);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Выводим сообщение об ошибке
-								this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
-							#endif
+							// Удаляем клиент, принадлежащий пиру
+							this->_unit->client.destroy(this->_endpoint.udp.eid);
 						}
-					}
-					// Удаляем клиента принадлежащего пиру
-					this->_unit->client.destroy(this->_endpoint.udp.eid);
+					} break;
 				}
 			}
 		/**
@@ -1830,7 +1901,7 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 /**
  * @brief Метод установки исходящего адреса для UDP-клиента
  *
- * @param addr искходящий адрес для UDP-клиента
+ * @param addr исходящий адрес для UDP-клиента
  * @param port исходящий порт для UDP-клиента
  * @return     результат выполнения установки исходящего адреса для UDP-клиента
  */
@@ -1849,68 +1920,114 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 				if(this->_unit->addr.parse(addr)){
 					// Если клиент для работы с UDP протоколом инициализирован
 					if(this->_endpoint.udp.eid > 0)
-						// Удаляем клиента принадлежащего пиру
+						// Удаляем клиент, принадлежащий пиру
 						this->_unit->client.destroy(this->_endpoint.udp.eid);
 					/**
 					 * Определяем тип полученного IP-адреса
 					 */
 					switch(static_cast <uint8_t> (this->_unit->addr.type())){
 						// Для типа IPv4
-						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 							// Выполняем создание клиента для подключения к удалённому серверу
 							this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-						break;
+							// Если клиент для работы с UDP протоколом инициализирован
+							if(this->_endpoint.udp.eid > 0){
+								// Устанавливаем опции события
+								if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+									// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
+									if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, this->_unit->addr.source().get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port)))){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+											#endif
+										}
+									// Если установка опций события выполнена, возвращаем положительный результат
+									} else return result;
+								// Если установка опций события не выполнена
+								} else {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										#endif
+									}
+								}
+								// Удаляем клиент, принадлежащий пиру
+								this->_unit->client.destroy(this->_endpoint.udp.eid);
+							}
+						} break;
 						// Для типа IPv6
-						case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 							// Выполняем создание клиента для подключения к удалённому серверу
 							this->_endpoint.udp.eid = this->_unit->client.issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP);
-						break;
-					}
-					// Если клиент для работы с UDP протоколом инициализирован
-					if(this->_endpoint.udp.eid > 0){
-						// Устананавливаем опции события
-						if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
-							// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
-							if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, this->_unit->addr.source().get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port)))){
-								// Если функция обратного вызова не установлена
-								if(!this->_callback.is("error")){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
-										this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Выводим сообщение об ошибке
-										this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
-									#endif
+							// Если клиент для работы с UDP протоколом инициализирован
+							if(this->_endpoint.udp.eid > 0){
+								// Устанавливаем опции события
+								if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+									// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
+									if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV6, this->_unit->addr.source().get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port)))){
+										// Если функция обратного вызова не установлена
+										if(!this->_callback.is("error")){
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Выводим сообщение об ошибке
+												this->_log->debug("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Выводим сообщение об ошибке
+												this->_log->print("Address \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, addr, this->_endpoint.udp.eid);
+											#endif
+										}
+									// Если установка опций события выполнена, возвращаем положительный результат
+									} else return result;
+								// Если установка опций события не выполнена
+								} else {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Выводим сообщение об ошибке
+											this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Выводим сообщение об ошибке
+											this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
+										#endif
+									}
 								}
-							// Если установка опций события выполнена, возвращаем положительный результат
-							} else return result;
-						// Если установка опций события не выполнена
-						} else {
-							// Если функция обратного вызова не установлена
-							if(!this->_callback.is("error")){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
-									this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(addr, port), log_t::flag_t::WARNING, this->_endpoint.udp.eid);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Выводим сообщение об ошибке
-									this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, this->_endpoint.udp.eid);
-								#endif
+								// Удаляем клиент, принадлежащий пиру
+								this->_unit->client.destroy(this->_endpoint.udp.eid);
 							}
-						}
-						// Удаляем клиента принадлежащего пиру
-						this->_unit->client.destroy(this->_endpoint.udp.eid);
+						} break;
 					}
 				}
 			}
@@ -1949,8 +2066,10 @@ bool awh::client::Socks5::endpoint(const net::attr_t * attr) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Если адрес для установки конечной точки не пустой
+			// Если указатель на адрес конечной точки не пустой
 			if(attr != nullptr){
+				// Сбрасываем объект атрибутов конечной точки для идентификатора события клиента
+				this->_endpoint.attr.reset(nullptr);
 				/**
 				 * Определяем тип полученного IP-адреса
 				 */
@@ -2048,7 +2167,7 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
 							this->_endpoint.attr->type = net::type_t::FQDN;
 							// Устанавливаем полученный порт
 							awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->port = port;
-							// Устанавливаем полученный доменное имя хоста для подключения
+							// Устанавливаем полученное доменное имя хоста для подключения
 							awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->domain = addr;
 						} break;
 						// Для типа IPv4
@@ -2082,7 +2201,7 @@ bool awh::client::Socks5::endpoint(string_view addr, const uint16_t port) noexce
 					this->_endpoint.attr->type = net::type_t::FQDN;
 					// Устанавливаем полученный порт
 					awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->port = port;
-					// Устанавливаем полученный доменное имя хоста для подключения
+					// Устанавливаем полученное доменное имя хоста для подключения
 					awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->domain = addr;
 				}
 				// Выводим результат наличия объекта атрибутов конечной точки для идентификатора события клиента

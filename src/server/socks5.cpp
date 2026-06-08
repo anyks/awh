@@ -490,7 +490,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 														// Создаём UDP сервер для работы с клиентами
 														auto ret = this->_udp.events.emplace(this->_unit->server.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP));
 														// Устанавливаем опции события UDP сервера
-														if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+														if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 															// Устанавливаем порт и адрес для UDP сервера
 															if(this->_unit->server.setPort(* ret.first, * port) && this->_unit->server.setAddress(* ret.first, event::address_t::IPV4, this->_udp.address.get())){
 																// Выполняем фиксацию настроек события сервера
@@ -600,7 +600,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 														// Создаём UDP сервер для работы с клиентами
 														auto ret = this->_udp.events.emplace(this->_unit->server.issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP));
 														// Устанавливаем опции события UDP сервера
-														if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+														if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 															// Устанавливаем порт и адрес для UDP сервера
 															if(this->_unit->server.setPort(* ret.first, * port) && this->_unit->server.setAddress(* ret.first, event::address_t::IPV6, "::")){
 																// Выполняем фиксацию настроек события сервера
@@ -950,7 +950,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 									// Создаём UDP сервер для работы с клиентами
 									auto ret = this->_udp.events.emplace(this->_unit->server.issue(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP));
 									// Устанавливаем опции события UDP сервера
-									if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+									if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 										// Устанавливаем порт и адрес для UDP сервера
 										if(this->_unit->server.setPort(* ret.first, port) && this->_unit->server.setAddress(* ret.first, event::address_t::IPV4, this->_udp.address.get())){
 											// Выполняем фиксацию настроек события сервера
@@ -1049,7 +1049,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
 									// Создаём UDP сервер для работы с клиентами
 									auto ret = this->_udp.events.emplace(this->_unit->server.issue(event::family_t::IPV6, event::type_t::DATAGRAM, event::protocol_t::UDP));
 									// Устанавливаем опции события UDP сервера
-									if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+									if(this->_unit->server.setOptions(* ret.first, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 										// Устанавливаем порт и адрес для UDP сервера
 										if(this->_unit->server.setPort(* ret.first, port) && this->_unit->server.setAddress(* ret.first, event::address_t::IPV6, "::")){
 											// Выполняем фиксацию настроек события сервера
@@ -1351,10 +1351,10 @@ void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buff
 	auto i = this->_clients.find(eid);
 	// Если идентификатор клиента найден в списке
 	if(i != this->_clients.end()){
-		// Инициализируем объект заголовка UDP пакета
-		proto::socks5_t::udp_head_t udp{};
-		// Выполняем инициализацию объекта хоста
-		udp.host = make_unique <net::attr_net_t> ();
+		// Если хост для ответа на запрос клиента не инициализирован, или если тип адреса хоста для ответа на запрос клиента соответствует FQDN
+		if((this->_udp.ctx.host == nullptr) || (this->_udp.ctx.host->type == net::type_t::FQDN))
+			// Выполняем инициализацию объекта хоста
+			this->_udp.ctx.host = make_unique <net::attr_net_t> ();
 		/**
 		 * Определяем тип адреса хоста для подключения
 		 */
@@ -1362,41 +1362,41 @@ void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buff
 			// Если тип адреса соответствует IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4):
 				// Устанавливаем тип параметров подключения для идентификатора события клиента
-				udp.host->type = net::type_t::IPV4;
+				this->_udp.ctx.host->type = net::type_t::IPV4;
 			break;
 			// Если тип адреса соответствует IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Если тип адреса хоста для ответа на запрос клиента не соответствует IPv6
+				if(this->_udp.ctx.host->type != net::type_t::IPV6)
+					// Создаём новый объект адреса клиента IPv6
+					awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
 				// Устанавливаем тип параметров подключения для идентификатора события клиента
-				udp.host->type = net::type_t::IPV6;
-				// Создаём новый объект адреса клиента IPv6
-				awh_cast <net::attr_net_t *> (udp.host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+				this->_udp.ctx.host->type = net::type_t::IPV6;
 			} break;
 		}
 		// Устанавливаем порт подключённого клиента для идентификатора события клиента
-		awh_cast <net::attr_net_t *> (udp.host.get())->port = this->_client.getDestinationPort(eid);
+		awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->port = this->_client.getDestinationPort(eid);
 		// Извлекаем IP-адрес клиента для идентификатора события клиента
-		this->_client.getTarget(eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip);
+		this->_client.getTarget(eid, awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->ip);
 		// Размер буфера данных
 		size_t length = 0;
 		// Буфер данных запроса
 		uint8_t * data = nullptr;
 		// Если извлечение буфера данных запроса выполнено успешно
-		if(this->_socks5.buffer(&data, length, udp)){
+		if(this->_socks5.buffer(&data, length, this->_udp.ctx)){
 			/**
 			 * Определяем тип данных сесии клиента, работающего через прокси
 			 */
-			switch(static_cast <uint8_t> (udp.host->type)){
-				// Если тип данных соответствует FQDN
-				case static_cast <uint8_t> (net::type_t::FQDN):
-				// Если тип данных соответствует IPv6
-				case static_cast <uint8_t> (net::type_t::IPV6):
-					// Устанавливаем размер буфера полезной нагрузки для отправки
-					::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
-				break;
+			switch(static_cast <uint8_t> (this->_udp.ctx.host->type)){
 				// Если тип данных соответствует IPv4
 				case static_cast <uint8_t> (net::type_t::IPV4):
 					// Устанавливаем размер буфера полезной нагрузки для отправки
 					::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV4_PAYLOAD_SIZE));
+				break;
+				// Если тип данных соответствует IPv6
+				case static_cast <uint8_t> (net::type_t::IPV6):
+					// Устанавливаем размер буфера полезной нагрузки для отправки
+					::__awh_size__ = ::min(size + length, static_cast <size_t> (AWH_MTU_UDP_IPV6_PAYLOAD_SIZE));
 				break;
 			}
 			// Если размер буфера полезной нагрузки достаточно для отправки всех данных
@@ -1748,12 +1748,10 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 			if(i != this->_peers.end()){
 				// Если текущее состояние соответствует завершённому состоянию
 				if(i->second.ctx.state == proto::socks5_t::state_t::COMPLETED){
-					// Инициализируем объект заголовка UDP пакета
-					proto::socks5_t::udp_head_t udp{};
 					// Если парсинг данных от прокси-сервера выполнен успешно
-					if(this->_socks5.parse(buffer, size, udp)){
+					if(this->_socks5.parse(buffer, size, this->_udp.ctx)){
 						// Если хост клиента которому адресован UDP пакет установлен
-						if(udp.host != nullptr){
+						if(this->_udp.ctx.host != nullptr){
 							/**
 							 * Устанавливаем метку начала проверки инициализации клиента
 							 */
@@ -1765,7 +1763,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Выполняем создание клиента для подключения к удалённому серверу
 								i->second.eid = this->_client.issue(family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 								// Устанавливаем опции события
-								if(this->_client.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+								if(this->_client.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 									// Извлекаем сетевой интерфейс для подключения к удалённому серверу
 									const string & iface = this->_unit->server.getIface(eid);
 									// Устанавливаем интерфейс для подключения к удалённому серверу
@@ -1773,7 +1771,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										/**
 										 * Определяем тип данных сесии клиента, работающего через прокси
 										 */
-										switch(static_cast <uint8_t> (udp.host->type)){
+										switch(static_cast <uint8_t> (this->_udp.ctx.host->type)){
 											// Если тип данных соответствует FQDN
 											case static_cast <uint8_t> (net::type_t::FQDN): {
 												// Выполняем поиск кэша для идентификатора пира
@@ -1783,13 +1781,13 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													// Устанавливаем идентификатор пира для кэша
 													j->second.eid = eid;
 													// Устанавливаем размер буфера данных в кэше
-													j->second.size = (size - udp.size);
+													j->second.size = (size - this->_udp.ctx.size);
 													// Копируем данные запроса в кэш
-													::memcpy(j->second.buffer, buffer + udp.size, size - udp.size);
+													::memcpy(j->second.buffer, buffer + this->_udp.ctx.size, size - this->_udp.ctx.size);
 													// Устанавливаем порт удалённого сервера для подключения
-													j->second.attr->port = awh_cast <net::attr_fqdn_t *> (udp.host.get())->port;
+													j->second.attr->port = awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->port;
 													// Устанавливаем доменное имя хоста для подключения
-													j->second.domain = awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain;
+													j->second.domain = awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->domain;
 												// Если кэш для этого идентификатора не найден
 												} else {
 													// Добавляем кэш для идентификатора пира
@@ -1797,24 +1795,24 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													// Устанавливаем идентификатор пира для кэша
 													ret.first->second.eid = eid;
 													// Устанавливаем размер буфера данных в кэше
-													ret.first->second.size = (size - udp.size);
+													ret.first->second.size = (size - this->_udp.ctx.size);
 													// Копируем данные запроса в кэш
-													::memcpy(ret.first->second.buffer, buffer + udp.size, size - udp.size);
+													::memcpy(ret.first->second.buffer, buffer + this->_udp.ctx.size, size - this->_udp.ctx.size);
 													// Создаём новый объект атрибутов сети для кэша
 													ret.first->second.attr = make_unique <net::attr_net_t> ();
 													// Устанавливаем порт удалённого сервера для подключения
-													ret.first->second.attr->port = awh_cast <net::attr_fqdn_t *> (udp.host.get())->port;
+													ret.first->second.attr->port = awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->port;
 													// Устанавливаем доменное имя хоста для подключения из данных запроса в кэше
-													ret.first->second.domain = awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain;
+													ret.first->second.domain = awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->domain;
 												}
 												// Создаём идентификатор резолвера для текущего пира
 												i->second.did = this->_dns.client->issue();
 												// Выполняем добавление связи DNS-резолвера и идентификатора пира
 												auto ret = this->_resolves.emplace(i->second.did, i->second.eid);
 												// Выполняем резолвинг хоста текущего сервера
-												if(!this->_dns.client->resolve(ret.first->first, family, awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain, this->_dns.alive.load(std::memory_order_acquire))){
+												if(!this->_dns.client->resolve(ret.first->first, family, awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->domain, this->_dns.alive.load(std::memory_order_acquire))){
 													// Создаём текст ошибки резолвинга хоста текущего сервера
-													const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain.c_str());
+													const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->domain.c_str());
 													// Если функция обратного вызова не установлена
 													if(!this->_callback.is("error")){
 														/**
@@ -1840,8 +1838,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Если тип данных соответствует IPv4
 											case static_cast <uint8_t> (net::type_t::IPV4): {
 												// Устанавливаем порт и адрес удалённого сервера для подключения
-												if(this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip.get()) &&
-												   this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->port)){
+												if(this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->ip.get()) &&
+												   this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->port)){
 													// Если функция обратного вызова установлена
 													if(this->_callback.is("ready")){
 														// Получаем IP-адрес для подключения к удалённому серверу
@@ -1883,7 +1881,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															// Добавляем связь между клиентом и пиром которому он принадлежит
 															this->_clients.emplace(i->second.eid, eid);
 															// Выполняем отправку данных клиенту
-															this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+															this->_client.send(i->second.eid, buffer + this->_udp.ctx.size, size - this->_udp.ctx.size);
 															// Выходим из функции
 															return;
 														}
@@ -1972,24 +1970,24 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								/**
 								 * Определяем тип данных сесии клиента, работающего через прокси
 								 */
-								switch(static_cast <uint8_t> (udp.host->type)){
+								switch(static_cast <uint8_t> (this->_udp.ctx.host->type)){
 									// Если тип данных соответствует FQDN
 									case static_cast <uint8_t> (net::type_t::FQDN): {
 										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-										if(awh_cast <net::attr_fqdn_t *> (udp.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
+										if(awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
 											// Выполняем поиск кэша для идентификатора пира
 											auto j = ::__awh_cache__.find(i->second.eid);
 											// Если кэш для этого идентификатора найден
 											if(j != ::__awh_cache__.end()){
 												// Если доменные имена хоста сервера и удалённого сервера для подключения соответствуют друг другу
-												if(this->_fmk->compare(j->second.domain, awh_cast <net::attr_fqdn_t *> (udp.host.get())->domain)){
+												if(this->_fmk->compare(j->second.domain, awh_cast <net::attr_fqdn_t *> (this->_udp.ctx.host.get())->domain)){
 													/**
 													 * Если доменное имя уже разрезолвено, выполняем запрос,
 													 * если новый запрос пришёл раньше, просто дропаем пакет.
 													 */
 													if(j->second.attr != nullptr)
 														// Выполняем отправку данных клиенту
-														this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+														this->_client.send(i->second.eid, buffer + this->_udp.ctx.size, size - this->_udp.ctx.size);
 													// Выходим из функции
 													return;
 												}
@@ -2013,15 +2011,15 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Если семейство адресов соответствует IPv4
 											case static_cast <uint8_t> (event::family_t::IPV4): {
 												// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
+												if(awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
 													// Создаём новый объект адреса клиента IPv4
 													unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
 													// Извлекаем IP-адрес удалённого сервера для подключения
 													this->_client.getTarget(i->second.eid, ip);
 													// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
-													if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address == awh_cast <net::addr_net_ipv4_t *> (ip.get())->address){
+													if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->ip.get())->address == awh_cast <net::addr_net_ipv4_t *> (ip.get())->address){
 														// Выполняем отправку данных клиенту
-														this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+														this->_client.send(i->second.eid, buffer + this->_udp.ctx.size, size - this->_udp.ctx.size);
 														// Выходим из функции
 														return;
 													}
@@ -2036,15 +2034,15 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Если семейство адресов соответствует IPv6
 											case static_cast <uint8_t> (event::family_t::IPV6): {
 												// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
+												if(awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
 													// Создаём новый объект адреса клиента IPv6
 													unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
 													// Извлекаем IP-адрес удалённого сервера для подключения
 													this->_client.getTarget(i->second.eid, ip);
 													// Если IP-адрес удалённого сервера для подключения соответствует IP-адресу хоста сервера для выполнения запроса
-													if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], 16) == 0){
+													if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_udp.ctx.host.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (ip.get())->address[0], 16) == 0){
 														// Выполняем отправку данных клиенту
-														this->_client.send(i->second.eid, buffer + udp.size, size - udp.size);
+														this->_client.send(i->second.eid, buffer + this->_udp.ctx.size, size - this->_udp.ctx.size);
 														// Выходим из функции
 														return;
 													}
