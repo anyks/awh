@@ -72,9 +72,6 @@ namespace awh {
 				// Параметры кластера
 				cluster_params_t _clusterParams;
 			private:
-				// Мютекс для блокировки потоков
-				lock_state_t <std::shared_mutex> _mtx;
-			private:
 				// Список идентификаторов событий сервера
 				unordered_map <event::id_t, event::id_t> _events;
 			private:
@@ -297,13 +294,6 @@ namespace awh {
 				 * @return    белый список события
 				 */
 				const std::unordered_map <string, event::address_t> & getFromWhitelist(const event::id_t eid) const noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек сервера

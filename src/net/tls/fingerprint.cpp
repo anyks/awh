@@ -8165,8 +8165,6 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
  *
  */
 void awh::tls::Fingerprint::clear() noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Очищаем хранилище цифровых отпечатков браузеров
 	this->_browsers.clear();
 }
@@ -8176,8 +8174,6 @@ void awh::tls::Fingerprint::clear() noexcept {
  * @return результат проверки
  */
 bool awh::tls::Fingerprint::empty() const noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Проверяем, что хранилище цифровых отпечатков браузеров пусто
 	return this->_browsers.empty();
 }
@@ -8187,8 +8183,6 @@ bool awh::tls::Fingerprint::empty() const noexcept {
  * @return количество цифровых отпечатков браузеров
  */
 size_t awh::tls::Fingerprint::size() const noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Возвращаем количество цифровых отпечатков браузеров в хранилище
 	return this->_browsers.size();
 }
@@ -8200,8 +8194,6 @@ size_t awh::tls::Fingerprint::size() const noexcept {
 vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcept {
 	// Результат работы функции
 	vector <id_t> result;
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем перебор всех цифровых отпечатков браузеров в хранилище
 	for(const auto & [id, browser] : this->_browsers)
 		// Добавляем идентификатор цифрового отпечатка браузера в результат
@@ -8222,8 +8214,6 @@ bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Ищем цифровой отпечаток браузера по идентификатору
 		auto i = this->_browsers.find(id);
 		// Если цифровой отпечаток браузера найден — удаляем его из хранилища
@@ -8264,8 +8254,6 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Ищем цифровой отпечаток браузера по идентификатору
 		auto i = this->_browsers.find(id);
 		// Если цифровой отпечаток браузера найден
@@ -8314,8 +8302,6 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
 		if(result == 0)
 			// Генерируем результат заново
 			result = id.fetch_add(1, memory_order_relaxed);
-		// Выполняем блокировку потока
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Добавляем цифровой отпечаток браузера в хранилище с новым идентификатором
 		this->_browsers.emplace(result, browser);
 	/**
@@ -8381,15 +8367,6 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, c
 	return result;
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::tls::Fingerprint::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности потоков для доступа к хранилищу цифровых отпечатков браузеров
-	this->_mtx.enabled = mode;
-}
-/**
  * @brief Метод формирования бинарного дампа всех цифровых отпечатков браузеров
  *
  * @return бинарный буфер, содержащий дамп всех цифровых отпечатков браузеров
@@ -8401,8 +8378,6 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 		// Если список цифровых отпечатков браузеров заполнен
 		if(!this->_browsers.empty()){
 			// Бинарный буфер снимка цифрового отпечатка браузера
@@ -8466,8 +8441,6 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потока
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 		// Очищаем хранилище от предыдущих данных
 		this->_browsers.clear();
 		// Если буфер с данными цифровых отпечатков браузеров не пустой
@@ -10175,8 +10148,6 @@ bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & o
  * @param fgp объект Fingerprint для обмена данными
  */
 void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Обмениваемся данными между объектами
 	this->_browsers.swap(fgp._browsers);
 }
@@ -10186,8 +10157,6 @@ void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
  * @return конечный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим результат
 	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
 }
@@ -10197,8 +10166,6 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
  * @return начальный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим результат
 	return iterator_t(this->_browsers.begin(), this->_fmk, this->_log);
 }
@@ -10215,8 +10182,6 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noe
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем блокировку потока
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 			// Извлекаем текущий итератор
 			return iterator_t(this->_browsers.find(id), this->_fmk, this->_log);
 		/**
@@ -10257,8 +10222,6 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const
  * @return результат проверки
  */
 awh::tls::Fingerprint::operator bool() const noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим результат выполенной проверки
 	return !this->_browsers.empty();
 }
@@ -10268,8 +10231,6 @@ awh::tls::Fingerprint::operator bool() const noexcept {
  * @return количество цифровых отпечатков браузеров
  */
 awh::tls::Fingerprint::operator size_t() const noexcept {
-	// Выполняем блокировку потока
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выводим результат количество цифровых отпечатков браузеров, хранящихся в хранилище
 	return this->_browsers.size();
 }
@@ -10289,10 +10250,6 @@ awh::tls::Fingerprint::operator vector <uint8_t> () const noexcept {
  * @return    результат сравнения
  */
 bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept {
-	// Выполняем блокировку поток для текущего объекта
-	const locker_t <std::shared_mutex> lock1(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-	// Выполняем блокировку потока для объекта для копирования
-	const locker_t <std::shared_mutex> lock2(fgp._mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	/**
 	 * Перебираем отпечатки браузеров в текущем контейнере отпечатков браузеров
 	 */
@@ -10331,14 +10288,9 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) noexcept {
 	// Если объект для перемещения не является текущим объектом
-	if(this != &fgp){
-		// Выполняем блокировку поток для текущего объекта
-		const locker_t <std::shared_mutex> lock1(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем блокировку потока для объекта для перемещения
-		const locker_t <std::shared_mutex> lock2(fgp._mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this != &fgp)
 		// Перемещаем данные из объекта для перемещения в текущий объект
 		this->_browsers = ::move(fgp._browsers);
-	}
 	// Выводим текущий контейнер отпечатков браузеров
 	return (* this);
 }
@@ -10350,14 +10302,9 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) n
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & fgp) noexcept {
 	// Если объект для копирования не является текущим объектом
-	if(this != &fgp){
-		// Выполняем блокировку потока для текущего объекта
-		const locker_t <std::shared_mutex> lock1(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Выполняем блокировку потока для объекта для копирования
-		const locker_t <std::shared_mutex> lock2(fgp._mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this != &fgp)
 		// Копируем данные из объекта для копирования в текущий объект
 		this->_browsers = fgp._browsers;
-	}
 	// Выводим текущий контейнер отпечатков браузеров
 	return (* this);
 }
@@ -10367,10 +10314,7 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & f
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *

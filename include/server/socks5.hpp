@@ -193,9 +193,6 @@ namespace awh {
 				// Объект для работы с протоколом SOCKS5
 				proto::server_socks5_t _socks5;
 			private:
-				// Мютекс для блокировки потоков
-				lock_state_t <std::mutex> _mtx;
-			private:
 				// Список для сопоставления идентификаторов пиров с удалёнными клиентами
 				unordered_map <event::id_t, peer_t> _peers;
 				// Список для сопоставления идентификаторов клиентов с пирами которым они принадлежат
@@ -347,13 +344,6 @@ namespace awh {
 				 * @param eid идентификатор события клиента для уничтожения
 				 */
 				void destroy(const event::id_t eid) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова

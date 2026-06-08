@@ -156,8 +156,6 @@ namespace awh {
 				typedef struct Transfer {
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempts;
-					// Мьютекс для блокировки потока
-					lock_state_t <std::shared_mutex> mtx;
 					// Активные пакеты при выполнении запросов NTP-клиента
 					unordered_map <event::id_t, packet_t> waiting;
 					/**
@@ -209,13 +207,6 @@ namespace awh {
 				 * @return       нужно ли завершить клиента после истечения таймаута
 				 */
 				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, packet_t * packet) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова

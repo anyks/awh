@@ -292,13 +292,6 @@ namespace awh {
 			virtual bool disconnect() noexcept;
 		public:
 			/**
-			 * @brief Метод установки безопасности работы потоков
-			 *
-			 * @param mode флаг режима безопасности потоков
-			 */
-			virtual void threadSafety(const bool mode) noexcept;
-		public:
-			/**
 			 * @brief Метод установки функций обратного вызова
 			 *
 			 * @param callback функции обратного вызова

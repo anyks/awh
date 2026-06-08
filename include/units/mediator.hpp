@@ -43,9 +43,6 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Mediator : public unit_t {
 			private:
-				// Мютекс для блокировки потоков
-				lock_state_t <std::mutex> _mtx;
-			private:
 				// Список идентификаторов событий посредника
 				unordered_set <event::id_t> _events;
 			private:
@@ -79,13 +76,6 @@ namespace awh {
 				 * @param description описание ошибки
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек посредника

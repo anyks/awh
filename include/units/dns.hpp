@@ -149,9 +149,6 @@ namespace awh {
 					private:
 						// Очередь для хранения идентификаторов событий
 						std::queue <event::id_t> _ids;
-					private:
-						// Мьютекс для блокировки потока
-						lock_state_t <std::shared_mutex> _mtx;
 					public:
 						/**
 						 * @brief Метод очистки очереди идентификаторов событий
@@ -180,13 +177,6 @@ namespace awh {
 						 * @return    результат извлечения идентификатора
 						 */
 						bool pop(event::id_t & eid) noexcept;
-					public:
-						/**
-						 * @brief Метод установки безопасности работы потоков
-						 *
-						 * @param mode флаг режима безопасности потоков
-						 */
-						void threadSafety(const bool mode) noexcept;
 					public:
 						/**
 						 * @brief Конструктор
@@ -296,10 +286,6 @@ namespace awh {
 					unordered_map <id_t, packet_t> waiting;
 					// Соответствие между событием сокета и идентификатором запроса
 					unordered_map <event::id_t, id_t> attached;
-					// Мьютекс для синхронизации доступа к очереди пакетов
-					lock_state_t <std::shared_mutex> mtxPackets;
-					// Мьютекс для синхронизации доступа к списку ожидающих доменов
-					lock_state_t <std::shared_mutex> mtxWaiting;
 					/**
 					 * @brief Конструктор
 					 *
@@ -366,13 +352,6 @@ namespace awh {
 				 * @param description описание ошибки события DNS-резолвера
 				 */
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова

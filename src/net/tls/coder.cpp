@@ -98,21 +98,6 @@ namespace {
 	 */
 	bool __awh_ssl_initialized__ = false;
 	/**
-	 * @brief Режим безопасности работы потоков
-	 *
-	 */
-	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
-	/**
-	 * @brief Мьютекс для синхронизации потоков сплайса контекстов TLS
-	 *
-	 */
-	lock_state_t <std::mutex> __awh_ssl_splice_mtx__;
-	/**
-	 * @brief Мьютекс для синхронизации потоков участников
-	 *
-	 */
-	lock_state_t <std::mutex> __awh_ssl_members_mtx__;
-	/**
 	 * @brief Глобальный набор идентификаторов контекстов TLS
 	 *
 	 */
@@ -303,8 +288,6 @@ namespace {
 	 * @param members контейнер участников обмена защищёнными данными
 	 */
 	void Member::erase(members_t & members) noexcept {
-		// Выполняем блокировку потоков
-		const locker_t <> lock(::__awh_ssl_members_mtx__);
 		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 		auto i = ::__awh_ssl_ids__.find(static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())));
 		// Если идентификатор контекста TLS найден
@@ -320,19 +303,18 @@ namespace {
 	 *
 	 */
 	typedef struct Contex_Template_Security : public member_t {
-		SSL_CTX * ctx;                      // Объект SSL контекста
-		X509_CRL * crl;                     // Объект CRL-файла сертификата
-		string host;                        // Объект хоста сервера
-		alpn_t alpn;                        // Объект ALPN-протоколов
-		callback_t callback;                // Функции обратных вызовов
-		lock_state_t <recursive_mutex> mtx; // Мьютекс для синхронизации потоков
+		SSL_CTX * ctx;       // Объект SSL контекста
+		X509_CRL * crl;      // Объект CRL-файла сертификата
+		string host;         // Объект хоста сервера
+		alpn_t alpn;         // Объект ALPN-протоколов
+		callback_t callback; // Функции обратных вызовов
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Contex_Template_Security() noexcept :
 		 member_t(layer_t::CTS),
-		 host{""}, ctx(nullptr), crl(nullptr) {}
+		 ctx(nullptr), crl(nullptr), host{""} {}
 		/**
 		 * @brief Деструктор
 		 *
@@ -354,15 +336,14 @@ namespace {
 	 *
 	 */
 	typedef struct Content_Transfer_Layer : public member_t {
-		SSL * ssl;                          // Объект SSL
-		SSL_CTX * ctx;                      // Объект шаблона контекста SSL
-		X509_CRL ** crl;                    // Объект CRL-файла сертификата
-		bio_t bio;                          // Объект буферов BIO
-		host_t host;                        // Объект хоста сервера
-		alpn_t alpn;                        // Объект ALPN-протоколов
-		cookie_t cookie;                    // Объект cookie SSL
-		callback_transfer_t callback;       // Объект обратных вызовов
-		lock_state_t <recursive_mutex> mtx; // Мьютекс для синхронизации потоков
+		SSL * ssl;                    // Объект SSL
+		SSL_CTX * ctx;                // Объект шаблона контекста SSL
+		X509_CRL ** crl;              // Объект CRL-файла сертификата
+		bio_t bio;                    // Объект буферов BIO
+		host_t host;                  // Объект хоста сервера
+		alpn_t alpn;                  // Объект ALPN-протоколов
+		cookie_t cookie;              // Объект cookie SSL
+		callback_transfer_t callback; // Объект обратных вызовов
 		/**
 		 * @brief Конструктор
 		 *
@@ -2489,8 +2470,6 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -2524,8 +2503,6 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Объект SSL сертификата
 					X509 * x509 = nullptr;
 					/**
@@ -2726,8 +2703,6 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если версия OpenSSL не соответствует указанной при сборке
 					if(::OpenSSL_version_num() != OPENSSL_VERSION_NUMBER){
 						// Если функция обратного вызова состояния установлена
@@ -2911,8 +2886,6 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если версия OpenSSL не соответствует указанной при сборке
 					if(::OpenSSL_version_num() != OPENSSL_VERSION_NUMBER){
 						// Если функция обратного вызова состояния установлена
@@ -3201,8 +3174,6 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -3282,8 +3253,6 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -3317,8 +3286,6 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					/**
 					 * Определяем узел события к которому относится контекст TLS
 					 */
@@ -3411,8 +3378,6 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если объект CRL-файла сертификата создан
 					if(member->crl != nullptr){
 						// Создаём memory BIO
@@ -3499,8 +3464,6 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если объект CRL-файла сертификата создан
 					if((member->crl != nullptr) && ((* member->crl) != nullptr)){
 						// Создаём memory BIO
@@ -3672,8 +3635,6 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 				auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем блокировку потоков
-				const locker_t <recursive_mutex> lock(member->mtx);
 				// Если объект контекста безопасности создан
 				if(member->ctx != nullptr){
 					// Получаем список доступных шифров
@@ -3824,8 +3785,6 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем блокировку потоков
-				const locker_t <recursive_mutex> lock(member->mtx);
 				// Если объект подключения создан и сертификат передан
 				if(member->ssl != nullptr){
 					// Получаем список доступных шифров
@@ -4017,8 +3976,6 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -4052,8 +4009,6 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Объект SSL сертификата
 					X509 * x509 = nullptr;
 					/**
@@ -4139,8 +4094,6 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -4174,8 +4127,6 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Шаг 1: Получить сертификат
 					X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
 					// Если сертификат не получен
@@ -4406,8 +4357,6 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если режим проверки хоста суревра установлен
 					if(mode)
 						// Устанавливаем режим проверки сертификата
@@ -4444,8 +4393,6 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если режим проверки хоста суревра установлен
 					if(mode)
 						// Устанавливаем режим проверки сертификата
@@ -4586,8 +4533,6 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					/**
 					 * Определяем режим работы TLS
 					 */
@@ -4600,8 +4545,6 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 							if(member->node == event::node_t::SERVER){
 								// Если название хоста уже установлено
 								if(!member->host.empty()){
-									// Выполняем блокировку глобальных потоков
-									const locker_t <> lock(::__awh_ssl_splice_mtx__);
 									// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
 									auto i = ::__awh_ssl_splice_map__.find(make_pair(member->proto, member->host));
 									// Если запись найдена
@@ -4624,8 +4567,6 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					/**
 					 * Определяем режим работы TLS
 					 */
@@ -4736,14 +4677,10 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если узел является сервером
 						if(member->node == event::node_t::SERVER){
 							// Если установлен режим работы с несколькими сертификатами TLS
 							if(member->state & state::MULTICERT_MODE){
-								// Выполняем блокировку глобальных потоков
-								const locker_t <> lock(::__awh_ssl_splice_mtx__);
 								// Если название хоста уже установлено
 								if(!member->host.empty()){
 									// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
@@ -4766,8 +4703,6 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
 							// Устанавливаем имя хоста для SNI расширения
@@ -4863,8 +4798,6 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
@@ -4898,8 +4831,6 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Выполняем парсинг I-адреса
 						if(this->_addr.parse(ip)){
 							// Выполняем инициализацию объекта хоста IPv4-адреса
@@ -5039,14 +4970,10 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если узел является сервером
 					if(member->node == event::node_t::SERVER){
 						// Если название хоста уже установлено
 						if(!member->host.empty()){
-							// Выполняем блокировку глобальных потоков
-							const locker_t <> lock(::__awh_ssl_splice_mtx__);
 							// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
 							auto i = ::__awh_ssl_splice_map__.find(make_pair(member->proto, member->host));
 							// Если запись найдена
@@ -5066,8 +4993,6 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -5123,8 +5048,6 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -5202,8 +5125,6 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 				auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем блокировку потоков
-				const locker_t <recursive_mutex> lock(member->mtx);
 				// Если функция обратного вызова состояния установлена
 				if(member->callback.state != nullptr)
 					// Вызываем функцию обратного вызова состояния
@@ -5239,8 +5160,6 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 				::local::guard_t guard(member);
 				// Если рукопожатие ещё не выполнено
 				if(!(result = (member->state & state::HANDSHAKE_MODE))){
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если рукопожатие ещё не завершено
 					if(!(result = (::SSL_is_init_finished(member->ssl) == 1))){
 						// Выполняем TLS рукопожатие
@@ -5517,8 +5436,6 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -5552,8 +5469,6 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					/**
 					 * Если используется OpenSSL (не BoringSSL)
 					 */
@@ -5634,15 +5549,11 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto cts = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Выполняем блокировку потоков
-					const locker_t <> lock(::__awh_ssl_members_mtx__);
 					// Создаём новый транспортный уровень передачи и добавляем его в контейнер
 					auto ret = ::__awh_ssl_members__.emplace(::make_unique <::ctl_t> ());
 					// Извлекаем объект транспортного уровня передачи
 					::ctl_t * member = awh_cast <::ctl_t *> ((* ret.first).get());
 					{
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(cts->mtx);
 						// Устанавливаем контекст TLS
 						member->ctx = cts->ctx;
 						// Устанавливаем список отзыва сертификатов
@@ -5657,8 +5568,6 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						member->state = cts->state;
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
-						// Отключаем режим безопасности потоков по умолчанию
-						member->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 						// Выполняем получение идентификатора контекста TLS
 						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
@@ -5832,15 +5741,11 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto cts = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Выполняем блокировку потоков
-					const locker_t <> lock(::__awh_ssl_members_mtx__);
 					// Создаём новый транспортный уровень передачи и добавляем его в контейнер
 					auto ret = ::__awh_ssl_members__.emplace(::make_unique <::ctl_t> ());
 					// Извлекаем объект транспортного уровня передачи
 					::ctl_t * member = awh_cast <::ctl_t *> ((* ret.first).get());
 					{
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(cts->mtx);
 						// Устанавливаем контекст TLS
 						member->ctx = cts->ctx;
 						// Устанавливаем список отзыва сертификатов
@@ -5853,8 +5758,6 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						member->state = cts->state;
 						// Сохраняем итератор уровня защищённых сокетов
 						member->iterator = ret.first;
-						// Отключаем режим безопасности потоков по умолчанию
-						member->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 						// Выполняем получение идентификатора контекста TLS
 						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 						// Создаем SSL объект
@@ -6052,8 +5955,6 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем блокировку потоков
-		const locker_t <> lock(::__awh_ssl_members_mtx__);
 		// Создаём новый уровень защищённых сокетов и добавляем его в контейнер
 		auto ret = ::__awh_ssl_members__.emplace(::make_unique <::cts_t> ());
 		// Извлекаем объект шаблона контекста безопасности
@@ -6066,8 +5967,6 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 		member->iterator = ret.first;
 		// Устанавливаем режим проверки сертификата
 		member->state |= state::CERTIFICATE_VERIFY;
-		// Отключаем режим безопасности потоков по умолчанию
-		member->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 		// Выполняем получение идентификатора контекста TLS
 		result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
 		/**
@@ -6743,8 +6642,6 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -6780,8 +6677,6 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 					::local::guard_t guard(member);
 					// Если рукопожатие выполнено успешно
 					if(member->state & state::HANDSHAKE_MODE){
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Выполняем запись данных в защищённый сокет
 						int32_t bytes = ::SSL_write(member->ssl, buffer, static_cast <int32_t> (size));
 						// Если данные не записаны
@@ -6964,8 +6859,6 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -6999,8 +6892,6 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Выполняем запись данных в BIO буфер чтения
 					int32_t bytes = ::BIO_write(member->bio.read, buffer, static_cast <int32_t> (size));
 					// Если данные записаны успешно и размер записанных данных совпадает с размером входного буфера
@@ -7150,62 +7041,6 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 	return result;
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param id   идентификатор события
- * @param mode флаг режима безопасности потоков
- */
-void awh::tls::Coder::threadSafety(const id_t id, const bool mode) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
-			// Если у нас есть объект фреймворка
-			if(this->_fgp != nullptr)
-				// Вызываем метод установки режима безопасности работы потоков у объекта фреймворка
-				const_cast <fgp_t *> (this->_fgp)->threadSafety(mode);
-			// Устанавливаем режим безопасности работы потоков
-			::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
-			// Устанавливаем глобальный режим безопасности потоков
-			::__awh_ssl_members_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-			/**
-			 * Определяем уровень транспортной безопасности
-			 */
-			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
-				// Если уровень является шаблонным контекстом безопасности
-				case static_cast <uint8_t> (layer_t::CTS):
-					// Устанавливаем режим безопасности потоков
-					reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-				break;
-				// Если уровень является транспортной передачей данных
-				case static_cast <uint8_t> (layer_t::CTL):
-					// Устанавливаем режим безопасности потоков
-					reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->mtx.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
-				break;
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-}
-/**
  * @brief Метод установки поддерживаемых групп эллиптических кривых
  *
  * @param id     идентификатор события
@@ -7294,8 +7129,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем элептическую кривую для алгоритма обмена ключами в контексте TLS
 								if(::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7332,8 +7165,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем элептическую кривую для алгоритма обмена ключами в контексте TLS
 								if(::SSL_set_tmp_ecdh(member->ssl, ecdh) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7442,8 +7273,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
 								if(::SSL_CTX_set1_groups(member->ctx, &support[0], support.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7480,8 +7309,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
 								if(::SSL_set1_groups(member->ssl, &support[0], support.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7692,8 +7519,6 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 							auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							// Устанавливаем все основные алгоритмы шифрования
 							if(::SSL_CTX_set_cipher_list(member->ctx, result.c_str()) != 1){
 								// Если функция обратного вызова состояния установлена
@@ -7730,8 +7555,6 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							// Устанавливаем все основные алгоритмы шифрования
 							if(::SSL_set_cipher_list(member->ssl, result.c_str()) != 1){
 								// Если функция обратного вызова состояния установлена
@@ -7814,8 +7637,6 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 						if(member->node == event::node_t::CLIENT){
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Определяем режим активации/деактивации GREASE-значений (мусорных кодов)
 							 */
@@ -7869,8 +7690,6 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 						if(member->node == event::node_t::CLIENT){
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Определяем режим активации/деактивации GREASE-значений (мусорных кодов)
 							 */
@@ -7967,8 +7786,6 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 						if(member->node == event::node_t::CLIENT){
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Определяем режим активации/деактивации перемешивания поддерживаемых расширений TLS
 							 */
@@ -8022,8 +7839,6 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 						if(member->node == event::node_t::CLIENT){
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Определяем режим активации/деактивации перемешивания поддерживаемых расширений TLS
 							 */
@@ -8115,8 +7930,6 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 					if(member->node == event::node_t::CLIENT){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Активируем поддержку SCT (Signed Certificate Timestamp) в контексте TLS
 						::SSL_CTX_enable_signed_cert_timestamps(member->ctx);
 					}
@@ -8129,8 +7942,6 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 					if(member->node == event::node_t::CLIENT){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Активируем поддержку SCT (Signed Certificate Timestamp) в транспортной передаче данных
 						::SSL_enable_signed_cert_timestamps(member->ssl);
 					}
@@ -8180,8 +7991,6 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 					if(member->node == event::node_t::CLIENT){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Активируем поддержку Stapling (OCSP) в контексте TLS
 						::SSL_CTX_enable_ocsp_stapling(member->ctx);
 					}
@@ -8194,8 +8003,6 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 					if(member->node == event::node_t::CLIENT){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Активируем поддержку Stapling (OCSP) в транспортной передаче данных
 						::SSL_enable_ocsp_stapling(member->ssl);
 					}
@@ -8250,8 +8057,6 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 						if(member->proto == event::protocol_t::TCP){
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Определяем режим активации/деактивации поддержки расширения Next Protocol Negotiation (NPN)
 							 */
@@ -8303,8 +8108,6 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 						if(member->proto == event::protocol_t::TCP){
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Определяем режим активации/деактивации поддержки расширения Next Protocol Negotiation (NPN)
 							 */
@@ -8395,12 +8198,8 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						{
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
-							// Выполняем установку идентификатора цифрового отпечатка браузера
-							member->fid = fid;
-						}
+						// Выполняем установку идентификатора цифрового отпечатка браузера
+						member->fid = fid;
 						// Получаем объект браузера из шаблона контекста безопасности
 						const fgp_t::browser_t & browser = this->_fgp->get(member->fid);
 						// Если объект браузера получен
@@ -8473,8 +8272,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									} break;
 									// Если тип расширения соответствует supported_versions
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
-										// Выполняем блокировку потоков
-										const locker_t <recursive_mutex> lock(member->mtx);
 										/**
 										 * Перебираем весь список поддерживаемых версий протокола TLS
 										 */
@@ -8552,12 +8349,8 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						{
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
-							// Выполняем установку идентификатора цифрового отпечатка браузера
-							member->fid = fid;
-						}
+						// Выполняем установку идентификатора цифрового отпечатка браузера
+						member->fid = fid;
 						// Получаем объект браузера из шаблона контекста безопасности
 						const fgp_t::browser_t & browser = this->_fgp->get(member->fid);
 						// Если объект браузера получен
@@ -8632,8 +8425,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									} break;
 									// Если тип расширения соответствует supported_versions
 									case static_cast <uint8_t> (awh::tls::extension_type_t::SUPPORTED_VERSIONS): {
-										// Выполняем блокировку потоков
-										const locker_t <recursive_mutex> lock(member->mtx);
 										/**
 										 * Перебираем весь список поддерживаемых версий протокола TLS
 										 */
@@ -8689,8 +8480,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										 * Если BoringSSL используется в качестве криптографической библиотеки
 										 */
 										#ifdef OPENSSL_IS_BORINGSSL
-											// Выполняем блокировку потоков
-											const locker_t <recursive_mutex> lock(member->mtx);
 											// Используем старый codepoint (application_settings_old = 0x4469 = 17513)
 											::SSL_set_alps_use_new_codepoint(member->ssl, 0);
 										#endif // OPENSSL_IS_BORINGSSL
@@ -8701,8 +8490,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 										 * Если BoringSSL используется в качестве криптографической библиотеки
 										 */
 										#ifdef OPENSSL_IS_BORINGSSL
-											// Выполняем блокировку потоков
-											const locker_t <recursive_mutex> lock(member->mtx);
 											// Используем новый codepoint (application_settings = 0x44CD = 17613)
 											::SSL_set_alps_use_new_codepoint(member->ssl, 1);
 										#endif // OPENSSL_IS_BORINGSSL
@@ -8711,8 +8498,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									case static_cast <uint8_t> (awh::tls::extension_type_t::ENCRYPTED_CLIENT_HELLO): {
 										// Устанавливаем режим активации поддержки расширения EncryptedClientHello (ECH)
 										ech = event::mode_t::ENABLED;
-										// Выполняем блокировку потоков
-										const locker_t <recursive_mutex> lock(member->mtx);
 										// Активируем генерацию ложного ключа EncryptedClientHello (ECH)
 										::SSL_set_enable_ech_grease(member->ssl, 1);
 									} break;
@@ -8843,8 +8628,6 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
 						member->alpn.ids.clear();
 						// Выполняем сброс буфера поддерживаемых ALPN-протоколов
@@ -8879,8 +8662,6 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
 						member->alpn.ids.clear();
 						// Выполняем сброс буфера поддерживаемых ALPN-протоколов
@@ -8998,8 +8779,6 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 							if(member->node == event::node_t::CLIENT){
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Буфер ALPS-протоколов
 								vector <uint8_t> buffer;
 								/**
@@ -9230,8 +9009,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(::SSL_CTX_set1_sigalgs(member->ctx, &sigalgs[0], sigalgs.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -9268,8 +9045,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(::SSL_set1_sigalgs(member->ctx, &sigalgs[0], sigalgs.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -9401,8 +9176,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(
 									(::SSL_CTX_set_signing_algorithm_prefs(member->ctx, &sigalgs[0], sigalgs.size()) != 1) ||
@@ -9442,8 +9215,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 								// Создаём охранника участника обмена защищёнными данными
 								::local::guard_t guard(member);
-								// Выполняем блокировку потоков
-								const locker_t <recursive_mutex> lock(member->mtx);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(
 									(::SSL_set_signing_algorithm_prefs(member->ssl, &sigalgs[0], sigalgs.size()) != 1) ||
@@ -9530,8 +9301,6 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 							auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Перебираем все поддерживаемые алгоритмы компрессии сертификата
 							 */
@@ -9698,8 +9467,6 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 							// Создаём охранника участника обмена защищёнными данными
 							::local::guard_t guard(member);
-							// Выполняем блокировку потоков
-							const locker_t <recursive_mutex> lock(member->mtx);
 							/**
 							 * Перебираем все поддерживаемые алгоритмы компрессии сертификата
 							 */
@@ -10010,8 +9777,6 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 									}
 									// Создаём охранника участника обмена защищёнными данными
 									::local::guard_t guard(member);
-									// Выполняем блокировку потоков
-									const locker_t <recursive_mutex> lock(member->mtx);
 									// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
 									if(::SSL_set1_client_key_shares(member->ssl, &support[0], support.size()) != 1){
 										// Если функция обратного вызова состояния установлена
@@ -10118,8 +9883,6 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
 					if(!filename.empty()){
 						// Создаём новое хранилище
@@ -10232,8 +9995,6 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если адрес файла центра сертификации не пустой
 					if(!filename.empty()){
 						// Создаём новое хранилище
@@ -10351,8 +10112,6 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
 					if(!file.empty()){
 						// Создаём новое хранилище
@@ -10479,8 +10238,6 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Если название файла центра сертификации не пустое
 					if(!file.empty()){
 						// Создаём новое хранилище
@@ -10647,8 +10404,6 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если CRL-файл сертификата уже создан
 						if(member->crl != nullptr)
 							// Выполняем освобождение памяти
@@ -10759,8 +10514,6 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						// Если CRL-файл сертификата уже создан
 						if((member->crl != nullptr) && ((* member->crl) != nullptr))
 							// Выполняем освобождение памяти
@@ -10913,8 +10666,6 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
 						 * Определяем тип файла приватного ключа клиента
 						 */
@@ -11024,8 +10775,6 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
 						 * Определяем тип файла приватного ключа клиента
 						 */
@@ -11177,8 +10926,6 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
 						 * Определяем узел события к которому относится контекст TLS
 						 */
@@ -11335,8 +11082,6 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Создаём охранника участника обмена защищёнными данными
 						::local::guard_t guard(member);
-						// Выполняем блокировку потоков
-						const locker_t <recursive_mutex> lock(member->mtx);
 						/**
 						 * Определяем узел события к которому относится контекст TLS
 						 */
@@ -11542,8 +11287,6 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем блокировку потоков
-				const locker_t <recursive_mutex> lock(member->mtx);
 				// Устанавливаем функцию обратного вызова получения данных
 				member->callback.read = ::move(callback);
 			}
@@ -11591,8 +11334,6 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем блокировку потоков
-				const locker_t <recursive_mutex> lock(member->mtx);
 				// Устанавливаем функцию обратного вызова передачи данных
 				member->callback.write = ::move(callback);
 			}
@@ -11644,8 +11385,6 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова изменения состояния
 					member->callback.state = ::move(callback);
 				} break;
@@ -11655,8 +11394,6 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова изменения состояния
 					member->callback.state = ::move(callback);
 				} break;
@@ -11709,8 +11446,6 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова получения ошибок
 					member->callback.error = ::move(callback);
 				} break;
@@ -11720,8 +11455,6 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Выполняем блокировку потоков
-					const locker_t <recursive_mutex> lock(member->mtx);
 					// Устанавливаем функцию обратного вызова получения ошибок
 					member->callback.error = ::move(callback);
 				} break;
@@ -11770,8 +11503,6 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем блокировку потоков
-				const locker_t <recursive_mutex> lock(member->mtx);
 				// Устанавливаем функцию обратного вызова получения снимка браузера приславшего ClientHello
 				member->callback.fingerprint = ::move(callback);
 			}
@@ -11868,8 +11599,6 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
-		// Деактивируем мьютекс глобального режим безопасности потоков
-		::__awh_ssl_members_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
 		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL
@@ -11958,8 +11687,6 @@ awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) 
 			// Выходим из приложения
 			::exit(EXIT_FAILURE);
 		}
-		// Деактивируем мьютекс глобального режим безопасности потоков
-		::__awh_ssl_members_mtx__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
 		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
 		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
 		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL

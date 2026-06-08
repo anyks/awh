@@ -48,9 +48,6 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Timer : public unit_t {
 			private:
-				// Мютекс для блокировки потоков
-				lock_state_t <std::shared_mutex> _mtx;
-			private:
 				// Список идентификаторов событий таймеров
 				unordered_set <event::id_t> _timers;
 			private:
@@ -73,13 +70,6 @@ namespace awh {
 				 * @param eid идентификатор таймера для очистки
 				 */
 				void clear(const event::id_t eid) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод создания таймаута

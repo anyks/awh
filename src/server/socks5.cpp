@@ -81,19 +81,6 @@ namespace {
 		private:
 			// Список доступных портов для выделения
 			vector <uint16_t> _ports;
-		private:
-			// Мьютекс для синхронизации доступа к списку портов
-			mutable lock_state_t <std::shared_mutex> _mtx;
-		public:
-			/**
-			 * @brief Метод установки безопасности работы потоков
-			 *
-			 * @param mode флаг режима безопасности потоков
-			 */
-			void threadSafety(const bool mode) noexcept {
-				// Устанавливаем режим безопасности потоков для мьютекса, который синхронизирует доступ к списку портов
-				this->_mtx.enabled = mode;
-			}
 		public:
 			/**
 			 * @brief Метод получения количества доступных портов для выделения
@@ -101,8 +88,6 @@ namespace {
 			 * @return количество доступных портов для выделения
 			 */
 			size_t available() const noexcept {
-				// Блокируем доступ к списку портов для получения количества доступных портов
-				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 				// Возвращаем количество доступных портов для выделения
 				return this->_ports.size();
 			}
@@ -113,8 +98,6 @@ namespace {
 			 * @param port порт для возвращения в пул
 			 */
 			void release(const uint16_t port) noexcept {
-				// Блокируем доступ к списку портов для возвращения порта в пул
-				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Проверка на дубликаты на случай багов в логике освобождения
 				if(std::find(this->_ports.begin(), this->_ports.end(), port) == this->_ports.end())
 					// Возвращаем порт в пул, добавляя его обратно в список доступных портов для выделения
@@ -127,8 +110,6 @@ namespace {
 			 * @return выделенный порт или nullopt, если порты закончились
 			 */
 			optional <uint16_t> allocate() noexcept {
-				// Блокируем доступ к списку портов для выделения
-				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Если список портов для выделения пуст
 				if(this->_ports.empty())
 					// Возвращаем nullopt, если порты кончились
@@ -149,8 +130,6 @@ namespace {
 			 * @throws    std::invalid_argument если диапазон портов некорректный
 			 */
 			void init(const uint16_t min, const uint16_t max) noexcept {
-				// Блокируем доступ к списку портов для выделения
-				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 				// Очищаем список портов для выделения
 				this->_ports.clear();
 				// Проверяем корректность диапазона портов
@@ -181,10 +160,7 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit PortAllocator() noexcept {
-				// Деактивируем мьютекс на время инициализации
-				this->_mtx.enabled = false;
-			}
+			explicit PortAllocator() noexcept {}
 	} port_alloc_t;
 
 	/**
@@ -3444,19 +3420,6 @@ void awh::server::Socks5::destroy(const event::id_t eid) noexcept {
 	}
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::server::Socks5::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности работы потоков для объекта блокировки
-	this->_mtx.enabled = mode;
-	// Устанавливаем режим безопасности работы потоков для объекта выделения портов
-	::__awh_port_allocator__.threadSafety(mode);
-	// Устанавливаем режим безопасности работы потоков для объекта сервера
-	server_t::threadSafety(mode);
-}
-/**
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова
@@ -5053,8 +5016,6 @@ void awh::server::Socks5::udp(const uint16_t count, const uint16_t begin, const 
 			this->_udp.count = count;
 			// Если адрес для запуска UDP-серверов передан
 			if(!addr.empty()){
-				// Выполняем блокировку потока для работы с локальными данными
-				const locker_t <> lock(this->_mtx);
 				// Выполняем парсинг IP-адреса
 				if(this->_unit->addr.parse(addr))
 					// Устанавливаем полученный IP-адрес
@@ -5303,8 +5264,6 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
 		if(!addr.empty() && !alias.empty() && (intPort > 0)){
 			// Создаём объект параметров подключения
 			unique_ptr <net::attr_t> attr = nullptr;
-			// Выполняем блокировку потока для работы с локальными данными
-			const locker_t <> lock(this->_mtx);
 			// Выполняем парсинг переданного адреса
 			if(this->_unit->addr.parse(addr)){
 				/**
@@ -5421,8 +5380,6 @@ void awh::server::Socks5::setAlias(string_view addr, const uint16_t intPort, str
  */
 awh::server::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
  server_t(fmk, log), _eth(fmk, log), _client(fmk, log), _socks5(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_client.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
@@ -5447,8 +5404,6 @@ awh::server::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::server::Socks5::Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
  server_t(dns, fmk, log), _eth(fmk, log), _client(fmk, log), _socks5(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
 	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
 	this->_client.on <void (const event::id_t, const bool)> ("connect", &server::socks5_t::connectClient, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента

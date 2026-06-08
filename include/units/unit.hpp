@@ -82,13 +82,6 @@ namespace awh {
 				 * @param sig идентификатор сигнала
 				 */
 				void signal(const int32_t sig) const noexcept;
-			protected:
-				/**
-				 * @brief Метод получения мютекса для блокировки потока
-				 *
-				 * @return объект мютекса для блокировки потока
-				 */
-				lock_state_t <std::shared_mutex> & mtx() const noexcept;
 			public:
 				/**
 				 * @brief Метод принудительного пинка базе событий
@@ -140,13 +133,6 @@ namespace awh {
 				 *
 				 */
 				virtual void start() noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				virtual void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод получения типа события

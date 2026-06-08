@@ -395,14 +395,6 @@ namespace awh {
 				bool decrypt(const id_t id, const void * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param id   идентификатор события
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const id_t id, const bool mode) noexcept;
-			public:
-				/**
 				 * @brief Метод установки поддерживаемых групп эллиптических кривых
 				 *
 				 * @param id     идентификатор события

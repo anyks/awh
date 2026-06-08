@@ -54,39 +54,23 @@ void awh::unit::Timer::state(const event::id_t eid, const event::status_t status
  *
  */
 void awh::unit::Timer::clear() noexcept {
-	// Список временых активных таймеров
-	unordered_set <event::id_t> timers;
-	{
-		// Выполняем блокировку потока для работы временным списком событий таймера
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-		// Если список активных таймеров не пустой
-		if(!this->_timers.empty())
-			// Копируем список активных таймеров во временный список
-			timers = this->_timers;
-	}
-	// Если в списке активных таймеров есть таймеры
-	if(!timers.empty()){
+	// Если список активных таймеров не пустой
+	if(!this->_timers.empty()){
 		// Переходим по всему списку активных таймеров
-		for(auto & eid : timers){
+		for(auto & eid : this->_timers){
 			// Если функция обратного вызова установлена
 			if(this->_callback.is(eid))
 				// Удаляем функцию обратного вызова для события таймера
 				this->_callback.erase(eid);
-		}{
-			// Выполняем блокировку потока для работы временным списком событий таймера
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Если список активных таймеров не пустой
-			if(!this->_timers.empty()){
-				// Переходим по всему списку активных таймеров
-				for(auto & eid : this->_timers){
-					// Выполняем блокировку потока для удаления события таймера
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Удаляем событие таймера
-					this->_io->destroy(eid);
-				}
-				// Очищаем список активных таймеров
-				this->_timers.clear();
-			}
+		}
+		// Если список активных таймеров не пустой
+		if(!this->_timers.empty()){
+			// Переходим по всему списку активных таймеров
+			for(auto & eid : this->_timers)
+				// Удаляем событие таймера
+				this->_io->destroy(eid);
+			// Очищаем список активных таймеров
+			this->_timers.clear();
 		}
 	}
 }
@@ -98,26 +82,13 @@ void awh::unit::Timer::clear() noexcept {
 void awh::unit::Timer::clear(const event::id_t eid) noexcept {
 	// Если функция обратного вызова установлена
 	if(this->_callback.is(eid)){
-		// Результат наличия идентификатора таймера в списке активных таймеров
-		bool result = false;
-		{
-			// Выполняем блокировку потока для работы временным списком событий таймера
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-			// Проверяем наличие идентификатора таймера в списке активных таймеров
-			result = (this->_timers.find(eid) != this->_timers.end());
-		}
-		// Если указанный идентификатор таймера найден в списке активных таймеров
-		if(result)
+		// Проверяем наличие идентификатора таймера в списке активных таймеров
+		if(this->_timers.find(eid) != this->_timers.end())
 			// Удаляем функцию обратного вызова для события таймера
 			this->_callback.erase(eid);
-	}{
-		// Выполняем блокировку потока для удаления события таймера
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Удаляем событие таймера
-		this->_io->destroy(eid);
 	}
-	// Выполняем блокировку потока для работы временным списком событий таймера
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Удаляем событие таймера
+	this->_io->destroy(eid);
 	// Выполняем поиск идентификатора таймера в списке активных таймеров
 	auto i = this->_timers.find(eid);
 	// Если указанный идентификатор таймера найден
@@ -126,27 +97,12 @@ void awh::unit::Timer::clear(const event::id_t eid) noexcept {
 		this->_timers.erase(i);
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::unit::Timer::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности работы потоков для родительского юнита
-	unit_t::threadSafety(mode);
-	// Устанавливаем режим безопасности работы потоков для объекта блокировки
-	this->_mtx.enabled = mode;
-	// Устанавливаем режим безопасности работы потоков для функций обратного вызова
-	this->_callback.threadSafety(mode);
-}
-/**
  * @brief Метод создания таймаута
  *
  * @param delay задержка времени в миллисекундах
  * @return      идентификатор таймера
  */
 awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
-	// Выполняем блокировку потока для создания события таймера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Создаём новое событие таймера
 	event::id_t result = this->_io->event(event::node_t::TIMEOUT, event::family_t::TIMER);
 	// Добавляем новое событие таймера
@@ -174,13 +130,8 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 				// Выводим сообщение об ошибке запуска события
 				this->_log->print("Timer event could not be launched", log_t::flag_t::WARNING);
 			#endif
-		// Если событие таймера успешно запущено
-		} else {
-			// Выполняем блокировку потока для работы временным списком событий таймера
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Добавляем идентификатор таймера в список активных таймеров
-			this->_timers.emplace(result);
-		}
+		// Добавляем идентификатор таймера в список активных таймеров
+		} else this->_timers.emplace(result);
 	// Если событие таймера не может быть запущено
 	} else {
 		// Удаляем событие таймера
@@ -211,8 +162,6 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
  * @return      идентификатор таймера
  */
 awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
-	// Выполняем блокировку потока для создания события таймера
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Создаём новое событие таймера
 	event::id_t result = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
 	// Добавляем новое событие таймера
@@ -240,13 +189,8 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 				// Выводим сообщение об ошибке запуска события
 				this->_log->print("Timer event could not be launched", log_t::flag_t::WARNING);
 			#endif
-		// Если событие таймера успешно запущено
-		} else {
-			// Выполняем блокировку потока для работы временным списком событий таймера
-			const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Добавляем идентификатор таймера в список активных таймеров
-			this->_timers.emplace(result);
-		}
+		// Добавляем идентификатор таймера в список активных таймеров
+		} else this->_timers.emplace(result);
 	// Если событие таймера не может быть запущено
 	} else {
 		// Удаляем событие таймера
@@ -278,8 +222,6 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 void awh::unit::Timer::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
-	// Выполняем блокировку потока для работы временным списком событий таймера
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Если список активных таймеров не пустой
 	if(!this->_timers.empty()){
 		// Переходим по всему списку активных таймеров
@@ -297,10 +239,7 @@ void awh::unit::Timer::callback(const callback_t & callback) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Timer::Timer(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+awh::unit::Timer::Timer(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**
  * @brief Деструктор
  *

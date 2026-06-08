@@ -754,41 +754,6 @@ bool awh::Client::disconnect() noexcept {
 	return false;
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::Client::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности работы потоков для функций обратного вызова
-	this->_callback.threadSafety(mode);
-	// Устанавливаем режим безопасности работы потоков для объекта клиента
-	this->_unit->client.threadSafety(mode);
-	// Если объект DNS-резолвера установлен
-	if(this->_dns.client != nullptr)
-		// Устанавливаем режим безопасности работы потоков для объекта DNS-резолвера
-		this->_dns.client->threadSafety(mode);
-	// Если идентификатор TLS и объект TLS установлены
-	if((this->_id.sid > 0) && (this->_coder != nullptr))
-		// Устанавливаем режим безопасности работы потоков для объекта TLS
-		this->_coder->threadSafety(this->_id.sid, mode);
-	// Если идентификатор TLS не установлен, но объект TLS установлен
-	else if((this->_id.sid == 0) && (this->_coder != nullptr)) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("TLS ID is not set", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("TLS ID is not set", log_t::flag_t::WARNING);
-		#endif
-	}
-}
-/**
  * @brief Метод установки функций обратного вызова
  *
  * @param callback функции обратного вызова

@@ -80,8 +80,6 @@ namespace awh {
 			typedef struct TLS {
 				// Объект транспортного уровня безопасности
 				tls::coder_t * coder;
-				// Мютекс для блокировки потоков при работе с TLS
-				lock_state_t <std::shared_mutex> mtx;
 				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
 				unordered_map <event::id_t, tls::coder_t::id_t> safety;
 				/**
@@ -444,13 +442,6 @@ namespace awh {
 			 * @return    результат выполнения перевода в режим прослушивания
 			 */
 			virtual bool listen(const uint16_t max) noexcept;
-		public:
-			/**
-			 * @brief Метод установки безопасности работы потоков
-			 *
-			 * @param mode флаг режима безопасности потоков
-			 */
-			virtual void threadSafety(const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод установки функций обратного вызова

@@ -46,19 +46,12 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 		} break;
 		// Если работа клиента подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
-			{
-				// Выполняем блокировку потока для работы временным списком событий клиента
-				const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
-				// Если в списке событий клиента есть события
-				if(!this->_events.empty()){
-					// Выполняем удаление всех событий клиента
-					for(const auto & eid : this->_events){
-						// Выполняем блокировку потока для уничтожения событий
-						const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-						// Удаляем событие клиента
-						this->_io->destroy(eid);
-					}
-				}
+			// Если в списке событий клиента есть события
+			if(!this->_events.empty()){
+				// Выполняем удаление всех событий клиента
+				for(const auto & eid : this->_events)
+					// Удаляем событие клиента
+					this->_io->destroy(eid);
 			}
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("clientStatus")){
@@ -203,21 +196,8 @@ void awh::unit::Client::spool(const event::id_t eid, const event::send_error_t e
  * @return    результат проверки актуальности события
  */
 bool awh::unit::Client::isActual(const event::id_t eid) const noexcept {
-	// Выполняем блокировку потока для работы временным списком событий клиента
-	const locker_t <std::shared_mutex> lock(const_cast <client_t *> (this)->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Проверяем есть ли событие клиента в списке событий клиента
 	return this->_events.find(eid) != this->_events.end();
-}
-/**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::unit::Client::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности работы потоков для родительского юнита
-	unit_t::threadSafety(mode);
-	// Устанавливаем режим безопасности работы потоков для объекта блокировки
-	this->_mtx.enabled = mode;
 }
 /**
  * @brief Метод фиксации настроек клиента
@@ -234,29 +214,16 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 	try {
 		// Если событие клиента является актуальным
 		if(this->isActual(eid)){
-			{
-				// Выполняем блокировку потока для работы с событием клиента
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Выполняем фиксацию параметров события
-				result = this->_io->commit(eid);
-			}
-			// Если результат фиксации параметров события не успешный
-			if(!result){
-				{
-					// Выполняем блокировку потока для работы с событием клиента
-					const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Удаляем событие клиента
-					this->_io->destroy(eid);
-				}{
-					// Выполняем блокировку потока для работы временным списком событий клиента
-					const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-					// Выполняем поиск идентификатора события клиента в списке событий клиента
-					auto i = this->_events.find(eid);
-					// Если идентификатор события клиента найден в списке событий клиента
-					if(i != this->_events.end())
-						// Удаляем идентификатор события клиента из списка событий клиента
-						this->_events.erase(i);
-				}
+			// Выполняем фиксацию параметров события
+			if(!(result = this->_io->commit(eid))){
+				// Удаляем событие клиента
+				this->_io->destroy(eid);
+				// Выполняем поиск идентификатора события клиента в списке событий клиента
+				auto i = this->_events.find(eid);
+				// Если идентификатор события клиента найден в списке событий клиента
+				if(i != this->_events.end())
+					// Удаляем идентификатор события клиента из списка событий клиента
+					this->_events.erase(i);
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -311,14 +278,8 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 	try {
 		// Если событие клиента является актуальным
 		if(this->isActual(eid)){
-			{
-				// Выполняем блокировку потока для работы с событием клиента
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Выполняем запуск работы клиента
-				result = this->_io->launch(eid);
-			}
-			// Если результат запуска работы клиента не успешный
-			if(!result){
+			// Выполняем запуск работы клиента
+			if(!(result = this->_io->launch(eid))){
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -366,12 +327,9 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
  */
 bool awh::unit::Client::pause(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем приостановку работы клиента
 		return this->_io->pause(eid);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -383,12 +341,9 @@ bool awh::unit::Client::pause(const event::id_t eid) noexcept {
  */
 bool awh::unit::Client::resume(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем возобновление работы клиента
 		return this->_io->resume(eid);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -400,12 +355,9 @@ bool awh::unit::Client::resume(const event::id_t eid) noexcept {
  */
 bool awh::unit::Client::disconnect(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем отключение клиента от сервера
 		return this->_io->disconnect(eid);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -428,8 +380,6 @@ bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
 		if(!this->isActual(eid))
 			// Выводим результат по умолчанию
 			return false;
-	// Выполняем блокировку потока для работы с событием клиента
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем подключение клиента к серверу
 	return this->_io->connect(ids);
 }
@@ -441,12 +391,9 @@ bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
  */
 bool awh::unit::Client::recv(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем получение данных от сервера
 		return this->_io->recv(eid);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -460,12 +407,9 @@ bool awh::unit::Client::recv(const event::id_t eid) noexcept {
  */
 size_t awh::unit::Client::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем отправку данных серверу
 		return this->_io->send(eid, buffer, size);
-	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -478,12 +422,9 @@ size_t awh::unit::Client::send(const event::id_t eid, const void * buffer, const
  */
 bool awh::unit::Client::splice(const event::id_t eid, const event::id_t dest) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid) || this->isActual(dest)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid) || this->isActual(dest))
 		// Выполняем объединение данных между событием клиента и другим событием
 		return this->_io->splice(eid, dest);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -495,12 +436,9 @@ bool awh::unit::Client::splice(const event::id_t eid, const event::id_t dest) no
  */
 uint16_t awh::unit::Client::getOptions(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение опций для события клиента
 		return this->_io->getOptions(eid);
-	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -513,12 +451,9 @@ uint16_t awh::unit::Client::getOptions(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Client::setOptions(const event::id_t eid, const uint16_t options) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку опций для события клиента
 		return this->_io->setOptions(eid, options);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -532,12 +467,9 @@ bool awh::unit::Client::setOptions(const event::id_t eid, const uint16_t options
  */
 bool awh::unit::Client::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку опции для события клиента
 		return this->_io->setOption(eid, option, mode);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -549,12 +481,9 @@ bool awh::unit::Client::setOption(const event::id_t eid, const uint16_t option, 
  */
 awh::event::hops_t awh::unit::Client::getHops(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение максимального количества хопов для события клиента
 		return this->_io->getHops(eid);
-	}
 	// Выводим результат по умолчанию
 	return event::hops_t::LOOPBACK;
 }
@@ -567,12 +496,9 @@ awh::event::hops_t awh::unit::Client::getHops(const event::id_t eid) const noexc
  */
 bool awh::unit::Client::setHops(const event::id_t eid, const event::hops_t hops) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события клиента
 		return this->_io->setHops(eid, this->_io->family(eid), hops);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -584,12 +510,9 @@ bool awh::unit::Client::setHops(const event::id_t eid, const event::hops_t hops)
  */
 string awh::unit::Client::getIface(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение сетевого интерфейса для события клиента
 		return this->_io->getIface(eid);
-	}
 	// Выводим результат по умолчанию
 	return "";
 }
@@ -602,12 +525,9 @@ string awh::unit::Client::getIface(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Client::setIface(const event::id_t eid, string_view name) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку сетевого интерфейса для события клиента
 		return this->_io->setIface(eid, name);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -619,12 +539,9 @@ bool awh::unit::Client::setIface(const event::id_t eid, string_view name) noexce
  */
 uint16_t awh::unit::Client::getPort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение порта удаленного сервера для события клиента
 		return this->_io->getPort(eid);
-	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -637,12 +554,9 @@ uint16_t awh::unit::Client::getPort(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Client::setPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку порта удаленного сервера для события клиента
 		return this->_io->setPort(eid, port);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -654,12 +568,9 @@ bool awh::unit::Client::setPort(const event::id_t eid, const uint16_t port) noex
  */
 uint16_t awh::unit::Client::getInternalPort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение внутреннего порта для события клиента
 		return this->_io->getInternalPort(eid);
-	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -672,12 +583,9 @@ uint16_t awh::unit::Client::getInternalPort(const event::id_t eid) const noexcep
  */
 bool awh::unit::Client::setInternalPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку внутреннего порта для события клиента
 		return this->_io->setInternalPort(eid, port);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -689,12 +597,9 @@ bool awh::unit::Client::setInternalPort(const event::id_t eid, const uint16_t po
  */
 string awh::unit::Client::getTarget(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
 		return this->_io->getTarget(eid);
-	}
 	// Выводим результат по умолчанию
 	return "";
 }
@@ -707,12 +612,9 @@ string awh::unit::Client::getTarget(const event::id_t eid) const noexcept {
  */
 bool awh::unit::Client::setTarget(const event::id_t eid, string_view target) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку адреса хоста целевой машины для события клиента
 		return this->_io->setTarget(eid, target);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -725,12 +627,9 @@ bool awh::unit::Client::setTarget(const event::id_t eid, string_view target) noe
  */
 bool awh::unit::Client::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку адреса хоста целевой машины для события клиента
 		return this->_io->setTarget(eid, target);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -743,12 +642,9 @@ bool awh::unit::Client::setTarget(const event::id_t eid, const net::addr_t * tar
  */
 bool awh::unit::Client::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
 		return this->_io->getTarget(eid, target);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -761,12 +657,9 @@ bool awh::unit::Client::getTarget(const event::id_t eid, unique_ptr <net::addr_t
  */
 string awh::unit::Client::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
 		return this->_io->getAddress(eid, address);
-	}
 	// Выводим результат по умолчанию
 	return "";
 }
@@ -780,12 +673,9 @@ string awh::unit::Client::getAddress(const event::id_t eid, const event::address
  */
 bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
 		return this->_io->setAddress(eid, address, value);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -799,12 +689,9 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
  */
 bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
 		return this->_io->setAddress(eid, address, value);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -818,12 +705,9 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
  */
 bool awh::unit::Client::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
 		return this->_io->getAddress(eid, address, value);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -835,12 +719,9 @@ bool awh::unit::Client::getAddress(const event::id_t eid, const event::address_t
  */
 uint16_t awh::unit::Client::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение MTU сетевого интерфейса для события клиента
 		return this->_io->getMaximumTransmissionUnit(eid);
-	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -853,12 +734,9 @@ uint16_t awh::unit::Client::getMaximumTransmissionUnit(const event::id_t eid) co
  */
 bool awh::unit::Client::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события клиента
 		return this->_io->setMaximumTransmissionUnit(eid, mtu);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -870,12 +748,9 @@ bool awh::unit::Client::setMaximumTransmissionUnit(const event::id_t eid, const 
  */
 awh::event::delivery_mode_t awh::unit::Client::getDelivery(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение режима трансляции пакетов клиента для события клиента
 		return this->_io->getDelivery(eid);
-	}
 	// Выводим результат по умолчанию
 	return event::delivery_mode_t::NONE;
 }
@@ -888,12 +763,9 @@ awh::event::delivery_mode_t awh::unit::Client::getDelivery(const event::id_t eid
  */
 bool awh::unit::Client::setDelivery(const event::id_t eid, const event::delivery_mode_t delivery) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку режима трансляции пакетов клиента для события клиента
 		return this->_io->setDelivery(eid, delivery);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -906,12 +778,9 @@ bool awh::unit::Client::setDelivery(const event::id_t eid, const event::delivery
  */
 size_t awh::unit::Client::getBufferSize(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение размера буфера клиента для события клиента
 		return this->_io->getBufferSize(eid, action);
-	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -925,12 +794,9 @@ size_t awh::unit::Client::getBufferSize(const event::id_t eid, const event::acti
  */
 bool awh::unit::Client::setBufferSize(const event::id_t eid, const event::action_t action, const size_t size) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку размера буфера клиента для события клиента
 		return this->_io->setBufferSize(eid, action, size);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -942,12 +808,9 @@ bool awh::unit::Client::setBufferSize(const event::id_t eid, const event::action
  */
 awh::event::usage_t awh::unit::Client::getUsageReadTimeout(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение режима использования таймаута на чтение события для события клиента
 		return this->_io->getUsageReadTimeout(eid);
-	}
 	// Выводим результат по умолчанию
 	return event::usage_t::NONE;
 }
@@ -959,12 +822,9 @@ awh::event::usage_t awh::unit::Client::getUsageReadTimeout(const event::id_t eid
  */
 void awh::unit::Client::setUsageReadTimeout(const event::id_t eid, const event::usage_t usage) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку режима использования таймаута на чтение события для события клиента
 		this->_io->setUsageReadTimeout(eid, usage);
-	}
 }
 /**
  * @brief Метод получения таймаута клиента
@@ -975,12 +835,9 @@ void awh::unit::Client::setUsageReadTimeout(const event::id_t eid, const event::
  */
 uint32_t awh::unit::Client::getTimeout(const event::id_t eid, const event::action_t action) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение параметров таймаута для клиента
 		return this->_io->getTimeout(eid, action);
-	}
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -993,12 +850,9 @@ uint32_t awh::unit::Client::getTimeout(const event::id_t eid, const event::actio
  */
 void awh::unit::Client::setTimeout(const event::id_t eid, const event::action_t action, const uint32_t timeout) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку параметров таймаута для клиента
 		this->_io->setTimeout(eid, action, timeout);
-	}
 }
 /**
  * @brief Метод установки пропускной способности клиента
@@ -1010,12 +864,9 @@ void awh::unit::Client::setTimeout(const event::id_t eid, const event::action_t 
  */
 bool awh::unit::Client::bandwidth(const event::id_t eid, const event::limiting_t limiting, string_view bandwidth) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку параметров пропускной способности для клиента
 		return this->_io->bandwidth(eid, limiting, bandwidth);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1030,12 +881,9 @@ bool awh::unit::Client::bandwidth(const event::id_t eid, const event::limiting_t
  */
 bool awh::unit::Client::keepAlive(const event::id_t eid, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку параметров keep-alive для клиента
 		return this->_io->keepAlive(eid, cnt, idle, intvl);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1047,12 +895,9 @@ bool awh::unit::Client::keepAlive(const event::id_t eid, const int32_t cnt, cons
  */
 awh::event::dscp_t awh::unit::Client::getDifferentiatedServicesCodePoint(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение значения поля Differentiated Services Code Point (DSCP) для клиента
 		return this->_io->getDifferentiatedServicesCodePoint(eid, this->_io->family(eid));
-	}
 	// Выводим результат по умолчанию
 	return event::dscp_t::CS0;
 }
@@ -1065,12 +910,9 @@ awh::event::dscp_t awh::unit::Client::getDifferentiatedServicesCodePoint(const e
  */
 bool awh::unit::Client::setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку значения поля Differentiated Services Code Point (DSCP) для клиента
 		return this->_io->setDifferentiatedServicesCodePoint(eid, this->_io->family(eid), dscp);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1082,12 +924,9 @@ bool awh::unit::Client::setDifferentiatedServicesCodePoint(const event::id_t eid
  */
 awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
+	if(this->isActual(eid))
 		// Выполняем получение обнаружения максимального размера пакета (MTU) для клиента
 		return this->_io->getMaximumTransmissionUnitDiscover(eid, this->_io->family(eid));
-	}
 	// Выводим результат по умолчанию
 	return event::mtu_discover_t::NONE;
 }
@@ -1100,12 +939,9 @@ awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover
  */
 bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем установку обнаружения максимального размера пакета (MTU) для клиента
 		return this->_io->setMaximumTransmissionUnitDiscover(eid, this->_io->family(eid), mode);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1121,12 +957,9 @@ bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid
  */
 bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст группы для клиента
 		return this->_io->membership(eid, mode, group, source, port);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1142,12 +975,9 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
  */
 bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
-	if(this->isActual(eid)){
-		// Выполняем блокировку потока для работы с событием клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст группы для клиента
 		return this->_io->membership(eid, mode, group, source, port);
-	}
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1211,14 +1041,8 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Client::destroy(const event::id_t eid) noexcept {
-	{
-		// Выполняем блокировку потока для уничтожения события клиента
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Удаляем событие клиента
-		this->_io->destroy(eid);
-	}
-	// Выполняем блокировку потока для работы временным списком событий клиента
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+	// Удаляем событие клиента
+	this->_io->destroy(eid);
 	// Если в списке событий клиента есть события
 	if(!this->_events.empty()){
 		// Выполняем поиск идентификатора события клиента в списке событий клиента
@@ -1244,32 +1068,26 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		{
-			// Выполняем блокировку потока для работы с событием клиента
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Добавляем новое событие клиента
-			result = this->_io->event(event::node_t::CLIENT, family, type, protocol);
-			// Устанавливаем функцию обратного вызова на событие записи данных
-			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
-			// Устанавливаем функцию обратного вызова на событие чтения данных
-			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
-			// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
-			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-			this->_io->on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
-			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-			this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
-		}
-		// Выполняем блокировку потока для работы временным списком событий клиента
-		const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		// Добавляем новое событие клиента
+		result = this->_io->event(event::node_t::CLIENT, family, type, protocol);
+		// Устанавливаем функцию обратного вызова на событие записи данных
+		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие чтения данных
+		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие изменения действий клиента
+		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+		this->_io->on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+		this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
+		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+		this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
 		// Добавляем идентификатор события клиента в список событий клиента
 		this->_events.emplace(result);
 	/**
@@ -1299,25 +1117,17 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+awh::unit::Client::Client(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**
  * @brief Деструктор
  *
  */
 awh::unit::Client::~Client() noexcept {
-	// Выполняем блокировку потока для работы временным списком событий клиента
-	const locker_t <std::shared_mutex> lock(this->_mtx, locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Если в списке событий клиента есть события
 	if(!this->_events.empty()){
 		// Выполняем удаление всех событий клиента
-		for(const auto & eid : this->_events){
-			// Выполняем блокировку потока для уничтожения событий
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		for(const auto & eid : this->_events)
 			// Удаляем событие клиента
 			this->_io->destroy(eid);
-		}
 	}
 }

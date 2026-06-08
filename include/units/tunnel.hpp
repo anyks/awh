@@ -43,9 +43,6 @@ namespace awh {
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Tunnel : public unit_t {
 			private:
-				// Мютекс для блокировки потоков
-				lock_state_t <std::mutex> _mtx;
-			private:
 				// Список идентификаторов событий туннеля
 				unordered_set <event::id_t> _events;
 			private:
@@ -81,13 +78,6 @@ namespace awh {
 				 * @param info   информация о пакетах в туннеле
 				 */
 				void info(const event::id_t eid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек туннеля

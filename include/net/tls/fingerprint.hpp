@@ -1278,9 +1278,6 @@ namespace awh {
 						explicit Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept : _it(it), _fmk(fmk), _log(log) {}
 				} iterator_t;
 			private:
-				// Мьютекс для блокировки потоков
-				mutable lock_state_t <shared_mutex> _mtx;
-			private:
 				// Список поддерживаемых цифровых отпечатков браузеров
 				unordered_map <uint8_t, browser_t> _browsers;
 			private:
@@ -1422,13 +1419,6 @@ namespace awh {
 				 * @return       идентификатор добавленного цифрового отпечатка
 				 */
 				id_t add(const uint8_t * buffer, const size_t size) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод формирования бинарного дампа всех цифровых отпечатков браузеров

@@ -118,21 +118,6 @@ namespace awh {
 					explicit Packet() noexcept :
 					 count(0), delay(0), timestamp(0) {}
 				} __attribute__((packed)) packet_t;
-				/**
-				 * @brief Структура для управления передачей данных при выполнении запросов ICMP-клиента
-				 *
-				 */
-				typedef struct Transfer {
-					// Мьютекс для блокировки потока
-					lock_state_t <std::shared_mutex> mtx;
-					// Активные пакеты при выполнении запросов ICMP-клиента
-					unordered_map <id_t, packet_t> waiting;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					 explicit Transfer() noexcept {}
-				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
@@ -140,8 +125,8 @@ namespace awh {
 				// Состояние ICMP-клиента
 				client_t _client;
 			private:
-				// Объект управления передачей данных при выполнении запросов ICMP-клиента
-				transfer_t _transfer;
+				// Активные пакеты при выполнении запросов ICMP-клиента
+				unordered_map <id_t, packet_t> _waiting;
 			private:
 				/**
 				 * @brief Метод создания события ICMP-клиента
@@ -178,13 +163,6 @@ namespace awh {
 				 * @return       нужно ли завершить клиента после истечения таймаута
 				 */
 				bool timeout(const id_t id, const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
-			public:
-				/**
-				 * @brief Метод установки безопасности работы потоков
-				 *
-				 * @param mode флаг режима безопасности потоков
-				 */
-				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова

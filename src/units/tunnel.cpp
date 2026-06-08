@@ -80,17 +80,6 @@ void awh::unit::Tunnel::info(const event::id_t eid, const event::id_t mid, const
 		this->_callback.call <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)> ("info", eid, mid, action, info);
 }
 /**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::unit::Tunnel::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности работы потоков для родительского юнита
-	unit_t::threadSafety(mode);
-	// Устанавливаем режим безопасности работы потоков для объекта блокировки
-	this->_mtx.enabled = mode;
-}
-/**
  * @brief Метод фиксации настроек туннеля
  *
  * @param eid идентификатор события туннеля
@@ -103,29 +92,16 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		{
-			// Выполняем блокировку потока для работы с событием туннеля
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Выполняем фиксацию параметров события и его запуск
-			result = (this->_io->commit(eid) && this->_io->launch(eid));
-		}
-		// Если фиксация параметров события и его запуск не удались
-		if(!result){
-			{
-				// Выполняем блокировку потока для работы с событием туннеля
-				const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-				// Удаляем событие туннеля
-				this->_io->destroy(eid);
-			}{
-				// Выполняем блокировку потока для работы временным списком событий туннеля
-				const locker_t <> lock(this->_mtx);
-				// Выполняем поиск идентификатора события туннеля в списке событий туннеля
-				auto i = this->_events.find(eid);
-				// Если идентификатор события туннеля найден в списке событий туннеля
-				if(i != this->_events.end())
-					// Удаляем идентификатор события туннеля из списка событий туннеля
-					this->_events.erase(i);
-			}
+		// Выполняем фиксацию параметров события и его запуск
+		if(!(result = (this->_io->commit(eid) && this->_io->launch(eid)))){
+			// Удаляем событие туннеля
+			this->_io->destroy(eid);
+			// Выполняем поиск идентификатора события туннеля в списке событий туннеля
+			auto i = this->_events.find(eid);
+			// Если идентификатор события туннеля найден в списке событий туннеля
+			if(i != this->_events.end())
+				// Удаляем идентификатор события туннеля из списка событий туннеля
+				this->_events.erase(i);
 			// Если функция обратного вызова не установлена
 			if(!this->_callback.is("error")){
 				/**
@@ -176,8 +152,6 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
  * @return       количество байт данных, отправленных через туннель
  */
 size_t awh::unit::Tunnel::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем отправку данных через туннель
 	return this->_io->send(eid, buffer, size);
 }
@@ -188,8 +162,6 @@ size_t awh::unit::Tunnel::send(const event::id_t eid, const void * buffer, const
  * @return    опции туннеля
  */
 uint16_t awh::unit::Tunnel::getOptions(const event::id_t eid) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение опций для события туннеля
 	return this->_io->getOptions(eid);
 }
@@ -201,8 +173,6 @@ uint16_t awh::unit::Tunnel::getOptions(const event::id_t eid) const noexcept {
  * @return        результат выполнения установки
  */
 bool awh::unit::Tunnel::setOptions(const event::id_t eid, const uint16_t options) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку опций для события туннеля
 	return this->_io->setOptions(eid, options);
 }
@@ -215,8 +185,6 @@ bool awh::unit::Tunnel::setOptions(const event::id_t eid, const uint16_t options
  * @return       результат выполнения установки
  */
 bool awh::unit::Tunnel::setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку опции для события туннеля
 	return this->_io->setOption(eid, option, mode);
 }
@@ -227,8 +195,6 @@ bool awh::unit::Tunnel::setOption(const event::id_t eid, const uint16_t option, 
  * @return    сетевой интерфейс туннеля
  */
 string awh::unit::Tunnel::getIface(const event::id_t eid) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение сетевого интерфейса для события туннеля
 	return this->_io->getIface(eid);
 }
@@ -240,8 +206,6 @@ string awh::unit::Tunnel::getIface(const event::id_t eid) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::unit::Tunnel::setIface(const event::id_t eid, string_view name) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку сетевого интерфейса для события туннеля
 	return this->_io->setIface(eid, name);
 }
@@ -252,8 +216,6 @@ bool awh::unit::Tunnel::setIface(const event::id_t eid, string_view name) noexce
  * @return    адрес хоста целевой машины
  */
 string awh::unit::Tunnel::getTarget(const event::id_t eid) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение адреса хоста целевой машины для события туннеля
 	return this->_io->getTarget(eid);
 }
@@ -265,8 +227,6 @@ string awh::unit::Tunnel::getTarget(const event::id_t eid) const noexcept {
  * @return       результат выполнения установки
  */
 bool awh::unit::Tunnel::setTarget(const event::id_t eid, string_view target) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку адреса хоста целевой машины для события туннеля
 	return this->_io->setTarget(eid, target);
 }
@@ -278,8 +238,6 @@ bool awh::unit::Tunnel::setTarget(const event::id_t eid, string_view target) noe
  * @return       результат выполнения установки
  */
 bool awh::unit::Tunnel::setTarget(const event::id_t eid, const net::addr_t * target) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку адреса хоста целевой машины для события туннеля
 	return this->_io->setTarget(eid, target);
 }
@@ -291,8 +249,6 @@ bool awh::unit::Tunnel::setTarget(const event::id_t eid, const net::addr_t * tar
  * @return       результат выполнения извлечения адреса хоста целевой машины
  */
 bool awh::unit::Tunnel::getTarget(const event::id_t eid, unique_ptr <net::addr_t> & target) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение адреса хоста целевой машины для события туннеля
 	return this->_io->getTarget(eid, target);
 }
@@ -304,8 +260,6 @@ bool awh::unit::Tunnel::getTarget(const event::id_t eid, unique_ptr <net::addr_t
  * @return        значение адреса туннеля
  */
 string awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t address) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение адреса туннеля для события туннеля
 	return this->_io->getAddress(eid, address);
 }
@@ -318,8 +272,6 @@ string awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address
  * @return        результат выполнения установки
  */
 bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t address, string_view value) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку адреса туннеля для события туннеля
 	return this->_io->setAddress(eid, address, value);
 }
@@ -332,8 +284,6 @@ bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t
  * @return        результат выполнения установки
  */
 bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t address, const net::addr_t * value) noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку адреса туннеля для события туннеля
 	return this->_io->setAddress(eid, address, value);
 }
@@ -346,8 +296,6 @@ bool awh::unit::Tunnel::setAddress(const event::id_t eid, const event::address_t
  * @return        результат выполнения извлечения адреса туннеля
  */
 bool awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение адреса туннеля для события туннеля
 	return this->_io->getAddress(eid, address, value);
 }
@@ -358,8 +306,6 @@ bool awh::unit::Tunnel::getAddress(const event::id_t eid, const event::address_t
  * @return    MTU сетевого интерфейса
  */
 uint16_t awh::unit::Tunnel::getMaximumTransmissionUnit(const event::id_t eid) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::SHARED);
 	// Выполняем получение MTU сетевого интерфейса для события туннеля
 	return this->_io->getMaximumTransmissionUnit(eid);
 }
@@ -371,8 +317,6 @@ uint16_t awh::unit::Tunnel::getMaximumTransmissionUnit(const event::id_t eid) co
  * @return    результат установки MTU сетевого интерфейса
  */
 bool awh::unit::Tunnel::setMaximumTransmissionUnit(const event::id_t eid, const uint16_t mtu) const noexcept {
-	// Выполняем блокировку потока для работы с событием туннеля
-	const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
 	// Выполняем установку MTU сетевого интерфейса для события туннеля
 	return this->_io->setMaximumTransmissionUnit(eid, mtu);
 }
@@ -397,14 +341,8 @@ void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
  * @param eid идентификатор события для уничтожения
  */
 void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
-	{
-		// Выполняем блокировку потока для уничтожения события туннеля
-		const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-		// Удаляем событие туннеля
-		this->_io->destroy(eid);
-	}
-	// Выполняем блокировку потока для работы временным списком событий туннеля
-	const locker_t <> lock(this->_mtx);
+	// Удаляем событие туннеля
+	this->_io->destroy(eid);
 	// Если в списке событий туннеля есть события
 	if(!this->_events.empty()){
 		// Выполняем поиск идентификатора события туннеля в списке событий туннеля
@@ -428,20 +366,14 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		{
-			// Выполняем блокировку потока для работы с событием туннеля
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
-			// Добавляем новое событие туннеля
-			result = this->_io->event(event::node_t::TUNNEL, family);
-			// Устанавливаем функцию обратного вызова на событие изменения статуса туннеля
-			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
-			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
-			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
-		}
-		// Выполняем блокировку потока для работы временным списком событий туннеля
-		const locker_t <> lock(this->_mtx);
+		// Добавляем новое событие туннеля
+		result = this->_io->event(event::node_t::TUNNEL, family);
+		// Устанавливаем функцию обратного вызова на событие изменения статуса туннеля
+		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
+		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
 		// Добавляем идентификатор события туннеля в список событий туннеля
 		this->_events.emplace(result);
 	/**
@@ -471,25 +403,17 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {
-	// Деактивируем мьютекс на время инициализации
-	this->_mtx.enabled = false;
-}
+awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log) {}
 /**
  * @brief Деструктор
  *
  */
 awh::unit::Tunnel::~Tunnel() noexcept {
-	// Выполняем блокировку потока для работы временным списком событий туннеля
-	const locker_t <> lock(this->_mtx);
 	// Если в списке событий туннеля есть события
 	if(!this->_events.empty()){
 		// Выполняем удаление всех событий туннеля
-		for(const auto & eid : this->_events){
-			// Выполняем блокировку потока для уничтожения событий
-			const locker_t <std::shared_mutex> lock(this->mtx(), locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+		for(const auto & eid : this->_events)
 			// Удаляем событие туннеля
 			this->_io->destroy(eid);
-		}
 	}
 }
