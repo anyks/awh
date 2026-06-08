@@ -25021,12 +25021,9 @@ namespace io {
 					// Если сервер находится в запущенном состоянии
 					} else if(server->state.status == event::status_t::LAUNCHED) {
 						// Если событие чтения разрешено
-						if(server->actions & ::action::READ){
-							// Если событие находится не в состоянии паузы
-							if(server->state.status != event::status_t::PAUSED)
-								// Выполняем чтение данных из узла сервера
-								return ::io::read(server, io, eth, addr, fmk, log);
-						}
+						if(server->actions & ::action::READ)
+							// Выполняем чтение данных из узла сервера
+							return ::io::read(server, io, eth, addr, fmk, log);
 					}
 				} break;
 			}
