@@ -87,6 +87,8 @@ namespace awh {
 				 *
 				 */
 				typedef struct Client {
+					// Время ожидания ответа от удалённого сервера (в миллисекундах)
+					uint32_t delay;
 					// Идентификатор события для ICMP-клиента
 					event::id_t eid;
 					// Адрес удалённого сервера для выполнения запросов
@@ -98,7 +100,8 @@ namespace awh {
 					 *
 					 */
 					explicit Client() noexcept :
-                     eid(0), target(nullptr), source(nullptr) {}
+                     delay(5000), eid(0),
+					 target(nullptr), source(nullptr) {}
 				} client_t;
 				/**
 				 * @brief Структура активного пакета при выполнении запросов ICMP-клиента
@@ -107,8 +110,6 @@ namespace awh {
 				typedef struct Packet {
 					// Количество повторений запросов
 					uint16_t count;
-					// Время ожидания ответа от удалённого сервера (в миллисекундах)
-					uint32_t delay;
 					// Штамп времени начала запроса
 					uint64_t timestamp;
 					/**
@@ -116,8 +117,25 @@ namespace awh {
 					 *
 					 */
 					explicit Packet() noexcept :
-					 count(0), delay(0), timestamp(0) {}
+					 count(0), timestamp(0) {}
 				} __attribute__((packed)) packet_t;
+				/**
+				 * @brief Структура для управления передачей данных при выполнении запросов ICMP
+				 *
+				 */
+				typedef struct Transfer {
+					// Активный идентификатор запроса
+					id_t id;
+					// Флаг ожидания ответа от сервера
+					bool waiting;
+					// Активный пакет при выполнении запроса ICMP
+					packet_t packet;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					 explicit Transfer() noexcept : id(0), waiting(false) {}
+				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
@@ -125,15 +143,8 @@ namespace awh {
 				// Состояние ICMP-клиента
 				client_t _client;
 			private:
-				// Активные пакеты при выполнении запросов ICMP-клиента
-				unordered_map <id_t, packet_t> _waiting;
-			private:
-				/**
-				 * @brief Метод создания события ICMP-клиента
-				 *
-				 * @param family семейство протоколов (например: IPv4 или IPv6)
-				 */
-				void create(const event::family_t family) noexcept;
+				// Объект управления передачей данных при выполнении запросов ICMP
+				transfer_t _transfer;
 			private:
 				/**
 				 * @brief Метод обработки ошибок событий ICMP-клиента
@@ -145,6 +156,15 @@ namespace awh {
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			private:
 				/**
+				 * @brief Метод обработки событий таймаута при ожидании ответа от ICMP-клиента
+				 *
+				 * @param eid    идентификатор события ICMP-клиента
+				 * @param action действие события таймера ICMP-клиента
+				 * @param delay  задержка таймера ICMP-клиента
+				 * @return       нужно ли завершить клиента после истечения таймаута
+				 */
+				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+				/**
 				 * @brief Метод обработки ответов от удалённого сервера на запросы ICMP-клиента
 				 *
 				 * @param eid  идентификатор события чтения из ICMP-клиента
@@ -153,16 +173,14 @@ namespace awh {
 				 * @param size размер данных события чтения из ICMP-клиента
 				 */
 				void response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept;
+			public:
 				/**
-				 * @brief Метод обработки событий таймаута при ожидании ответа от ICMP-клиента
+				 * @brief Метод инициализации события ICMP-клиента
 				 *
-				 * @param id     идентификатор ICMP-клиента
-				 * @param eid    идентификатор события ICMP-клиента
-				 * @param action действие события таймера ICMP-клиента
-				 * @param delay  задержка таймера ICMP-клиента
-				 * @return       нужно ли завершить клиента после истечения таймаута
+				 * @param family семейство протоколов (например: IPv4 или IPv6)
+				 * @return       результат инициализации события ICMP-клиента
 				 */
-				bool timeout(const id_t id, const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+				bool init(const event::family_t family) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова
@@ -172,18 +190,11 @@ namespace awh {
 				void callback(const callback_t & callback) noexcept;
 			public:
 				/**
-				 * @brief Метод сброса ICMP-клиента
+				 * @brief Метод установки таймаута для ожидания ответа от сервера
 				 *
-				 * @return результат выполнения операции
+				 * @param delay время ожидания ответа от сервера (в миллисекундах)
 				 */
-				bool reset() noexcept;
-			public:
-				/**
-				 * @brief Метод фиксации параметров ICMP-клиента
-				 *
-				 * @return результат выполнения операции
-				 */
-				bool commit() noexcept;
+				void setTimeout(const uint32_t delay) noexcept;
 			public:
 				/**
 				 * @brief Метод получения типа события
@@ -266,13 +277,12 @@ namespace awh {
 				/**
 				 * @brief Метод выполнения пингов удалённого сервера
 				 *
-				 * @param id      идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
-				 * @param count   количество выполняемых запросов
-				 * @param mode    режим выполнения запросов
-				 * @param timeout время ожидания ответа от удалённого сервера (в миллисекундах)
-				 * @return        результат выполнения запроса
+				 * @param id    идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
+				 * @param count количество выполняемых запросов
+				 * @param mode  режим выполнения запросов
+				 * @return      результат выполнения запроса
 				 */
-				bool ping(const id_t id, const uint16_t count, const mode_t mode, const uint32_t timeout = 0) noexcept;
+				bool ping(const id_t id, const uint16_t count, const mode_t mode) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)
@@ -289,11 +299,10 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param family семейство IP-адресов IPv4/IPv6
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit ICMP(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit ICMP(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

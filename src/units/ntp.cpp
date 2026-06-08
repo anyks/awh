@@ -458,8 +458,8 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Устанавливаем флаг ожидания ответа от NTP-сервера
-		this->_transfer.packet.waiting = !this->_transfer.packet.waiting;
+		// Снимаем флаг ожидания ответа от NTP-сервера
+		this->_transfer.waiting = !this->_transfer.waiting;
 		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
 		if(this->_callback.is("timestamp")){
 			// Если данные события чтения из DNS-резолвера не пустые
@@ -500,7 +500,7 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, data, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -518,7 +518,7 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
  * @param delay  задержка таймера NTP-клиента
  * @return       нужно ли завершить клиента после истечения таймаута
  */
-bool awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если попытки резолвинга не превышают максимально допустимое количество
 	if(this->_transfer.packet.attempt < this->_transfer.attempts){
 		// Увеличиваем количество попыток получения ответа от NTP-сервера
@@ -544,8 +544,8 @@ bool awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action
 		return (this->_io->send(this->_client.eid, &packet, sizeof(packet)) == 0);
 	// Если попытки резолвинга превышают максимально допустимое количество
 	} else {
-		// Устанавливаем флаг ожидания ответа от NTP-сервера
-		this->_transfer.packet.waiting = !this->_transfer.packet.waiting;
+		// Снимаем флаг ожидания ответа от NTP-сервера
+		this->_transfer.waiting = !this->_transfer.waiting;
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("attempts"))
 			// Выполняем функцию обратного вызова
@@ -560,7 +560,7 @@ bool awh::unit::NTP::timeout(const event::id_t eid, const event::action_t action
 				this->_log->debug(
 					"NTP-client timeout (attempts: %u)",
 					__PRETTY_FUNCTION__,
-					std::make_tuple(eid, static_cast <uint16_t> (action), delay),
+					make_tuple(eid, static_cast <uint16_t> (action), delay),
 					log_t::flag_t::WARNING, this->_transfer.packet.attempt
 				);
 			/**
@@ -676,7 +676,7 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to set options for NTP-client event", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Failed to set options for NTP-client event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -721,7 +721,7 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -844,7 +844,7 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 	 */
 	try {
 		// Если адрес NTP-сервера передан
-		if((this->_client.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server)){
 				/**
@@ -881,7 +881,7 @@ void awh::unit::NTP::setServer(string_view server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -902,7 +902,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 	 */
 	try {
 		// Если адрес NTP-сервера передан
-		if((this->_client.eid > 0) && (server != nullptr)){
+		if(server != nullptr){
 			/**
 			 * Определяем тип адреса
 			 */
@@ -938,7 +938,7 @@ void awh::unit::NTP::setServer(const net::addr_t * server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -960,7 +960,7 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 	 */
 	try {
 		// Если адрес NTP-сервера передан
-		if((this->_client.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			/**
 			 * Определяем семейство события
 			 */
@@ -1013,7 +1013,7 @@ void awh::unit::NTP::setServer(const event::family_t family, string_view server)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1034,7 +1034,7 @@ void awh::unit::NTP::addServer(string_view server) noexcept {
 	 */
 	try {
 		// Если адрес NTP-сервера передан
-		if((this->_client.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server))
 				// Устанавливаем IP-адрес события
@@ -1049,7 +1049,7 @@ void awh::unit::NTP::addServer(string_view server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1070,7 +1070,7 @@ void awh::unit::NTP::addServer(const net::addr_t * server) noexcept {
 	 */
 	try {
 		// Если адрес NTP-сервера передан
-		if((this->_client.eid > 0) && (server != nullptr)){
+		if(server != nullptr){
 			/**
 			 * Определяем тип адреса
 			 */
@@ -1096,7 +1096,7 @@ void awh::unit::NTP::addServer(const net::addr_t * server) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1118,7 +1118,7 @@ void awh::unit::NTP::addServer(const event::family_t family, string_view server)
 	 */
 	try {
 		// Если адрес NTP-сервера передан
-		if((this->_client.eid > 0) && !server.empty()){
+		if(!server.empty()){
 			/**
 			 * Определяем семейство события
 			 */
@@ -1148,7 +1148,7 @@ void awh::unit::NTP::addServer(const event::family_t family, string_view server)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1169,7 +1169,7 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 	 */
 	try {
 		// Если адреса NTP-серверов переданы
-		if((this->_client.eid > 0) && !servers.empty()){
+		if(!servers.empty()){
 			// Результат выполнения парсинга IP-адреса
 			bool result = true;
 			// Флаг сброса списка IP-адресов события для семейства IPv4
@@ -1236,7 +1236,7 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, servers.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1257,7 +1257,7 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 	 */
 	try {
 		// Если адреса NTP-серверов переданы
-		if((this->_client.eid > 0) && !servers.empty()){
+		if(!servers.empty()){
 			// Флаг сброса списка IP-адресов события для семейства IPv4
 			bool resetIPv4 = false;
 			// Флаг сброса списка IP-адресов события для семейства IPv6
@@ -1335,7 +1335,7 @@ void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) no
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, servers.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1357,7 +1357,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 	 */
 	try {
 		// Если адреса NTP-серверов переданы
-		if((this->_client.eid > 0) && !servers.empty()){
+		if(!servers.empty()){
 			/**
 			 * Определяем семейство события
 			 */
@@ -1422,7 +1422,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, static_cast <uint16_t> (family), servers.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1443,7 +1443,7 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((this->_client.eid > 0) && !source.empty()){
+		if(!source.empty()){
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(source)){
 				/**
@@ -1473,7 +1473,7 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, source), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1494,7 +1494,7 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((this->_client.eid > 0) && (source != nullptr)){
+		if(source != nullptr){
 			/**
 			 * Определяем тип адреса
 			 */
@@ -1525,7 +1525,7 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1547,7 +1547,7 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((this->_client.eid > 0) && !source.empty()){
+		if(!source.empty()){
 			/**
 			 * Определяем семейство события
 			 */
@@ -1578,7 +1578,7 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(this->_client.eid, static_cast <uint16_t> (family), source), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1601,9 +1601,9 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 	 */
 	try {
 		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
-		if(!this->_transfer.packet.waiting && this->_callback.is("timestamp")){
+		if(!this->_transfer.waiting && this->_callback.is("timestamp")){
 			// Устанавливаем флаг ожидания ответа от NTP-сервера
-			this->_transfer.packet.waiting = !this->_transfer.packet.waiting;
+			this->_transfer.waiting = !this->_transfer.waiting;
 			// Сбрасываем счётчик попыток выполнения запроса к NTP-серверу
 			this->_transfer.packet.attempt = 0;
 			// Устанавливаем версию протокола NTP для выполнения запроса
@@ -1637,7 +1637,7 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

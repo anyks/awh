@@ -140,8 +140,6 @@ namespace awh {
 				 *
 				 */
 				typedef struct Packet {
-					// Флаг ожидания ответа от NTP-сервера
-					bool waiting;
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempt;
 					// Версия протокола NTP для выполнения запроса
@@ -151,14 +149,15 @@ namespace awh {
 					 *
 					 */
 					explicit Packet() noexcept :
-					 waiting(false), attempt(0),
-					 version(version_t::V4) {}
+					 attempt(0), version(version_t::V4) {}
 				} __attribute__((packed)) packet_t;
 				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
 				 *
 				 */
 				typedef struct Transfer {
+					// Флаг ожидания ответа от NTP-сервера
+					bool waiting;
 					// Активный пакет при выполнении запроса NTP-клиента
 					packet_t packet;
 					// Количество попыток получения ответа от NTP-сервера
@@ -167,7 +166,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Transfer() noexcept : attempts(3) {}
+					 explicit Transfer() noexcept : waiting(false), attempts(3) {}
 				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
