@@ -433,12 +433,12 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 								// Если сервер работает с адресами IPv4
 								case static_cast <uint8_t> (event::family_t::IPV4):
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4), this->_unit->server.getPort(this->_id.eid));
+									this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4), this->_unit->server.getPort(this->_id.eid));
 								break;
 								// Если сервер работает с адресами IPv6
 								case static_cast <uint8_t> (event::family_t::IPV6):
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6), this->_unit->server.getPort(this->_id.eid));
+									this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6), this->_unit->server.getPort(this->_id.eid));
 								break;
 							}
 						}
@@ -1221,7 +1221,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 						} break;
 					}
 					// Устанавливаем порт хоста сервера
-					awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port = this->_client.getInternalPort(eid);
+					awh_cast <net::attr_net_t *> (j->second.ctx.host.get())->port = this->_client.getSourcePort(eid);
 					// Если извлечение буфера данных ответа выполнено успешно
 					if(this->_socks5.buffer(&buffer, size, j->second.ctx)){
 						// Если отправка ответа прокси-клиенту не выполнена
@@ -1370,7 +1370,7 @@ void awh::server::Socks5::readClient(const event::id_t eid, const uint8_t * buff
 			} break;
 		}
 		// Устанавливаем порт подключённого клиента для идентификатора события клиента
-		awh_cast <net::attr_net_t *> (udp.host.get())->port = this->_client.getPort(eid);
+		awh_cast <net::attr_net_t *> (udp.host.get())->port = this->_client.getDestinationPort(eid);
 		// Извлекаем IP-адрес клиента для идентификатора события клиента
 		this->_client.getTarget(eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip);
 		// Размер буфера данных
@@ -1837,8 +1837,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Если тип данных соответствует IPv4
 											case static_cast <uint8_t> (net::type_t::IPV4): {
 												// Устанавливаем порт и адрес удалённого сервера для подключения
-												if(this->_client.setPort(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->port) &&
-												   this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip.get())){
+												if(this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->ip.get()) &&
+												   this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (udp.host.get())->port)){
 													// Если функция обратного вызова установлена
 													if(this->_callback.is("ready")){
 														// Получаем IP-адрес для подключения к удалённому серверу
@@ -1973,7 +1973,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									// Если тип данных соответствует FQDN
 									case static_cast <uint8_t> (net::type_t::FQDN): {
 										// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-										if(awh_cast <net::attr_fqdn_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+										if(awh_cast <net::attr_fqdn_t *> (udp.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
 											// Выполняем поиск кэша для идентификатора пира
 											auto j = ::__awh_cache__.find(i->second.eid);
 											// Если кэш для этого идентификатора найден
@@ -2010,7 +2010,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Если семейство адресов соответствует IPv4
 											case static_cast <uint8_t> (event::family_t::IPV4): {
 												// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
 													// Создаём новый объект адреса клиента IPv4
 													unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
 													// Извлекаем IP-адрес удалённого сервера для подключения
@@ -2033,7 +2033,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											// Если семейство адресов соответствует IPv6
 											case static_cast <uint8_t> (event::family_t::IPV6): {
 												// Если порты хоста сервера и удалённого сервера для подключения соответствуют друг другу
-												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getPort(i->second.eid)){
+												if(awh_cast <net::attr_net_t *> (udp.host.get())->port == this->_client.getDestinationPort(i->second.eid)){
 													// Создаём новый объект адреса клиента IPv6
 													unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
 													// Извлекаем IP-адрес удалённого сервера для подключения
@@ -2174,8 +2174,8 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													// Устанавливаем интерфейс для подключения к удалённому серверу
 													if(this->_client.setIface(i->second.eid, iface)){
 														// Устанавливаем порт и адрес удалённого сервера для подключения
-														if(this->_client.setPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port) &&
-														   this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())){
+														if(this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get()) &&
+														   this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port)){
 															// Если функция обратного вызова установлена
 															if(this->_callback.is("ready")){
 																// Получаем IP-адрес для подключения к удалённому серверу
@@ -2759,22 +2759,6 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				// Выводим сообщение об ошибке
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
-			// Выполняем поиск пира, которому принадлежит идентификатор
-			auto i = this->_peers.find(eid);
-			// Если пир для этого идентификатора найден
-			if(i != this->_peers.end()){
-				// Выполняем поиск идентификатора клиента принадлежащего этому пиру
-				auto j = this->_clients.find(i->second.eid);
-				// Если идентификатор клиента найден в списке
-				if(j != this->_clients.end()){
-					// Удаляем подключённого клиента
-					this->_client.destroy(j->first);
-					// Удаляем клиента из списка активных клиентов
-					this->_clients.erase(j);
-				}
-				// Удаляем подключённого пира
-				this->_unit->server.destroy(eid);
-			}
 		}
 	}
 }
@@ -2877,7 +2861,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 							// Если кэш для этого идентификатора найден
 							if(j != ::__awh_cache__.end()){
 								// Устанавливаем порт и адрес удалённого сервера для подключения
-								if(this->_client.setTarget(i->second, addr) && this->_client.setPort(i->second, j->second.attr->port)){
+								if(this->_client.setTarget(i->second, addr) && this->_client.setDestinationPort(i->second, j->second.attr->port)){
 									// Устанавливаем IP-адрес удалённого сервера для подключения
 									this->_client.getTarget(i->second, j->second.attr->ip);
 									// Если функция обратного вызова установлена
@@ -2978,7 +2962,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
 									// Устанавливаем интерфейс для подключения к удалённому серверу
 									if(this->_client.setIface(j->second.eid, iface)){
 										// Устанавливаем порт и адрес удалённого сервера для подключения
-										if(this->_client.setPort(j->second.eid, awh_cast <net::attr_fqdn_t *> (j->second.ctx.host.get())->port) && this->_client.setTarget(j->second.eid, addr)){
+										if(this->_client.setTarget(j->second.eid, addr) && this->_client.setDestinationPort(j->second.eid, awh_cast <net::attr_fqdn_t *> (j->second.ctx.host.get())->port)){
 											// Если функция обратного вызова установлена
 											if(this->_callback.is("ready"))
 												// Выполняем функцию обратного вызова
@@ -3754,7 +3738,7 @@ bool awh::server::Socks5::setIface(const event::id_t eid, string_view name) noex
  *
  * @return порт сервера
  */
-uint16_t awh::server::Socks5::getPort() const noexcept {
+uint16_t awh::server::Socks5::getSourcePort() const noexcept {
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Извлекаем порт текущего сервера
@@ -3779,12 +3763,50 @@ uint16_t awh::server::Socks5::getPort() const noexcept {
 	return 0;
 }
 /**
+ * @brief Метод получения внутреннего порта клиента, подключённого к серверу
+ *
+ * @param eid идентификатор события клиента
+ * @return    внутренний порт клиента
+ */
+uint16_t awh::server::Socks5::getSourcePort(const event::id_t eid) const noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатор события подключённого пира
+		auto i = this->_peers.find(eid);
+		// Если идентификатор события подключённого пира найден
+		if(i != this->_peers.end())
+			// Извлекаем внутренний порт события пира
+			return this->_unit->server.getPort(i->first);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
  * @brief Метод установки порта сервера
  *
  * @param port порт сервера для установки
  * @return     результат выполнения установки
  */
-bool awh::server::Socks5::setPort(const uint16_t port) noexcept {
+bool awh::server::Socks5::setSourcePort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
 	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->server.working()){
 		// Если идентификатор сервера установлен
@@ -3817,72 +3839,27 @@ bool awh::server::Socks5::setPort(const uint16_t port) noexcept {
  * @param eid идентификатор события клиента или сервера
  * @return    порт удаленного клиента или текущего сервера
  */
-uint16_t awh::server::Socks5::getPort(const event::id_t eid) const noexcept {
-	// Если идентификатор события сервера соответствует идентификатору socks5-сервера
-	if(eid == this->_id.eid)
-		// Получаем порт сервера
-		return this->_unit->server.getPort(eid);
-	// Если идентификатор сервера не установлен
+uint16_t awh::server::Socks5::getDestinationPort(const event::id_t eid) const noexcept {
+	// Выполняем поиск идентификатор события подключённого пира
+	auto i = this->_peers.find(eid);
+	// Если идентификатор события подключённого пира найден
+	if(i != this->_peers.end())
+		// Получаем порт удалённого клиента принадлежащего подключённому пиру
+		return this->_client.getDestinationPort(i->second.eid);
+	// Если идентификатор события подключённого пира не найден
 	else {
-		// Выполняем поиск идентификатор события подключённого пира
-		auto i = this->_peers.find(eid);
-		// Если идентификатор события подключённого пира найден
-		if(i != this->_peers.end())
-			// Получаем порт удалённого клиента принадлежащего подключённому пиру
-			return this->_client.getPort(i->second.eid);
-		// Если идентификатор события подключённого пира не найден
-		else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("Server or peer ID is not set", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("Server or peer ID is not set", log_t::flag_t::WARNING);
-			#endif
-		}
-	}
-	// Выводим результат по умолчанию
-	return 0;
-}
-/**
- * @brief Метод получения внутреннего порта события
- *
- * @param eid идентификатор события клиента
- * @return    внутренний порт события
- */
-uint16_t awh::server::Socks5::getInternalPort(const event::id_t eid) const noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатор события подключённого пира
-		auto i = this->_peers.find(eid);
-		// Если идентификатор события подключённого пира найден
-		if(i != this->_peers.end())
-			// Извлекаем внутренний порт события пира
-			return this->_client.getPort(i->first);
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("Server or peer ID is not set", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			this->_log->print("Server or peer ID is not set", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию

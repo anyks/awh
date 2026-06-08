@@ -69,7 +69,7 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("launch"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getPort(this->_id.eid));
+						this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getDestinationPort(this->_id.eid));
 				}
 			}
 		} break;
@@ -1124,77 +1124,15 @@ bool awh::Client::setIface(string_view name) noexcept {
 	return false;
 }
 /**
- * @brief Метод получения порта удаленного сервера
- *
- * @return порт удаленного сервера
- */
-uint16_t awh::Client::getPort() const noexcept {
-	// Если идентификатор клиента установлен
-	if(this->_id.eid > 0)
-		// Извлекаем порт удаленного сервера для клиента
-		return this->_unit->client.getPort(this->_id.eid);
-	// Если идентификатор клиента не установлен
-	else {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return 0;
-}
-/**
- * @brief Метод установки порта удаленного сервера
- *
- * @param port порт удаленного сервера для установки
- * @return     результат выполнения установки
- */
-bool awh::Client::setPort(const uint16_t port) noexcept {
-	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
-		// Если идентификатор клиента установлен
-		if(this->_id.eid > 0)
-			// Устанавливаем порт удаленного сервера для клиента
-			return this->_unit->client.setPort(this->_id.eid, port);
-		// Если идентификатор клиента не установлен
-		else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
-				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим сообщение об ошибке
-				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
-			#endif
-		}
-	}
-	// Выводим результат по умолчанию
-	return false;
-}
-/**
  * @brief Метод получения внутреннего порта события
  *
  * @return внутренний порт события
  */
-uint16_t awh::Client::getInternalPort() const noexcept {
+uint16_t awh::Client::getSourcePort() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем внутренний порт события для клиента
-		return this->_unit->client.getInternalPort(this->_id.eid);
+		return this->_unit->client.getSourcePort(this->_id.eid);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1220,13 +1158,75 @@ uint16_t awh::Client::getInternalPort() const noexcept {
  * @param port внутренний порт события
  * @return     результат выполнения установки
  */
-bool awh::Client::setInternalPort(const uint16_t port) noexcept {
+bool awh::Client::setSourcePort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
 	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем внутренний порт события для клиента
-			return this->_unit->client.setInternalPort(this->_id.eid, port);
+			return this->_unit->client.setSourcePort(this->_id.eid, port);
+		// Если идентификатор клиента не установлен
+		else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Выводим сообщение об ошибке
+				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Выводим сообщение об ошибке
+				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+			#endif
+		}
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения порта удаленного сервера
+ *
+ * @return порт удаленного сервера
+ */
+uint16_t awh::Client::getDestinationPort() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Извлекаем порт удаленного сервера для клиента
+		return this->_unit->client.getDestinationPort(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки порта удаленного сервера
+ *
+ * @param port порт удаленного сервера для установки
+ * @return     результат выполнения установки
+ */
+bool awh::Client::setDestinationPort(const uint16_t port) noexcept {
+	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
+	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
+		// Если идентификатор клиента установлен
+		if(this->_id.eid > 0)
+			// Устанавливаем порт удаленного сервера для клиента
+			return this->_unit->client.setDestinationPort(this->_id.eid, port);
 		// Если идентификатор клиента не установлен
 		else {
 			/**

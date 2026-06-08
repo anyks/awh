@@ -362,7 +362,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(tls.transport(cts));
 	// Устанавливаем порт и целевой хост для клиента
-	if(client.setPort(3333) && client.setTarget("localhost")){
+	if(client.setTarget("localhost") && client.setDestinationPort(3333)){
 		// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета
 		sctp.on(eid, static_cast <engine::callback::sctp::minfo_t> (std::bind(&Executor::minfo, &executor, _1, _2)));
 		// Устанавливаем функцию обратного вызова на создание события

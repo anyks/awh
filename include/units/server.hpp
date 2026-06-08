@@ -419,17 +419,17 @@ namespace awh {
 				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
 				/**
-				 * @brief Метод получения порта удаленного сервера
+				 * @brief Метод получения порта сервера
 				 *
 				 * @param eid идентификатор события сервера
-				 * @return    порт удаленного сервера
+				 * @return    порт сервера
 				 */
 				uint16_t getPort(const event::id_t eid) const noexcept;
 				/**
-				 * @brief Метод установки порта удаленного сервера
+				 * @brief Метод установки порта сервера
 				 *
 				 * @param eid  идентификатор события сервера
-				 * @param port порт удаленного сервера для установки
+				 * @param port порт сервера для установки
 				 * @return     результат выполнения установки
 				 */
 				bool setPort(const event::id_t eid, const uint16_t port) noexcept;

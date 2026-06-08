@@ -953,31 +953,31 @@ bool awh::unit::Server::setIface(const event::id_t eid, string_view name) noexce
 	return false;
 }
 /**
- * @brief Метод получения порта удаленного сервера
+ * @brief Метод получения порта сервера
  *
  * @param eid идентификатор события сервера
- * @return    порт удаленного сервера
+ * @return    порт сервера
  */
 uint16_t awh::unit::Server::getPort(const event::id_t eid) const noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
-		// Выполняем получение порта удаленного сервера для события сервера
-		return this->_io->getPort(eid);
+		// Выполняем получение порта сервера для события сервера
+		return this->_io->getSourcePort(eid);
 	// Выводим результат по умолчанию
 	return 0;
 }
 /**
- * @brief Метод установки порта удаленного сервера
+ * @brief Метод установки порта сервера
  *
  * @param eid  идентификатор события сервера
- * @param port порт удаленного сервера для установки
+ * @param port порт сервера для установки
  * @return     результат выполнения установки
  */
 bool awh::unit::Server::setPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
-		// Выполняем установку порта удаленного сервера для события сервера
-		return this->_io->setPort(eid, port);
+		// Выполняем установку порта сервера для события сервера
+		return this->_io->setSourcePort(eid, port);
 	// Выводим результат по умолчанию
 	return false;
 }

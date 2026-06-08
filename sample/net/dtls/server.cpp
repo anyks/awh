@@ -53,7 +53,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие сервера
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	io.setPort(eid, 2222);
+	io.setSourcePort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Регистрируем объект транспортного уровня безопасности
@@ -157,7 +157,7 @@ int32_t main(int32_t argc, char * argv[]){
 			// Устанавливаем функцию обратного вызова на подключение нового клиента
 			io.on(eid, static_cast <engine::callback::accept_t> ([cts, &tls, &io, &log](const event::id_t eid, const event::id_t cid) noexcept -> void {
 				// Выводим сообщение о принятии события
-				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
+				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getSourcePort(cid));
 				// Создаём идентификатор транспортного уровня DTLS
 				tls::coder_t::id_t ctl = tls.transport(cts);
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
@@ -229,7 +229,7 @@ int32_t main(int32_t argc, char * argv[]){
 					}
 				});
 				// Устанавливаем клиента DTLS для события
-				tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.getPort(cid));
+				tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на чтение данных DTLS
 				tls.on(ctl, [cid, &tls, &io, &log](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 					/**

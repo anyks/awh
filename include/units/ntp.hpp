@@ -273,13 +273,13 @@ namespace awh {
 				 *
 				 * @return порт NTP-сервера
 				 */
-				uint16_t getPort() const noexcept;
+				uint16_t getDestinationPort() const noexcept;
 				/**
 				 * @brief Метод установки порта NTP-сервера
 				 *
 				 * @param port порт NTP-сервера для установки
 				 */
-				void setPort(const uint16_t port) noexcept;
+				void setDestinationPort(const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод установки адреса NTP-сервера

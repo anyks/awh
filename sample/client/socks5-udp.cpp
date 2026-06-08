@@ -202,9 +202,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// Выводим сообщение об ошибке установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
-	// if(client.setPort(11613) && client.setTarget("217.29.53.105") && client.endpoint("77.88.8.8", 53) && client.udp("0.0.0.0")){
-	// if(client.setPort(2222) && client.setTarget("localhost") && client.endpoint("77.88.8.8", 53) && client.udp("0.0.0.0")){
-	if(client.setPort(2222) && client.setTarget("localhost") && client.endpoint("dns.yandex", 53) && client.udp("0.0.0.0")){
+	// if(client.setDestinationPort(11613) && client.setTarget("217.29.53.105") && client.endpoint("77.88.8.8", 53) && client.udp("0.0.0.0")){
+	// if(client.setDestinationPort(2222) && client.setTarget("localhost") && client.endpoint("77.88.8.8", 53) && client.udp("0.0.0.0")){
+	if(client.setDestinationPort(2222) && client.setTarget("localhost") && client.endpoint("dns.yandex", 53) && client.udp("0.0.0.0")){
 		// Устанавливаем параметры авторизации для клиента
 		client.setUser("8J0sHd", "G4DfSK");
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд

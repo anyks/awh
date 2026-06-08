@@ -532,45 +532,16 @@ bool awh::unit::Client::setIface(const event::id_t eid, string_view name) noexce
 	return false;
 }
 /**
- * @brief Метод получения порта удаленного сервера
- *
- * @param eid идентификатор события клиента
- * @return    порт удаленного сервера
- */
-uint16_t awh::unit::Client::getPort(const event::id_t eid) const noexcept {
-	// Если событие клиента является актуальным
-	if(this->isActual(eid))
-		// Выполняем получение порта удаленного сервера для события клиента
-		return this->_io->getPort(eid);
-	// Выводим результат по умолчанию
-	return 0;
-}
-/**
- * @brief Метод установки порта удаленного сервера
- *
- * @param eid  идентификатор события клиента
- * @param port порт удаленного сервера для установки
- * @return     результат выполнения установки
- */
-bool awh::unit::Client::setPort(const event::id_t eid, const uint16_t port) noexcept {
-	// Если событие клиента является актуальным
-	if(this->isActual(eid))
-		// Выполняем установку порта удаленного сервера для события клиента
-		return this->_io->setPort(eid, port);
-	// Выводим результат по умолчанию
-	return false;
-}
-/**
  * @brief Метод получения внутреннего порта события
  *
  * @param eid идентификатор события
  * @return    внутренний порт события
  */
-uint16_t awh::unit::Client::getInternalPort(const event::id_t eid) const noexcept {
+uint16_t awh::unit::Client::getSourcePort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение внутреннего порта для события клиента
-		return this->_io->getInternalPort(eid);
+		return this->_io->getSourcePort(eid);
 	// Выводим результат по умолчанию
 	return 0;
 }
@@ -581,11 +552,40 @@ uint16_t awh::unit::Client::getInternalPort(const event::id_t eid) const noexcep
  * @param port внутренний порт события
  * @return     результат выполнения установки
  */
-bool awh::unit::Client::setInternalPort(const event::id_t eid, const uint16_t port) noexcept {
+bool awh::unit::Client::setSourcePort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку внутреннего порта для события клиента
-		return this->_io->setInternalPort(eid, port);
+		return this->_io->setSourcePort(eid, port);
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения порта удаленного сервера
+ *
+ * @param eid идентификатор события клиента
+ * @return    порт удаленного сервера
+ */
+uint16_t awh::unit::Client::getDestinationPort(const event::id_t eid) const noexcept {
+	// Если событие клиента является актуальным
+	if(this->isActual(eid))
+		// Выполняем получение порта удаленного сервера для события клиента
+		return this->_io->getDestinationPort(eid);
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки порта удаленного сервера
+ *
+ * @param eid  идентификатор события клиента
+ * @param port порт удаленного сервера для установки
+ * @return     результат выполнения установки
+ */
+bool awh::unit::Client::setDestinationPort(const event::id_t eid, const uint16_t port) noexcept {
+	// Если событие клиента является актуальным
+	if(this->isActual(eid))
+		// Выполняем установку порта удаленного сервера для события клиента
+		return this->_io->setDestinationPort(eid, port);
 	// Выводим результат по умолчанию
 	return false;
 }

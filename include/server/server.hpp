@@ -545,10 +545,10 @@ namespace awh {
 			 */
 			virtual bool setPort(const uint16_t port) noexcept;
 			/**
-			 * @brief Метод получения порта удаленного сервера или клиента
+			 * @brief Метод получения порта подключённого клиента
 			 *
-			 * @param eid идентификатор события сервера или клиента
-			 * @return    порт удаленного сервера или клиента
+			 * @param eid идентификатор события клиента
+			 * @return    порт подключённого клиента
 			 */
 			virtual uint16_t getPort(const event::id_t eid) const noexcept;
 		public:

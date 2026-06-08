@@ -171,7 +171,7 @@ int32_t main(int32_t argc, char * argv[]){
 		else eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::RAW, event::protocol_t::ICMP);
 	#endif
 	// Устанавливаем порт события
-	io.setPort(eid, 2222);
+	io.setDestinationPort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события

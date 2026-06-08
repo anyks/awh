@@ -82,28 +82,12 @@ namespace awh {
 			virtual bool setIface(const event::id_t id, string_view name) noexcept = 0;
 		public:
 			/**
-			 * @brief Метод получения порта события
-			 *
-			 * @param id идентификатор события
-			 * @return   порт события
-			 */
-			virtual uint16_t getPort(const event::id_t id) const noexcept = 0;
-			/**
-			 * @brief Метод установки порта события
-			 *
-			 * @param id   идентификатор события
-			 * @param port порт события
-			 * @return     результат выполнения установки
-			 */
-			virtual bool setPort(const event::id_t id, const uint16_t port) noexcept = 0;
-		public:
-			/**
 			 * @brief Метод получения внутреннего порта события
 			 *
 			 * @param id идентификатор события
 			 * @return   внутренний порт события
 			 */
-			virtual uint16_t getInternalPort(const event::id_t id) const noexcept = 0;
+			virtual uint16_t getSourcePort(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки внутреннего порта события
 			 *
@@ -111,7 +95,23 @@ namespace awh {
 			 * @param port внутренний порт события
 			 * @return     результат выполнения установки
 			 */
-			virtual bool setInternalPort(const event::id_t id, const uint16_t port) noexcept = 0;
+			virtual bool setSourcePort(const event::id_t id, const uint16_t port) noexcept = 0;
+		public:
+			/**
+			 * @brief Метод получения порта назначения события
+			 *
+			 * @param id идентификатор события
+			 * @return   порт назначения события
+			 */
+			virtual uint16_t getDestinationPort(const event::id_t id) const noexcept = 0;
+			/**
+			 * @brief Метод установки порта назначения события
+			 *
+			 * @param id   идентификатор события
+			 * @param port порт назначения события
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setDestinationPort(const event::id_t id, const uint16_t port) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины

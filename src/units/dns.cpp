@@ -4934,7 +4934,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Если опции события установлены
 						if(this->_io->setOptions(this->_resolver.idv4[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 							// Устанавливаем порт события
-							if(this->_io->setPort(this->_resolver.idv4[i], this->_resolver.port)){
+							if(this->_io->setDestinationPort(this->_resolver.idv4[i], this->_resolver.port)){
 								// Сбрасываем результат
 								result = false;
 								// Устанавливаем время ожидания ответа от DNS-сервера
@@ -5023,7 +5023,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Если опции события установлены
 						if(this->_io->setOptions(this->_resolver.idv6[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 							// Устанавливаем порт события
-							if(this->_io->setPort(this->_resolver.idv6[i], this->_resolver.port)){
+							if(this->_io->setDestinationPort(this->_resolver.idv6[i], this->_resolver.port)){
 								// Сбрасываем результат
 								result = false;
 								// Устанавливаем время ожидания ответа от DNS-сервера
@@ -5112,7 +5112,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
  *
  * @return порт сервера DNS-резолвера
  */
-uint16_t awh::unit::DNS::getPort() const noexcept {
+uint16_t awh::unit::DNS::getDestinationPort() const noexcept {
 	// Получаем порт события
 	return this->_resolver.port;
 }
@@ -5121,7 +5121,7 @@ uint16_t awh::unit::DNS::getPort() const noexcept {
  *
  * @param port порт сервера DNS-резолвера
  */
-void awh::unit::DNS::setPort(const uint16_t port) noexcept {
+void awh::unit::DNS::setDestinationPort(const uint16_t port) noexcept {
 	// Если порт для установки передан
 	if(port > 0)
 		// Устанавливаем порт события

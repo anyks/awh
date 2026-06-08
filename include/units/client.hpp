@@ -278,28 +278,12 @@ namespace awh {
 				bool setIface(const event::id_t eid, string_view name) noexcept;
 			public:
 				/**
-				 * @brief Метод получения порта удаленного сервера
-				 *
-				 * @param eid идентификатор события клиента
-				 * @return    порт удаленного сервера
-				 */
-				uint16_t getPort(const event::id_t eid) const noexcept;
-				/**
-				 * @brief Метод установки порта удаленного сервера
-				 *
-				 * @param eid  идентификатор события клиента
-				 * @param port порт удаленного сервера для установки
-				 * @return     результат выполнения установки
-				 */
-				bool setPort(const event::id_t eid, const uint16_t port) noexcept;
-			public:
-				/**
 				 * @brief Метод получения внутреннего порта события
 				 *
 				 * @param eid идентификатор события
 				 * @return    внутренний порт события
 				 */
-				uint16_t getInternalPort(const event::id_t eid) const noexcept;
+				uint16_t getSourcePort(const event::id_t eid) const noexcept;
 				/**
 				 * @brief Метод установки внутреннего порта события
 				 *
@@ -307,7 +291,23 @@ namespace awh {
 				 * @param port внутренний порт события
 				 * @return     результат выполнения установки
 				 */
-				bool setInternalPort(const event::id_t eid, const uint16_t port) noexcept;
+				bool setSourcePort(const event::id_t eid, const uint16_t port) noexcept;
+			public:
+				/**
+				 * @brief Метод получения порта удаленного сервера
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    порт удаленного сервера
+				 */
+				uint16_t getDestinationPort(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки порта удаленного сервера
+				 *
+				 * @param eid  идентификатор события клиента
+				 * @param port порт удаленного сервера для установки
+				 * @return     результат выполнения установки
+				 */
+				bool setDestinationPort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины

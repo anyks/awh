@@ -57,7 +57,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие клиента
 	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM);
 	// Устанавливаем порт события
-	io.setPort(eid, 5000);
+	io.setDestinationPort(eid, 5000);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устанавливаем мультикастовый режим события

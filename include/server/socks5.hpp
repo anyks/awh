@@ -432,29 +432,29 @@ namespace awh {
 				 *
 				 * @return порт сервера
 				 */
-				uint16_t getPort() const noexcept;
+				uint16_t getSourcePort() const noexcept;
+				/**
+				 * @brief Метод получения внутреннего порта клиента, подключённого к серверу
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    внутренний порт клиента
+				 */
+				uint16_t getSourcePort(const event::id_t eid) const noexcept;
 				/**
 				 * @brief Метод установки порта сервера
 				 *
 				 * @param port порт сервера для установки
 				 * @return     результат выполнения установки
 				 */
-				bool setPort(const uint16_t port) noexcept;
+				bool setSourcePort(const uint16_t port) noexcept;
+			public:
 				/**
 				 * @brief Метод получения порта удаленного клиента или текущего сервера
 				 *
 				 * @param eid идентификатор события клиента или сервера
 				 * @return    порт удаленного клиента или текущего сервера
 				 */
-				uint16_t getPort(const event::id_t eid) const noexcept;
-			public:
-				/**
-				 * @brief Метод получения внутреннего порта события
-				 *
-				 * @param eid идентификатор события клиента
-				 * @return    внутренний порт события
-				 */
-				uint16_t getInternalPort(const event::id_t eid) const noexcept;
+				uint16_t getDestinationPort(const event::id_t eid) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины

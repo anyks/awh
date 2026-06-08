@@ -47,7 +47,7 @@ class Executor {
 		 */
 		void launch(const event::id_t eid, const string & host, const uint16_t port) noexcept {
 			// Выводим информацию о событии запуска клиента
-			this->_log->print("Launched socks5 client (EID=%u, Host=%s, Port=%u)", log_t::flag_t::INFO, eid, host.c_str(), port);
+			this->_log->print("Launched socks5 (EID=%u, Host=%s, Port=%u)", log_t::flag_t::INFO, eid, host.c_str(), port);
 		}
 		/**
 		 * @brief Метод обработки событий записи данных клиентом
@@ -143,7 +143,7 @@ class Executor {
 		 */
 		void ready(const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip, server::socks5_t * server) noexcept {
 			// Выводим сообщение о готовности сервера к работе
-			this->_log->print("Server is ready to accept connections: %s (%s:%d)", log_t::flag_t::INFO, domain.c_str(), ip.c_str(), server->getPort(eid));
+			this->_log->print("Server is ready to accept connections: %s (%s:%d)", log_t::flag_t::INFO, domain.c_str(), ip.c_str(), server->getDestinationPort(eid));
 		}
 		/**
 		 * @brief Метод обработки ошибок сервера

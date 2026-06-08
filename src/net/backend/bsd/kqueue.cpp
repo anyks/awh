@@ -34349,12 +34349,12 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 	return result;
 }
 /**
- * @brief Метод получения порта события
+ * @brief Метод получения внутреннего порта события
  *
  * @param id идентификатор события
- * @return   порт события
+ * @return   внутренний порт события
  */
-uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
+uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -34377,6 +34377,15 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 					 * Определяем чем является текущий узел
 					 */
 					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+							// Получаем объект посредника
+							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+							// Если идентификатор связанного события установлен
+							if(mediator->dest != 0)
+								// Извлекаем внутренний порт связанного события
+								return this->getSourcePort(mediator->dest);
+						} break;
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER): {
 							// Получаем текущее значение объекта однорангового узла
@@ -34399,25 +34408,49 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 							// Возвращаем результат работы функции
 							return awh_cast <net::attr_net_t *> (origin->remote.get())->port;
 						}
-						// Если узел является посредником
-						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-							// Получаем объект посредника
-							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-							// Если идентификатор связанного события установлен
-							if(mediator->dest != 0)
-								// Извлекаем порт связанного события
-								return this->getPort(mediator->dest);
-						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
 							// Получаем объект клиента
 							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-							// Если объект адреса клиента не инициализирован
-							if(client->target == nullptr)
+							// Если объект внутреннего адреса клиента не инициализирован
+							if(client->source == nullptr)
 								// Прерываем выполнение
 								break;
+							/**
+							 * Определяем семейство адресов
+							 */
+							switch(static_cast <uint8_t> (client->state.family)){
+								// Для семейства IPv4
+								case static_cast <uint8_t> (event::family_t::IPV4): {
+									// Объект структуры адреса IPv4
+									struct sockaddr_in addr{0};
+									// Получаем размер структуры адреса IPv4
+									socklen_t length = sizeof(addr);
+									// Извлекаем внутренний порт из сокета клиента
+									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+										// Если внутренний порт предположительно подготовлен
+										if(addr.sin_port > 0)
+											// Возвращаем результат работы функции
+											return ntohs(addr.sin_port);
+									}
+								} break;
+								// Для семейства IPv6
+								case static_cast <uint8_t> (event::family_t::IPV6): {
+									// Объект структуры адреса IPv6
+									struct sockaddr_in6 addr{0};
+									// Получаем размер структуры адреса IPv6
+									socklen_t length = sizeof(addr);
+									// Извлекаем внутренний порт из сокета клиента
+									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
+										// Если внутренний порт предположительно подготовлен
+										if(addr.sin6_port > 0)
+											// Возвращаем результат работы функции
+											return ntohs(addr.sin6_port);
+									}
+								} break;
+							}
 							// Возвращаем результат работы функции
-							return awh_cast <net::attr_net_t *> (client->target.get())->port;
+							return awh_cast <net::attr_net_t *> (client->source.get())->port;
 						}
 						// Если узел является сервером
 						case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -34494,276 +34527,7 @@ uint16_t awh::engine::IO::getPort(const event::id_t id) const noexcept {
 									return awh_cast <net::attr_net_t *> (server->host.get())->port;
 								}
 							}
-						}
-					}
-				} break;
-				// Для остальных семейств сокетов
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Port cannot be retrieved for events that are not network related", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return 0;
-}
-/**
- * @brief Метод установки порта события
- *
- * @param id   идентификатор события
- * @param port порт события
- * @return     результат выполнения установки
- */
-bool awh::engine::IO::setPort(const event::id_t id, const uint16_t port) noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			/**
-			 * Определяем семейство адресов
-			 */
-			switch(static_cast <uint8_t> (i->second->state.family)){
-				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					/**
-					 * Определяем чем является текущий узел
-					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является посредником
-						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-							// Получаем объект посредника
-							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-							// Если идентификатор связанного события установлен
-							if(mediator->dest != 0)
-								// Устанавливаем порт связанного события рекурсивно
-								return this->setPort(mediator->dest, port);
 						} break;
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT): {
-							// Получаем объект адреса удалённого узла
-							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-							// Если объект адреса клиента не инициализирован
-							if(client->target == nullptr){
-								// Создаём новый объект адреса удалённого узла
-								client->target = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем семейство адресов
-								 */
-								switch(static_cast <uint8_t> (client->state.family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4): {
-										// Устанавливаем тип IP-пакета как IPv4
-										client->target->type = net::type_t::IPV4;
-										// Создаём новый объект адреса клиента IPv4
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									} break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6): {
-										// Устанавливаем тип IP-пакета как IPv6
-										client->target->type = net::type_t::IPV6;
-										// Создаём новый объект адреса клиента IPv6
-										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									} break;
-								}
-							}
-							// Устанавливаем порт клиента
-							awh_cast <net::attr_net_t *> (client->target.get())->port = port;
-							// Возвращаем результат работы функции
-							return true;
-						}
-						// Если узел является сервером
-						case static_cast <uint8_t> (event::node_t::SERVER): {
-							// Получаем объект адреса сервера
-							::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
-							// Если объект адреса сервера не инициализирован
-							if(server->host == nullptr){
-								// Создаём новый объект адреса сервера
-								server->host = make_unique <net::attr_net_t> ();
-								/**
-								 * Определяем семейство адресов
-								 */
-								switch(static_cast <uint8_t> (server->state.family)){
-									// Для семейства IPv4
-									case static_cast <uint8_t> (event::family_t::IPV4): {
-										// Устанавливаем тип IP-пакета как IPv4
-										server->host->type = net::type_t::IPV4;
-										// Создаём новый объект адреса сервера IPv4
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
-									} break;
-									// Для семейства IPv6
-									case static_cast <uint8_t> (event::family_t::IPV6): {
-										// Устанавливаем тип IP-пакета как IPv6
-										server->host->type = net::type_t::IPV6;
-										// Создаём новый объект адреса сервера IPv6
-										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
-									} break;
-								}
-							}
-							// Устанавливаем порт сервера
-							awh_cast <net::attr_net_t *> (server->host.get())->port = port;
-							// Возвращаем результат работы функции
-							return true;
-						}
-					}
-				} break;
-				// Для остальных семейств сокетов
-				default: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
-						this->_log->debug("Port cannot be set for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Выводим сообщение об ошибке
-						this->_log->print("Port cannot be set for events that are not network related", log_t::flag_t::WARNING);
-					#endif
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return false;
-}
-/**
- * @brief Метод получения внутреннего порта события
- *
- * @param id идентификатор события
- * @return   внутренний порт события
- */
-uint16_t awh::engine::IO::getInternalPort(const event::id_t id) const noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-			// Создаём охранника узла события
-			::local::guard_t guard(i->second.get());
-			/**
-			 * Определяем семейство адресов
-			 */
-			switch(static_cast <uint8_t> (i->second->state.family)){
-				// Для семейства IPv4
-				case static_cast <uint8_t> (event::family_t::IPV4):
-				// Для семейства IPv6
-				case static_cast <uint8_t> (event::family_t::IPV6): {
-					/**
-					 * Определяем чем является текущий узел
-					 */
-					switch(static_cast <uint8_t> (i->second->state.node)){
-						// Если узел является посредником
-						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
-							// Получаем объект посредника
-							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
-							// Если идентификатор связанного события установлен
-							if(mediator->dest != 0)
-								// Извлекаем внутренний порт связанного события
-								return this->getInternalPort(mediator->dest);
-						} break;
-						// Если узел является клиентом
-						case static_cast <uint8_t> (event::node_t::CLIENT): {
-							// Получаем объект клиента
-							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
-							// Если объект внутреннего адреса клиента не инициализирован
-							if(client->source == nullptr)
-								// Прерываем выполнение
-								break;
-							/**
-							 * Определяем семейство адресов
-							 */
-							switch(static_cast <uint8_t> (client->state.family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4): {
-									// Объект структуры адреса IPv4
-									struct sockaddr_in addr{0};
-									// Получаем размер структуры адреса IPv4
-									socklen_t length = sizeof(addr);
-									// Извлекаем внутренний порт из сокета клиента
-									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
-										// Если внутренний порт предположительно подготовлен
-										if(addr.sin_port > 0)
-											// Возвращаем результат работы функции
-											return ntohs(addr.sin_port);
-									}
-								} break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6): {
-									// Объект структуры адреса IPv6
-									struct sockaddr_in6 addr{0};
-									// Получаем размер структуры адреса IPv6
-									socklen_t length = sizeof(addr);
-									// Извлекаем внутренний порт из сокета клиента
-									if((client->transfer.fd != net::invalid_socket_t) && (::getsockname(client->transfer.fd, &::trust_cast <struct sockaddr> (addr), &length) == 0)){
-										// Если внутренний порт предположительно подготовлен
-										if(addr.sin6_port > 0)
-											// Возвращаем результат работы функции
-											return ntohs(addr.sin6_port);
-									}
-								} break;
-							}
-							// Возвращаем результат работы функции
-							return awh_cast <net::attr_net_t *> (client->source.get())->port;
-						}
 						// Если это какой-либо другой узел, связанный с сетью
 						default: {
 							/**
@@ -34828,7 +34592,7 @@ uint16_t awh::engine::IO::getInternalPort(const event::id_t id) const noexcept {
  * @param port внутренний порт события
  * @return     результат выполнения установки
  */
-bool awh::engine::IO::setInternalPort(const event::id_t id, const uint16_t port) noexcept {
+bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -34858,7 +34622,7 @@ bool awh::engine::IO::setInternalPort(const event::id_t id, const uint16_t port)
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Устанавливаем внутренний порт связанного события рекурсивно
-								return this->setInternalPort(mediator->dest, port);
+								return this->setSourcePort(mediator->dest, port);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -34890,6 +34654,39 @@ bool awh::engine::IO::setInternalPort(const event::id_t id, const uint16_t port)
 							}
 							// Устанавливаем внутренний порт клиента
 							awh_cast <net::attr_net_t *> (client->source.get())->port = port;
+							// Возвращаем результат работы функции
+							return true;
+						}
+						// Если узел является сервером
+						case static_cast <uint8_t> (event::node_t::SERVER): {
+							// Получаем объект адреса сервера
+							::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+							// Если объект адреса сервера не инициализирован
+							if(server->host == nullptr){
+								// Создаём новый объект адреса сервера
+								server->host = make_unique <net::attr_net_t> ();
+								/**
+								 * Определяем семейство адресов
+								 */
+								switch(static_cast <uint8_t> (server->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Устанавливаем тип IP-пакета как IPv4
+										server->host->type = net::type_t::IPV4;
+										// Создаём новый объект адреса сервера IPv4
+										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+									} break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Устанавливаем тип IP-пакета как IPv6
+										server->host->type = net::type_t::IPV6;
+										// Создаём новый объект адреса сервера IPv6
+										awh_cast <net::attr_net_t *> (server->host.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+									} break;
+								}
+							}
+							// Устанавливаем порт сервера
+							awh_cast <net::attr_net_t *> (server->host.get())->port = port;
 							// Возвращаем результат работы функции
 							return true;
 						}
@@ -34925,6 +34722,209 @@ bool awh::engine::IO::setInternalPort(const event::id_t id, const uint16_t port)
 					#else
 						// Выводим сообщение об ошибке
 						this->_log->print("Internal port cannot be set for events that are not network related", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения порта назначения события
+ *
+ * @param id идентификатор события
+ * @return   порт назначения события
+ */
+uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем семейство адресов
+			 */
+			switch(static_cast <uint8_t> (i->second->state.family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+							// Получаем объект посредника
+							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+							// Если идентификатор связанного события установлен
+							if(mediator->dest != 0)
+								// Извлекаем порт связанного события
+								return this->getDestinationPort(mediator->dest);
+						} break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем объект клиента
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+							// Если объект адреса клиента не инициализирован
+							if(client->target == nullptr)
+								// Прерываем выполнение
+								break;
+							// Возвращаем результат работы функции
+							return awh_cast <net::attr_net_t *> (client->target.get())->port;
+						}
+					}
+				} break;
+				// Для остальных семейств сокетов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Port cannot be retrieved for events that are not network related", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки порта назначения события
+ *
+ * @param id   идентификатор события
+ * @param port порт назначения события
+ * @return     результат выполнения установки
+ */
+bool awh::engine::IO::setDestinationPort(const event::id_t id, const uint16_t port) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем семейство адресов
+			 */
+			switch(static_cast <uint8_t> (i->second->state.family)){
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6): {
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (i->second->state.node)){
+						// Если узел является посредником
+						case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+							// Получаем объект посредника
+							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+							// Если идентификатор связанного события установлен
+							if(mediator->dest != 0)
+								// Устанавливаем порт связанного события рекурсивно
+								return this->setDestinationPort(mediator->dest, port);
+						} break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем объект адреса удалённого узла
+							::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+							// Если объект адреса клиента не инициализирован
+							if(client->target == nullptr){
+								// Создаём новый объект адреса удалённого узла
+								client->target = make_unique <net::attr_net_t> ();
+								/**
+								 * Определяем семейство адресов
+								 */
+								switch(static_cast <uint8_t> (client->state.family)){
+									// Для семейства IPv4
+									case static_cast <uint8_t> (event::family_t::IPV4): {
+										// Устанавливаем тип IP-пакета как IPv4
+										client->target->type = net::type_t::IPV4;
+										// Создаём новый объект адреса клиента IPv4
+										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv4_t> ();
+									} break;
+									// Для семейства IPv6
+									case static_cast <uint8_t> (event::family_t::IPV6): {
+										// Устанавливаем тип IP-пакета как IPv6
+										client->target->type = net::type_t::IPV6;
+										// Создаём новый объект адреса клиента IPv6
+										awh_cast <net::attr_net_t *> (client->target.get())->ip = make_unique <net::addr_net_ipv6_t> ();
+									} break;
+								}
+							}
+							// Устанавливаем порт клиента
+							awh_cast <net::attr_net_t *> (client->target.get())->port = port;
+							// Возвращаем результат работы функции
+							return true;
+						}
+					}
+				} break;
+				// Для остальных семейств сокетов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Port cannot be set for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Port cannot be set for events that are not network related", log_t::flag_t::WARNING);
 					#endif
 				}
 			}

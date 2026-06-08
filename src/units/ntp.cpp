@@ -762,7 +762,7 @@ bool awh::unit::NTP::commit() noexcept {
 	 */
 	try {
 		// Устанавливаем порт события
-		this->_io->setPort(this->_client.eid, this->_client.port);
+		this->_io->setDestinationPort(this->_client.eid, this->_client.port);
 		// Получаем семейство IP-адресов текущего события NTP-клиента
 		const event::family_t family = this->_io->family(this->_client.eid);
 		/**
@@ -905,7 +905,7 @@ awh::event::status_t awh::unit::NTP::status() const noexcept {
  *
  * @return порт NTP-сервера
  */
-uint16_t awh::unit::NTP::getPort() const noexcept {
+uint16_t awh::unit::NTP::getDestinationPort() const noexcept {
 	// Получаем порт события
 	return this->_client.port;
 }
@@ -914,7 +914,7 @@ uint16_t awh::unit::NTP::getPort() const noexcept {
  *
  * @param port порт NTP-сервера для установки
  */
-void awh::unit::NTP::setPort(const uint16_t port) noexcept {
+void awh::unit::NTP::setDestinationPort(const uint16_t port) noexcept {
 	// Если порт для установки передан
 	if(port > 0)
 		// Устанавливаем порт события

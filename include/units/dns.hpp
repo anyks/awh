@@ -593,13 +593,13 @@ namespace awh {
 				 *
 				 * @return порт сервера DNS-резолвера
 				 */
-				uint16_t getPort() const noexcept;
+				uint16_t getDestinationPort() const noexcept;
 				/**
 				 * @brief Метод установки порта сервера DNS-резолвера
 				 *
 				 * @param port порт сервера DNS-резолвера
 				 */
-				void setPort(const uint16_t port) noexcept;
+				void setDestinationPort(const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод установки адреса DNS-сервера

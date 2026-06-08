@@ -1627,30 +1627,30 @@ bool awh::Server::setPort(const uint16_t port) noexcept {
 	return false;
 }
 /**
- * @brief Метод получения порта сервера или удалённого клиента
+ * @brief Метод получения порта подключённого клиента
  *
- * @param eid идентификатор события сервера или клиента
- * @return    порт сервера или удалённого клиента
+ * @param eid идентификатор события клиента
+ * @return    порт подключённого клиента
  */
 uint16_t awh::Server::getPort(const event::id_t eid) const noexcept {
-	// Если идентификатор сервера или клиента является активным
-	if((eid == this->_id.eid) || this->_unit->server.isActual(eid))
-		// Извлекаем порт сервера или удалённого клиента
+	// Если идентификатор подключённого клиента является активным
+	if(this->_unit->server.isActual(eid))
+		// Извлекаем порт подключённого клиента
 		return this->_unit->server.getPort(eid);
-	// Если идентификатор сервера или клиента не найден
+	// Если идентификатор подключённого клиента не найден
 	else {
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Server or сlient is not initialized", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
+			this->_log->debug("Server or client is not initialized", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Выводим сообщение об ошибке
-			this->_log->print("Server or сlient is not initialized", log_t::flag_t::WARNING);
+			this->_log->print("Server or client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
 	// Выводим результат по умолчанию

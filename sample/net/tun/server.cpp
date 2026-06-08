@@ -77,7 +77,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие сервера UDP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устанавливаем порт события
-	io.setPort(eid, 2222);
+	io.setSourcePort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Устананавливаем опции события туннеля
@@ -320,7 +320,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Объединяем с пиром
 					io.splice(mid, cid);
 					// Выводим сообщение о принятии события
-					log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
+					log.print("Событие принято: ID=%u, Клиентский ID=%u, IP=%s, PORT=%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getSourcePort(cid));
 					// Устанавливаем функцию обратного вызова на изменение статуса события
 					io.on(cid, [&log](const event::id_t eid, const event::status_t status) noexcept -> void {
 						/**

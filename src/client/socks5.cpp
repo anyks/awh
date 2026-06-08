@@ -136,7 +136,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("launch"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getPort(this->_id.eid));
+								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getDestinationPort(this->_id.eid));
 						}
 					}
 				} break;
@@ -464,7 +464,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Устанавливаем команду для UDP протокола
 								this->_ctx.command = proto::socks5_t::command_t::UDP;
 								// Получаем порт клиента для подключения, работающего через прокси
-								uint16_t port = this->_unit->client.getInternalPort(this->_endpoint.udp.eid);
+								uint16_t port = this->_unit->client.getSourcePort(this->_endpoint.udp.eid);
 								/**
 								 * Определяем тип данных сесии клиента, работающего через прокси
 								 */
@@ -480,9 +480,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										// Если адрес клиента установлен а порт не установлен
 										if((awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address > 0) && (port == 0)){
 											// Получаем внутренний порт socks5-клиента
-											port = this->_unit->client.getInternalPort(this->_id.eid);
+											port = this->_unit->client.getSourcePort(this->_id.eid);
 											// Устанавливаем внутренний порт клиента
-											this->_unit->client.setInternalPort(this->_endpoint.udp.eid, port);
+											this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port);
 										}
 										// Устанавливаем внутренний порт клиента
 										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
@@ -498,9 +498,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										// Если адрес клиента установлен а порт не установлен
 										if((::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address[0], (uint8_t[16]){0}, 16) != 0) && (port == 0)){
 											// Получаем внутренний порт socks5-клиента
-											port = this->_unit->client.getInternalPort(this->_id.eid);
+											port = this->_unit->client.getSourcePort(this->_id.eid);
 											// Устанавливаем внутренний порт клиента
-											this->_unit->client.setInternalPort(this->_endpoint.udp.eid, port);
+											this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port);
 										}
 										// Устанавливаем внутренний порт клиента
 										awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port = port;
@@ -650,16 +650,16 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									// Если тип данных соответствует IPv6
 									case static_cast <uint8_t> (net::type_t::IPV6): {
 										// Устанавливаем порт и хост для подключения к удалённому серверу
-										if(this->_unit->client.setPort(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port) &&
-										   this->_unit->client.setTarget(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())){
+										if(this->_unit->client.setTarget(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get()) &&
+										   this->_unit->client.setDestinationPort(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
 											// Выполняем фиксацию изменений для клиента, работающего через прокси
 											if(this->_unit->client.commit(this->_endpoint.udp.eid)){
 												// Выполняем запуск работы клиента, работающего через прокси
 												if(this->_unit->client.launch(this->_endpoint.udp.eid)){
-													// Получаем порт хоста для подключения к удалённому серверу
-													port = this->_unit->client.getPort(this->_endpoint.udp.eid);
 													// Получаем адрес хоста для подключения к удалённому серверу
 													target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
+													// Получаем порт хоста для подключения к удалённому серверу
+													port = this->_unit->client.getDestinationPort(this->_endpoint.udp.eid);
 												// Если запуск работы клиента, работающего через прокси, не выполнен
 												} else {
 													// Если функция обратного вызова не установлена
@@ -924,17 +924,17 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 				case static_cast <uint8_t> (event::status_t::SUCCESS): {
 					// Устанавливаем порт и хост для подключения к удалённому серверу
 					if(this->_unit->client.setTarget(this->_endpoint.udp.eid, addr) &&
-					   this->_unit->client.setPort(this->_endpoint.udp.eid, awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port)){
+					   this->_unit->client.setDestinationPort(this->_endpoint.udp.eid, awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port)){
 						// Выполняем фиксацию изменений для клиента, работающего через прокси
 						if(this->_unit->client.commit(this->_endpoint.udp.eid)){
 							// Выполняем запуск работы клиента, работающего через прокси
 							if(this->_unit->client.launch(this->_endpoint.udp.eid)){
 								// Устанавливаем состояние клиента как "завершённый"
 								this->_ctx.state = proto::socks5_t::state_t::COMPLETED;
-								// Получаем порт хоста для подключения к удалённому серверу
-								const uint16_t port = this->_unit->client.getPort(this->_endpoint.udp.eid);
 								// Получаем адрес хоста для подключения к удалённому серверу
 								const string & target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
+								// Получаем порт хоста для подключения к удалённому серверу
+								const uint16_t port = this->_unit->client.getDestinationPort(this->_endpoint.udp.eid);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("ready"))
 									// Выполняем функцию обратного вызова
@@ -1761,7 +1761,7 @@ bool awh::client::Socks5::udp(const net::attr_net_t * addr) noexcept {
 					// Устананавливаем опции события
 					if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 						// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
-						if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, addr->ip.get()) && this->_unit->client.setInternalPort(this->_endpoint.udp.eid, addr->port)))){
+						if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, addr->ip.get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, addr->port)))){
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error")){
 								// Устанавливаем исходящий адрес для UDP-клиента
@@ -1871,7 +1871,7 @@ bool awh::client::Socks5::udp(string_view addr, const uint16_t port) noexcept {
 						// Устананавливаем опции события
 						if(this->_unit->client.setOptions(this->_endpoint.udp.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 							// Устанавливаем адрес с которого будет выполняться подключение к удалённому серверу
-							if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, this->_unit->addr.source().get()) && this->_unit->client.setInternalPort(this->_endpoint.udp.eid, port)))){
+							if(!(result = (this->_unit->client.setAddress(this->_endpoint.udp.eid, event::address_t::IPV4, this->_unit->addr.source().get()) && this->_unit->client.setSourcePort(this->_endpoint.udp.eid, port)))){
 								// Если функция обратного вызова не установлена
 								if(!this->_callback.is("error")){
 									/**

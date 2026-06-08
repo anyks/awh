@@ -56,7 +56,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие сервера TCP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устанавливаем порт события
-	io.setPort(eid, 2222);
+	io.setSourcePort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Регистрируем объект транспортного уровня безопасности
@@ -320,9 +320,9 @@ int32_t main(int32_t argc, char * argv[]){
 				// Устананавливаем опции события
 				if(io.setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
 					// Выводим сообщение об успешной установке опций события
-					cout << " Выполнено подключение: " << io.getAddress(cid, event::address_t::IPV4) << ":" << io.getPort(cid) << endl;
+					cout << " Выполнено подключение: " << io.getAddress(cid, event::address_t::IPV4) << ":" << io.getSourcePort(cid) << endl;
 					// Устанавливаем клиента TLS для события
-					tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.getPort(cid));
+					tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.getSourcePort(cid));
 					// Регистрируем функцию обратного вызова на чтение данных TLS
 					tls.on(ctl, [cid, &tls, &io, &log](const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 						/**

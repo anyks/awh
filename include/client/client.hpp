@@ -373,32 +373,32 @@ namespace awh {
 			virtual bool setIface(string_view name) noexcept;
 		public:
 			/**
-			 * @brief Метод получения порта удаленного сервера
-			 *
-			 * @return порт удаленного сервера
-			 */
-			virtual uint16_t getPort() const noexcept;
-			/**
-			 * @brief Метод установки порта удаленного сервера
-			 *
-			 * @param port порт удаленного сервера для установки
-			 * @return     результат выполнения установки
-			 */
-			virtual bool setPort(const uint16_t port) noexcept;
-		public:
-			/**
 			 * @brief Метод получения внутреннего порта события
 			 *
 			 * @return внутренний порт события
 			 */
-			virtual uint16_t getInternalPort() const noexcept;
+			virtual uint16_t getSourcePort() const noexcept;
 			/**
 			 * @brief Метод установки внутреннего порта события
 			 *
 			 * @param port внутренний порт события
 			 * @return     результат выполнения установки
 			 */
-			virtual bool setInternalPort(const uint16_t port) noexcept;
+			virtual bool setSourcePort(const uint16_t port) noexcept;
+		public:
+			/**
+			 * @brief Метод получения порта удаленного сервера
+			 *
+			 * @return порт удаленного сервера
+			 */
+			virtual uint16_t getDestinationPort() const noexcept;
+			/**
+			 * @brief Метод установки порта удаленного сервера
+			 *
+			 * @param port порт удаленного сервера для установки
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setDestinationPort(const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины

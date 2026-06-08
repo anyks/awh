@@ -113,9 +113,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid1, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid1, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid1, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid1));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid1));
 			// Устанавливаем MTU события
 			// ASSERT_TRUE(this->_io->setMaximumTransmissionUnit(eid1, 1500));
 			// Проверяем что MTU получен
@@ -253,9 +253,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid2, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid2, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid2, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid2));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid2));
 			// Устанавливаем MAC-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
 			// Проверяем, что название сетевого интерфейса получено
@@ -280,9 +280,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid3, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid3, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid3, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid3));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid3));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV4, ip));
 			// Проверяем, что название сетевого интерфейса получено
@@ -303,9 +303,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid4, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid4, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid4, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid4));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid4));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/255.255.255.0"));
 			// Проверяем, что название сетевого интерфейса получено
@@ -326,7 +326,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid5, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->setPort(eid5, 8080));
+			ASSERT_FALSE(this->_io->setDestinationPort(eid5, 8080));
 			// Устанавливаем UDS-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid5, awh::event::address_t::UDS, "/tmp/awh.sock"));
 			// Проверяем, что название сетевого интерфейса не получено
@@ -345,7 +345,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid6, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->setPort(eid6, 8080));
+			ASSERT_FALSE(this->_io->setDestinationPort(eid6, 8080));
 			// Устанавливаем сетевой адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid6, awh::event::address_t::FS, "/tmp/awh.txt"));
 			// Проверяем, что название сетевого интерфейса не получено
@@ -364,9 +364,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid7, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid7, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid7, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid7));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid7));
 			// Устанавливаем IP-адрес назначения для события
 			ASSERT_TRUE(this->_io->setTarget(eid7, ip));
 			// Проверяем, что название сетевого интерфейса получено
@@ -387,7 +387,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid8, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->setPort(eid8, 8080));
+			ASSERT_FALSE(this->_io->setDestinationPort(eid8, 8080));
 			// Устанавливаем UDS-адрес назначения для события
 			ASSERT_TRUE(this->_io->setTarget(eid8, "/tmp/awh.sock"));
 			// Проверяем, что название сетевого интерфейса не получено
@@ -410,9 +410,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid1, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid1, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid1, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid1));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid1));
 			// Устанавливаем сетевой интерфейс события
 			ASSERT_TRUE(this->_io->setIface(eid1, source.iface));
 			// Проверяем, что название сетевого интерфейса получено
@@ -437,9 +437,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid2, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid2, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid2, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid2));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid2));
 			// Устанавливаем MAC-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
 			// Проверяем, что название сетевого интерфейса получено
@@ -460,9 +460,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid3, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid3, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid3, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid3));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid3));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV6, ip));
 			// Проверяем, что название сетевого интерфейса получено
@@ -483,9 +483,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid4, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid4, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid4, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid4));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid4));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/64"));
 			// Проверяем, что название сетевого интерфейса получено
@@ -502,9 +502,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid7, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(eid7, 8080));
+			ASSERT_TRUE(this->_io->setDestinationPort(eid7, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getPort(eid7));
+			ASSERT_EQ(8080, this->_io->getDestinationPort(eid7));
 			// Устанавливаем IP-адрес назначения для события
 			ASSERT_TRUE(this->_io->setTarget(eid7, ip));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
@@ -531,14 +531,17 @@ TEST_F(IoFixture, IoTCPTest){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1138,14 +1141,17 @@ TEST_F(IoFixture, IoUDPTest){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1236,7 +1242,7 @@ TEST_F(IoFixture, IoUDPTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getSourcePort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -1854,14 +1860,17 @@ TEST_F(IoFixture, IoUDPConnectTest){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -1952,7 +1961,7 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getSourcePort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -3870,14 +3879,17 @@ TEST_F(IoFixture, IoBroadcastTest){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -3964,7 +3976,7 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getSourcePort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -4611,14 +4623,18 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 	for(uint8_t i = 0; i < 2; i++){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
 		// Устанавливаем размер буфера для чтения и записи
 		this->_io->setBufferSize(events[i], awh::event::action_t::READ, 10240);
 		this->_io->setBufferSize(events[i], awh::event::action_t::WRITE, 10240);
 	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	// Устанавливаем адрес текстового файла для чтения
@@ -4711,7 +4727,7 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getSourcePort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -6201,14 +6217,17 @@ TEST_F(IoFixture, IoMulticast1Test){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -6303,7 +6322,7 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getSourcePort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -6932,14 +6951,17 @@ TEST_F(IoFixture, IoMulticast3Test){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -7051,7 +7073,7 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Устанавливаем функцию обратного вызова на подключение нового клиента
 		this->_io->on(events[1], static_cast <awh::engine::callback::accept_t> ([this](const awh::event::id_t eid, const awh::event::id_t cid) noexcept -> void {
 			// Выводим сообщение о принятии события
-			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getPort(cid));
+			this->_log->print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", awh::log_t::flag_t::INFO, eid, cid, this->_io->getAddress(cid, awh::event::address_t::IPV4).c_str(), this->_io->getSourcePort(cid));
 			// Устанавливаем функцию обратного вызова на событие таймера
 			this->_io->on(cid, [this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 				/**
@@ -7653,14 +7675,17 @@ TEST_F(IoFixture, IoTLSTest){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -7894,7 +7919,7 @@ TEST_F(IoFixture, IoTLSTest){
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
+			this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
 			this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
@@ -8474,14 +8499,17 @@ TEST_F(IoFixture, IoMultiTLSTest){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -8732,7 +8760,7 @@ TEST_F(IoFixture, IoMultiTLSTest){
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
+			this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
 			this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
@@ -9312,14 +9340,17 @@ TEST_F(IoFixture, IoDTLSTest){
 	/**
 	 * Проверяем, что оба идентификатора события созданы успешно
 	 */
-	for(uint8_t i = 0; i < 2; i++){
+	for(uint8_t i = 0; i < 2; i++)
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
-		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setPort(events[i], port));
-		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getPort(events[i]));
-	}
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	// Устанавливаем порт события
+	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+	// Проверяем что порт получен
+	ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 	// Инициализируем асинхронный движок ввода-вывода
 	ASSERT_TRUE(this->_io->initialize());
 	/**
@@ -9555,7 +9586,7 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Выводим сообщение об успешной установке опций события
 			this->_log->print("%s", awh::log_t::flag_t::INFO, "Успешно установлены опции события!");
 			// Устанавливаем клиента TLS для события
-			this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
+			this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getSourcePort(cid));
 			// Регистрируем функцию обратного вызова на чтение данных TLS
 			this->_coder->on(ctl, [cid, this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept -> void {
 				/**
@@ -10137,14 +10168,17 @@ TEST_F(IoFixture, IoDTLSTest){
 		/**
 		 * Проверяем, что оба идентификатора события созданы успешно
 		 */
-		for(uint8_t i = 0; i < 2; i++){
+		for(uint8_t i = 0; i < 2; i++)
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(events[i], port));
-			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->getPort(events[i]));
-		}
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
 		/**
@@ -10948,14 +10982,17 @@ TEST_F(IoFixture, IoDTLSTest){
 		/**
 		 * Проверяем, что оба идентификатора события созданы успешно
 		 */
-		for(uint8_t i = 0; i < 2; i++){
+		for(uint8_t i = 0; i < 2; i++)
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(events[i], port));
-			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->getPort(events[i]));
-		}
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
 		/**
@@ -11769,14 +11806,17 @@ TEST_F(IoFixture, IoDTLSTest){
 		/**
 		 * Проверяем, что оба идентификатора события созданы успешно
 		 */
-		for(uint8_t i = 0; i < 2; i++){
+		for(uint8_t i = 0; i < 2; i++)
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(events[i], port));
-			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->getPort(events[i]));
-		}
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
 		/**
@@ -12672,14 +12712,17 @@ TEST_F(IoFixture, IoDTLSTest){
 		/**
 		 * Проверяем, что оба идентификатора события созданы успешно
 		 */
-		for(uint8_t i = 0; i < 2; i++){
+		for(uint8_t i = 0; i < 2; i++)
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(events[i], port));
-			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->getPort(events[i]));
-		}
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
 		/**
@@ -12877,7 +12920,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Проверяем, что идентификатор транспортного уровня больше нуля
 				ASSERT_GT(ctl, 0);
 				// Устанавливаем клиента DTLS для события
-				this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
+				this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
 					// Выводим сообщение о предупреждающей ошибке TLS
@@ -13720,14 +13763,17 @@ TEST_F(IoFixture, IoDTLSTest){
 		/**
 		 * Проверяем, что оба идентификатора события созданы успешно
 		 */
-		for(uint8_t i = 0; i < 2; i++){
+		for(uint8_t i = 0; i < 2; i++)
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
-			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setPort(events[i], port));
-			// Проверяем что порт получен
-			ASSERT_EQ(port, this->_io->getPort(events[i]));
-		}
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		// Устанавливаем порт события
+		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
+		// Проверяем что порт получен
+		ASSERT_EQ(port, this->_io->getSourcePort(events[1]));
 		// Инициализируем асинхронный движок ввода-вывода
 		ASSERT_TRUE(this->_io->initialize());
 		/**
@@ -13925,7 +13971,7 @@ TEST_F(IoFixture, IoDTLSTest){
 				// Проверяем, что идентификатор транспортного уровня больше нуля
 				ASSERT_GT(ctl, 0);
 				// Устанавливаем клиента DTLS для события
-				this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getPort(cid));
+				this->_coder->peer(ctl, this->_io->getAddress(cid, awh::event::address_t::IPV4), this->_io->getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				this->_coder->on(ctl, [this](const awh::tls::coder_t::id_t id, const awh::tls::coder_t::error_t error, const std::string & message) noexcept -> void {
 					// Выводим сообщение о предупреждающей ошибке TLS
