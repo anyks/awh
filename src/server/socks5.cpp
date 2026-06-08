@@ -127,7 +127,7 @@ namespace {
 			 * @param max максимальный порт для выделения
 			 * @throws    std::invalid_argument если диапазон портов некорректный
 			 */
-			void init(const uint16_t min, const uint16_t max) noexcept {
+			void init(const uint32_t min, const uint32_t max) noexcept {
 				// Очищаем список портов для выделения
 				this->_ports.clear();
 				// Проверяем корректность диапазона портов
@@ -139,9 +139,9 @@ namespace {
 				/**
 				 * Заполняем список портов для выделения.
 				 */
-				for(uint16_t port = min; port <= max; ++port)
+				for(uint32_t port = min; port <= max; ++port)
 					// Добавляем порт в список доступных портов для выделения
-					this->_ports.push_back(port);
+					this->_ports.push_back(static_cast <uint16_t> (port));
 				/**
 				 * Перемешиваем порты, чтобы избежать предсказуемой последовательности
 				 * при выделении диапазона.
@@ -259,12 +259,16 @@ awh::server::Socks5::Origin & awh::server::Socks5::Origin::from(const net::attr_
 			case static_cast <uint8_t> (net::type_t::FQDN): {
 				// Извлекаем доменное имя хоста для подключения
 				const string & fqdn = awh_cast <const net::attr_fqdn_t *> (addr)->domain;
-				// Определяем длину доменного имени хоста для подключения, ограничивая её размером буфера для хранения доменного имени
-				const size_t length = ::min(fqdn.length(), sizeof(this->fqdn.data) - 1);
-				// Копируем доменное имя хоста для подключения
-				::memcpy(this->fqdn.data, &fqdn[0], length);
-				// Устанавливаем завершающий нулевой символ
-				this->fqdn.data[length] = '\0';
+				// Если доменное имя хоста для подключения не пустое
+				if(!fqdn.empty()){
+					// Определяем длину доменного имени хоста для подключения, ограничивая её размером буфера для хранения доменного имени
+					const size_t length = ::min(fqdn.length(), sizeof(this->fqdn.data) - 1);
+					// Копируем доменное имя хоста для подключения
+					::memcpy(this->fqdn.data, &fqdn[0], length);
+					// Устанавливаем завершающий нулевой символ
+					this->fqdn.data[length] = '\0';
+				// Зануляем буфер для хранения доменного имени, если доменное имя хоста для подключения пустое
+				} else ::memset(this->fqdn.data, 0, sizeof(this->fqdn.data));
 				// Устанавливаем порт хоста для подключения
 				this->fqdn.port = htons(awh_cast <const net::attr_fqdn_t *> (addr)->port);
 			} break;
@@ -348,6 +352,8 @@ size_t awh::server::Socks5::Origin_Hash::operator()(const origin_t & id) const n
 	switch(static_cast <uint8_t> (id.type)){
 		// Если тип адреса соответствует FQDN
 		case static_cast <uint8_t> (net::type_t::FQDN): {
+			// Комбинируем хеш-код порта
+			::combine(result, hash <uint16_t> {}(id.fqdn.port));
 			// Читаем буфер FQDN как массив uint64_t для ускоренного хеширования
 			const uint64_t * words = reinterpret_cast <const uint64_t *> (id.fqdn.data);
 			// Хешируем весь фиксированный буфер, включая нулевые байты
@@ -364,14 +370,14 @@ size_t awh::server::Socks5::Origin_Hash::operator()(const origin_t & id) const n
 		} break;
 		// Если адрес установлен как IPv6
 		case static_cast <uint8_t> (net::type_t::IPV6): {
+			// Комбинируем хеш-код порта
+			::combine(result, hash <uint16_t> {}(id.ip6.port));
 			// Безопасное чтение 128-битного адреса как двух uint64_t
 			const uint64_t hi = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0]));
 			const uint64_t lo = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0] + 8));
 			// Комбинируем хеш-коды IPv6 адреса
 			::combine(result, hash <uint64_t> {}(hi));
 			::combine(result, hash <uint64_t> {}(lo));
-			// Комбинируем хеш-код порта
-			::combine(result, hash <uint16_t> {}(id.ip6.port));
 		} break;
 	}
 	// Возвращаем хеш-код
@@ -2488,7 +2494,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														// Извлекаем IP-адрес этого сервера
 														this->_unit->server.getAddress(sid, event::address_t::IPV6, addr);
 														// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу установлен
-														if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+														if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], (uint8_t[16]){0}, 16) == 0)
 															// Устанавливаем текущий IP-адрес этого сервера для установки подключения
 															this->_unit->server.getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
 														// Устанавливаем полученный IP-адрес
