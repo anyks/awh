@@ -33,7 +33,6 @@
  * Наши модуля
  */
 #include "net.hpp"
-#include "../sys/os.hpp"
 #include "../sys/log.hpp"
 
 /**

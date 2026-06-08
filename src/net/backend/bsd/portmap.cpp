@@ -72,7 +72,7 @@ namespace options {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -114,7 +114,7 @@ namespace options {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -133,7 +133,7 @@ namespace options {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -403,7 +403,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -484,7 +484,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									this->_log->debug(
 										"Failed to determine local IP for PCP",
 										__PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											fwd.lifeTime,
 											fwd.description,
 											fwd.internalPort,
@@ -543,7 +543,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									this->_log->debug(
 										"Failed to determine local IP for PCP",
 										__PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											fwd.lifeTime,
 											fwd.description,
 											fwd.internalPort,
@@ -581,7 +581,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -675,7 +675,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -720,7 +720,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -757,7 +757,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 								this->_log->debug(
 									"PCP Error Code: %d",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										fwd.lifeTime,
 										fwd.description,
 										fwd.internalPort,
@@ -796,7 +796,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 											this->_log->debug(
 												"Response was forged by an attacker on PCP",
 												__PRETTY_FUNCTION__,
-												std::make_tuple(
+												make_tuple(
 													fwd.lifeTime,
 													fwd.description,
 													fwd.internalPort,
@@ -825,7 +825,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										this->_log->debug(
 											"Port PCP mapping failed",
 											__PRETTY_FUNCTION__,
-											std::make_tuple(
+											make_tuple(
 												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
@@ -859,7 +859,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 											this->_log->debug(
 												"Response was forged by an attacker on PCP",
 												__PRETTY_FUNCTION__,
-												std::make_tuple(
+												make_tuple(
 													fwd.lifeTime,
 													fwd.description,
 													fwd.internalPort,
@@ -888,7 +888,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										this->_log->debug(
 											"Port PCP unmapping failed",
 											__PRETTY_FUNCTION__,
-											std::make_tuple(
+											make_tuple(
 												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
@@ -920,7 +920,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						this->_log->debug(
 							"Gateway address could not be obtained",
 							__PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
@@ -967,7 +967,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
@@ -1089,7 +1089,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
@@ -1173,7 +1173,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -1266,7 +1266,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -1309,7 +1309,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -1394,7 +1394,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -1437,7 +1437,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									fwd.lifeTime,
 									fwd.description,
 									fwd.internalPort,
@@ -1474,7 +1474,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 								this->_log->debug(
 									"NAT-PMP Error Code: %d",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										fwd.lifeTime,
 										fwd.description,
 										fwd.internalPort,
@@ -1511,7 +1511,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										this->_log->debug(
 											"Port NAT-PMP mapping failed",
 											__PRETTY_FUNCTION__,
-											std::make_tuple(
+											make_tuple(
 												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
@@ -1543,7 +1543,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										this->_log->debug(
 											"Port NAT-PMP unmapping failed",
 											__PRETTY_FUNCTION__,
-											std::make_tuple(
+											make_tuple(
 												fwd.lifeTime,
 												fwd.description,
 												fwd.internalPort,
@@ -1575,7 +1575,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						this->_log->debug(
 							"Gateway address could not be obtained",
 							__PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								fwd.lifeTime,
 								fwd.description,
 								fwd.internalPort,
@@ -1607,7 +1607,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					fwd.lifeTime,
 					fwd.description,
 					fwd.internalPort,

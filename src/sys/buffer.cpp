@@ -92,7 +92,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -554,7 +554,7 @@ T awh::Buffer::at(const size_t index) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, std::make_tuple(index), log_t::flag_t::WARNING, index);
+				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, make_tuple(index), log_t::flag_t::WARNING, index);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -638,7 +638,7 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, std::make_tuple(value, index), log_t::flag_t::WARNING, index);
+				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, make_tuple(value, index), log_t::flag_t::WARNING, index);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -732,7 +732,7 @@ void awh::Buffer::erase(const size_t size) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -782,7 +782,7 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1017,7 +1017,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1059,7 +1059,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"You are trying to map %s of data into a %s data buffer, which is impossible",
-							__PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL,
+							__PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL,
 							this->_fmk->bytes(static_cast <double> (this->size() + size)).c_str(),
 							this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
 						);
@@ -1108,7 +1108,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */

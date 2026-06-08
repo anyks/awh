@@ -107,7 +107,7 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Failed to launch client", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL);
+					this->_log->debug("Failed to launch client", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -126,7 +126,7 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -318,7 +318,7 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

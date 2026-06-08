@@ -87,7 +87,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"You are trying to map %s of data into a %s data buffer, which is impossible",
-									__PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL,
+									__PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL,
 									this->_fmk->bytes(static_cast <double> (this->_buffer.size() + (bytes - available))).c_str(),
 									this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str()
 								);
@@ -134,7 +134,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"You are trying to map %s of data into a %s data buffer, which is impossible",
-						__PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL,
+						__PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL,
 						this->_fmk->bytes(static_cast <double> (bytes)).c_str(),
 						this->_fmk->bytes(static_cast <double> (this->_max.memory)).c_str()
 					);
@@ -176,7 +176,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -488,7 +488,7 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -558,7 +558,7 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */

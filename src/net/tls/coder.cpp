@@ -1246,7 +1246,7 @@ namespace ssl {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "Failed to open system certificate store");
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, "Failed to open system certificate store");
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1280,7 +1280,7 @@ namespace ssl {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, "X509 creation failed");
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, "X509 creation failed");
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2487,7 +2487,7 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2666,7 +2666,7 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2738,7 +2738,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									"Compiled against %s\n"
 									"Linked against   %s",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(id),
+									make_tuple(id),
 									log_t::flag_t::WARNING,
 									OPENSSL_VERSION_TEXT,
 									::OpenSSL_version(OPENSSL_VERSION)
@@ -2746,7 +2746,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								// Если мажорная и минорная версия OpenSSL не совпадают
 								if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
 									// Выводим в лог сообщение
-									this->_log->debug("Major and minor version numbers must match, exiting", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL);
+									this->_log->debug("Major and minor version numbers must match, exiting", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2788,7 +2788,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим в лог сообщение
-								this->_log->debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
+								this->_log->debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2823,7 +2823,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2854,7 +2854,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2921,7 +2921,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									"Compiled against %s\n"
 									"Linked against   %s",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(id),
+									make_tuple(id),
 									log_t::flag_t::WARNING,
 									OPENSSL_VERSION_TEXT,
 									::OpenSSL_version(OPENSSL_VERSION)
@@ -2929,7 +2929,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								// Если мажорная и минорная версия OpenSSL не совпадают
 								if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
 									// Выводим в лог сообщение
-									this->_log->debug("Major and minor version numbers must match, exiting", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL);
+									this->_log->debug("Major and minor version numbers must match, exiting", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2971,7 +2971,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим в лог сообщение
-								this->_log->debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
+								this->_log->debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -3071,7 +3071,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3102,7 +3102,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3139,7 +3139,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3191,7 +3191,7 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3216,7 +3216,7 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3270,7 +3270,7 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3341,7 +3341,7 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3401,7 +3401,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3432,7 +3432,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3487,7 +3487,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3518,7 +3518,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3555,7 +3555,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3939,7 +3939,7 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3993,7 +3993,7 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4059,7 +4059,7 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4111,7 +4111,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4154,7 +4154,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4189,7 +4189,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4222,7 +4222,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4255,7 +4255,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(error));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(error));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4322,7 +4322,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4434,7 +4434,7 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, mode), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mode), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4498,7 +4498,7 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4594,7 +4594,7 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4640,7 +4640,7 @@ string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4733,7 +4733,7 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sni), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, sni), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -4761,7 +4761,7 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, sni), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, sni), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4815,7 +4815,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4874,7 +4874,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -4902,7 +4902,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -4929,7 +4929,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5011,7 +5011,7 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5065,7 +5065,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -5090,7 +5090,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5142,7 +5142,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -5203,7 +5203,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -5259,7 +5259,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -5299,7 +5299,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -5399,7 +5399,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5453,7 +5453,7 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -5514,7 +5514,7 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -5591,7 +5591,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -5636,7 +5636,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -5719,7 +5719,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, cts->host), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, cts->host), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -5781,7 +5781,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -5826,7 +5826,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -5901,7 +5901,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, cts->host.name), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, cts->host.name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -5929,7 +5929,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6001,7 +6001,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str()
@@ -6078,7 +6078,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str()
@@ -6119,7 +6119,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 							static_cast <uint16_t> (node),
 							static_cast <uint16_t> (proto)
 						), log_t::flag_t::WARNING, error.c_str());
@@ -6152,7 +6152,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str());
@@ -6225,7 +6225,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str()
@@ -6322,7 +6322,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str()
@@ -6354,7 +6354,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str()
@@ -6382,7 +6382,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str()
@@ -6410,7 +6410,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 							static_cast <uint16_t> (node),
 							static_cast <uint16_t> (proto)
 						), log_t::flag_t::WARNING, error.c_str());
@@ -6443,7 +6443,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
 							), log_t::flag_t::CRITICAL, error.c_str());
@@ -6574,7 +6574,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"Invalid event node type", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							static_cast <uint16_t> (node),
 							static_cast <uint16_t> (proto)
 						), log_t::flag_t::WARNING
@@ -6599,7 +6599,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					static_cast <uint16_t> (node),
 					static_cast <uint16_t> (proto)
 				), log_t::flag_t::CRITICAL, error.what()
@@ -6659,7 +6659,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -6702,7 +6702,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -6755,7 +6755,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -6798,7 +6798,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -6820,7 +6820,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -6876,7 +6876,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -6949,7 +6949,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -6999,7 +6999,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7028,7 +7028,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -7148,7 +7148,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7184,7 +7184,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7292,7 +7292,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7328,7 +7328,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7353,7 +7353,7 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -7538,7 +7538,7 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -7574,7 +7574,7 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -7598,7 +7598,7 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -7671,7 +7671,7 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7724,7 +7724,7 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7746,7 +7746,7 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7820,7 +7820,7 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7873,7 +7873,7 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7895,7 +7895,7 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -7957,7 +7957,7 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -8018,7 +8018,7 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -8162,7 +8162,7 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -8330,7 +8330,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fid), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -8523,7 +8523,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fid), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -8545,7 +8545,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, fid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -8591,7 +8591,7 @@ uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -8702,7 +8702,7 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alpn.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alpn.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -8753,7 +8753,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -8846,7 +8846,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -8870,7 +8870,7 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, alps.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alps.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -9028,7 +9028,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -9064,7 +9064,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -9198,7 +9198,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -9237,7 +9237,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -9262,7 +9262,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -9338,7 +9338,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -9378,7 +9378,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -9418,7 +9418,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -9448,7 +9448,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -9504,7 +9504,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -9544,7 +9544,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -9584,7 +9584,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -9614,7 +9614,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -9639,7 +9639,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, methods.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, methods.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -9691,7 +9691,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -9796,7 +9796,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -9826,7 +9826,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -9850,7 +9850,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -9906,7 +9906,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -9937,7 +9937,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -9976,7 +9976,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -10018,7 +10018,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10049,7 +10049,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10078,7 +10078,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -10135,7 +10135,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10176,7 +10176,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -10213,7 +10213,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -10261,7 +10261,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10302,7 +10302,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -10339,7 +10339,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -10369,7 +10369,7 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -10429,7 +10429,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10460,7 +10460,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10495,7 +10495,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10539,7 +10539,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10570,7 +10570,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10605,7 +10605,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10630,7 +10630,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -10691,7 +10691,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -10725,7 +10725,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -10758,7 +10758,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10800,7 +10800,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -10834,7 +10834,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -10867,7 +10867,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -10890,7 +10890,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -10957,7 +10957,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -10989,7 +10989,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11029,7 +11029,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11061,7 +11061,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11113,7 +11113,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11145,7 +11145,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11196,7 +11196,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -11228,7 +11228,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11255,7 +11255,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -11300,7 +11300,7 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -11347,7 +11347,7 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -11408,7 +11408,7 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -11469,7 +11469,7 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -11516,7 +11516,7 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

@@ -197,7 +197,7 @@ bool awh::Regular_Expressions::test(const char * text, const size_t size, const 
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -299,7 +299,7 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -336,7 +336,7 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -440,7 +440,7 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -477,7 +477,7 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -629,7 +629,7 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, "Memory allocation error");
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -666,7 +666,7 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */

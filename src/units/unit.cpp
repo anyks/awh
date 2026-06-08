@@ -17,6 +17,7 @@
  */
 #include <cerrno>
 #include <atomic>
+#include <type_traits>
 
 /**
  * Подключаем заголовочные файлы проекта

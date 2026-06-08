@@ -122,7 +122,7 @@ namespace signals {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение в лог
-								self.log->debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, std::make_tuple(signal), awh::log_t::flag_t::WARNING, name.c_str(), user);
+								self.log->debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, name.c_str(), user);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -137,7 +137,7 @@ namespace signals {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение в лог
-								self.log->debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, std::make_tuple(signal), awh::log_t::flag_t::WARNING, name.c_str(), info->si_uid);
+								self.log->debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, name.c_str(), info->si_uid);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -155,7 +155,7 @@ namespace signals {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение в лог
-								self.log->debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, std::make_tuple(signal), awh::log_t::flag_t::WARNING, info->si_pid, user);
+								self.log->debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, info->si_pid, user);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -170,7 +170,7 @@ namespace signals {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение в лог
-								self.log->debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, std::make_tuple(signal), awh::log_t::flag_t::WARNING, info->si_pid, info->si_uid);
+								self.log->debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, info->si_pid, info->si_uid);
 							/**
 							 * Если режим отладки не включён
 							 */

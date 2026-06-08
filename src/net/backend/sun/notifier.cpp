@@ -701,7 +701,7 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, message);
+						this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, message);
 					/**
 					* Если режим отладки не включён
 					*/
@@ -730,7 +730,7 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
@@ -753,7 +753,7 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
@@ -784,7 +784,7 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
@@ -804,7 +804,7 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/

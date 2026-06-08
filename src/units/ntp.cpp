@@ -526,8 +526,8 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event
 		// Создаём объект пакета запроса
 		::ntp::packet_t packet{};
 		/**
-		* Определяем версию протокола NTP для выполнения запроса
-		*/
+		 * Определяем версию протокола NTP для выполнения запроса
+		 */
 		switch(static_cast <uint8_t> (this->_transfer.version)){
 			// Если версия протокола NTPv1
 			case 0x01: packet.mode = 0x0B; break;

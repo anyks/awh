@@ -122,7 +122,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке запуска события
-				this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, std::make_tuple(delay), log_t::flag_t::WARNING);
+				this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -143,7 +143,7 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке создания события
-			this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, std::make_tuple(delay), log_t::flag_t::WARNING);
+			this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -181,7 +181,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке запуска события
-				this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, std::make_tuple(delay), log_t::flag_t::WARNING);
+				this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -202,7 +202,7 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке создания события
-			this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, std::make_tuple(delay), log_t::flag_t::WARNING);
+			this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */

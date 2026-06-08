@@ -86,7 +86,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(sock),
+				make_tuple(sock),
 				log_t::flag_t::CRITICAL,
 				::strerror(errno)
 			);
@@ -128,7 +128,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event)
 						), log_t::flag_t::CRITICAL,
@@ -154,7 +154,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event)
 						), log_t::flag_t::CRITICAL,
@@ -208,7 +208,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event),
 							msec
@@ -235,7 +235,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event),
 							msec
@@ -282,7 +282,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event)
 						), log_t::flag_t::CRITICAL,
@@ -310,7 +310,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event)
 						), log_t::flag_t::CRITICAL,
@@ -355,7 +355,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event),
 							size
@@ -383,7 +383,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event),
 							size
@@ -410,7 +410,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event),
 							size
@@ -438,7 +438,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 					// Выводим сообщение об ошибке
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							sock,
 							static_cast <uint16_t> (event),
 							size
@@ -489,7 +489,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 						this->_log->debug(
 							"Unable to get list of network interfaces",
 							__PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
@@ -532,7 +532,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										sock,
 										static_cast <uint16_t> (family),
 										ifname
@@ -567,7 +567,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								ifname
@@ -594,7 +594,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 			this->_log->debug(
 				"Interface name is empty",
 				__PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					sock,
 					static_cast <uint16_t> (family),
 					ifname
@@ -646,7 +646,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					sock, cnt,
 					idle, intvl
 				), log_t::flag_t::WARNING,
@@ -671,7 +671,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					sock, cnt,
 					idle, intvl
 				), log_t::flag_t::WARNING,
@@ -700,7 +700,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(
+					make_tuple(
 						sock, cnt,
 						idle, intvl
 					), log_t::flag_t::WARNING,
@@ -729,7 +729,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(
+					make_tuple(
 						sock, cnt,
 						idle, intvl
 					), log_t::flag_t::WARNING,
@@ -755,7 +755,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					sock, cnt,
 					idle, intvl
 				), log_t::flag_t::WARNING,
@@ -803,7 +803,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family)
 							), log_t::flag_t::CRITICAL,
@@ -829,7 +829,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family)
 							), log_t::flag_t::CRITICAL,
@@ -881,7 +881,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (dscp)
@@ -908,7 +908,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (dscp)
@@ -981,7 +981,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
@@ -1033,7 +1033,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
@@ -1094,7 +1094,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 										// Выводим сообщение об ошибке
 										this->_log->debug(
 											"%s", __PRETTY_FUNCTION__,
-											std::make_tuple(
+											make_tuple(
 												sock,
 												static_cast <uint16_t> (family),
 												static_cast <uint16_t> (mode),
@@ -1122,7 +1122,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 										// Выводим сообщение об ошибке
 										this->_log->debug(
 											"%s", __PRETTY_FUNCTION__,
-											std::make_tuple(
+											make_tuple(
 												sock,
 												static_cast <uint16_t> (family),
 												static_cast <uint16_t> (mode),
@@ -1149,7 +1149,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode),
@@ -1178,7 +1178,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode),
@@ -1224,7 +1224,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
@@ -1264,7 +1264,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
@@ -1294,7 +1294,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
@@ -1341,7 +1341,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
@@ -1386,7 +1386,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
@@ -1418,7 +1418,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
@@ -1453,7 +1453,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
@@ -1484,7 +1484,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
@@ -1532,7 +1532,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
@@ -1587,7 +1587,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
@@ -1617,7 +1617,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
@@ -1647,7 +1647,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (mode),
@@ -1678,7 +1678,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode),
@@ -1713,7 +1713,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
@@ -1744,7 +1744,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (mode),
@@ -1798,7 +1798,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
@@ -1826,7 +1826,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										sock,
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (mode),
@@ -1969,7 +1969,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
@@ -2001,7 +2001,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (mode)
@@ -2060,7 +2060,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
@@ -2091,7 +2091,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
@@ -2132,7 +2132,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
@@ -2165,7 +2165,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (delivery)
@@ -2226,7 +2226,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (hops)
 								), log_t::flag_t::WARNING,
@@ -2252,7 +2252,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (hops)
 								), log_t::flag_t::WARNING,
@@ -2290,7 +2290,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (hops)
 								), log_t::flag_t::WARNING,
@@ -2318,7 +2318,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									sock,
 									static_cast <uint16_t> (hops)
 								), log_t::flag_t::WARNING,
@@ -2384,7 +2384,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (mode)
 										), log_t::flag_t::WARNING,
@@ -2439,7 +2439,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (mode)
 										), log_t::flag_t::WARNING,
@@ -2479,7 +2479,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (mode)
 										), log_t::flag_t::WARNING,
@@ -2534,7 +2534,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											sock,
 											static_cast <uint16_t> (mode)
 										), log_t::flag_t::WARNING,
@@ -2562,7 +2562,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 				this->_log->debug(
 					"It is impossible to work with a multicast group because the IP address types are different",
 					__PRETTY_FUNCTION__,
-					std::make_tuple(
+					make_tuple(
 						sock,
 						static_cast <uint16_t> (mode)
 					), log_t::flag_t::CRITICAL
@@ -2586,7 +2586,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					sock,
 					static_cast <uint16_t> (mode)
 				), log_t::flag_t::CRITICAL,
@@ -2660,7 +2660,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							this->_log->debug(
 								"A socket for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
@@ -2763,7 +2763,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								this->_log->debug(
 									"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
@@ -2839,7 +2839,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								this->_log->debug(
 									"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
@@ -2919,7 +2919,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								this->_log->debug(
 									"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
@@ -2991,7 +2991,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								this->_log->debug(
 									"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
@@ -3016,7 +3016,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							this->_log->debug(
 								"A socket for an IP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
@@ -3042,7 +3042,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 					this->_log->debug(
 						"A socket cannot be created, because family it belongs to is not defined",
 						__PRETTY_FUNCTION__,
-						std::make_tuple(
+						make_tuple(
 							static_cast <uint16_t> (family),
 							static_cast <uint16_t> (type),
 							static_cast <uint16_t> (proto)
@@ -3068,7 +3068,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),
 					static_cast <uint16_t> (proto)
@@ -3118,7 +3118,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (type),
 								static_cast <uint16_t> (proto)
@@ -3151,7 +3151,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
@@ -3178,7 +3178,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								// Выводим сообщение об ошибке
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
-									std::make_tuple(
+									make_tuple(
 										static_cast <uint16_t> (family),
 										static_cast <uint16_t> (type),
 										static_cast <uint16_t> (proto)
@@ -3209,7 +3209,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
 											static_cast <uint16_t> (proto)
@@ -3237,7 +3237,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
-										std::make_tuple(
+										make_tuple(
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
 											static_cast <uint16_t> (proto)
@@ -3264,7 +3264,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							this->_log->debug(
 								"An event for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
-								std::make_tuple(
+								make_tuple(
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
 									static_cast <uint16_t> (proto)
@@ -3301,7 +3301,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					static_cast <uint16_t> (family),
 					static_cast <uint16_t> (type),
 					static_cast <uint16_t> (proto)

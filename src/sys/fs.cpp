@@ -506,7 +506,7 @@ namespace {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(input), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(input), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -693,7 +693,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -710,7 +710,7 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -818,7 +818,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -835,7 +835,7 @@ void awh::Filesystem::symlink(string_view first, string_view second) const noexc
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -885,7 +885,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -902,7 +902,7 @@ void awh::Filesystem::hardlink(string_view first, string_view second) const noex
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1107,7 +1107,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1124,7 +1124,7 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1324,7 +1324,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1341,7 +1341,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1387,7 +1387,7 @@ uint32_t awh::Filesystem::chmod(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1435,7 +1435,7 @@ bool awh::Filesystem::chmod(string_view addr, const uint32_t mode) const noexcep
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, mode), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, mode), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1481,7 +1481,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1517,7 +1517,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1570,7 +1570,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1594,7 +1594,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1620,7 +1620,7 @@ bool awh::Filesystem::chown(string_view addr, string_view user, [[maybe_unused]]
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
+					this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, user), log_t::flag_t::CRITICAL, message);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1742,7 +1742,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Memory allocation error", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL);
+					this->_log->debug("Memory allocation error", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1761,7 +1761,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1778,7 +1778,7 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1871,7 +1871,7 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1888,7 +1888,7 @@ awh::Filesystem::components_t awh::Filesystem::components(string_view addr, cons
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, resolve, before), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1950,7 +1950,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, message);
+										this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -2103,7 +2103,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2120,7 +2120,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2253,7 +2253,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2270,7 +2270,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2286,7 +2286,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, std::make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, addr.data());
+			this->_log->debug("Address name: \"%s\" is not dir", __PRETTY_FUNCTION__, make_tuple(addr, ext, recurse), log_t::flag_t::CRITICAL, addr.data());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2432,7 +2432,7 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2449,7 +2449,7 @@ void awh::Filesystem::append(string_view filename, const void * buffer, const si
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2583,7 +2583,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, message);
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2609,7 +2609,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2624,7 +2624,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2674,7 +2674,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), result.size(), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2695,7 +2695,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2712,7 +2712,7 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2933,7 +2933,7 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2950,7 +2950,7 @@ void awh::Filesystem::write(string_view filename, const void * buffer, const siz
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, buffer, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3084,7 +3084,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3122,7 +3122,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+										this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -3163,7 +3163,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3178,7 +3178,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3264,7 +3264,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3281,7 +3281,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3369,7 +3369,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3407,7 +3407,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug(L"%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
+										this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, message);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -3448,7 +3448,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3463,7 +3463,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3538,7 +3538,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3555,7 +3555,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3706,7 +3706,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3723,7 +3723,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3746,7 +3746,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, path.data());
+			this->_log->debug("Path name: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::WARNING, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3834,7 +3834,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const bool recu
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, path.data());
+			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, recurse, resolve), log_t::flag_t::CRITICAL, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3928,7 +3928,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, std::make_tuple(path, ext, size, recurse, resolve), log_t::flag_t::CRITICAL, path.data());
+			this->_log->debug("Address: \"%s\" is not found", __PRETTY_FUNCTION__, make_tuple(path, ext, size, recurse, resolve), log_t::flag_t::CRITICAL, path.data());
 		/**
 		 * Если режим отладки не включён
 		 */

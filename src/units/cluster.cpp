@@ -216,7 +216,7 @@ void awh::unit::Cluster::create() noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, std::make_tuple(index), log_t::flag_t::WARNING);
+									this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(index), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -405,7 +405,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Child process worker could not be created", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::CRITICAL);
+					this->_log->debug("Child process worker could not be created", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -427,7 +427,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Child process could not be created", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::CRITICAL);
+						this->_log->debug("Child process could not be created", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -485,7 +485,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::WARNING);
+								this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -525,7 +525,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке запуска события
-								this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::CRITICAL, ret.first->first);
+								this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, ret.first->first);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -543,7 +543,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::CRITICAL, ::getpid());
+							this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, ::getpid());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -566,7 +566,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::WARNING);
+							this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -598,7 +598,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке запуска события
-							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, std::make_tuple(pid, ret.first->second->pid), log_t::flag_t::CRITICAL, pid);
+							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(pid, ret.first->second->pid), log_t::flag_t::CRITICAL, pid);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -625,7 +625,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -816,7 +816,7 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, size), log_t::flag_t::CRITICAL, ::getpid());
+					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -861,7 +861,7 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, data, size), log_t::flag_t::CRITICAL, ::getpid());
+					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -919,7 +919,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, ::getpid());
+						this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, ::getpid());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -957,7 +957,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, ::getpid());
+							this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, ::getpid());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1004,7 +1004,7 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, ::getpid());
+					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1049,7 +1049,7 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(eid, static_cast <uint16_t> (status), size), log_t::flag_t::CRITICAL, ::getpid());
+					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (status), size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1299,7 +1299,7 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, std::make_tuple(pid), log_t::flag_t::WARNING);
+			this->_log->debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1415,7 +1415,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::getpid());
+					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1433,7 +1433,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				this->_log->debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1451,7 +1451,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке запуска события
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1491,7 +1491,7 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, std::make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
+				this->_log->debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1509,7 +1509,7 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, std::make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
+			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1553,7 +1553,7 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				this->_log->debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1571,7 +1571,7 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */

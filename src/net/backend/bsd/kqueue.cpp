@@ -1524,7 +1524,7 @@ namespace fs {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(input), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(input), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2858,7 +2858,7 @@ namespace events {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2900,7 +2900,7 @@ namespace events {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, node->id), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2962,7 +2962,7 @@ namespace events {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -3004,7 +3004,7 @@ namespace events {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(sock, node->id), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3361,7 +3361,7 @@ namespace timer1 {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3395,7 +3395,7 @@ namespace timer1 {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3656,7 +3656,7 @@ namespace timer1 {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4202,7 +4202,7 @@ namespace timer1 {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4451,7 +4451,7 @@ namespace timer2 {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4485,7 +4485,7 @@ namespace timer2 {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4843,7 +4843,7 @@ namespace timer2 {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -5415,7 +5415,7 @@ namespace timer2 {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -5555,7 +5555,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -5594,7 +5594,7 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -5617,7 +5617,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -5696,7 +5696,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -5757,7 +5757,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -5806,7 +5806,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.c_str());
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -5859,7 +5859,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -5920,7 +5920,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -5993,7 +5993,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -6054,7 +6054,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -6094,7 +6094,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6225,7 +6225,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -6419,7 +6419,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -6556,7 +6556,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -6681,7 +6681,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -6807,7 +6807,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6888,7 +6888,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7061,7 +7061,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -7090,7 +7090,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7268,7 +7268,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -7297,7 +7297,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7327,7 +7327,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -7379,7 +7379,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7419,7 +7419,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -7589,7 +7589,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7618,7 +7618,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -7796,7 +7796,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -7825,7 +7825,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -7855,7 +7855,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -7907,7 +7907,7 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -7932,7 +7932,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -8063,7 +8063,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -8257,7 +8257,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -8383,7 +8383,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -8476,7 +8476,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -8575,7 +8575,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -8674,7 +8674,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -8793,7 +8793,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -8936,7 +8936,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -9090,7 +9090,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -9246,7 +9246,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -9379,7 +9379,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -9476,7 +9476,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -9561,7 +9561,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -9607,7 +9607,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -9665,7 +9665,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -9713,7 +9713,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -9733,7 +9733,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -9873,7 +9873,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -9924,7 +9924,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -10026,7 +10026,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -10159,7 +10159,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -10202,7 +10202,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -10364,7 +10364,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -10407,7 +10407,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -10743,7 +10743,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -10786,7 +10786,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -10971,7 +10971,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer, peer->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -11139,7 +11139,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin, origin->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11182,7 +11182,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -11359,7 +11359,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin, origin->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -11508,7 +11508,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -11534,7 +11534,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(tunnel, tunnel->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -11696,7 +11696,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -11739,7 +11739,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -12072,7 +12072,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -12115,7 +12115,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -12471,7 +12471,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -12514,7 +12514,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -12698,7 +12698,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -12792,7 +12792,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin, origin->id), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -12959,7 +12959,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -13015,7 +13015,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -13088,7 +13088,7 @@ namespace io {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -13134,7 +13134,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -13285,7 +13285,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -13375,7 +13375,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -13482,7 +13482,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -13581,7 +13581,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -13699,7 +13699,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -13805,7 +13805,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -13837,7 +13837,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -13992,7 +13992,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -14021,7 +14021,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -14372,7 +14372,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -14404,7 +14404,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -14728,7 +14728,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -14858,7 +14858,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -14887,7 +14887,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -15202,7 +15202,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -15235,7 +15235,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -15521,7 +15521,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -15554,7 +15554,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -15728,7 +15728,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -15757,7 +15757,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -16026,7 +16026,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -16059,7 +16059,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -16265,7 +16265,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -16306,7 +16306,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -16326,7 +16326,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -16458,7 +16458,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -16787,7 +16787,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -17106,7 +17106,7 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -17377,7 +17377,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -17532,7 +17532,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -17561,7 +17561,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -17912,7 +17912,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -17944,7 +17944,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -18268,7 +18268,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -18384,7 +18384,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -18413,7 +18413,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -18714,7 +18714,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -18747,7 +18747,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -19019,7 +19019,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -19131,7 +19131,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -19160,7 +19160,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -19461,7 +19461,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -19494,7 +19494,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -19766,7 +19766,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -19806,7 +19806,7 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, error.c_str());
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -19937,7 +19937,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -19966,7 +19966,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -20294,7 +20294,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -20327,7 +20327,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -20626,7 +20626,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -20765,7 +20765,7 @@ namespace io {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -20794,7 +20794,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -21122,7 +21122,7 @@ namespace io {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -21155,7 +21155,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -21454,7 +21454,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -21494,7 +21494,7 @@ namespace io {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, error.c_str());
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -21515,7 +21515,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -21629,7 +21629,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -21725,7 +21725,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -21820,7 +21820,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -21861,7 +21861,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -21881,7 +21881,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -22458,7 +22458,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -22531,7 +22531,7 @@ namespace io {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user, user->id), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user, user->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -22584,7 +22584,7 @@ namespace io {
 						// Выводим сообщение об ошибке
 						log->debug(
 							"Socket creation is not possible for the specified node type",
-							__PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL
+							__PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL
 						);
 					/**
 					 * Если режим отладки не включён
@@ -22604,7 +22604,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -22654,7 +22654,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22689,7 +22689,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22722,7 +22722,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22755,7 +22755,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22788,7 +22788,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22821,7 +22821,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22854,7 +22854,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22887,7 +22887,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22920,7 +22920,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22953,7 +22953,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -22986,7 +22986,7 @@ namespace io {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
+							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -23010,7 +23010,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -23750,7 +23750,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -23869,7 +23869,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dir, dir->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dir, dir->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -23981,7 +23981,7 @@ namespace io {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -24162,7 +24162,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, ::strerror(errno));
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -24230,7 +24230,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -24294,7 +24294,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -24329,7 +24329,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -24369,7 +24369,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -24404,7 +24404,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -24480,7 +24480,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -24515,7 +24515,7 @@ namespace io {
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -24555,7 +24555,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -24590,7 +24590,7 @@ namespace io {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -24742,7 +24742,7 @@ namespace io {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -24862,7 +24862,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -25007,7 +25007,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25041,7 +25041,7 @@ namespace io {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
+				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -25764,7 +25764,7 @@ namespace io {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -25824,7 +25824,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -25855,7 +25855,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -25891,7 +25891,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25922,7 +25922,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -25985,7 +25985,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -26016,7 +26016,7 @@ namespace io {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -26052,7 +26052,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -26083,7 +26083,7 @@ namespace io {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -27485,7 +27485,7 @@ namespace sctp {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("SCTP settings can only be retrieved from peer, client, or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+							this->_log->debug("SCTP settings can only be retrieved from peer, client, or server nodes", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -27505,7 +27505,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -27631,7 +27631,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -27735,7 +27735,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -27753,7 +27753,7 @@ namespace sctp {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("SCTP settings can only be configured for peer nodes, clients, or servers", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+							this->_log->debug("SCTP settings can only be configured for peer nodes, clients, or servers", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -27773,7 +27773,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -27844,7 +27844,7 @@ namespace sctp {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -27874,7 +27874,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -27923,7 +27923,7 @@ namespace sctp {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -27953,7 +27953,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -27975,7 +27975,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -28037,7 +28037,7 @@ namespace sctp {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -28066,7 +28066,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28106,7 +28106,7 @@ namespace sctp {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -28135,7 +28135,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28157,7 +28157,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -28213,7 +28213,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -28273,7 +28273,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, events.size()), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, events.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28311,7 +28311,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, events.size()), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, events.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28333,7 +28333,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, events.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, events.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -28413,7 +28413,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28455,7 +28455,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28497,7 +28497,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28519,7 +28519,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -28602,7 +28602,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28644,7 +28644,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28686,7 +28686,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28708,7 +28708,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -28770,7 +28770,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, num, key), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, num, key), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28808,7 +28808,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, num, key), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, num, key), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28830,7 +28830,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, num, key), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, num, key), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -28903,7 +28903,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28952,7 +28952,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -28974,7 +28974,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -29037,7 +29037,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, chunks.size()), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, chunks.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29075,7 +29075,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, chunks.size()), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, chunks.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29097,7 +29097,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, chunks.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, chunks.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -29163,7 +29163,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29201,7 +29201,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29239,7 +29239,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29261,7 +29261,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -29324,7 +29324,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29362,7 +29362,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29400,7 +29400,7 @@ namespace sctp {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29422,7 +29422,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, types.size()), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -29476,7 +29476,7 @@ namespace sctp {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("A SCTP info message callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("A SCTP info message callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -29497,7 +29497,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -29549,7 +29549,7 @@ namespace sctp {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("A SCTP events callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("A SCTP events callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -29570,7 +29570,7 @@ namespace sctp {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -29653,7 +29653,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -29669,7 +29669,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -29691,7 +29691,7 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -29766,7 +29766,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -29814,7 +29814,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -29859,7 +29859,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -29907,7 +29907,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -29936,7 +29936,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+									this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29952,7 +29952,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+									this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -29974,7 +29974,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -30098,7 +30098,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+									this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -30114,7 +30114,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::WARNING);
+									this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -30136,7 +30136,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -30199,7 +30199,7 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -30215,7 +30215,7 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -30237,7 +30237,7 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -30389,7 +30389,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, dir->fd, path), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir->fd, path), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -30434,7 +30434,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -30465,7 +30465,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -30496,7 +30496,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -30559,7 +30559,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -30590,7 +30590,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -30621,7 +30621,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -30688,7 +30688,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -30718,7 +30718,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -30837,7 +30837,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -30916,7 +30916,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -31012,7 +31012,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -31090,7 +31090,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -31232,7 +31232,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 */
 																			#if DEBUG_MODE
 																				// Выводим сообщение об ошибке
-																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																			/**
 																			 * Если режим отладки не включён
 																			 */
@@ -31273,7 +31273,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				 */
 																				#if DEBUG_MODE
 																					// Выводим сообщение об ошибке
-																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																				/**
 																				 * Если режим отладки не включён
 																				 */
@@ -31311,7 +31311,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 */
 																			#if DEBUG_MODE
 																				// Выводим сообщение об ошибке
-																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, unixsocket, filename), log_t::flag_t::WARNING, ::strerror(errno));
+																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, unixsocket, filename), log_t::flag_t::WARNING, ::strerror(errno));
 																			/**
 																			 * Если режим отладки не включён
 																			 */
@@ -31352,7 +31352,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 */
 																	#if DEBUG_MODE
 																		// Выводим сообщение об ошибке
-																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
@@ -31404,7 +31404,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -31436,7 +31436,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -31540,7 +31540,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -31632,7 +31632,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 */
 																			#if DEBUG_MODE
 																				// Выводим сообщение об ошибке
-																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																			/**
 																			 * Если режим отладки не включён
 																			 */
@@ -31663,7 +31663,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -31770,7 +31770,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																					// Выводим сообщение об ошибке
-																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
@@ -31822,7 +31822,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -31893,7 +31893,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -31947,7 +31947,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 */
 																	#if DEBUG_MODE
 																		// Выводим сообщение об ошибке
-																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
@@ -31982,7 +31982,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -32012,7 +32012,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -32115,7 +32115,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -32207,7 +32207,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 */
 																			#if DEBUG_MODE
 																				// Выводим сообщение об ошибке
-																				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																			/**
 																			 * Если режим отладки не включён
 																			 */
@@ -32238,7 +32238,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -32343,7 +32343,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																					// Выводим сообщение об ошибке
-																					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
@@ -32395,7 +32395,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -32461,7 +32461,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -32515,7 +32515,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 */
 																	#if DEBUG_MODE
 																		// Выводим сообщение об ошибке
-																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
@@ -32550,7 +32550,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -32580,7 +32580,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -32614,7 +32614,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -32646,7 +32646,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -32734,7 +32734,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -32804,7 +32804,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -32898,7 +32898,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -32958,7 +32958,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 */
 																		#if DEBUG_MODE
 																			// Выводим сообщение об ошибке
-																			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, unixsocket, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
+																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
@@ -32990,7 +32990,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 */
 																	#if DEBUG_MODE
 																		// Выводим сообщение об ошибке
-																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
@@ -33038,7 +33038,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -33070,7 +33070,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -33157,7 +33157,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -33207,7 +33207,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -33237,7 +33237,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -33323,7 +33323,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -33373,7 +33373,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -33403,7 +33403,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -33437,7 +33437,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -33469,7 +33469,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -33510,7 +33510,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33541,7 +33541,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33572,7 +33572,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33605,7 +33605,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33636,7 +33636,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33667,7 +33667,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33698,7 +33698,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33729,7 +33729,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33760,7 +33760,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33791,7 +33791,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33822,7 +33822,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -33844,7 +33844,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -33978,7 +33978,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -34038,7 +34038,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -34062,7 +34062,7 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -34155,7 +34155,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -34206,7 +34206,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -34264,7 +34264,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -34312,7 +34312,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -34336,7 +34336,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, name), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -34535,7 +34535,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Unable to obtain an internal port for this network node", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+								this->_log->debug("Unable to obtain an internal port for this network node", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -34553,7 +34553,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Internal port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("Internal port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -34573,7 +34573,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -34697,7 +34697,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Failed to set the internal port for this network node", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
+								this->_log->debug("Failed to set the internal port for this network node", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -34715,7 +34715,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Internal port cannot be set for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
+						this->_log->debug("Internal port cannot be set for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -34735,7 +34735,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -34805,7 +34805,7 @@ uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcep
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("Port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -34825,7 +34825,7 @@ uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcep
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -34918,7 +34918,7 @@ bool awh::engine::IO::setDestinationPort(const event::id_t id, const uint16_t po
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Port cannot be set for events that are not network related", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::WARNING);
+						this->_log->debug("Port cannot be set for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -34938,7 +34938,7 @@ bool awh::engine::IO::setDestinationPort(const event::id_t id, const uint16_t po
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -35041,7 +35041,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35081,7 +35081,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35142,7 +35142,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35182,7 +35182,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35236,7 +35236,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35276,7 +35276,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35330,7 +35330,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35370,7 +35370,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35431,7 +35431,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35471,7 +35471,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35532,7 +35532,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35572,7 +35572,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35596,7 +35596,7 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -35671,7 +35671,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35702,7 +35702,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -35752,7 +35752,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -35783,7 +35783,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -35833,7 +35833,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -35875,7 +35875,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -35927,7 +35927,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -35969,7 +35969,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -36028,7 +36028,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -36077,7 +36077,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -36126,7 +36126,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -36185,7 +36185,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -36234,7 +36234,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -36283,7 +36283,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -36308,7 +36308,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, target), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -36428,7 +36428,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36470,7 +36470,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36537,7 +36537,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36579,7 +36579,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36635,7 +36635,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36677,7 +36677,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36733,7 +36733,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36775,7 +36775,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36842,7 +36842,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36884,7 +36884,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36951,7 +36951,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -36993,7 +36993,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -37017,7 +37017,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -37096,7 +37096,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -37144,7 +37144,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -37383,7 +37383,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -37505,7 +37505,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -37534,7 +37534,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -37582,7 +37582,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -37611,7 +37611,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -37641,7 +37641,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -37702,7 +37702,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -37731,7 +37731,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -37779,7 +37779,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -37808,7 +37808,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -37838,7 +37838,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -37906,7 +37906,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -37935,7 +37935,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -37981,7 +37981,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -38010,7 +38010,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -38040,7 +38040,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -38112,7 +38112,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -38160,7 +38160,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -38189,7 +38189,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -38248,7 +38248,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -38296,7 +38296,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -38325,7 +38325,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -38355,7 +38355,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -38677,7 +38677,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -38770,7 +38770,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -38823,7 +38823,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -38852,7 +38852,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -38900,7 +38900,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -38929,7 +38929,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -38947,7 +38947,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Address \"%s\" can only be set for node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+									this->_log->debug("Address \"%s\" can only be set for node", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -39042,7 +39042,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -39102,7 +39102,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -39133,7 +39133,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -39198,7 +39198,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -39253,7 +39253,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 */
 															#if DEBUG_MODE
 																// Выводим сообщение об ошибке
-																this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -39284,7 +39284,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -39304,7 +39304,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("MAC-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+									this->_log->debug("MAC-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -39371,7 +39371,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -39422,7 +39422,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -39442,7 +39442,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Unix socket address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+										this->_log->debug("Unix socket address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -39459,7 +39459,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("You cannot set address \"%s\" because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+								this->_log->debug("You cannot set address \"%s\" because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -39506,7 +39506,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -39535,7 +39535,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -39577,7 +39577,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -39606,7 +39606,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -39702,7 +39702,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -39731,7 +39731,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -39760,7 +39760,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -39841,7 +39841,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -39871,7 +39871,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -39900,7 +39900,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -39918,7 +39918,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -39966,7 +39966,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -39995,7 +39995,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -40037,7 +40037,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -40066,7 +40066,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -40162,7 +40162,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -40191,7 +40191,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -40220,7 +40220,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -40301,7 +40301,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -40331,7 +40331,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -40360,7 +40360,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -40378,7 +40378,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -40518,7 +40518,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -40547,7 +40547,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -40625,7 +40625,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -40654,7 +40654,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -40760,7 +40760,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -40789,7 +40789,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -40862,7 +40862,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -40891,7 +40891,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -40911,7 +40911,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Network-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+									this->_log->debug("Network-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -40929,7 +40929,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Unsupported address \"%s\" type cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
+							this->_log->debug("Unsupported address \"%s\" type cannot be set", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -40950,7 +40950,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -41085,7 +41085,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41114,7 +41114,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41160,7 +41160,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41189,7 +41189,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41219,7 +41219,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -41282,7 +41282,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41311,7 +41311,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41357,7 +41357,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41386,7 +41386,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41416,7 +41416,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -41486,7 +41486,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41515,7 +41515,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41559,7 +41559,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41588,7 +41588,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41618,7 +41618,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -41692,7 +41692,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -41738,7 +41738,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41767,7 +41767,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41824,7 +41824,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -41870,7 +41870,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -41899,7 +41899,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -41929,7 +41929,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -42287,7 +42287,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -42384,7 +42384,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -42435,7 +42435,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -42481,7 +42481,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -42499,7 +42499,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Address can only be set for node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+									this->_log->debug("Address can only be set for node", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -42592,7 +42592,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -42652,7 +42652,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -42717,7 +42717,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -42772,7 +42772,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 */
 														#if DEBUG_MODE
 															// Выводим сообщение об ошибке
-															this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
@@ -42794,7 +42794,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("MAC-address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+									this->_log->debug("MAC-address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -42870,7 +42870,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("Unix socket address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+										this->_log->debug("Unix socket address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -42887,7 +42887,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("You cannot set address because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+								this->_log->debug("You cannot set address because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -42936,7 +42936,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -42980,7 +42980,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -43076,7 +43076,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -43105,7 +43105,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -43186,7 +43186,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -43216,7 +43216,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -43234,7 +43234,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -43284,7 +43284,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -43328,7 +43328,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -43424,7 +43424,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -43453,7 +43453,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -43534,7 +43534,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -43564,7 +43564,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -43582,7 +43582,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -43600,7 +43600,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Unsupported address type cannot be set", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
+							this->_log->debug("Unsupported address type cannot be set", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -43621,7 +43621,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -43681,7 +43681,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -43789,7 +43789,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -43849,7 +43849,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -43873,7 +43873,7 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -43934,7 +43934,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -44042,7 +44042,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -44102,7 +44102,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -44126,7 +44126,7 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, mtu), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -44196,7 +44196,7 @@ awh::event::dscp_t awh::engine::IO::getDifferentiatedServicesCodePoint(const eve
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					id, static_cast <uint16_t> (family)
 				), log_t::flag_t::CRITICAL, error.what()
 			);
@@ -44270,7 +44270,7 @@ bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, c
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					id, static_cast <uint16_t> (family),
 					static_cast <uint16_t> (dscp)
 				), log_t::flag_t::CRITICAL, error.what()
@@ -44344,7 +44344,7 @@ awh::event::mtu_discover_t awh::engine::IO::getMaximumTransmissionUnitDiscover(c
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					id, static_cast <uint16_t> (family)
 				), log_t::flag_t::CRITICAL, error.what()
 			);
@@ -44418,7 +44418,7 @@ bool awh::engine::IO::setMaximumTransmissionUnitDiscover(const event::id_t id, c
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(
+				make_tuple(
 					id, static_cast <uint16_t> (family),
 					static_cast <uint16_t> (mode)
 				), log_t::flag_t::CRITICAL, error.what()
@@ -44510,7 +44510,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -44556,7 +44556,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -44585,7 +44585,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -44635,7 +44635,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -44681,7 +44681,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -44710,7 +44710,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -44778,7 +44778,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -44824,7 +44824,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -44853,7 +44853,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -44909,7 +44909,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -44955,7 +44955,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -44984,7 +44984,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -45004,7 +45004,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
+							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -45028,7 +45028,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
+						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -45044,7 +45044,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
+						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -45064,7 +45064,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -45144,7 +45144,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -45203,7 +45203,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -45280,7 +45280,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -45345,7 +45345,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -45382,7 +45382,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -45406,7 +45406,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -45422,7 +45422,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -45442,7 +45442,7 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -45480,7 +45480,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -45664,7 +45664,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 				static_cast <uint16_t> (family),
 				static_cast <uint16_t> (type),
 				static_cast <uint16_t> (protocol)
@@ -45759,7 +45759,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -45827,7 +45827,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -45880,7 +45880,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -45931,7 +45931,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -45982,7 +45982,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -46033,7 +46033,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -46115,7 +46115,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"An event for a Unix event cannot be created because it has an invalid initialization type",
-										__PRETTY_FUNCTION__, std::make_tuple(
+										__PRETTY_FUNCTION__, make_tuple(
 											static_cast <uint16_t> (node),
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
@@ -46241,7 +46241,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"An event for a IP event cannot be created because it has an invalid initialization type",
-										__PRETTY_FUNCTION__, std::make_tuple(
+										__PRETTY_FUNCTION__, make_tuple(
 											static_cast <uint16_t> (node),
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
@@ -46267,7 +46267,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -46343,7 +46343,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"An event for a Unix event cannot be created because it has an invalid initialization type",
-										__PRETTY_FUNCTION__, std::make_tuple(
+										__PRETTY_FUNCTION__, make_tuple(
 											static_cast <uint16_t> (node),
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
@@ -46430,7 +46430,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 									// Выводим сообщение об ошибке
 									this->_log->debug(
 										"An event for a IP event cannot be created because it has an invalid initialization type",
-										__PRETTY_FUNCTION__, std::make_tuple(
+										__PRETTY_FUNCTION__, make_tuple(
 											static_cast <uint16_t> (node),
 											static_cast <uint16_t> (family),
 											static_cast <uint16_t> (type),
@@ -46456,7 +46456,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
-								__PRETTY_FUNCTION__, std::make_tuple(
+								__PRETTY_FUNCTION__, make_tuple(
 									static_cast <uint16_t> (node),
 									static_cast <uint16_t> (family),
 									static_cast <uint16_t> (type),
@@ -46483,7 +46483,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 				static_cast <uint16_t> (node),
 				static_cast <uint16_t> (family),
 				static_cast <uint16_t> (type),
@@ -46556,7 +46556,7 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Seek offset cannot be get for events that are not file system related", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::WARNING);
+						this->_log->debug("Seek offset cannot be get for events that are not file system related", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -46576,7 +46576,7 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -46649,7 +46649,7 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Seek offset cannot be set for events that are not file system related", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (seek), offset), log_t::flag_t::WARNING);
+						this->_log->debug("Seek offset cannot be set for events that are not file system related", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek), offset), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -46669,7 +46669,7 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -46707,7 +46707,7 @@ uint16_t awh::engine::IO::getOptions(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -47462,7 +47462,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, options), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, options), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -48276,7 +48276,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, option, mode), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, option, mode), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -48345,7 +48345,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48378,7 +48378,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48409,7 +48409,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48463,7 +48463,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -48502,7 +48502,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48535,7 +48535,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48566,7 +48566,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48622,7 +48622,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -48661,7 +48661,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48694,7 +48694,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48725,7 +48725,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48787,7 +48787,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48820,7 +48820,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48851,7 +48851,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48913,7 +48913,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48946,7 +48946,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -48977,7 +48977,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49031,7 +49031,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -49070,7 +49070,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49103,7 +49103,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49163,7 +49163,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -49205,7 +49205,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49238,7 +49238,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49283,7 +49283,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -49502,7 +49502,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49579,7 +49579,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49634,7 +49634,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49687,7 +49687,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -49721,7 +49721,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -49752,7 +49752,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -49783,7 +49783,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -49804,7 +49804,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -49917,7 +49917,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -50020,7 +50020,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																 */
 																#if DEBUG_MODE
 																	// Выводим сообщение об ошибке
-																	this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
@@ -50122,7 +50122,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																	 */
 																	#if DEBUG_MODE
 																		// Выводим сообщение об ошибке
-																		this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
+																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
 																	/**
 																	 * Если режим отладки не включён
 																	 */
@@ -50175,7 +50175,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50206,7 +50206,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50237,7 +50237,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50270,7 +50270,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50301,7 +50301,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50332,7 +50332,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50363,7 +50363,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50394,7 +50394,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50425,7 +50425,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50456,7 +50456,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50496,7 +50496,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50527,7 +50527,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50558,7 +50558,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50591,7 +50591,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50622,7 +50622,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50653,7 +50653,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50684,7 +50684,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50715,7 +50715,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50746,7 +50746,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50777,7 +50777,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50808,7 +50808,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -50832,7 +50832,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ids.size()), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ids.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -50903,7 +50903,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 											 */
 											#if DEBUG_MODE
 												// Выводим сообщение об ошибке
-												this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
@@ -50941,7 +50941,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 													 */
 													#if DEBUG_MODE
 														// Выводим сообщение об ошибке
-														this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
+														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
@@ -50972,7 +50972,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 												 */
 												#if DEBUG_MODE
 													// Выводим сообщение об ошибке
-													this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
@@ -51005,7 +51005,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -51047,7 +51047,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51078,7 +51078,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51109,7 +51109,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51142,7 +51142,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51173,7 +51173,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51204,7 +51204,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51235,7 +51235,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51266,7 +51266,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51297,7 +51297,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51328,7 +51328,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -51368,7 +51368,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51399,7 +51399,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51430,7 +51430,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51463,7 +51463,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51494,7 +51494,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51525,7 +51525,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51556,7 +51556,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51587,7 +51587,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51618,7 +51618,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51649,7 +51649,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51680,7 +51680,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -51702,7 +51702,7 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, max), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -51740,7 +51740,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -51932,7 +51932,7 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -51980,7 +51980,7 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Event incoming connection accept queue depth cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("Event incoming connection accept queue depth cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -52000,7 +52000,7 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, depth, adaptive), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, depth, adaptive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -52063,7 +52063,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -52286,7 +52286,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Buffer size cannot be get for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+						this->_log->debug("Buffer size cannot be get for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -52306,7 +52306,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -52381,7 +52381,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -52583,7 +52583,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Buffer size cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
+						this->_log->debug("Buffer size cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -52603,7 +52603,7 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -52658,7 +52658,7 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -52774,7 +52774,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -52791,7 +52791,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -52855,7 +52855,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("Cannot set incoming network bandwidth limit for this node type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+											this->_log->debug("Cannot set incoming network bandwidth limit for this node type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -52873,7 +52873,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -52890,7 +52890,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -52987,7 +52987,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -53004,7 +53004,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -53039,7 +53039,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											this->_log->debug("Cannot set outgoing network bandwidth limit for this node type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+											this->_log->debug("Cannot set outgoing network bandwidth limit for this node type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -53086,7 +53086,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -53103,7 +53103,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -53120,7 +53120,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Bandwidth cannot be set for this event node", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
+						this->_log->debug("Bandwidth cannot be set for this event node", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -53140,7 +53140,7 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53178,7 +53178,7 @@ awh::event::delivery_mode_t awh::engine::IO::getDelivery(const event::id_t id) c
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53256,7 +53256,7 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to set packet forwarding mode for non-network nodes", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unable to set packet forwarding mode for non-network nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -53276,7 +53276,7 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53314,7 +53314,7 @@ awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53401,7 +53401,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, std::make_tuple(
+						this->_log->debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, make_tuple(
 							id,
 							static_cast <uint8_t> (family),
 							static_cast <uint8_t> (hops)
@@ -53425,7 +53425,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 				id,
 				static_cast <uint8_t> (family),
 				static_cast <uint8_t> (hops)
@@ -53487,7 +53487,7 @@ awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) c
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53551,7 +53551,7 @@ void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usa
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (usage)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (usage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53683,7 +53683,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -53703,7 +53703,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -53882,7 +53882,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -53933,7 +53933,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -54055,7 +54055,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -54122,7 +54122,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -54141,7 +54141,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -54161,7 +54161,7 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -54651,7 +54651,7 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -55996,7 +55996,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, static_cast <uint16_t> (action), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -56080,7 +56080,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id, cnt, idle, intvl), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, cnt, idle, intvl), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -56411,7 +56411,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -56850,7 +56850,7 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -56954,7 +56954,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58546,7 +58546,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to get size for non-file system events", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to get size for non-file system events", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -58566,7 +58566,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58628,7 +58628,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to get available sending queue size for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to get available sending queue size for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -58648,7 +58648,7 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58686,7 +58686,7 @@ awh::event::type_t awh::engine::IO::type(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58724,7 +58724,7 @@ awh::event::node_t awh::engine::IO::node(const event::id_t id) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58762,7 +58762,7 @@ awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcep
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58800,7 +58800,7 @@ awh::event::status_t awh::engine::IO::status(const event::id_t id) const noexcep
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58838,7 +58838,7 @@ awh::event::protocol_t awh::engine::IO::protocol(const event::id_t id) const noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -58901,7 +58901,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -58969,7 +58969,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -58985,7 +58985,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("You cannot poll for network and filesystem events until engine AWH is initialized", __PRETTY_FUNCTION__, std::make_tuple(timeout), log_t::flag_t::WARNING);
+			this->_log->debug("You cannot poll for network and filesystem events until engine AWH is initialized", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59060,7 +59060,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A data read callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A data read callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59080,7 +59080,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59153,7 +59153,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A data write callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A data write callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59173,7 +59173,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59241,7 +59241,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A event callback cannot be set for this spool type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A event callback cannot be set for this spool type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59261,7 +59261,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59344,7 +59344,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A event callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A event callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59364,7 +59364,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59459,7 +59459,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A error callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A error callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59479,7 +59479,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59527,7 +59527,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A change callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A change callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59547,7 +59547,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59642,7 +59642,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A status callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A status callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59662,7 +59662,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59705,7 +59705,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A accept callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A accept callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59725,7 +59725,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59768,7 +59768,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A connect callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A connect callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59788,7 +59788,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59831,7 +59831,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A tuninfo callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A tuninfo callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59851,7 +59851,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59904,7 +59904,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A timeout callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A timeout callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -59924,7 +59924,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -59992,7 +59992,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("A available callback cannot be set for this event type", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::WARNING);
+						this->_log->debug("A available callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -60012,7 +60012,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

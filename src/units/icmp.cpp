@@ -737,7 +737,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 					}
 				} break;
 				// Если мы получили другой тип адреса, то считаем, что это доменное имя
-				default: {					
+				default: {
 					/**
 					 * Выполняем перебор всего списка полученных доменных имён
 					 */
@@ -1346,8 +1346,8 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					// Устанавливаем код запроса
 					icmp.code = 0;
 					/**
-					* Определяем семейство события
-					*/
+					 * Определяем семейство события
+					 */
 					switch(static_cast <uint8_t> (this->_io->family(this->_client.eid))){
 						// Для семейства IPv4
 						case static_cast <uint8_t> (event::family_t::IPV4):

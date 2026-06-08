@@ -310,7 +310,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit);
+				this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -334,7 +334,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -397,7 +397,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Failed to raise hard FD limit to %u (need root?): %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
+						this->_log->debug("Failed to raise hard FD limit to %u (need root?): %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -416,7 +416,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, std::make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
+				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */

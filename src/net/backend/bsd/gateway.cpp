@@ -609,7 +609,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, std::make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1094,7 +1094,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, std::make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1793,7 +1793,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, std::make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */

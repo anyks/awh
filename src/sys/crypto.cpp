@@ -481,7 +481,7 @@ namespace driver {
 									 */
 									#if DEBUG_MODE
 										// Выводим сообщение об ошибке
-										log->debug("Error during data decoding", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::WARNING);
+										log->debug("Error during data decoding", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -514,7 +514,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("Error during AES context creation", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+									log->debug("Error during AES context creation", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -540,7 +540,7 @@ namespace driver {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+											log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -563,7 +563,7 @@ namespace driver {
 										 */
 										#if DEBUG_MODE
 											// Выводим сообщение об ошибке
-											log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+											log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
 										/**
 										 * Если режим отладки не включён
 										 */
@@ -595,7 +595,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("Error cipher update", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+									log->debug("Error cipher update", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -619,7 +619,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("Error cipher final", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+									log->debug("Error cipher final", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -651,7 +651,7 @@ namespace driver {
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									log->debug("Error cipher update", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
+									log->debug("Error cipher update", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -678,7 +678,7 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), awh::log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -750,7 +750,7 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("Unsupported cipher type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
+							log->debug("Unsupported cipher type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -805,7 +805,7 @@ namespace driver {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
+							log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -834,7 +834,7 @@ namespace driver {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						log->debug("Generate key and IV failed", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
+						log->debug("Generate key and IV failed", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -864,7 +864,7 @@ namespace driver {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL, error.what());
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (hash), pass, salt, rounds), awh::log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -904,7 +904,7 @@ void awh::Crypto::roundAES(const int32_t round) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(round), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(round), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -939,7 +939,7 @@ void awh::Crypto::salt(string_view salt) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(salt), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(salt), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -974,7 +974,7 @@ void awh::Crypto::password(string_view password) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(password), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(password), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1159,7 +1159,7 @@ auto awh::Crypto::hash(const void * buffer, const size_t size) const noexcept ->
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1349,7 +1349,7 @@ auto awh::Crypto::hashWithSeed(const void * buffer, const size_t size, const T s
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1544,7 +1544,7 @@ auto awh::Crypto::hashWithSeeds(const void * buffer, const size_t size, const T 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1600,7 +1600,7 @@ auto awh::Crypto::hash(string_view buffer, const hash_t hash) const noexcept -> 
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"Text hashing \"%s\" could not be performed",
-					__PRETTY_FUNCTION__, std::make_tuple(
+					__PRETTY_FUNCTION__, make_tuple(
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
 					), log_t::flag_t::WARNING,
@@ -1667,7 +1667,7 @@ auto awh::Crypto::hash(const B & buffer, const hash_t hash) const noexcept -> A 
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"Text hashing \"%s\" could not be performed",
-					__PRETTY_FUNCTION__, std::make_tuple(
+					__PRETTY_FUNCTION__, make_tuple(
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
 					), log_t::flag_t::WARNING,
@@ -1764,7 +1764,7 @@ auto awh::Crypto::hmac(string_view key, string_view buffer, const hash_t hash) c
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"Key \"%s\" and text \"%s\" hashing could not be performed",
-					__PRETTY_FUNCTION__, std::make_tuple(
+					__PRETTY_FUNCTION__, make_tuple(
 						key,
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
@@ -1834,7 +1834,7 @@ auto awh::Crypto::hmac(const string & key, string_view buffer, const hash_t hash
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"Key \"%s\" and text \"%s\" hashing could not be performed",
-					__PRETTY_FUNCTION__, std::make_tuple(
+					__PRETTY_FUNCTION__, make_tuple(
 						key,
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
@@ -1905,7 +1905,7 @@ auto awh::Crypto::hmac(string_view key, const B & buffer, const hash_t hash) con
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"Key \"%s\" and text \"%s\" hashing could not be performed",
-					__PRETTY_FUNCTION__, std::make_tuple(
+					__PRETTY_FUNCTION__, make_tuple(
 						key,
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
@@ -2006,7 +2006,7 @@ auto awh::Crypto::hmac(const string & key, const B & buffer, const hash_t hash) 
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"Key \"%s\" and text \"%s\" hashing could not be performed",
-					__PRETTY_FUNCTION__, std::make_tuple(
+					__PRETTY_FUNCTION__, make_tuple(
 						key,
 						string(reinterpret_cast <const char *> (buffer.data()), buffer.size()),
 						static_cast <uint16_t> (hash)
@@ -2203,7 +2203,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2227,7 +2227,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Error during AES context creation", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Error during AES context creation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2255,7 +2255,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2280,7 +2280,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Error during AES context initialization", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (cipher), static_cast <uint16_t> (event)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2306,7 +2306,7 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2454,7 +2454,7 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to encrypt \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->debug("Unable to encrypt \"%s\" string data into BASE64 format", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2487,7 +2487,7 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2520,7 +2520,7 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to encrypt data into AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to encrypt data into AES", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2686,7 +2686,7 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to extract data from BASE64 encoded \"%s\" hash", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
+						this->_log->debug("Unable to extract data from BASE64 encoded \"%s\" hash", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING, string(reinterpret_cast <const char *> (buffer), size).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2719,7 +2719,7 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
+									this->_log->debug("Unable to initialize AES cipher for encoding data", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2752,7 +2752,7 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to decrypt data from AES", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
+						this->_log->debug("Unable to decrypt data from AES", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash), static_cast <uint16_t> (cipher)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2993,7 +2993,7 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Public key import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+						this->_log->debug("Public key import failed", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3009,7 +3009,7 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Public key BIO import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+					this->_log->debug("Public key BIO import failed", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3027,7 +3027,7 @@ bool awh::Crypto::setPublicKeyRSA(string_view key) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3086,7 +3086,7 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Private key import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+						this->_log->debug("Private key import failed", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3102,7 +3102,7 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Private key BIO import failed", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL);
+					this->_log->debug("Private key BIO import failed", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -3120,7 +3120,7 @@ bool awh::Crypto::setPrivateKeyRSA(string_view key) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(key), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3345,7 +3345,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3361,7 +3361,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3405,7 +3405,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							this->_log->debug("Public key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3421,7 +3421,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3438,7 +3438,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid path for public key", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid path for public key", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3456,7 +3456,7 @@ bool awh::Crypto::loadPublicKeyRSA(string_view path) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3518,7 +3518,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3534,7 +3534,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3578,7 +3578,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							this->_log->debug("Private key reading failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3594,7 +3594,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3611,7 +3611,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid path for private key", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid path for private key", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3629,7 +3629,7 @@ bool awh::Crypto::loadPrivateKeyRSA(string_view path) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3675,7 +3675,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3693,7 +3693,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3719,7 +3719,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+							this->_log->debug("Public key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3737,7 +3737,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+						this->_log->debug("Public key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -3754,7 +3754,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid path or public key is not loaded", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid path or public key is not loaded", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3772,7 +3772,7 @@ bool awh::Crypto::savePublicKeyRSA(string_view path) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3823,7 +3823,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3862,7 +3862,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3881,7 +3881,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3909,7 +3909,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3948,7 +3948,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+									this->_log->debug("Private key saving failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -3967,7 +3967,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+							this->_log->debug("Private key file opening failed", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -3984,7 +3984,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Key cannot be saved because it is not private", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL);
+					this->_log->debug("Key cannot be saved because it is not private", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -4000,7 +4000,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid path or private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid path or private key is not generated", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4018,7 +4018,7 @@ bool awh::Crypto::savePrivateKeyRSA(string_view path, const cipher_t cipher) con
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(path), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(path), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4069,7 +4069,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -4088,7 +4088,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Encrypt init failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+							this->_log->debug("Encrypt init failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4110,7 +4110,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Get encrypted data size failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+							this->_log->debug("Get encrypted data size failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4134,7 +4134,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Encrypt data failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+							this->_log->debug("Encrypt data failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4157,7 +4157,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Public or private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+					this->_log->debug("Public or private key is not generated", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -4173,7 +4173,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid buffer or size for encryption", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid buffer or size for encryption", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4191,7 +4191,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4242,7 +4242,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4261,7 +4261,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Decrypt init failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+								this->_log->debug("Decrypt init failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4283,7 +4283,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Get decrypted data size failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+								this->_log->debug("Get decrypted data size failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4307,7 +4307,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Decrypt data failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+								this->_log->debug("Decrypt data failed", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4330,7 +4330,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to decrypt because the key is not private", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unable to decrypt because the key is not private", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -4346,7 +4346,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -4362,7 +4362,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid buffer or size for decryption", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid buffer or size for decryption", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4380,7 +4380,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4431,7 +4431,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+							this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -4486,7 +4486,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 								 */
 								#if DEBUG_MODE
 									// Выводим сообщение об ошибке
-									this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+									this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -4507,7 +4507,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Digest signature init failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Digest signature init failed", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4527,7 +4527,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Digest signature update failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Digest signature update failed", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4549,7 +4549,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Digest signature final (get length) failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Digest signature final (get length) failed", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4573,7 +4573,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Digest signature final (get signature) failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Digest signature final (get signature) failed", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4596,7 +4596,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unable to sign because the key is not private", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unable to sign because the key is not private", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -4612,7 +4612,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					this->_log->debug("Private key is not generated", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -4628,7 +4628,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid buffer or size for signing", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid buffer or size for signing", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4646,7 +4646,7 @@ void awh::Crypto::signWithPrivateKey(const uint8_t * buffer, const size_t size, 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -4699,7 +4699,7 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+						this->_log->debug("Context allocation failed", __PRETTY_FUNCTION__, make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -4754,7 +4754,7 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
+								this->_log->debug("Unsupported hash type", __PRETTY_FUNCTION__, make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -4781,7 +4781,7 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("Public key is not generated", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+					this->_log->debug("Public key is not generated", __PRETTY_FUNCTION__, make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -4797,7 +4797,7 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("Invalid buffer or size for verification signature", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
+				this->_log->debug("Invalid buffer or size for verification signature", __PRETTY_FUNCTION__, make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -4815,7 +4815,7 @@ bool awh::Crypto::verifyWithPublicKey(const uint8_t * buffer, const size_t size,
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, signature.size(), static_cast <uint16_t> (hash)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */

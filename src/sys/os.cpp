@@ -662,7 +662,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -687,7 +687,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, "Unable to access to determine memory consumption");
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -717,7 +717,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -745,7 +745,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -763,7 +763,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -795,7 +795,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -813,7 +813,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -852,7 +852,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -877,7 +877,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -895,7 +895,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -925,7 +925,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -961,7 +961,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1185,7 +1185,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(mode), log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1337,7 +1337,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1373,7 +1373,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(gid), log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1411,7 +1411,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1450,7 +1450,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1489,7 +1489,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1568,7 +1568,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -1587,7 +1587,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1618,7 +1618,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1651,7 +1651,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -1669,7 +1669,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1714,7 +1714,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1730,7 +1730,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2018,7 +2018,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2059,7 +2059,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2112,7 +2112,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2177,7 +2177,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				#if DEBUG_MODE
 					// Выводим сообщение об ошибке
-					this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
@@ -2219,7 +2219,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2250,7 +2250,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -2281,7 +2281,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */

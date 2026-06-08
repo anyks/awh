@@ -1292,7 +1292,7 @@ void awh::Network_Address::zone(string_view zone) noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1374,7 +1374,7 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(host), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1454,7 +1454,7 @@ void awh::Network_Address::mac(const std::array <uint8_t, 6> & addr) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(addr.front(), addr.back()),
+					make_tuple(addr.front(), addr.back()),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -1509,7 +1509,7 @@ uint32_t awh::Network_Address::v4(const endian_t endian) const noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(static_cast <uint16_t> (endian)),
+					make_tuple(static_cast <uint16_t> (endian)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -1565,7 +1565,7 @@ void awh::Network_Address::v4(const uint32_t addr, const endian_t endian) noexce
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(addr, static_cast <uint16_t> (endian)),
+				make_tuple(addr, static_cast <uint16_t> (endian)),
 				log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
@@ -1618,7 +1618,7 @@ std::array <uint8_t, 16> awh::Network_Address::v6(const endian_t endian) const n
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(static_cast <uint16_t> (endian)),
+					make_tuple(static_cast <uint16_t> (endian)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -1674,7 +1674,7 @@ void awh::Network_Address::v6(const std::array <uint8_t, 16> & addr, const endia
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(addr.front(), addr.back(), static_cast <uint16_t> (endian)),
+				make_tuple(addr.front(), addr.back(), static_cast <uint16_t> (endian)),
 				log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
@@ -1762,7 +1762,7 @@ unique_ptr <awh::net::addr_t> awh::Network_Address::source(const endian_t endian
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(static_cast <uint16_t> (endian)),
+				make_tuple(static_cast <uint16_t> (endian)),
 				log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
@@ -1860,7 +1860,7 @@ void awh::Network_Address::source(const net::addr_t * value, const endian_t endi
 			// Выводим сообщение об ошибке
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
-				std::make_tuple(static_cast <uint16_t> (endian)),
+				make_tuple(static_cast <uint16_t> (endian)),
 				log_t::flag_t::CRITICAL, error.what()
 			);
 		/**
@@ -2079,7 +2079,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(addr, static_cast <uint16_t> (type)),
+					make_tuple(addr, static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2284,7 +2284,7 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)),
+					make_tuple(prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2370,7 +2370,7 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(mask, static_cast <uint16_t> (type)),
+					make_tuple(mask, static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2455,7 +2455,7 @@ string awh::Network_Address::prefix2Mask(const uint8_t prefix, const type_t type
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
+					make_tuple(static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2582,7 +2582,7 @@ bool awh::Network_Address::range(const Network_Address & begin, const Network_Ad
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
+					make_tuple(static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2706,7 +2706,7 @@ bool awh::Network_Address::range(string_view begin, string_view end, const uint8
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(begin, end, static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
+					make_tuple(begin, end, static_cast <uint16_t> (prefix), static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2815,7 +2815,7 @@ bool awh::Network_Address::mapping(string_view network, const type_t type) const
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(network, static_cast <uint16_t> (type)),
+					make_tuple(network, static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -2954,7 +2954,7 @@ bool awh::Network_Address::mapping(string_view network, const uint8_t prefix, co
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(network, prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)),
+					make_tuple(network, prefix, static_cast <uint16_t> (addr), static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -3271,7 +3271,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3369,7 +3369,7 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -3467,7 +3467,7 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(addr, static_cast <uint16_t> (type)),
+					make_tuple(addr, static_cast <uint16_t> (type)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**
@@ -4985,7 +4985,7 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 				// Выводим сообщение об ошибке
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
-					std::make_tuple(static_cast <uint16_t> (size), static_cast <uint16_t> (flag), static_cast <uint16_t> (delim)),
+					make_tuple(static_cast <uint16_t> (size), static_cast <uint16_t> (flag), static_cast <uint16_t> (delim)),
 					log_t::flag_t::CRITICAL, error.what()
 				);
 			/**

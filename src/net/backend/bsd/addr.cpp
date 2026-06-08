@@ -209,7 +209,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::WARNING);
+								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -255,7 +255,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::WARNING);
+								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -300,7 +300,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (source.ip->size)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -349,7 +349,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 							// Выводим сообщение об ошибке
 							this->_log->debug(
 								"Network address %u is not aligned to prefix %u", __PRETTY_FUNCTION__,
-								std::make_tuple(htonl(network->address), static_cast <uint16_t> (network->prefix)),
+								make_tuple(htonl(network->address), static_cast <uint16_t> (network->prefix)),
 								log_t::flag_t::WARNING, htonl(network->address), static_cast <uint16_t> (network->prefix)
 							);
 						/**
@@ -376,7 +376,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								::inet_ntop(AF_INET, &network->address, buffer, sizeof(buffer)),
 								static_cast <uint16_t> (network->prefix)
 							), log_t::flag_t::WARNING
@@ -445,7 +445,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 						// Выводим сообщение об ошибке
 						this->_log->debug(
 							"Unable to get list of network interfaces", __PRETTY_FUNCTION__,
-							std::make_tuple(
+							make_tuple(
 								::inet_ntop(AF_INET6, &network->address[0], buffer, sizeof(buffer)),
 								static_cast <uint16_t> (network->prefix)
 							), log_t::flag_t::WARNING
@@ -652,7 +652,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Route sysctl estimate", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								this->_log->debug("Route sysctl estimate", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -672,7 +672,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								this->_log->debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -769,7 +769,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Route sysctl estimate", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								this->_log->debug("Route sysctl estimate", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -789,7 +789,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								this->_log->debug("Actual retrieval of routing table", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -905,7 +905,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -976,7 +976,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							 */
 							#if DEBUG_MODE
 								// Выводим сообщение об ошибке
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
+								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -1050,7 +1050,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (node), static_cast <uint16_t> (source.ip->size)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (node), static_cast <uint16_t> (source.ip->size)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1090,7 +1090,7 @@ bool awh::eth::Network_Address::isInSubnet(const uint32_t ip, const uint32_t net
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(ip, net, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip, net, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1144,7 +1144,7 @@ bool awh::eth::Network_Address::ipv6PrefixEqual(const uint8_t * first, const uin
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(first, second, static_cast <uint16_t> (length)), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(first, second, static_cast <uint16_t> (length)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1207,7 +1207,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
+						this->_log->debug("Unsupported protocol for checksum calculation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
@@ -1333,7 +1333,7 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			 */
 			#if DEBUG_MODE
 				// Выводим сообщение об ошибке
-				this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */

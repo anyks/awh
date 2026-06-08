@@ -19,11 +19,6 @@
 #define __AWH_UNIT__
 
 /**
- * Стандартные модули
- */
-#include <type_traits>
-
-/**
  * Наши модули
  */
 #include "../net/io.hpp"

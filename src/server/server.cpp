@@ -1103,7 +1103,7 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 					this->_tls.coder->destroy(i->second);
 					// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 					this->_tls.safety.erase(i);
-				}	
+				}
 			}
 			// Уничтожаем событие клиента
 			this->_unit->server.destroy(eid);
