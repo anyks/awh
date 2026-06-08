@@ -278,7 +278,7 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("timeout"))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const id_t, const uint16_t, const uint32_t)> ("timeout", this->_transfer.id, this->_transfer.packet.count, delay);
+		this->_callback.call <void (const id_t, const uint16_t, const uint32_t)> ("timeout", this->_transfer.id, this->_transfer.count, delay);
 	// Если функция обратного вызова не установлена
 	else {
 		/**
@@ -440,16 +440,16 @@ void awh::unit::ICMP::response([[maybe_unused]] const event::id_t eid, const mod
 			// Устанавливаем время жизни ответа от удалённого сервера
 			response.timeToLive = this->_client.delay;
 			// Устанавливаем время ответа от удалённого сервера
-			response.elapsed = (now - this->_transfer.packet.timestamp);
+			response.elapsed = (now - this->_transfer.timestamp);
 			// Выполняем функцию обратного вызова
 			this->_callback.call <void (const id_t, const response_t &)> ("ping", id, response);
 		}
 		// Выполняем фиксацию текущей метки времени для данного запроса
-		this->_transfer.packet.timestamp = now;
+		this->_transfer.timestamp = now;
 		// Если выполняется синхронный режим пинга удалённого сервера
 		if(mode == mode_t::ASYNC){
 			// Если номер последовательности запроса меньше количества отправленных запросов
-			if(sequence < (this->_transfer.packet.count - 1)){
+			if(sequence < (this->_transfer.count - 1)){
 				// Подключаем устройство генератора
 				mt19937 generator(::__awh_randev__());
 				// Выполняем генерирование случайного числа
@@ -1245,9 +1245,9 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 						// Если фиксация параметров события прошла успешно
 						} else {
 							// Устанавливаем количество выполняемых запросов
-							this->_transfer.packet.count = count;
+							this->_transfer.count = count;
 							// Запоминаем текущее значение времени в миллисекундах для фиксации начала запроса
-							this->_transfer.packet.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+							this->_transfer.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 							// Подключаем устройство генератора
 							mt19937 generator(::__awh_randev__());
 							// Выполняем генерирование случайного числа
@@ -1334,9 +1334,9 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					// Устанавливаем идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
 					this->_transfer.id = id;
 					// Устанавливаем количество выполняемых запросов
-					this->_transfer.packet.count = count;
+					this->_transfer.count = count;
 					// Запоминаем текущее значение времени в миллисекундах для фиксации начала запроса
-					this->_transfer.packet.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+					this->_transfer.timestamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 					// Подключаем устройство генератора
 					mt19937 generator(::__awh_randev__());
 					// Выполняем генерирование случайного числа

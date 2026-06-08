@@ -104,22 +104,6 @@ namespace awh {
 					 target(nullptr), source(nullptr) {}
 				} client_t;
 				/**
-				 * @brief Структура активного пакета при выполнении запросов ICMP-клиента
-				 *
-				 */
-				typedef struct Packet {
-					// Количество повторений запросов
-					uint16_t count;
-					// Штамп времени начала запроса
-					uint64_t timestamp;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Packet() noexcept :
-					 count(0), timestamp(0) {}
-				} __attribute__((packed)) packet_t;
-				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов ICMP
 				 *
 				 */
@@ -128,13 +112,16 @@ namespace awh {
 					id_t id;
 					// Флаг ожидания ответа от сервера
 					bool waiting;
-					// Активный пакет при выполнении запроса ICMP
-					packet_t packet;
+					// Количество повторений запросов
+					uint16_t count;
+					// Штамп времени начала запроса
+					uint64_t timestamp;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Transfer() noexcept : id(0), waiting(false) {}
+					 explicit Transfer() noexcept :
+					  id(0), waiting(false), count(0), timestamp(0) {}
 				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами

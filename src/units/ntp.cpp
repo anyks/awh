@@ -520,15 +520,15 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
  */
 bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если попытки резолвинга не превышают максимально допустимое количество
-	if(this->_transfer.packet.attempt < this->_transfer.attempts){
+	if(this->_transfer.attempt < this->_transfer.attempts){
 		// Увеличиваем количество попыток получения ответа от NTP-сервера
-		this->_transfer.packet.attempt++;
+		this->_transfer.attempt++;
 		// Создаём объект пакета запроса
 		::ntp::packet_t packet{};
 		/**
 		* Определяем версию протокола NTP для выполнения запроса
 		*/
-		switch(static_cast <uint8_t> (this->_transfer.packet.version)){
+		switch(static_cast <uint8_t> (this->_transfer.version)){
 			// Если версия протокола NTPv1
 			case 0x01: packet.mode = 0x0B; break;
 			// Если версия протокола NTPv2
@@ -549,7 +549,7 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("attempts"))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint8_t)> ("attempts", this->_transfer.packet.attempt);
+			this->_callback.call <void (const uint8_t)> ("attempts", this->_transfer.attempt);
 		// Если функция обратного вызова не установлена
 		else {
 			/**
@@ -561,14 +561,14 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event
 					"NTP-client timeout (attempts: %u)",
 					__PRETTY_FUNCTION__,
 					make_tuple(eid, static_cast <uint16_t> (action), delay),
-					log_t::flag_t::WARNING, this->_transfer.packet.attempt
+					log_t::flag_t::WARNING, this->_transfer.attempt
 				);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Выводим сообщение об ошибке
-				this->_log->print("NTP-client timeout (attempts: %u)", log_t::flag_t::WARNING, this->_transfer.packet.attempt);
+				this->_log->print("NTP-client timeout (attempts: %u)", log_t::flag_t::WARNING, this->_transfer.attempt);
 			#endif
 		}
 	}
@@ -1605,15 +1605,15 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 			// Устанавливаем флаг ожидания ответа от NTP-сервера
 			this->_transfer.waiting = !this->_transfer.waiting;
 			// Сбрасываем счётчик попыток выполнения запроса к NTP-серверу
-			this->_transfer.packet.attempt = 0;
+			this->_transfer.attempt = 0;
 			// Устанавливаем версию протокола NTP для выполнения запроса
-			this->_transfer.packet.version = version;
+			this->_transfer.version = version;
 			// Создаём объект пакета запроса
 			::ntp::packet_t packet{};
 			/**
 			 * Определяем версию протокола NTP для выполнения запроса
 			 */
-			switch(static_cast <uint8_t> (this->_transfer.packet.version)){
+			switch(static_cast <uint8_t> (this->_transfer.version)){
 				// Если версия протокола NTPv1
 				case 0x01: packet.mode = 0x0B; break;
 				// Если версия протокола NTPv2
