@@ -2684,7 +2684,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 				// Если пакет найден в контейнере активных пакетов
 				if(j != this->_transfer.waiting.end()){
 					// Если число повторных попыток не превышает допустимый предел
-					if(j->second.attempt < this->_transfer.attempts.load(std::memory_order_acquire)){
+					if(j->second.attempt < this->_transfer.attempts){
 						// Увеличиваем число повторных попыток DNS-запроса
 						j->second.attempt++;
 						// Повторно отправляем DNS-запрос
@@ -2837,7 +2837,7 @@ void awh::unit::DNS::callback(const callback_t & callback) noexcept {
  */
 void awh::unit::DNS::setAttempts(const uint8_t attempts) noexcept {
 	// Устанавливаем число попыток DNS-запроса
-	this->_transfer.attempts.store(attempts, std::memory_order_release);
+	this->_transfer.attempts = attempts;
 }
 /**
  * @brief Метод установки максимального количества пакетов в очереди ожидания выполнения запроса к DNS-серверу
@@ -2846,7 +2846,7 @@ void awh::unit::DNS::setAttempts(const uint8_t attempts) noexcept {
  */
 void awh::unit::DNS::setMaxPackets(const uint16_t count) noexcept {
 	// Устанавливаем максимальное количество пакетов в очереди ожидания выполнения запроса к DNS-серверу
-	this->_transfer.maxPackets.store(count, std::memory_order_release);
+	this->_transfer.maxPackets = count;
 }
 /**
  * @brief Метод кодирования интернационального доменного имени
@@ -6128,7 +6128,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 				// Если в очереди не осталось свободных резолверов для выполнения запроса
 				if(this->_resolver.queue.size() == 0){
 					// Если очередь ожидания выполнения запроса переполнена
-					if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
+					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
 						// Формируем текст выводимой ошибки DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
 						// Если функция обратного вызова установлена
@@ -6383,7 +6383,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 				// Если в очереди не осталось свободных резолверов для выполнения запроса
 				if(this->_resolver.queue.size() == 0){
 					// Если очередь ожидания выполнения запроса переполнена
-					if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
+					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
 						// Формируем текст выводимой ошибки DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
 						// Если функция обратного вызова установлена
@@ -6525,7 +6525,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 			// Если в очереди не осталось свободных резолверов для выполнения запроса
 			if(this->_resolver.queue.size() == 0){
 				// Если очередь ожидания выполнения запроса переполнена
-				if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
+				if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
 					// Формируем текст выводимой ошибки DNS-резолвера
 					const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
 					// Если функция обратного вызова установлена
@@ -6810,7 +6810,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 				// Если в очереди не осталось свободных резолверов для выполнения запроса
 				if(this->_resolver.queue.size() == 0){
 					// Если очередь ожидания выполнения запроса переполнена
-					if(this->_transfer.packets.size() >= this->_transfer.maxPackets.load(std::memory_order_acquire)){
+					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
 						// Формируем текст выводимой ошибки DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
 						// Если функция обратного вызова установлена

@@ -42,20 +42,22 @@ int32_t main(int32_t argc, char * argv[]){
 	// Объект работы с датой и временем
 	chrono_t chrono(&fmk, &log);
 	// Создаём объект узла NTP
-	unit::ntp_t ntp(event::family_t::IPV4, &fmk, &log);
+	unit::ntp_t ntp(&fmk, &log);
 	// Устанавливаем количество попыток резолвинга доменного имени
 	// ntp.setAttempts(10);
 	// Добавляем NTP-сервер для синхронизации времени (фейковый)
 	// ntp.addServer("194.190.168.1");
-	// Если событие NTP-запроса запущено
-	if(ntp.commit()){
+	// Выполняем инициализацию NTP-клиента
+	if(ntp.init(event::family_t::IPV4)){
 		// Устанавливаем функцию обратного вызова на событие получения времени от NTP-сервера
 		ntp.on <void (const uint64_t)> ("timestamp", [&chrono, &log](const uint64_t timestamp) noexcept -> void {
 			// Выводим информацию о полученном времени
 			log.print("Получено дата от NTP-сервера: %s", log_t::flag_t::INFO, chrono.format(timestamp, "%H:%M:%S %d.%m.%Y").c_str());
 		}, placeholders::_1);
 		// Устанавливаем функцию обратного вызова на событие количества попыток запроса времени к NTP-серверу
-		ntp.on <void (const uint8_t)> ("attempts", [&log](const uint8_t attempts) noexcept -> void {
+		ntp.on <void (const uint8_t)> ("attempts", [&ntp, &log](const uint8_t attempts) noexcept -> void {
+			// Переинициализируем клиента
+			ntp.init(event::family_t::IPV4);
 			// Выводим количество попыток запроса времени к NTP-серверу
 			log.print("Количество попыток запроса времени к NTP-серверу attempts=%d", log_t::flag_t::WARNING, attempts);
 		}, placeholders::_1);

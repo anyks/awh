@@ -22,7 +22,6 @@
  * Наши модули
  */
 #include "unit.hpp"
-#include "../sys/locker.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -119,6 +118,8 @@ namespace awh {
 					string prefix;
 					// Порт NTP-сервера
 					uint16_t port;
+					// Задержка ожидания ответа от NTP-сервера (в миллисекундах)
+					uint32_t delay;
 					// Идентификатор события для NTP-клиента
 					event::id_t eid;
 					// Адрес NTP-сервера для выполнения запросов
@@ -131,13 +132,16 @@ namespace awh {
 					 */
 					explicit Client() noexcept :
 					 prefix{AWH_SHORT_NAME},
-                     port(123), eid(0), source(nullptr) {}
+                     port(123), delay(5000),
+					 eid(0), source(nullptr) {}
 				} client_t;
 				/**
 				 * @brief Структура активного пакета при выполнении запросов NTP-клиента
 				 *
 				 */
 				typedef struct Packet {
+					// Флаг ожидания ответа от NTP-сервера
+					bool waiting;
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempt;
 					// Версия протокола NTP для выполнения запроса
@@ -147,17 +151,18 @@ namespace awh {
 					 *
 					 */
 					explicit Packet() noexcept :
-					 attempt(0), version(version_t::V4) {}
+					 waiting(false), attempt(0),
+					 version(version_t::V4) {}
 				} __attribute__((packed)) packet_t;
 				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
 				 *
 				 */
 				typedef struct Transfer {
+					// Активный пакет при выполнении запроса NTP-клиента
+					packet_t packet;
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempts;
-					// Активные пакеты при выполнении запросов NTP-клиента
-					unordered_map <event::id_t, packet_t> waiting;
 					/**
 					 * @brief Конструктор
 					 *
@@ -172,13 +177,6 @@ namespace awh {
 				client_t _client;
 				// Объект управления передачей данных при выполнении запросов NTP-клиента
 				transfer_t _transfer;
-			private:
-				/**
-				 * @brief Метод создания события NTP-клиента
-				 *
-				 * @param family семейство протоколов (например: IPv4 или IPv6)
-				 */
-				void create(const event::family_t family) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки ошибок событий NTP-клиента
@@ -198,15 +196,22 @@ namespace awh {
 				 */
 				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
-				 * @brief Метод обработки событий таймаута при ожидании ответа от NTP-клиента
+				 * @brief Метод обработки истечения таймаута NTP-запроса
 				 *
 				 * @param eid    идентификатор события NTP-клиента
-				 * @param action действие события таймера NTP-клиента
-				 * @param delay  задержка таймера NTP-клиента
-				 * @param packet объект активного пакета при выполнении запроса NTP-клиента
-				 * @return       нужно ли завершить клиента после истечения таймаута
+				 * @param action тип действия для истекшего таймаута
+				 * @param delay  длительность таймаута в миллисекундах
+				 * @return       нужно ли завершить обработчик после истечения таймаута
 				 */
-				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, packet_t * packet) noexcept;
+				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+			public:
+				/**
+				 * @brief Метод инициализации события NTP-клиента
+				 *
+				 * @param family семейство протоколов (например: IPv4 или IPv6)
+				 * @return       результат инициализации события NTP-клиента
+				 */
+				bool init(const event::family_t family) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функций обратного вызова
@@ -214,6 +219,13 @@ namespace awh {
 				 * @param callback функции обратного вызова
 				 */
 				void callback(const callback_t & callback) noexcept;
+			public:
+				/**
+				 * @brief Метод установки таймаута для ожидания ответа от NTP-сервера
+				 *
+				 * @param delay время ожидания ответа от NTP-сервера (в миллисекундах)
+				 */
+				void setTimeout(const uint32_t delay) noexcept;
 			public:
 				/**
 				 * @brief Метод установки количества попыток получения ответа от NTP-сервера
@@ -228,20 +240,6 @@ namespace awh {
 				 * @param prefix префикс переменной окружения для установки
 				 */
 				void setPrefixEnvironment(string_view prefix) noexcept;
-			public:
-				/**
-				 * @brief Метод сброса NTP-клиента
-				 *
-				 * @return результат выполнения операции
-				 */
-				bool reset() noexcept;
-			public:
-				/**
-				 * @brief Метод фиксации параметров NTP-клиента
-				 *
-				 * @return результат выполнения операции
-				 */
-				bool commit() noexcept;
 			public:
 				/**
 				 * @brief Метод получения типа события
@@ -385,11 +383,10 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param family семейство IP-адресов IPv4/IPv6
-				 * @param fmk    объект фреймворка
-				 * @param log    объект для работы с логами
+				 * @param fmk объект фреймворка
+				 * @param log объект для работы с логами
 				 */
-				explicit NTP(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept;
+				explicit NTP(const fmk_t * fmk, const log_t * log) noexcept;
 				/**
 				 * @brief Деструктор
 				 *

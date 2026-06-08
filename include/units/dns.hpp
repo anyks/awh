@@ -28,7 +28,6 @@
  */
 #include "unit.hpp"
 #include "../sys/binbox.hpp"
-#include "../sys/locker.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -268,7 +267,8 @@ namespace awh {
 					 *
 					 */
 					explicit Resolver() noexcept :
-					 prefix{AWH_SHORT_NAME}, port(53), delay(5000),
+					 prefix{AWH_SHORT_NAME},
+					 port(53), delay(5000),
 					 sourceIPv4(nullptr), sourceIPv6(nullptr) {}
 				} resolver_t;
 				/**
@@ -277,9 +277,9 @@ namespace awh {
 				 */
 				typedef struct Transfer {
 					// Количество попыток DNS-запроса
-					atomic_uint8_t attempts;
+					uint8_t attempts;
 					// Максимальное количество пакетов в очереди ожидания выполнения запроса к DNS-серверу
-					atomic_uint16_t maxPackets;
+					uint16_t maxPackets;
 					// Очередь пакетов, ожидающих отправки
 					std::queue <packet_t> packets;
 					// Активные DNS-запросы, ожидающие ответа
