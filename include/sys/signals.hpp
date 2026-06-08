@@ -22,7 +22,6 @@
  * Стандартные модули
  */
 #include <atomic>
-#include <string>
 #include <cstdlib>
 #include <csignal>
 #include <functional>

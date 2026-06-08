@@ -165,14 +165,14 @@ namespace awh {
 					bool authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept;
 				public:
 					/**
-					 * @brief Методы установки функции обратного вызова на получение информационных метаданных SCTP сообщения
+					 * @brief Метод установки функции обратного вызова для получения метаданных SCTP-сообщения
 					 *
 					 * @param id идентификатор события
 					 * @param cb функция обратного вызова
 					 */
 					void on(const event::id_t id, engine::callback::sctp::minfo_t cb) noexcept;
 					/**
-					 * @brief Методы установки функции обратного вызова на получение SCTP событий
+					 * @brief Метод установки функции обратного вызова для получения SCTP-событий
 					 *
 					 * @param id идентификатор события
 					 * @param cb функция обратного вызова
@@ -208,7 +208,7 @@ namespace awh {
 						// Объект работы с сетевыми адресами
 						net_addr_t _addr;
 					private:
-						// Тип списка контрольного списка
+						// Тип списка контроля доступа
 						event::control_list_t _type;
 					private:
 						// Объект фреймворка
@@ -290,17 +290,17 @@ namespace awh {
 				bool setIface(const event::id_t id, string_view name) noexcept;
 			public:
 				/**
-				 * @brief Метод получения внутреннего порта события
+				 * @brief Метод получения локального порта события
 				 *
 				 * @param id идентификатор события
-				 * @return   внутренний порт события
+				 * @return   локальный порт события
 				 */
 				uint16_t getSourcePort(const event::id_t id) const noexcept;
 				/**
-				 * @brief Метод установки внутреннего порта события
+				 * @brief Метод установки локального порта события
 				 *
 				 * @param id   идентификатор события
-				 * @param port внутренний порт события
+				 * @param port локальный порт события
 				 * @return     результат выполнения установки
 				 */
 				bool setSourcePort(const event::id_t id, const uint16_t port) noexcept;
@@ -690,17 +690,17 @@ namespace awh {
 				bool setHops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
 			public:
 				/**
-				 * @brief Метод получения режима использования таймаута на чтение события
+				 * @brief Метод получения режима использования таймаута для обработки события чтения
 				 *
 				 * @param id идентификатор события
-				 * @return   режим использования таймаута на чтение события
+				 * @return   режим использования таймаута для обработки события чтения
 				 */
 				event::usage_t getUsageReadTimeout(const event::id_t id) const noexcept;
 				/**
-				 * @brief Метод установки режима использования таймаута на чтение события
+				 * @brief Метод установки режима использования таймаута для обработки события чтения
 				 *
 				 * @param id    идентификатор события
-				 * @param usage режим использования таймаута на чтение события (reusable или disposable)
+				 * @param usage режим использования таймаута для обработки события чтения (reusable или disposable)
 				 */
 				void setUsageReadTimeout(const event::id_t id, const event::usage_t usage) noexcept;
 			public:
@@ -892,84 +892,84 @@ namespace awh {
 				bool poll(const int32_t timeout = -1) noexcept;
 			public:
 				/**
-				 * @brief Методы установки функции обратного вызова на чтение события
+				 * @brief Метод установки функции обратного вызова для обработки события чтения
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::read_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на запись события
+				 * @brief Метод установки функции обратного вызова для обработки события записи
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::write_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на возврат неотправленных данных события
+				 * @brief Метод установки функции обратного вызова для обработки возврата неотправленных данных
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::spool_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на получение общего события
+				 * @brief Метод установки функции обратного вызова для обработки общего события
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::event_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на ошибку события
+				 * @brief Метод установки функции обратного вызова для обработки ошибки события
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::error_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на изменение события
+				 * @brief Метод установки функции обратного вызова для обработки изменений события
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::vnode_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на изменение статуса события
+				 * @brief Метод установки функции обратного вызова для обновления статуса события
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::status_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на принятие события
+				 * @brief Метод установки функции обратного вызова для приёма входящего подключения
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::accept_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на подключение события
+				 * @brief Метод установки функции обратного вызова для обработки подключения
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::connect_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на получение информации о пакетах в туннеле
+				 * @brief Метод установки функции обратного вызова для получения информации о пакетах туннеля
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::tuninfo_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на таймаут события
+				 * @brief Метод установки функции обратного вызова для обработки таймаута события
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::timeout_t cb) noexcept;
 				/**
-				 * @brief Методы установки функции обратного вызова на доступность очереди события
+				 * @brief Метод установки функции обратного вызова для обработки доступности очереди события
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова

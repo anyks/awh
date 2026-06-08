@@ -40,7 +40,6 @@
 #include <tuple>
 #include <string>
 #include <functional>
-#include <unordered_map>
 
 /**
  * Наши модули

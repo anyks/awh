@@ -36,6 +36,7 @@
 /**
  * Наши модули
  */
+#include "lib.hpp"
 #include "../net/nwt.hpp"
 
 /**

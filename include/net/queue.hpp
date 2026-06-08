@@ -23,13 +23,10 @@
  */
 #include <cstddef>
 #include <cstring>
-#include <algorithm>
-#include <cinttypes>
 
 /**
  * Наши модуля
  */
-#include "../sys/os.hpp"
 #include "../sys/log.hpp"
 
 /**

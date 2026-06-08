@@ -28,9 +28,7 @@
 #include <memory>
 #include <thread>
 #include <future>
-#include <stdexcept>
 #include <functional>
-#include <type_traits>
 #include <condition_variable>
 
 /**

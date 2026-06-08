@@ -21,13 +21,11 @@
 /**
  * Стандартные модули
  */
-#include <cinttypes>
 #include <unordered_set>
 
 /**
  * Наши модули
  */
-#include "../sys/lib.hpp"
 #include "../sys/reg.hpp"
 
 /**

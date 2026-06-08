@@ -23,8 +23,6 @@
  */
 #include <any>
 #include <string>
-#include <vector>
-#include <type_traits>
 #include <unordered_map>
 
 /**
@@ -414,9 +412,9 @@ namespace awh {
 			mutable mtx_t _mtx;
 		private:
 			// Список внутренних временных зон
-			std::unordered_map <string, int32_t> _timeZones;
+			unordered_map <string, int32_t> _timeZones;
 			// Список скомпилированных регулярных выражений
-			std::unordered_map <format_t, std::any> _expressions;
+			unordered_map <format_t, std::any> _expressions;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;

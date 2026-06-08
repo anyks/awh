@@ -23,8 +23,6 @@
  */
 #include <any>
 #include <atomic>
-#include <string>
-#include <vector>
 
 /**
  * Наши модули

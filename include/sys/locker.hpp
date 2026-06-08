@@ -24,9 +24,7 @@
 #include <mutex>
 #include <memory>
 #include <atomic>
-#include <cinttypes>
 #include <type_traits>
-#include <shared_mutex>
 #include <unistd.h>
 
 /**

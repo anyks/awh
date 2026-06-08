@@ -25,7 +25,6 @@
 #include <string>
 #include <cstring>
 #include <functional>
-#include <type_traits>
 #include <unordered_map>
 
 /**

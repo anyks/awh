@@ -24,7 +24,6 @@
 #include <mutex>
 #include <stack>
 #include <atomic>
-#include <cstdint>
 #include <unordered_set>
 
 /**

@@ -33,7 +33,6 @@
  */
 #include <vector>
 #include <cstddef>
-#include <cstdint>
 
 /**
  * Подключаем наши заголовочные файлы

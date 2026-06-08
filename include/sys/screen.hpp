@@ -26,7 +26,6 @@
 #include <chrono>
 #include <thread>
 #include <atomic>
-#include <string>
 #include <functional>
 #include <condition_variable>
 

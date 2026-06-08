@@ -22,7 +22,6 @@
  * Стандартные модули
  */
 #include <string>
-#include <cinttypes>
 #include <functional>
 
 /**

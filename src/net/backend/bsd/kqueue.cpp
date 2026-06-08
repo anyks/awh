@@ -23,7 +23,7 @@
 #endif
 
 /**
- * Если количество обработанных таймеров не определён
+ * Если количество обработанных таймеров не определено
  */
 #ifndef AWH_COUNT_PROCESSED_INTERNAL_TIMER
 	/**
@@ -49,7 +49,7 @@
 #ifndef AWH_CHUNK_EIDS_INTERNAL_TIMER
 	/**
 	 * Устанавливаем размер чанка в 1024 eid × 256 таймеров/ид = 1 МБ на чанк
-	 * Увеличь до 4096 для лучшей кэш-локальности при >500k таймеров
+	 * При необходимости можно увеличить до 4096 для лучшей кэш-локальности при >500k таймеров
 	 */
 	#define AWH_CHUNK_EIDS_INTERNAL_TIMER 0x400
 #endif
@@ -101,8 +101,8 @@
  */
 #ifndef AWH_MTU_UDP_IPV4_PAYLOAD_SIZE
 	/**
-	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
-	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1472 - 72 = 1400 байт, с запасом на возможную инкапсуляцию
+	 * Устанавливаем рекомендуемый размер UDP-полезной нагрузки для IPv4 в 1400 байт
+	 * 1400 = 1500 (Ethernet MTU) - 20 (IPv4) - 8 (UDP) - 72 (запас на инкапсуляцию)
 	 *
 	 * 1500 - 20 (IP) - 8 (UDP) = 1472 максимум без фрагментации
 	 * Запас 72 байта на возможную инкапсуляцию (туннели, провайдерские заголовки)
@@ -116,8 +116,8 @@
  */
 #ifndef AWH_MTU_UDP_IPV6_PAYLOAD_SIZE
 	/**
-	 * Устанавливаем размер MTU для UDP сообщений в 1500 байт
-	 * Стандартный размер Ethernet MTU минус заголовки IP и UDP = 1452 - 72 = 1380 байт, с запасом на возможную инкапсуляцию
+	 * Устанавливаем рекомендуемый размер UDP-полезной нагрузки для IPv6 в 1380 байт
+	 * 1380 = 1500 (Ethernet MTU) - 40 (IPv6) - 8 (UDP) - 72 (запас на инкапсуляцию)
 	 *
 	 * 1500 - 40 (IPv6) - 8 (UDP) = 1452 максимум без фрагментации
 	 * Запас 72 байта на инкапсуляцию (туннели часто используют двойную инкапсуляцию)
@@ -131,8 +131,8 @@
  */
 #ifndef AWH_MTU_TCP_IPV4_PAYLOAD_SIZE
 	/**
-	 * Устанавливаем размер MTU для TCP сообщений в 1500 байт
-	 * Стандартный размер Ethernet MTU минус заголовки IP и TCP = 1440 байт, с запасом на возможную инкапсуляцию
+	 * Устанавливаем рекомендуемый размер TCP-полезной нагрузки для IPv4 в 1440 байт
+	 * 1440 = 1500 (Ethernet MTU) - 20 (IPv4) - 20 (TCP) - 20 (запас на опции/инкапсуляцию)
 	 *
 	 * Ядро разобьёт на сегменты по MSS (~1448-1460)
 	 * Размер кратен MSS → минимум «хвостовых» мелких сегментов
@@ -146,8 +146,8 @@
  */
 #ifndef AWH_MTU_TCP_IPV6_PAYLOAD_SIZE
 	/**
-	 * Устанавливаем размер MTU для TCP сообщений в 1500 байт
-	 * Стандартный размер Ethernet MTU минус заголовки IP и TCP = 1420 байт, с запасом на возможную инкапсуляцию
+	 * Устанавливаем рекомендуемый размер TCP-полезной нагрузки для IPv6 в 1420 байт
+	 * 1420 = 1500 (Ethernet MTU) - 40 (IPv6) - 20 (TCP) - 20 (запас на опции/инкапсуляцию)
 	 *
 	 * Учёт 40-байтного заголовка IPv6
 	 * Кратно эффективному MSS для IPv6 (~1420-1440)
@@ -595,7 +595,7 @@ namespace io {
 		 *
 		 */
 		typedef struct SCTP_Callback {
-			// Функция обратного вызова для получения информационных собщений SCTP-протокола
+			// Функция обратного вызова для получения информационных сообщений SCTP-протокола
 			engine::callback::sctp::minfo_t info;
 			// Функция обратного вызова для получения событий SCTP-протокола
 			engine::callback::sctp::events_t events;
@@ -715,7 +715,7 @@ namespace io {
 		event::family_t family;          // Флаг семейства события
 		event::address_t address;        // Флаг адреса события
 		event::protocol_t protocol;      // Флаг протокола события
-		event::delivery_mode_t delivery; // Флаг типа режима доставки события
+		event::delivery_mode_t delivery; // Флаг режима доставки события
 		/**
 		 * @brief Конструктор
 		 *
@@ -863,7 +863,7 @@ namespace io {
 		engine::callback::read_t read;
 		// Функция обратного вызова при записи события
 		engine::callback::write_t write;
-		// Функция обратного вызова при получении общего события
+		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
 		// Функция обратного вызова при изменении события
 		engine::callback::vnode_t vnode;
@@ -883,7 +883,7 @@ namespace io {
 	typedef struct Mediator_Callbacks : public callbacks_t {
 		// Функция обратного вызова при чтении события
 		engine::callback::read_t read;
-		// Функция обратного вызова при получении общего события
+		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
 		/**
 		 * @brief Конструктор
@@ -900,9 +900,9 @@ namespace io {
 	typedef struct Server_Callbacks : public callbacks_t {
 		// Функция обратного вызова при записи события
 		engine::callback::write_t write;
-		// Функция обратного вызова при получении общего события
+		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
-		// Функция обратного вызова при принятии события
+		// Функция обратного вызова при приёме входящего подключения
 		engine::callback::accept_t accept;
 		/**
 		 * @brief Конструктор
@@ -917,9 +917,9 @@ namespace io {
 	 *
 	 */
 	typedef struct Tunnel_Callbacks : public callbacks_t {
-		// Функция обратного вызова при получении информации о туннеле
+		// Функция обратного вызова при получении информации о пакетах туннеля
 		engine::callback::tuninfo_t tuninfo;
-		// Функция обратного вызова при доступности очереди события
+		// Функция обратного вызова при доступности очереди
 		engine::callback::available_t available;
 		/**
 		 * @brief Конструктор
@@ -938,13 +938,13 @@ namespace io {
 		engine::callback::read_t read;
 		// Функция обратного вызова при записи события
 		engine::callback::write_t write;
-		// Функция обратного вызова при получении общего события
+		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
-		// Функция обратного вызова при подключении события
+		// Функция обратного вызова при подключении
 		engine::callback::connect_t connect;
 		// Функция обратного вызова при истечении таймаута события
 		engine::callback::timeout_t timeout;
-		// Функция обратного вызова при доступности очереди события
+		// Функция обратного вызова при доступности очереди
 		engine::callback::available_t available;
 		/**
 		 * @brief Конструктор
@@ -965,11 +965,11 @@ namespace io {
 		engine::callback::read_t read;
 		// Функция обратного вызова при записи события
 		engine::callback::write_t write;
-		// Функция обратного вызова при получении общего события
+		// Функция обратного вызова при обработке общего события
 		engine::callback::event_t event;
 		// Функция обратного вызова при истечении таймаута события
 		engine::callback::timeout_t timeout;
-		// Функция обратного вызова при доступности очереди события
+		// Функция обратного вызова при доступности очереди
 		engine::callback::available_t available;
 		/**
 		 * @brief Конструктор
@@ -1026,7 +1026,7 @@ namespace io {
 	} timer_t;
 
 	/**
-	 * @brief Структура  пользовательского события
+	 * @brief Структура пользовательского события
 	 *
 	 */
 	typedef struct User : public node_t {
@@ -1216,7 +1216,7 @@ namespace io {
 	} remote_t;
 
 	/**
-	 * @brief Структура одноразового узла
+	 * @brief Структура однорангового узла
 	 *
 	 */
 	typedef struct Peer : public remote_t {
@@ -3916,9 +3916,9 @@ namespace timer1 {
 								if(peer->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									peer->timeouts.write.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(peer->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay))
 											// Выполняем удаление узла
 											::io::destroy(peer, eth, log);
@@ -3931,9 +3931,9 @@ namespace timer1 {
 								if(peer->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									peer->timeouts.read.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(peer->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay))
 											// Выполняем удаление узла
 											::io::destroy(peer, eth, log);
@@ -3984,9 +3984,9 @@ namespace timer1 {
 								if(origin->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									origin->timeouts.write.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(origin->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay))
 											// Выполняем удаление узла
 											::io::destroy(origin, eth, log);
@@ -3999,9 +3999,9 @@ namespace timer1 {
 								if(origin->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									origin->timeouts.read.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(origin->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay))
 											// Выполняем удаление узла
 											::io::destroy(origin, eth, log);
@@ -4061,9 +4061,9 @@ namespace timer1 {
 								if(client->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									client->timeouts.write.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(client->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay))
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
@@ -4076,9 +4076,9 @@ namespace timer1 {
 								if(client->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									client->timeouts.read.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(client->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay))
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
@@ -4098,9 +4098,9 @@ namespace timer1 {
 											// Вызываем функцию обратного вызова для подключения
 											client->callbacks.connect(client->id, false);
 									}
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(client->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay))
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
@@ -4117,9 +4117,9 @@ namespace timer1 {
 									if(client->transfer.actions & ::action::RECONNECT){
 										// Устанавливаем статус события в состояние не инициализировано
 										client->state.status = event::status_t::NONE;
-										// Если функция обратного вызова на получение события таймаута установлена
+										// Если функция обратного вызова для обработки таймаута события установлена
 										if(client->callbacks.timeout != nullptr){
-											// Вызываем функцию обратного вызова на получение события таймаута
+											// Вызываем функцию обратного вызова для обработки таймаута события
 											if(!client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay))
 												// Выходим из условия, так-как не нужно выполнять переподключение
 												break;
@@ -5124,9 +5124,9 @@ namespace timer2 {
 								if(peer->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									peer->timeouts.write.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(peer->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(peer->callbacks.timeout(peer->id, event::action_t::WRITE, peer->timeouts.write.delay))
 											// Выполняем удаление узла
 											::io::destroy(peer, eth, log);
@@ -5139,9 +5139,9 @@ namespace timer2 {
 								if(peer->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									peer->timeouts.read.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(peer->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(peer->callbacks.timeout(peer->id, event::action_t::READ, peer->timeouts.read.delay))
 											// Выполняем удаление узла
 											::io::destroy(peer, eth, log);
@@ -5192,9 +5192,9 @@ namespace timer2 {
 								if(origin->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									origin->timeouts.write.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(origin->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(origin->callbacks.timeout(origin->id, event::action_t::WRITE, origin->timeouts.write.delay))
 											// Выполняем удаление узла
 											::io::destroy(origin, eth, log);
@@ -5207,9 +5207,9 @@ namespace timer2 {
 								if(origin->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									origin->timeouts.read.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(origin->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(origin->callbacks.timeout(origin->id, event::action_t::READ, origin->timeouts.read.delay))
 											// Выполняем удаление узла
 											::io::destroy(origin, eth, log);
@@ -5269,9 +5269,9 @@ namespace timer2 {
 								if(client->timeouts.write.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания отправки данных
 									client->timeouts.write.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(client->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(client->callbacks.timeout(client->id, event::action_t::WRITE, client->timeouts.write.delay))
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
@@ -5284,9 +5284,9 @@ namespace timer2 {
 								if(client->timeouts.read.status == event::status_t::PENDING){
 									// Снимаем статус таймаута с состояния ожидания чтения данных
 									client->timeouts.read.status = event::status_t::NONE;
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(client->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(client->callbacks.timeout(client->id, event::action_t::READ, client->timeouts.read.delay))
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
@@ -5306,9 +5306,9 @@ namespace timer2 {
 											// Вызываем функцию обратного вызова для подключения
 											client->callbacks.connect(client->id, false);
 									}
-									// Если функция обратного вызова на получение события таймаута установлена
+									// Если функция обратного вызова для обработки таймаута события установлена
 									if(client->callbacks.timeout != nullptr){
-										// Вызываем функцию обратного вызова на получение события таймаута
+										// Вызываем функцию обратного вызова для обработки таймаута события
 										if(client->callbacks.timeout(client->id, event::action_t::CONNECT, client->timeouts.connect.delay))
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
@@ -5325,9 +5325,9 @@ namespace timer2 {
 									if(client->transfer.actions & ::action::RECONNECT){
 										// Устанавливаем статус события в состояние не инициализировано
 										client->state.status = event::status_t::NONE;
-										// Если функция обратного вызова на получение события таймаута установлена
+										// Если функция обратного вызова для обработки таймаута события установлена
 										if(client->callbacks.timeout != nullptr){
-											// Вызываем функцию обратного вызова на получение события таймаута
+											// Вызываем функцию обратного вызова для обработки таймаута события
 											if(!client->callbacks.timeout(client->id, event::action_t::RECONNECT, client->timeouts.reconnect.delay))
 												// Выходим из условия, так-как не нужно выполнять переподключение
 												break;
@@ -29435,7 +29435,7 @@ namespace sctp {
 		return result;
 	}
 	/**
-	 * @brief Методы установки функции обратного вызова на получение информационных метаданных SCTP сообщения
+	 * @brief Метод установки функции обратного вызова для получения метаданных SCTP-сообщения
 	 *
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
@@ -29461,12 +29461,12 @@ namespace sctp {
 					switch(static_cast <uint8_t> (i->second->state.node)){
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER):
-							// Устанавливаем функцию обратного вызова на получение информационных метаданных SCTP сообщения
+							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
 							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbacks.info = ::move(cb);
 						break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Устанавливаем функцию обратного вызова на получение информационных метаданных SCTP сообщения
+							// Устанавливаем функцию обратного вызова для получения метаданных SCTP-сообщения
 							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbacks.info = ::move(cb);
 						break;
 						// Для других типов узлов
@@ -29508,7 +29508,7 @@ namespace sctp {
 		}
 	}
 	/**
-	 * @brief Методы установки функции обратного вызова на получение SCTP событий
+	 * @brief Метод установки функции обратного вызова для получения SCTP-событий
 	 *
 	 * @param id идентификатор события
 	 * @param cb функция обратного вызова
@@ -29534,12 +29534,12 @@ namespace sctp {
 					switch(static_cast <uint8_t> (i->second->state.node)){
 						// Если узел является одноранговым узлом
 						case static_cast <uint8_t> (event::node_t::PEER):
-							// Устанавливаем функцию обратного вызова на получение SCTP событий
+							// Устанавливаем функцию обратного вызова для получения SCTP-событий
 							awh_cast <::io::peer_t *> (i->second.get())->transfer.sctp.callbacks.events = ::move(cb);
 						break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT):
-							// Устанавливаем функцию обратного вызова на получение SCTP событий
+							// Устанавливаем функцию обратного вызова для получения SCTP-событий
 							awh_cast <::io::client_t *> (i->second.get())->transfer.sctp.callbacks.events = ::move(cb);
 						break;
 						// Для других типов узлов
@@ -53442,10 +53442,10 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 	return result;
 }
 /**
- * @brief Метод получения режима использования таймаута на чтение события
+ * @brief Метод получения режима использования таймаута для обработки события чтения
  *
  * @param id идентификатор события
- * @return   режим использования таймаута на чтение события
+ * @return   режим использования таймаута для обработки события чтения
  */
 awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) const noexcept {
 	/**
@@ -53462,19 +53462,19 @@ awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) c
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Выводим значение режима использования таймаута на чтение события
+					// Выводим значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::peer_t *> (i->second.get())->timeouts.read.usage;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Выводим значение режима использования таймаута на чтение события
+					// Выводим значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::origin_t *> (i->second.get())->timeouts.read.usage;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Выводим значение режима использования таймаута на чтение события
+					// Выводим значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::client_t *> (i->second.get())->timeouts.read.usage;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Выводим значение режима использования таймаута на чтение события
+					// Выводим значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::server_t *> (i->second.get())->timeouts.read.usage;
 			}
 		}
@@ -53500,10 +53500,10 @@ awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) c
 	return event::usage_t::NONE;
 }
 /**
- * @brief Метод установки режима использования таймаута на чтение события
+ * @brief Метод установки режима использования таймаута для обработки события чтения
  *
  * @param id    идентификатор события
- * @param usage режим использования таймаута на чтение события (reusable или disposable)
+ * @param usage режим использования таймаута для обработки события чтения (reusable или disposable)
  */
 void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usage_t usage) noexcept {
 	/**
@@ -53522,22 +53522,22 @@ void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usa
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем значение режима использования таймаута на чтение события
+					// Устанавливаем значение режима использования таймаута для обработки события чтения
 					awh_cast <::io::peer_t *> (i->second.get())->timeouts.read.usage = usage;
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем значение режима использования таймаута на чтение события
+					// Устанавливаем значение режима использования таймаута для обработки события чтения
 					awh_cast <::io::origin_t *> (i->second.get())->timeouts.read.usage = usage;
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем значение режима использования таймаута на чтение события
+					// Устанавливаем значение режима использования таймаута для обработки события чтения
 					awh_cast <::io::client_t *> (i->second.get())->timeouts.read.usage = usage;
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем значение режима использования таймаута на чтение события
+					// Устанавливаем значение режима использования таймаута для обработки события чтения
 					awh_cast <::io::server_t *> (i->second.get())->timeouts.read.usage = usage;
 				break;
 			}
@@ -58998,7 +58998,7 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 	return result;
 }
 /**
- * @brief Методы установки функции обратного вызова на чтение события
+ * @brief Метод установки функции обратного вызова для обработки события чтения
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59020,37 +59020,37 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на чтение события
+					// Устанавливаем функцию обратного вызова для обработки события чтения
 					awh_cast <::io::file_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
-					// Устанавливаем функцию обратного вызова на чтение события
+					// Устанавливаем функцию обратного вызова для обработки события чтения
 					awh_cast <::io::user_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
-					// Устанавливаем функцию обратного вызова на чтение события
+					// Устанавливаем функцию обратного вызова для обработки события чтения
 					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на чтение события
+					// Устанавливаем функцию обратного вызова для обработки события чтения
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на чтение события
+					// Устанавливаем функцию обратного вызова для обработки события чтения
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR):
-					// Устанавливаем функцию обратного вызова на чтение события
+					// Устанавливаем функцию обратного вызова для обработки события чтения
 					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на чтение события
+					// Устанавливаем функцию обратного вызова для обработки события чтения
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.read = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59091,7 +59091,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на запись события
+ * @brief Метод установки функции обратного вызова для обработки события записи
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59113,37 +59113,37 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова для обработки события записи
 					awh_cast <::io::file_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова для обработки события записи
 					awh_cast <::io::user_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова для обработки события записи
 					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова для обработки события записи
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова для обработки события записи
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова для обработки события записи
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на запись события
+					// Устанавливаем функцию обратного вызова для обработки события записи
 					awh_cast <::io::server_t *> (i->second.get())->callbacks.write = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59184,7 +59184,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на возврат неотправленных данных события
+ * @brief Метод установки функции обратного вызова для обработки возврата неотправленных данных
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59206,32 +59206,32 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					// Устанавливаем функцию обратного вызова для обработки возврата неотправленных данных
 					awh_cast <::io::file_t *> (i->second.get())->callbacks.spool = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
-					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					// Устанавливаем функцию обратного вызова для обработки возврата неотправленных данных
 					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.spool = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					// Устанавливаем функцию обратного вызова для обработки возврата неотправленных данных
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.spool = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					// Устанавливаем функцию обратного вызова для обработки возврата неотправленных данных
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.spool = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					// Устанавливаем функцию обратного вызова для обработки возврата неотправленных данных
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.spool = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на возврат неотправленных данных события
+					// Устанавливаем функцию обратного вызова для обработки возврата неотправленных данных
 					awh_cast <::io::server_t *> (i->second.get())->callbacks.spool = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59272,7 +59272,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на получение общего события
+ * @brief Метод установки функции обратного вызова для обработки общего события
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59294,47 +59294,47 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::user_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::dir_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::file_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на получение общего события
+					// Устанавливаем функцию обратного вызова для обработки общего события
 					awh_cast <::io::server_t *> (i->second.get())->callbacks.event = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59375,7 +59375,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на ошибку события
+ * @brief Метод установки функции обратного вызова для обработки ошибки события
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59397,59 +59397,59 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::user_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::timer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::dir_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::file_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::tun_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на получение события ошибки
+					// Устанавливаем функцию обратного вызова для обработки ошибки события
 					awh_cast <::io::server_t *> (i->second.get())->callbacks.error = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59490,7 +59490,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на изменение события
+ * @brief Метод установки функции обратного вызова для обработки изменений события
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59512,12 +59512,12 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на получение изменения каталога
+					// Устанавливаем функцию обратного вызова для обработки изменений каталога
 					awh_cast <::io::dir_t *> (i->second.get())->callbacks.vnode = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на получение изменения файла
+					// Устанавливаем функцию обратного вызова для обработки изменений файла
 					awh_cast <::io::file_t *> (i->second.get())->callbacks.vnode = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59558,7 +59558,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на изменение статуса события
+ * @brief Метод установки функции обратного вызова для обновления статуса события
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59580,59 +59580,59 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::user_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является таймаутом
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::timer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является директорией
 				case static_cast <uint8_t> (event::node_t::DIR):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::dir_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является файловой системой
 				case static_cast <uint8_t> (event::node_t::FILE):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::file_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::tun_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::mediator_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на получение статуса события
+					// Устанавливаем функцию обратного вызова для обновления статуса события
 					awh_cast <::io::server_t *> (i->second.get())->callbacks.status = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59673,7 +59673,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на принятие события
+ * @brief Метод установки функции обратного вызова для приёма входящего подключения
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59695,7 +59695,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Устанавливаем функцию обратного вызова на событие принятия нового подключения
+					// Устанавливаем функцию обратного вызова для обработки приёма нового подключения
 					awh_cast <::io::server_t *> (i->second.get())->callbacks.accept = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59736,7 +59736,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на подключение события
+ * @brief Метод установки функции обратного вызова для обработки подключения
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59758,7 +59758,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на событие подключения к серверу
+					// Устанавливаем функцию обратного вызова для обработки подключения к серверу
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.connect = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59799,7 +59799,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на получение информации о пакетах в туннеле
+ * @brief Метод установки функции обратного вызова для получения информации о пакетах туннеля
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59821,7 +59821,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL):
-					// Устанавливаем функцию обратного вызова на событие получения информации о пакетах в туннеле
+					// Устанавливаем функцию обратного вызова для получения информации о пакетах туннеля
 					awh_cast <::io::tun_t *> (i->second.get())->callbacks.tuninfo = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59862,7 +59862,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на таймаут события
+ * @brief Метод установки функции обратного вызова для обработки таймаута события
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59884,17 +59884,17 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на получение события таймаута
+					// Устанавливаем функцию обратного вызова для обработки таймаута события
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.timeout = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на получение события таймаута
+					// Устанавливаем функцию обратного вызова для обработки таймаута события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.timeout = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на получение события таймаута
+					// Устанавливаем функцию обратного вызова для обработки таймаута события
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.timeout = ::move(cb);
 				break;
 				// Для других типов узлов
@@ -59935,7 +59935,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 	}
 }
 /**
- * @brief Методы установки функции обратного вызова на доступность очереди события
+ * @brief Метод установки функции обратного вызова для обработки доступности очереди события
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова
@@ -59957,32 +59957,32 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является пользовательским событием
 				case static_cast <uint8_t> (event::node_t::NOTIFY):
-					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// Устанавливаем функцию обратного вызова для обработки доступности очереди события
 					awh_cast <::io::user_t *> (i->second.get())->callbacks.available = ::move(cb);
 				break;
 				// Если узел является межпроцессным взаимодействием
 				case static_cast <uint8_t> (event::node_t::IPC):
-					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// Устанавливаем функцию обратного вызова для обработки доступности очереди события
 					awh_cast <::io::ipc_t *> (i->second.get())->callbacks.available = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// Устанавливаем функцию обратного вызова для обработки доступности очереди события
 					awh_cast <::io::peer_t *> (i->second.get())->callbacks.available = ::move(cb);
 				break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// Устанавливаем функцию обратного вызова для обработки доступности очереди события
 					awh_cast <::io::origin_t *> (i->second.get())->callbacks.available = ::move(cb);
 				break;
 				// Если узел является туннелем
 				case static_cast <uint8_t> (event::node_t::TUNNEL):
-					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// Устанавливаем функцию обратного вызова для обработки доступности очереди события
 					awh_cast <::io::tun_t *> (i->second.get())->callbacks.available = ::move(cb);
 				break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Устанавливаем функцию обратного вызова на получение события доступности очереди
+					// Устанавливаем функцию обратного вызова для обработки доступности очереди события
 					awh_cast <::io::client_t *> (i->second.get())->callbacks.available = ::move(cb);
 				break;
 				// Для других типов узлов
