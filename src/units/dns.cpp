@@ -47,7 +47,7 @@
 using namespace std;
 
 /**
- * Плейсхолдеры стандартной библиотеки
+ * Подписываемся на пространство имён placeholders
  */
 using namespace placeholders;
 

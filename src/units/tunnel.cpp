@@ -23,7 +23,7 @@
 using namespace std;
 
 /**
- * Подписываемся на пространство имён плейсхолдеров
+ * Подписываемся на пространство имён placeholders
  */
 using namespace placeholders;
 

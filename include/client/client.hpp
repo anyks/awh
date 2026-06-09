@@ -13,13 +13,13 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного включения заголовочного файла
  */
 #ifndef __AWH_CLIENT__
 #define __AWH_CLIENT__
 
 /**
- * Наши модули
+ * Заголовочные файлы проекта
  */
 #include "../units/dns.hpp"
 #include "../units/client.hpp"
@@ -160,7 +160,7 @@ namespace awh {
 			 */
 			virtual void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			/**
-			 * @brief Метод получения события ошибок
+			 * @brief Метод обработки события ошибки
 			 *
 			 * @param eid     идентификатор события
 			 * @param error   код ошибки
@@ -204,8 +204,8 @@ namespace awh {
 			 *
 			 * @param eid   идентификатор клиента
 			 * @param error тип ошибки отправки данных
-			 * @param data  данные, которые не получилось отправить
-			 * @param size  размер данных, которые не получилось отправить
+			 * @param buffer данные, которые не удалось отправить
+			 * @param size  размер данных, которые не удалось отправить
 			 */
 			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
 			/**
@@ -236,8 +236,8 @@ namespace awh {
 			 * @brief Метод получения событий шифрования/дешифрования данных TLS
 			 *
 			 * @param event  тип события TLS
-			 * @param size   размер данных для события шифрования/дешифрования TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
+			 * @param size   размер полезной нагрузки в буфере для события шифрования/дешифрования TLS
 			 */
 			virtual void processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		public:
@@ -279,7 +279,7 @@ namespace awh {
 			virtual bool isAlive() const noexcept;
 		public:
 			/**
-			 * @brief Метод мультиподключения клиентов к удалённым хостам
+			 * @brief Метод подключения клиента к удалённому хосту
 			 *
 			 * @return результат выполнения подключения
 			 */
@@ -567,7 +567,7 @@ namespace awh {
 			virtual bool setDifferentiatedServicesCodePoint(const event::dscp_t dscp) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения обнаружения максимального размера пакета (MTU)
+			 * @brief Метод получения режима обнаружения максимального размера пакета (MTU)
 			 *
 			 * @return режим обнаружения максимального размера пакета (MTU)
 			 */
@@ -612,14 +612,14 @@ namespace awh {
 			virtual event::id_t init(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 		public:
 			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
+			 * @brief Шаблон метода подключения функции обратного вызова
 			 *
 			 * @tparam T    тип функции обратного вызова
 			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * @brief Метод подключения финкции обратного вызова
+			 * @brief Метод подключения функции обратного вызова
 			 *
 			 * @param name идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
@@ -634,14 +634,14 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
+			 * @brief Шаблон метода подключения функции обратного вызова
 			 *
 			 * @tparam T    тип функции обратного вызова
 			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * @brief Метод подключения финкции обратного вызова
+			 * @brief Метод подключения функции обратного вызова
 			 *
 			 * @param name идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
@@ -656,14 +656,14 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
+			 * @brief Шаблон метода подключения функции обратного вызова
 			 *
 			 * @tparam T    тип функции обратного вызова
 			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * @brief Метод подключения финкции обратного вызова
+			 * @brief Метод подключения функции обратного вызова
 			 *
 			 * @param name идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
@@ -678,14 +678,14 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
+			 * @brief Шаблон метода подключения функции обратного вызова
 			 *
 			 * @tparam T    тип функции обратного вызова
 			 * @tparam Args аргументы функции обратного вызова
 			 */
 			template <typename T, class... Args>
 			/**
-			 * @brief Метод подключения финкции обратного вызова
+			 * @brief Метод подключения функции обратного вызова
 			 *
 			 * @param fid  идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова
@@ -700,7 +700,7 @@ namespace awh {
 				return 0;
 			}
 			/**
-			 * @brief Шаблон метода подключения финкции обратного вызова
+			 * @brief Шаблон метода подключения функции обратного вызова
 			 *
 			 * @tparam A    тип идентификатора функции
 			 * @tparam B    тип функции обратного вызова
@@ -708,7 +708,7 @@ namespace awh {
 			 */
 			template <typename A, typename B, class... Args>
 			/**
-			 * @brief Метод подключения финкции обратного вызова
+			 * @brief Метод подключения функции обратного вызова
 			 *
 			 * @param fid  идентификатор функции обратного вызова
 			 * @param args аргументы функции обратного вызова

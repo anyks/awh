@@ -46,7 +46,7 @@
 using namespace std;
 
 /**
- * Подписываемся на пространство имён заполнителя
+ * Подписываемся на пространство имён placeholders
  */
 using namespace placeholders;
 
