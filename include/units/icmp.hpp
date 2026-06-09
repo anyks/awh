@@ -13,7 +13,7 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного включения заголовочного файла
  */
 #ifndef __AWH_UNIT_ICMP__
 #define __AWH_UNIT_ICMP__
@@ -70,7 +70,7 @@ namespace awh {
 					uint64_t elapsed;
 					// Индекс последовательности запроса
 					uint16_t sequence;
-					// Время жизни пакета (TTL) в миллисекундах
+					// Время жизни пакета (TTL) в хопах
 					uint32_t timeToLive;
 					// Адрес удалённого сервера, от которого пришёл ответ на запрос ICMP-клиента
 					net::addr_t * address;
@@ -94,7 +94,7 @@ namespace awh {
 					event::id_t eid;
 					// Адрес удалённого сервера для выполнения запросов
 					unique_ptr <net::addr_t> target;
-					// Адрес сети для выполнения запроса
+					// Локальный адрес, с которого выполняется запрос
 					unique_ptr <net::addr_t> source;
 					/**
 					 * @brief Конструктор
@@ -144,7 +144,7 @@ namespace awh {
 				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
 			private:
 				/**
-				 * @brief Метод обработки событий таймаута при ожидании ответа от ICMP-клиента
+				 * @brief Метод обработки таймаута ожидания ответа ICMP-сервера
 				 *
 				 * @param eid    идентификатор события ICMP-клиента
 				 * @param action действие события таймера ICMP-клиента
@@ -153,12 +153,12 @@ namespace awh {
 				 */
 				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 				/**
-				 * @brief Метод обработки ответов от удалённого сервера на запросы ICMP-клиента
+				 * @brief Метод обработки ответов удалённого сервера на ICMP-запросы
 				 *
-				 * @param eid  идентификатор события чтения из ICMP-клиента
-				 * @param mode режим обработки события чтения из ICMP-клиента
-				 * @param data данные события чтения из ICMP-клиента
-				 * @param size размер данных события чтения из ICMP-клиента
+				 * @param eid  идентификатор события чтения ICMP-ответа
+				 * @param mode режим обработки события чтения ICMP-ответа
+				 * @param data данные события чтения ICMP-ответа
+				 * @param size размер данных события чтения ICMP-ответа
 				 */
 				void response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept;
 			public:
@@ -233,21 +233,21 @@ namespace awh {
 				bool setTarget(const event::family_t family, string_view target) noexcept;
 			public:
 				/**
-				 * @brief Метод установки адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки адреса сети, с которого будет выполняться запрос
 				 *
 				 * @param source адрес сети для выполнения запроса
 				 * @return       результат выполнения установки
 				 */
 				bool setSource(string_view source) noexcept;
 				/**
-				 * @brief Метод установки адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки адреса сети, с которого будет выполняться запрос
 				 *
 				 * @param source адрес сети для выполнения запроса
 				 * @return       результат выполнения установки
 				 */
 				bool setSource(const net::addr_t * source) noexcept;
 				/**
-				 * @brief Метод установки адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки адреса сети, с которого будет выполняться запрос
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param source адрес сети для выполнения запроса

@@ -124,12 +124,12 @@ namespace servers {
 	static void push(string_view server) noexcept {
 		// Создаём объект IP-адреса для параметров NTP-сервера
 		struct addrinfo hints = {};
-		// Результат разрешения имени NTP-сервера
-		struct addrinfo * result = nullptr;
+		// Устанавливаем тип сокета для фильтрации адресов при разрешении имени
+		hints.ai_socktype = 0;
 		// Устанавливаем семейство протоколов для NTP-сервера (IPv4 + IPv6)
 		hints.ai_family = AF_UNSPEC;
-		// Устанавливаем тип сокета для фильтрации адресов при разрешении имени
-		hints.ai_socktype = SOCK_STREAM;
+		// Результат разрешения имени NTP-сервера
+		struct addrinfo * result = nullptr;
 		/**
 		 * Получаем параметры NTP-сервера по доменному имени
 		 */

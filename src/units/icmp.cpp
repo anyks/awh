@@ -56,7 +56,7 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Генератор случайных чисел для рандомизации удалённых серверов
+	 * @brief Генератор случайных чисел для перемешивания списка удалённых узлов
 	 *
 	 */
 	random_device __awh_randev__;
@@ -178,7 +178,7 @@ namespace {
 };
 
 /**
- * Инкапсулируем функции работы с резолвингом доменных имён в пространство имён
+ * Инкапсулируем функции разрешения доменных имён в пространство имён
  */
 namespace dns {
 	/**
@@ -187,22 +187,22 @@ namespace dns {
 	using namespace awh;
 
 	/**
-	 * @brief Метод резолвинга удалённого сервера
+	 * @brief Метод разрешения доменного имени удалённого сервера
 	 *
 	 * @param domain доменное имя удалённого сервера
-	 * @return       объекты IP-адреса принадлежащему удалённому серверу
+	 * @return       список IP-адресов удалённого сервера
 	 */
 	static vector <unique_ptr <net::addr_t>> resolve(string_view domain) noexcept {
 		// Список полученных IP-адресов
 		vector <unique_ptr <net::addr_t>> ips;
 		// Создаём объект IP-адреса для параметров удалённого сервера
 		struct addrinfo hints = {};
-		// Результат получения параметров удалённого сервера
-		struct addrinfo * result = nullptr;
+		// Устанавливаем тип сокета для удалённого сервера (TCP)
+		hints.ai_socktype = 0;
 		// Устанавливаем семейство протоколов для удалённого сервера (IPv4 + IPv6)
 		hints.ai_family = AF_UNSPEC;
-		// Устанавливаем тип сокета для удалённого сервера (TCP)
-		hints.ai_socktype = SOCK_STREAM;
+		// Результат получения параметров удалённого сервера
+		struct addrinfo * result = nullptr;
 		/**
 		 * Выполняем получение параметров удалённого сервера по его адресу
 		 */
@@ -242,9 +242,9 @@ namespace dns {
 			// Освобождаем память, выделенную для хранения параметров удалённого сервера
 			::freeaddrinfo(result);
 		}
-		// Выбираем стандарт рандомайзера
+		// Инициализируем генератор случайных чисел
 		mt19937 generator(::__awh_randev__());
-		// Выполняем рандомную сортировку списка DNS-серверов
+		// Перемешиваем список полученных IP-адресов
 		::shuffle(ips.begin(), ips.end(), generator);
 		// Выводим полученные IP-адреса
 		return ips;
@@ -324,169 +324,258 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
 	return false;
 }
 /**
- * @brief Метод обработки ответов от удалённого сервера на запросы ICMP-клиента
+ * @brief Метод обработки ответов удалённого сервера на ICMP-запросы
  *
- * @param eid  идентификатор события чтения из ICMP-клиента
- * @param mode режим обработки события чтения из ICMP-клиента
- * @param data данные события чтения из ICMP-клиента
- * @param size размер данных события чтения из ICMP-клиента
+ * @param eid  идентификатор события чтения ICMP-ответа
+ * @param mode режим обработки события чтения ICMP-ответа
+ * @param data данные события чтения ICMP-ответа
+ * @param size размер данных события чтения ICMP-ответа
  */
 void awh::unit::ICMP::response([[maybe_unused]] const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Длина IP-заголовка
-		size_t length = 0;
-		// Заголовок пакета ICMP протокола
-		const header_t * icmp = nullptr;
-		// IP-адрес для вывода результата
-		unique_ptr <net::addr_t> address = nullptr;
-		/**
-		 * Определяем версию IP-адреса
-		 * 0x40 = IPv4 (0100 0000), 0x60 = IPv6 (0110 0000)
-		 */
-		switch(((data[0] & 0xF0) >> 4)){
-			// Если адрес является IPv4
-			case 4: {
-				// Если размер данных меньше размера заголовка IP
-				if(size < sizeof(struct ip))
-					// Выходим из функции
-					return;
-				// Приводим данные к структуре IP-заголовка
-				const struct ip * iph = reinterpret_cast <const struct ip *> (data);
-				// Извлекаем длину IP-заголовка
-				length = (iph->ip_hl * 4);
-				// Если заголовок пришёл битый
-				if((length < 20) || (size < (length + 8)))
-					// минимум ICMP-заголовок
-					return;
-				// Минимум 8 байт ICMP
-				if(size >= (length + 8)){
-					// Приводим данные к структуре ICMP-заголовка
-					icmp = reinterpret_cast <const header_t *> (data + length);
-					// Выполняем инициализацию объекта IP-адреса
-					address = make_unique <net::addr_net_ipv4_t> ();
-					// Устанавливаем IP-адрес
-					awh_cast <net::addr_net_ipv4_t *> (address.get())->address = iph->ip_src.s_addr;
-				}
-			} break;
-			// Если адрес является IPv6
-			case 6: {
-				/**
-				 * Добавляем выравнивание структуры для корректного чтения данных из буфера
-				 */
-				#pragma pack(push, 1)
-				/**
-				 * @brief IPv6 заголовок фиксирован = 40 байт
-				 *
-				 */
-				struct ip6_hdr_min {
-					uint32_t flow;    // Потоковая метка (version, traffic class, flow label)
-					uint16_t plen;    // Длина полезной нагрузки
-					uint8_t  nxt;     // Следующий заголовок
-					uint8_t  hlim;    // Лимит времени жизни
-					uint8_t  src[16]; // Адрес источника
-					uint8_t  dst[16]; // Адрес назначения
-				};
-				// Удаляем выравнивание структуры для корректного чтения данных из буфера
-				#pragma pack(pop)
-				// Если размер данных меньше размера заголовка IP
-				if(size < 40)
-					// Выходим из функции
-					return;
-				// Приводим данные к структуре IP-заголовка
-				const struct ip6_hdr_min * ip6h = reinterpret_cast <const struct ip6_hdr_min *> (data);
-				// Извлекаем длину IP-заголовка
-				length = 40;
-				// Если заголовок пришёл битый
-				if((length < 20) || (size < (length + 8)))
-					// минимум ICMP-заголовок
-					return;
-				// Минимум 8 байт ICMP
-				if(size >= (length + 8)){
+		// Если данные переданы верные
+		if((data != nullptr) && (size > 0)){
+			// Длина IP-заголовка
+			size_t length = 0;
+			// Время жизни пакета ответа (TTL/Hop Limit)
+			uint32_t timeToLive = 0;
+			// Заголовок пакета ICMP протокола
+			const header_t * icmp = nullptr;
+			// IP-адрес для вывода результата
+			unique_ptr <net::addr_t> address = nullptr;
+			/**
+			 * Определяем версию IP-адреса
+			 * 0x40 = IPv4 (0100 0000), 0x60 = IPv6 (0110 0000)
+			 */
+			switch(((data[0] & 0xF0) >> 4)){
+				// Если адрес является IPv4
+				case 4: {
+					// Если размер данных меньше размера заголовка IP
+					if(size < sizeof(struct ip))
+						// Выходим из функции
+						return;
+					// Приводим данные к структуре IP-заголовка
+					const struct ip * iph = reinterpret_cast <const struct ip *> (data);
+					// Извлекаем длину IP-заголовка
+					length = (iph->ip_hl * 4);
+					// Если заголовок пришёл битый
+					if((length < 20) || (size < (length + 8)))
+						// Минимум ICMP-заголовок
+						return;
+					// Минимум 8 байт ICMP
+					if(size >= (length + 8)){
+						// Приводим данные к структуре ICMP-заголовка
+						icmp = reinterpret_cast <const header_t *> (data + length);
+						// Извлекаем TTL из IPv4-заголовка
+						timeToLive = iph->ip_ttl;
+						// Выполняем инициализацию объекта IP-адреса
+						address = make_unique <net::addr_net_ipv4_t> ();
+						// Устанавливаем IP-адрес
+						awh_cast <net::addr_net_ipv4_t *> (address.get())->address = iph->ip_src.s_addr;
+					}
+				} break;
+				// Если адрес является IPv6
+				case 6: {
+					/**
+					 * Добавляем выравнивание структуры для корректного чтения данных из буфера
+					 */
+					#pragma pack(push, 1)
+					/**
+					 * @brief IPv6 заголовок фиксирован = 40 байт
+					 *
+					 */
+					struct ip6_hdr_min {
+						uint32_t flow;    // Потоковая метка (version, traffic class, flow label)
+						uint16_t plen;    // Длина полезной нагрузки
+						uint8_t  nxt;     // Следующий заголовок
+						uint8_t  hlim;    // Лимит времени жизни
+						uint8_t  src[16]; // Адрес источника
+						uint8_t  dst[16]; // Адрес назначения
+					};
+					// Удаляем выравнивание структуры для корректного чтения данных из буфера
+					#pragma pack(pop)
+					// Если размер данных меньше размера заголовка IP
+					if(size < 40)
+						// Выходим из функции
+						return;
+					// Приводим данные к структуре IP-заголовка
+					const struct ip6_hdr_min * ip6h = reinterpret_cast <const struct ip6_hdr_min *> (data);
+					// Начальная длина IPv6-заголовка
+					length = 40;
+					// Извлекаем Hop Limit из IPv6-заголовка
+					timeToLive = ip6h->hlim;
+					// Тип следующего заголовка после базового IPv6-заголовка
+					uint8_t next = ip6h->nxt;
+					// Признак успешного выхода на ICMPv6-заголовок
+					bool hasIcmpv6 = false;
+					/**
+					 * Проходим цепочку extension headers до ICMPv6.
+					 * Если встречаем неподдерживаемый протокол, завершаем обработку.
+					 */
+					while(length < size){
+						/**
+						 * Определяем тип текущего IPv6-заголовка в цепочке
+						 */
+						switch(next){
+							// Если достигли ICMPv6-заголовка
+							case IPPROTO_ICMPV6:
+								// Устанавливаем флаг успешного выхода на ICMPv6-заголовок
+								hasIcmpv6 = true;
+							break;
+							// Заголовки с длиной в 8-байтовых блоках (длина = (Hdr Ext Len + 1) * 8)
+							case IPPROTO_HOPOPTS:
+							case IPPROTO_ROUTING:
+							case IPPROTO_DSTOPTS: {
+								// Проверяем, что в буфере есть минимум поле Next Header и Hdr Ext Len
+								if(size < (length + 2))
+									// Выходим из функции
+									return;
+								// Извлекаем длину extension header из поля Hdr Ext Len
+								const uint8_t hdrLen = data[length + 1];
+								// Рассчитываем фактическую длину extension header в байтах
+								const size_t extLen = (static_cast <size_t> (hdrLen) + 1) * 8;
+								// Проверяем корректность длины и границы буфера
+								if((extLen < 8) || (size < (length + extLen)))
+									// Выходим из функции
+									return;
+								// Переходим к следующему заголовку в цепочке
+								next = data[length];
+								// Увеличиваем длину на размер текущего extension header
+								length += extLen;
+							} break;
+							// Fragment Header всегда занимает 8 байт
+							case IPPROTO_FRAGMENT: {
+								// Проверяем, что в буфере помещается весь Fragment Header
+								if(size < (length + 8))
+									// Выходим из функции
+									return;
+								// Переходим к следующему заголовку в цепочке
+								next = data[length];
+								// Увеличиваем длину на размер Fragment Header
+								length += 8;
+							} break;
+							// Authentication Header: длина = (Payload Len + 2) * 4
+							case IPPROTO_AH: {
+								// Проверяем, что в буфере есть минимум поле Next Header и Payload Len
+								if(size < (length + 2))
+									// Выходим из функции
+									return;
+								// Извлекаем длину AH из поля Payload Len
+								const uint8_t hdrLen = data[length + 1];
+								// Рассчитываем фактическую длину AH в байтах
+								const size_t extLen = (static_cast <size_t> (hdrLen) + 2) * 4;
+								// Проверяем корректность длины и границы буфера
+								if((extLen < 8) || (size < (length + extLen)))
+									// Выходим из функции
+									return;
+								// Переходим к следующему заголовку в цепочке
+								next = data[length];
+								// Увеличиваем длину на размер AH
+								length += extLen;
+							} break;
+							// Неподдерживаемый заголовок в цепочке
+							default:
+								// Выходим из функции
+								return;
+						}
+						// Если ICMPv6-заголовок найден, прекращаем разбор extension headers
+						if(hasIcmpv6)
+							// Выходим из цикла
+							break;
+					}
+					// Если ICMPv6-заголовок не найден или буфер слишком мал, завершаем обработку
+					if(!hasIcmpv6 || (size < (length + 8)))
+						// Выходим из функции
+						return;
 					// Приводим данные к структуре ICMP-заголовка
 					icmp = reinterpret_cast <const header_t *> (data + length);
 					// Выполняем инициализацию объекта IP-адреса
 					address = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
 					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (address.get())->address[0], &ip6h->src, 16);
+				} break;
+				// Если это какой-то другой адрес
+				default: {
+					// Если размера данных достаточно для чтения заголовка ICMP
+					if(size >= sizeof(header_t)){
+						// Результат полученных данных
+						icmp = reinterpret_cast <const header_t *> (data);
+						// Извлекаем IP-адрес установленный в событии
+						this->_io->getTarget(eid, address);
+					// Если размер данных меньше размера заголовка ICMP
+					} else return;
 				}
-			} break;
-			// Если это какой-то другой адрес
-			default: {
-				// Результат полученных данных
-				icmp = reinterpret_cast <const header_t *> (data);
-				// Извлекаем IP-адрес установленный в событии
-				this->_io->getTarget(eid, address);
 			}
-		}
-		// Извлекаем идентификатор запроса
-		const id_t id = ntohs(icmp->meta.echo.identifier);
-		// Извлекаем номер последовательности запроса
-		const uint16_t sequence = ntohs(icmp->meta.echo.sequence);
-		// Получаем текущую метку времени
-		const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-		// Если функция обратного вызова установлена для получения ответа от удалённого сервера
-		if(this->_callback.is("ping")){
-			// Создаём объект ответа от удалённого сервера
-			response_t response{};
-			// Устанавливаем размер полученных данных от удалённого сервера
-			response.size = size;
-			// Устанавливаем номер последовательности запроса
-			response.sequence = sequence;
-			// Устанавливаем IP-адрес удалённого сервера
-			response.address = address.get();
-			// Устанавливаем время жизни ответа от удалённого сервера
-			response.timeToLive = this->_client.delay;
-			// Устанавливаем время ответа от удалённого сервера
-			response.elapsed = (now - this->_transfer.timestamp);
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const id_t, const response_t &)> ("ping", id, response);
-		}
-		// Выполняем фиксацию текущей метки времени для данного запроса
-		this->_transfer.timestamp = now;
-		// Если выполняется синхронный режим пинга удалённого сервера
-		if(mode == mode_t::ASYNC){
-			// Если номер последовательности запроса меньше количества отправленных запросов
-			if(sequence < (this->_transfer.count - 1)){
-				// Подключаем устройство генератора
-				mt19937 generator(::__awh_randev__());
-				// Выполняем генерирование случайного числа
-				uniform_int_distribution <mt19937::result_type> dist6(0, numeric_limits <uint32_t>::max() - 1);
-				// Создаём объект заголовков
-				header_t icmp{};
-				// Устанавливаем код запроса
-				icmp.code = 0;
-				/**
-				 * Определяем семейство события
-				 */
-				switch(static_cast <uint8_t> (this->_io->family(eid))){
-					// Для семейства IPv4
-					case static_cast <uint8_t> (event::family_t::IPV4):
-						// Выполняем установку типа запроса
-						icmp.type = 8;
-					break;
-					// Для семейства IPv6
-					case static_cast <uint8_t> (event::family_t::IPV6):
-						// Выполняем установку типа запроса
-						icmp.type = 128;
-					break;
-				}
-				// Устанавливаем идентификатор запроса
-				icmp.meta.echo.identifier = htons(id);
-				// Устанавливаем номер последовательности
-				icmp.meta.echo.sequence = htons(sequence + 1);
-				// Устанавливаем данные полезной нагрузки
-				icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
-				// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
-				icmp.checksum = 0;
-				// Выполняем подсчёт контрольной суммы
-				icmp.checksum = ::checksum(&icmp, sizeof(icmp));
-				// Отправляем сообщение серверу
-				this->_io->send(eid, &icmp, sizeof(icmp));
-			// Снимаем флаг ожидания ответа от сервера
-			} else this->_transfer.waiting = !this->_transfer.waiting;
+			// Извлекаем идентификатор запроса
+			const id_t id = ntohs(icmp->meta.echo.identifier);
+			// Извлекаем номер последовательности запроса
+			const uint16_t sequence = ntohs(icmp->meta.echo.sequence);
+			// Получаем текущую метку времени
+			const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+			// Если функция обратного вызова установлена для получения ответа от удалённого сервера
+			if(this->_callback.is("ping")){
+				// Создаём объект ответа от удалённого сервера
+				response_t response{};
+				// Устанавливаем размер полученных данных от удалённого сервера
+				response.size = size;
+				// Устанавливаем номер последовательности запроса
+				response.sequence = sequence;
+				// Устанавливаем IP-адрес удалённого сервера
+				response.address = address.get();
+				// Устанавливаем время жизни ответа от удалённого сервера
+				response.timeToLive = timeToLive;
+				// Устанавливаем время ответа от удалённого сервера
+				response.elapsed = (now - this->_transfer.timestamp);
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const id_t, const response_t &)> ("ping", id, response);
+			}
+			// Выполняем фиксацию текущей метки времени для данного запроса
+			this->_transfer.timestamp = now;
+			// Если выполняется асинхронный режим пинга удалённого сервера
+			if(mode == mode_t::ASYNC){
+				// Если номер последовательности запроса меньше количества отправленных запросов
+				if(sequence < (this->_transfer.count - 1)){
+					// Подключаем устройство генератора
+					mt19937 generator(::__awh_randev__());
+					// Выполняем генерирование случайного числа
+					uniform_int_distribution <mt19937::result_type> dist6(0, numeric_limits <uint32_t>::max() - 1);
+					// Создаём объект заголовков
+					header_t icmp{};
+					// Устанавливаем код запроса
+					icmp.code = 0;
+					/**
+					 * Определяем семейство события
+					 */
+					switch(static_cast <uint8_t> (this->_io->family(eid))){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+							// Выполняем установку типа запроса
+							icmp.type = 8;
+						break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+							// Выполняем установку типа запроса
+							icmp.type = 128;
+						break;
+					}
+					// Устанавливаем идентификатор запроса
+					icmp.meta.echo.identifier = htons(id);
+					// Устанавливаем номер последовательности
+					icmp.meta.echo.sequence = htons(sequence + 1);
+					// Устанавливаем данные полезной нагрузки
+					icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
+					// Обнуляем поле контрольной суммы перед пересчётом
+					icmp.checksum = 0;
+					// Выполняем подсчёт контрольной суммы
+					icmp.checksum = ::checksum(&icmp, sizeof(icmp));
+					// Отправляем сообщение серверу
+					this->_io->send(eid, &icmp, sizeof(icmp));
+				// Снимаем флаг ожидания ответа от сервера
+				} else this->_transfer.waiting = false;
+			}
 		}
 	/**
 	 * Если возникает ошибка
@@ -534,15 +623,17 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		 * Для операционной системы не являющейся MS Windows
 		 */
 		#else
-			// Если пользователь является непривилегированным
-			if(::getuid() > 0)
-				// Добавляем новое событие клиента ICMP
-				this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::ICMP);
+			// Выбираем тип сокета в зависимости от привилегий пользователя
+			const event::type_t type = (::getuid() > 0 ? event::type_t::DATAGRAM : event::type_t::RAW);
 			// Добавляем новое событие клиента ICMP
-			else this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
+			this->_client.eid = this->_io->event(event::node_t::CLIENT, family, type, event::protocol_t::ICMP);
 		#endif
 		// Если адрес назначения сервера установлен
 		if((result = ((this->_client.eid > 0) && (this->_client.target != nullptr)))){
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие чтения данных
+			this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode_t::ASYNC, _2, _3)));
 			// Устанавливаем адрес сервера назначения
 			this->_io->setTarget(this->_client.eid, this->_client.target.get());
 			// Если адрес сети для выполнения запроса установлен
@@ -565,7 +656,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 			}
 			// Если адрес сети для выполнения запроса установлен успешно
 			if(result){
-				// Устанавливаем время ожидания ответа от NTP-сервера
+				// Устанавливаем время ожидания ответа от ICMP-сервера
 				this->_io->setTimeout(this->_client.eid, event::action_t::READ, this->_client.delay);
 				// Выполняем фиксацию параметров события и его запуск
 				if(!(result = this->_io->commit(this->_client.eid) && this->_io->launch(this->_client.eid))){
@@ -587,12 +678,6 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 							this->_log->print("Failed to launch ICMP-client", log_t::flag_t::CRITICAL);
 						#endif
 					}
-				// Если событие ICMP-клиента запущено успешно
-				} else {
-					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
-					// Устанавливаем функцию обратного вызова на событие чтения данных
-					this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode_t::ASYNC, _2, _3)));
 				}
 			}
 		// Если адрес назначения сервера не установлен
@@ -908,7 +993,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 	return result;
 }
 /**
- * @brief Метод установки адреса сети с которого будет выполняться запрос
+ * @brief Метод установки адреса сети, с которого будет выполняться запрос
  *
  * @param source адрес сети для выполнения запроса
  * @return       результат выполнения установки
@@ -968,7 +1053,7 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 	return result;
 }
 /**
- * @brief Метод установки адреса сети с которого будет выполняться запрос
+ * @brief Метод установки адреса сети, с которого будет выполняться запрос
  *
  * @param source адрес сети для выполнения запроса
  * @return       результат выполнения установки
@@ -1032,7 +1117,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 	return false;
 }
 /**
- * @brief Метод установки адреса сети с которого будет выполняться запрос
+ * @brief Метод установки адреса сети, с которого будет выполняться запрос
  *
  * @param family семейство IP-адресов IPv4/IPv6
  * @param source адрес сети для выполнения запроса
@@ -1101,7 +1186,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
  * @return идентификатор ICMP-клиента для выполнения запроса к удалённому серверу
  */
 awh::unit::ICMP::id_t awh::unit::ICMP::issue() const noexcept {
-	// Создаём идентификатор события DNS-резолвера
+	// Генерируем идентификатор ICMP-запроса
 	return ::identifier();
 }
 /**
@@ -1119,6 +1204,10 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Если количество выполняемых запросов равно нулю
+		if(count == 0)
+			// Выводим результат
+			return result;
 		/**
 		 * Определяем режим выполнения пинга удалённого сервера
 		 */
@@ -1281,7 +1370,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 								icmp.meta.echo.sequence = htons(sequence);
 								// Устанавливаем данные полезной нагрузки
 								icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
-								// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
+								// Обнуляем поле контрольной суммы перед пересчётом
 								icmp.checksum = 0;
 								// Выполняем подсчёт контрольной суммы
 								icmp.checksum = ::checksum(&icmp, sizeof(icmp));
@@ -1366,7 +1455,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					icmp.meta.echo.identifier = htons(id);
 					// Устанавливаем данные полезной нагрузки
 					icmp.meta.echo.payload = static_cast <uint64_t> (dist6(generator));
-					// Обнуляем структуру (ОЧЕНЬ ВАЖНО ТАК-КАК РАСЧЁТ КОНТРОЛЬНОЙ СУММЫ НАЧИНАЕТСЯ С НУЛЯ!!!)
+					// Обнуляем поле контрольной суммы перед пересчётом
 					icmp.checksum = 0;
 					// Выполняем подсчёт контрольной суммы
 					icmp.checksum = ::checksum(&icmp, sizeof(icmp));
