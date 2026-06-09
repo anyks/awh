@@ -19,6 +19,11 @@
 #define __AWH_UNIT_SERVER__
 
 /**
+ * Стандартные модули
+ */
+#include <list>
+
+/**
  * Заголовочные файлы проекта
  */
 #include "unit.hpp"
@@ -74,6 +79,32 @@ namespace awh {
 			private:
 				// Список идентификаторов событий сервера
 				unordered_map <event::id_t, event::id_t> _events;
+			private:
+				// Список клиентов по идентификатору серверного события
+				unordered_map <event::id_t, std::list <event::id_t>> _serverClients;
+			private:
+				// Позиция клиента в списке клиентов его сервера
+				unordered_map <event::id_t, std::list <event::id_t>::iterator> _clientPositions;
+			private:
+				/**
+				 * @brief Метод удаления связи клиента с сервером
+				 *
+				 * @param cid идентификатор клиентского события
+				 */
+				void unlinkClient(const event::id_t cid) noexcept;
+				/**
+				 * @brief Метод удаления всех клиентов серверного события
+				 *
+				 * @param sid идентификатор серверного события
+				 */
+				void unlinkServerClients(const event::id_t sid) noexcept;
+				/**
+				 * @brief Метод регистрации связи клиента с сервером
+				 *
+				 * @param sid идентификатор серверного события
+				 * @param cid идентификатор клиентского события
+				 */
+				void linkClient(const event::id_t sid, const event::id_t cid) noexcept;
 			private:
 				/**
 				 * @brief Метод запуска/остановки работы сервера

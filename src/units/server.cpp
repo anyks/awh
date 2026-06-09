@@ -28,6 +28,161 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Метод удаления связи клиента с сервером
+ *
+ * @param cid идентификатор клиентского события
+ */
+void awh::unit::Server::unlinkClient(const event::id_t cid) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск клиентского события
+		auto i = this->_events.find(cid);
+		// Если клиентское событие найдено
+		if(i != this->_events.end()){
+			// Извлекаем идентификатор серверного события
+			const event::id_t sid = i->second;
+			// Если событие является клиентским
+			if(sid > 0){
+				// Выполняем поиск списка клиентов сервера
+				auto j = this->_serverClients.find(sid);
+				// Выполняем поиск позиции клиента в списке
+				auto k = this->_clientPositions.find(cid);
+				// Если список сервера и позиция клиента найдены
+				if((j != this->_serverClients.end()) && (k != this->_clientPositions.end())){
+					// Удаляем клиента из списка сервера за O(1)
+					j->second.erase(k->second);
+					// Если список клиентов сервера пуст
+					if(j->second.empty())
+						// Удаляем список клиентов сервера
+						this->_serverClients.erase(j);
+				}
+				// Удаляем позицию клиента в индексе
+				if(k != this->_clientPositions.end())
+					// Удаляем позицию клиента из индекса
+					this->_clientPositions.erase(k);
+			}
+			// Удаляем клиентское событие из общего индекса
+			this->_events.erase(i);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(cid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод удаления всех клиентов серверного события
+ *
+ * @param sid идентификатор серверного события
+ */
+void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск списка клиентов сервера
+		auto i = this->_serverClients.find(sid);
+		// Если список найден
+		if(i != this->_serverClients.end()){
+			// Удаляем только клиентов текущего сервера
+			for(const event::id_t cid : i->second){
+				// Удаляем клиент из общего индекса событий
+				auto j = this->_events.find(cid);
+				// Если клиент найден в общем индексе событий
+				if(j != this->_events.end())
+					// Удаляем клиентское событие из общего индекса событий
+					this->_events.erase(j);
+				// Удаляем позицию клиента
+				auto k = this->_clientPositions.find(cid);
+				// Если позиция клиента найдена
+				if(k != this->_clientPositions.end())
+					// Удаляем позицию клиента из индекса
+					this->_clientPositions.erase(k);
+				// Удаляем клиентское событие из IO-движка
+				this->_io->destroy(cid);
+			}
+			// Удаляем список клиентов сервера
+			this->_serverClients.erase(i);
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод регистрации связи клиента с сервером
+ *
+ * @param sid идентификатор серверного события
+ * @param cid идентификатор клиентского события
+ */
+void awh::unit::Server::linkClient(const event::id_t sid, const event::id_t cid) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если клиент уже связан, удаляем предыдущую связь
+		this->unlinkClient(cid);
+		// Добавляем связь клиентского события с серверным
+		this->_events.emplace(cid, sid);
+		// Регистрируем клиента в списке клиентов сервера
+		auto & clients = this->_serverClients[sid];
+		// Добавляем клиента в список сервера
+		clients.emplace_back(cid);
+		// Получаем итератор на добавленного клиента
+		auto i = clients.end();
+		// Двигаем итератор на добавленного клиента
+		--i;
+		// Сохраняем позицию клиента для удаления за O(1)
+		this->_clientPositions.emplace(cid, i);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, cid), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод запуска/остановки работы сервера
  *
  * @param status статус запуска/остановки сервера
@@ -118,8 +273,12 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				for(const auto & event : this->_events)
 					// Удаляем событие сервера
 					this->_io->destroy(event.first);
-				// Очищаем список событий сервера
+				// Очищаем внутренние индексы событий
 				this->_events.clear();
+				// Очищаем список клиентов сервера
+				this->_serverClients.clear();
+				// Очищаем позиции клиентов в индексе
+				this->_clientPositions.clear();
 			}
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("server_status")){
@@ -214,8 +373,8 @@ void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noe
 	this->_io->on(cid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3)));
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 	this->_io->on(cid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3)));
-	// Добавляем идентификатор события однорангового узла в список событий сервера
-	this->_events.emplace(cid, eid);
+	// Регистрируем связь клиентского события с сервером
+	this->linkClient(eid, cid);
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("accept"))
 		// Выполняем функцию обратного вызова
@@ -260,23 +419,12 @@ void awh::unit::Server::status(const event::id_t eid, const event::status_t stat
 		if(i != this->_events.end()){
 			// Если идентификатор события является сервером
 			if(i->second == 0){
-				/**
-				 * Удаляем все клиентские события, привязанные к данному серверу
-				 */
-				for(auto j = this->_events.begin(); j != this->_events.end();){
-					// Если найдено клиентское событие, принадлежащее этому серверу
-					if(i->first == j->second){
-						// Удаляем клиентское событие
-						this->_io->destroy(j->first);
-						// Удаляем идентификатор клиентского события из списка
-						j = this->_events.erase(j);
-					// Если событие не относится к этому серверу, переходим к следующему
-					} else ++j;
-				}
+				// Удаляем все клиентские события данного сервера
+				this->unlinkServerClients(i->first);
 				// Удаляем идентификатор события сервера
 				this->_events.erase(i);
 			// Если идентификатор относится к клиентскому событию, удаляем его
-			} else this->_events.erase(i);
+			} else this->unlinkClient(i->first);
 		}
 	}
 	// Если функция обратного вызова установлена
@@ -1323,15 +1471,16 @@ bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mo
 void awh::unit::Server::clear() noexcept {
 	// Если в списке событий сервера есть события
 	if(!this->_events.empty()){
-		/**
-		 * @brief Удаляем все события, которые принадлежат этому серверу
-		 */
-		for(auto i = this->_events.begin(); i != this->_events.end();){
+		// Удаляем все события сервера
+		for(const auto & event : this->_events)
 			// Удаляем событие сервера
-			this->_io->destroy(i->first);
-			// Удаляем идентификатор события сервера из списка событий сервера
-			i = this->_events.erase(i);
-		}
+			this->_io->destroy(event.first);
+		// Очищаем внутренние индексы событий
+		this->_events.clear();
+		// Очищаем список клиентов сервера
+		this->_serverClients.clear();
+		// Очищаем позиции клиентов в индексе
+		this->_clientPositions.clear();
 	}
 }
 /**
@@ -1558,19 +1707,8 @@ void awh::unit::Server::destroy(const event::id_t eid) noexcept {
 		if(i != this->_events.end()){
 			// Если идентификатор события является сервером
 			if(i->second == 0){
-				/**
-				 * Удаляем все клиентские события, привязанные к данному серверу
-				 */
-				for(auto j = this->_events.begin(); j != this->_events.end();){
-					// Если найдено клиентское событие, принадлежащее этому серверу
-					if(i->first == j->second){
-						// Удаляем клиентское событие
-						this->_io->destroy(j->first);
-						// Удаляем идентификатор клиентского события из списка
-						j = this->_events.erase(j);
-					// Если событие не относится к этому серверу, переходим к следующему
-					} else ++j;
-				}
+				// Удаляем все клиентские события данного сервера
+				this->unlinkServerClients(i->first);
 				// Удаляем событие сервера
 				this->_io->destroy(i->first);
 				// Удаляем идентификатор события сервера из списка событий
@@ -1579,8 +1717,8 @@ void awh::unit::Server::destroy(const event::id_t eid) noexcept {
 			} else {
 				// Удаляем событие сервера
 				this->_io->destroy(i->first);
-				// Удаляем идентификатор клиентского события из списка
-				this->_events.erase(i);
+				// Удаляем идентификатор клиентского события из индексов
+				this->unlinkClient(i->first);
 			}
 		}
 	}
@@ -1867,5 +2005,11 @@ awh::unit::Server::~Server() noexcept {
 		for(const auto & event : this->_events)
 			// Удаляем событие сервера
 			this->_io->destroy(event.first);
+		// Очищаем внутренние индексы событий
+		this->_events.clear();
+		// Очищаем список клиентов сервера
+		this->_serverClients.clear();
+		// Очищаем позиции клиентов в индексе
+		this->_clientPositions.clear();
 	}
 }
