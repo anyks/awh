@@ -135,7 +135,7 @@ namespace awh {
 			/**
 			 * @brief Метод изменения статуса сервера
 			 *
-			 * @param index  индекс очереди запускаемого события
+			 * @param index  индекс обрабатываемого события
 			 * @param status новый статус сервера
 			 */
 			virtual void status(const uint8_t index, const event::status_t status) noexcept;
@@ -177,7 +177,7 @@ namespace awh {
 			 */
 			virtual void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
 			/**
-			 * @brief Метод получения события ошибок
+			 * @brief Метод обработки события ошибки
 			 *
 			 * @param eid     идентификатор события
 			 * @param error   код ошибки
@@ -187,7 +187,7 @@ namespace awh {
 			/**
 			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
 			 *
-			 * @param domain   доменное имя для резолвинга
+			 * @param domain   доменное имя для разрешения
 			 * @param attempts количество попыток подключения
 			 */
 			virtual void attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept;
@@ -203,13 +203,13 @@ namespace awh {
 			 * @brief Метод обработки событий истечения таймаута клиента
 			 *
 			 * @param eid    идентификатор клиента
-			 * @param action тип действия для истекшего таймаута
+			 * @param action тип действия для истёкшего таймаута
 			 * @param delay  задержка таймаута в миллисекундах
 			 * @return       нужно ли завершить клиента после истечения таймаута
 			 */
 			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			/**
-			 * @brief Метод обработки неудачного резолвинга доменного имени
+			 * @brief Метод обработки неудачного разрешения доменного имени
 			 *
 			 * @param id     идентификатор DNS-запроса
 			 * @param record тип записи DNS
@@ -217,7 +217,7 @@ namespace awh {
 			 */
 			virtual void failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept;
 			/**
-			 * @brief Метод обработки события неотправленных данных клиенту
+			 * @brief Метод обработки события невозможности отправки данных клиенту
 			 *
 			 * @param eid   идентификатор клиента
 			 * @param error тип ошибки отправки данных
@@ -226,11 +226,11 @@ namespace awh {
 			 */
 			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
 			/**
-			 * @brief Метод резолвинга доменного имени удалённого хоста в сетевой адрес
+			 * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
 			 *
 			 * @param family семейство адресов (IPv4/IPv6)
-			 * @param domain доменное имя для резолвинга
-			 * @param addr   указатель на структуру для хранения результата резолвинга
+			 * @param domain доменное имя для разрешения
+			 * @param addr   указатель на структуру для хранения результата разрешения
 			 */
 			virtual void resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
 		protected:
@@ -245,7 +245,7 @@ namespace awh {
 			 * @brief Метод получения события завершения работы процесса
 			 *
 			 * @param pid    идентификатор процесса
-			 * @param signal сигнал с которым завершился процесс
+			 * @param signal сигнал, с которым завершился процесс
 			 */
 			virtual void exitCluster(const pid_t pid, const int32_t signal) noexcept;
 			/**
@@ -263,7 +263,7 @@ namespace awh {
 			 */
 			virtual void stateCluster(const pid_t pid, const event::status_t status) noexcept;
 			/**
-			 * @brief Метод получения событий активации/деактивации кластера
+			 * @brief Метод обработки событий активации/деактивации кластера
 			 *
 			 * @param pid   идентификатор процесса
 			 * @param event флаг события кластера
@@ -311,7 +311,7 @@ namespace awh {
 			 */
 			virtual void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept;
 			/**
-			 * @brief Метод получения ошибок TLS
+			 * @brief Метод обработки ошибок TLS
 			 *
 			 * @param id      идентификатор TLS
 			 * @param eid     идентификатор клиента
@@ -320,7 +320,7 @@ namespace awh {
 			 */
 			virtual void errorTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::error_t error, const string & message) noexcept;
 			/**
-			 * @brief Метод получения событий шифрования/дешифрования данных TLS
+			 * @brief Метод обработки событий шифрования/дешифрования данных TLS
 			 *
 			 * @param id     идентификатор TLS
 			 * @param eid    идентификатор клиента

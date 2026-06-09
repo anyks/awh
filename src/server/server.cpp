@@ -30,12 +30,12 @@ using namespace placeholders;
 /**
  * @brief Метод изменения статуса сервера
  *
- * @param index  индекс очереди запускаемого события
+ * @param index  индекс обрабатываемого события
  * @param status новый статус сервера
  */
 void awh::Server::status(const uint8_t index, const event::status_t status) noexcept {
 	/**
-	 * Временное состояние сервера
+	 * Обрабатываем источник события
 	 */
 	switch(index){
 		// Если мы получили статус события сервера
@@ -69,7 +69,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("launch")){
 						/**
-						 * Определяем семейство адресов с которым работает сервер
+						 * Определяем семейство адресов, с которым работает сервер
 						 */
 						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (&this->_unit->server)->family(this->_id.eid))){
 							// Если сервер работает с адресами IPv4
@@ -117,7 +117,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 					switch(static_cast <uint8_t> (this->_unit->addr.host(this->_host))){
 						// Для типа IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
-							// Устанавливаем адрес хоста целевой текущей машины
+							// Устанавливаем адрес хоста текущей машины
 							if(this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV4, this->_host)){
 								// Если событие сервера не запущено, запускаем его
 								if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
@@ -137,7 +137,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 						} break;
 						// Для типа IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
-							// Устанавливаем адрес хоста целевой текущей машины
+							// Устанавливаем адрес хоста текущей машины
 							if(this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV6, this->_host)){
 								// Если событие сервера не запущено, запускаем его
 								if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
@@ -156,9 +156,9 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 							}
 						} break;
 					}
-					// Выполняем резолвинг хоста текущего сервера
+					// Выполняем разрешение имени хоста текущего сервера
 					if(!this->_dns.client->resolve(this->_dns.id, this->_unit->server.family(this->_id.eid), this->_host, this->_dns.alive.load(std::memory_order_acquire))){
-						// Создаём текст ошибки резолвинга хоста текущего сервера
+						// Создаём текст ошибки разрешения хоста текущего сервера
 						const string error = this->_fmk->format("It was not possible to obtain an IP address for the host \"%s\"", this->_host.c_str());
 						// Если функция обратного вызова не установлена
 						if(!this->_callback.is("error")){
@@ -234,49 +234,53 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 		// Создаём идентификатор транспортного уровня TLS/DTLS
 		tls::coder_t::id_t ctl = this->_tls.coder->transport(this->_id.sid);
 		// Добавляем сопоставление идентификатора клиента с идентификатором TLS
-		this->_tls.safety.emplace(cid, ctl);
-		/**
-		 * Определяем семейство адресов с которым работает клиент
-		 */
-		switch(static_cast <uint8_t> (this->_unit->server.family(cid))){
-			// Если клиент работает с адресами IPv4
-			case static_cast <uint8_t> (event::family_t::IPV4):
-				// Устанавливаем клиента TLS для события
-				this->_tls.coder->peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV4), this->_unit->server.getPort(cid));
-			break;
-			// Если клиент работает с адресами IPv6
-			case static_cast <uint8_t> (event::family_t::IPV6):
-				// Устанавливаем клиента TLS для события
-				this->_tls.coder->peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV6), this->_unit->server.getPort(cid));
-			break;
-		}
-		// Регистрируем функцию обратного вызова на изменение состояния TLS
-		this->_tls.coder->on(ctl, std::bind(&server_t::stateTLS, this, _1, cid, _2));
-		// Регистрируем функцию обратного вызова на получение ошибок TLS
-		this->_tls.coder->on(ctl, std::bind(&server_t::errorTLS, this, _1, cid, _2, _3));
-		// Регистрируем функцию обратного вызова на получение снимка браузера приславшего ClientHello
-		this->_tls.coder->on(ctl, std::bind(&server_t::fingerprintTLS, this, _1, cid, _2));
-		// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-		this->_tls.coder->on(ctl, std::bind(&server_t::processTLS, this, _1, cid, _2, _3, _4));
-		// Если рукопожатие TLS не выполнено
-		if(!this->_tls.coder->handshake(ctl)){
-			// Если функция обратного вызова не установлена
-			if(!this->_callback.is("error_tls")){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
-					this->_log->debug("TLS handshake process was not completed", __PRETTY_FUNCTION__, make_tuple(eid, cid), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Выводим сообщение об ошибке
-					this->_log->print("TLS handshake process was not completed", log_t::flag_t::WARNING);
-				#endif
+		if(this->_tls.safety.emplace(cid, ctl).second){
+			/**
+			 * Определяем семейство адресов, с которым работает клиент
+			 */
+			switch(static_cast <uint8_t> (this->_unit->server.family(cid))){
+				// Если клиент работает с адресами IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+					// Устанавливаем клиента TLS для события
+					this->_tls.coder->peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV4), this->_unit->server.getPort(cid));
+				break;
+				// Если клиент работает с адресами IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6):
+					// Устанавливаем клиента TLS для события
+					this->_tls.coder->peer(ctl, this->_unit->server.getAddress(cid, event::address_t::IPV6), this->_unit->server.getPort(cid));
+				break;
 			}
+			// Регистрируем функцию обратного вызова на изменение состояния TLS
+			this->_tls.coder->on(ctl, std::bind(&server_t::stateTLS, this, _1, cid, _2));
+			// Регистрируем функцию обратного вызова на получение ошибок TLS
+			this->_tls.coder->on(ctl, std::bind(&server_t::errorTLS, this, _1, cid, _2, _3));
+			// Регистрируем функцию обратного вызова на получение снимка браузера отправившего ClientHello
+			this->_tls.coder->on(ctl, std::bind(&server_t::fingerprintTLS, this, _1, cid, _2));
+			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+			this->_tls.coder->on(ctl, std::bind(&server_t::processTLS, this, _1, cid, _2, _3, _4));
+			// Если рукопожатие TLS не выполнено
+			if(!this->_tls.coder->handshake(ctl)){
+				// Если функция обратного вызова не установлена
+				if(!this->_callback.is("error_tls")){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("TLS handshake process was not completed", __PRETTY_FUNCTION__, make_tuple(eid, cid), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("TLS handshake process was not completed", log_t::flag_t::WARNING);
+					#endif
+				}
+			// Если рукопожатие TLS выполнено успешно, выходим из функции
+			} else return;
 		}
+		// Уничтожаем подключившегося клиента
+		this->_unit->server.destroy(cid);
 	// Если объект транспортного уровня безопасности не установлен
 	} else {
 		// Если функция обратного вызова установлена
@@ -381,13 +385,13 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("TLS data decryption failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("TLS decryption data is failed", log_t::flag_t::WARNING);
+							this->_log->print("TLS data decryption failed", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -402,7 +406,7 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 	}
 }
 /**
- * @brief Метод получения события ошибок
+ * @brief Метод обработки события ошибки
  *
  * @param eid     идентификатор события
  * @param error   код ошибки
@@ -420,7 +424,7 @@ void awh::Server::error(const event::id_t eid, const event::error_t error, const
 /**
  * @brief Метод обработки попыток подключения клиента к удалённому серверу
  *
- * @param domain   доменное имя для резолвинга
+ * @param domain   доменное имя для разрешения
  * @param attempts количество попыток подключения
  */
 void awh::Server::attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept {
@@ -452,7 +456,7 @@ void awh::Server::available(const event::id_t eid, const event::status_t status,
  * @brief Метод обработки событий истечения таймаута клиента
  *
  * @param eid    идентификатор клиента
- * @param action тип действия для истекшего таймаута
+ * @param action тип действия для истёкшего таймаута
  * @param delay  задержка таймаута в миллисекундах
  * @return       нужно ли завершить клиента после истечения таймаута
  */
@@ -468,7 +472,7 @@ bool awh::Server::timeout(const event::id_t eid, const event::action_t action, c
 	return true;
 }
 /**
- * @brief Метод обработки неудачного резолвинга доменного имени
+ * @brief Метод обработки неудачного разрешения доменного имени
  *
  * @param id     идентификатор DNS-запроса
  * @param record тип записи DNS
@@ -484,7 +488,7 @@ void awh::Server::failure(const unit::dns_t::id_t id, const unit::dns_t::record_
 	}
 }
 /**
- * @brief Метод обработки события неотправленных данных клиенту
+ * @brief Метод обработки события невозможности отправки данных клиенту
  *
  * @param eid   идентификатор клиента
  * @param error тип ошибки отправки данных
@@ -501,22 +505,22 @@ void awh::Server::spool(const event::id_t eid, const event::send_error_t error, 
 	}
 }
 /**
- * @brief Метод резолвинга доменного имени в сетевой адрес
+ * @brief Метод разрешения доменного имени в сетевой адрес
  *
  * @param family семейство адресов (IPv4/IPv6)
- * @param domain доменное имя для резолвинга
- * @param addr   указатель на структуру для хранения результата резолвинга
+ * @param domain доменное имя для разрешения
+ * @param addr   указатель на структуру для хранения результата разрешения
  */
 void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии
 	if(this->_dns.client->working()){
 		/**
-		 * Определяем семейство адресов с которым работает сервер
+		 * Определяем семейство адресов, с которым работает сервер
 		 */
 		switch(static_cast <uint8_t> (family)){
 			// Если сервер работает с адресами IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
-				// Устанавливаем адрес хоста целевой текущей машины
+				// Устанавливаем адрес хоста текущей машины
 				if(this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV4, addr)){
 					// Если событие сервера не запущено, запускаем его
 					if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
@@ -534,7 +538,7 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
 			} break;
 			// Если сервер работает с адресами IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
-				// Устанавливаем адрес хоста целевой текущей машины
+				// Устанавливаем адрес хоста текущей машины
 				if(this->_unit->server.setAddress(this->_id.eid, event::address_t::IPV6, addr)){
 					// Если событие сервера не запущено, запускаем его
 					if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
@@ -569,7 +573,7 @@ void awh::Server::rebaseCluster(const pid_t old, const pid_t pid) noexcept {
  * @brief Метод получения события завершения работы процесса
  *
  * @param pid    идентификатор процесса
- * @param signal сигнал с которым завершился процесс
+ * @param signal сигнал, с которым завершился процесс
  */
 void awh::Server::exitCluster(const pid_t pid, const int32_t signal) noexcept {
 	// Если функция обратного вызова установлена
@@ -602,7 +606,7 @@ void awh::Server::stateCluster(const pid_t pid, const event::status_t status) no
 		this->_callback.call <void (const pid_t, const event::status_t)> ("cluster_state", pid, status);
 }
 /**
- * @brief Метод получения событий активации/деактивации кластера
+ * @brief Метод обработки событий активации/деактивации кластера
  *
  * @param pid   идентификатор процесса
  * @param event флаг события кластера
@@ -679,15 +683,17 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 					 */
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
-						this->_log->debug("TLS is failed", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (state)), log_t::flag_t::WARNING);
+						this->_log->debug("TLS failed", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (state)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Выводим сообщение об ошибке
-						this->_log->print("TLS is failed", log_t::flag_t::WARNING);
+						this->_log->print("TLS failed", log_t::flag_t::WARNING);
 					#endif
 				}
+				// Уничтожаем подключившегося клиента
+				this->_unit->server.destroy(eid);
 			} break;
 			// Если состояние уничтожения объекта транспортного уровня
 			case static_cast <uint8_t> (tls::coder_t::state_t::DESTROYED): {
@@ -699,6 +705,8 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 					if(i != this->_tls.safety.end())
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
+					// Уничтожаем подключившегося клиента
+					this->_unit->server.destroy(eid);
 				}
 			} break;
 			// Если состояние рукопожатия успешно завершено
@@ -728,7 +736,7 @@ void awh::Server::fingerprintTLS(const tls::coder_t::id_t id, const event::id_t 
 	}
 }
 /**
- * @brief Метод получения ошибок TLS
+ * @brief Метод обработки ошибок TLS
  *
  * @param id      идентификатор TLS
  * @param eid     идентификатор клиента
@@ -758,7 +766,7 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 	}
 }
 /**
- * @brief Метод получения событий шифрования/дешифрования данных TLS
+ * @brief Метод обработки событий шифрования/дешифрования данных TLS
  *
  * @param id     идентификатор TLS
  * @param eid    идентификатор клиента
@@ -784,13 +792,13 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 						 */
 						#if DEBUG_MODE
 							// Выводим сообщение об ошибке
-							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+							this->_log->debug("Encrypted data cannot be sent to the client", __PRETTY_FUNCTION__, make_tuple(id, eid, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
 							// Выводим сообщение об ошибке
-							this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
+							this->_log->print("Encrypted data cannot be sent to the client", log_t::flag_t::WARNING);
 						#endif
 					}
 				}
@@ -968,7 +976,7 @@ void awh::Server::start() noexcept {
 							// Хост текущего сервера
 							string host = "";
 							/**
-							 * Определяем семейство адресов с которым работает сервер
+							 * Определяем семейство адресов, с которым работает сервер
 							 */
 							switch(static_cast <uint8_t> (this->_unit->server.family(this->_id.eid))){
 								// Если сервер работает с адресами Unix Domain Socket
@@ -1180,7 +1188,7 @@ bool awh::Server::listen(const uint16_t max) noexcept {
  * @param callback функции обратного вызова
  */
 void awh::Server::callback(const callback_t & callback) noexcept {
-	// Выполняем установку функции обратного вызова на событие получение данных от клиента
+	// Выполняем установку функции обратного вызова на событие получения данных от клиента
 	this->_callback.set("read", callback);
 	// Выполняем установку функции обратного вызова при отправке данных клиенту
 	this->_callback.set("write", callback);
@@ -1188,7 +1196,7 @@ void awh::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("ready", callback);
 	// Выполняем установку функции обратного вызова при изменении состояния сервера
 	this->_callback.set("state", callback);
-	// Выполняем установку функции обратного вызова на событие неотправленных данных клиентом
+	// Выполняем установку функции обратного вызова на событие невозможности отправки данных клиенту
 	this->_callback.set("spool", callback);
 	// Выполняем установку функции обратного вызова на событие получения ошибок
 	this->_callback.set("error", callback);
@@ -1210,9 +1218,9 @@ void awh::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("state_tls", callback);
 	// Выполняем установку функции обратного вызова на событие получения отпечатка ClientHello TLS
 	this->_callback.set("fingerprint_tls", callback);
-	// Выполняем установку функции обратного вызова на событие неудачного резолвинга доменного имени DNS-резолвером
+	// Выполняем установку функции обратного вызова на событие неудачного разрешения доменного имени DNS-резолвером
 	this->_callback.set("failure_dns", callback);
-	// Выполняем установку функции обратного вызова на событие завершения попыток резолвинга доменного имени DNS-резолвером
+	// Выполняем установку функции обратного вызова на событие завершения попыток разрешения доменного имени DNS-резолвером
 	this->_callback.set("attempts_dns", callback);
 	// Выполняем установку функции обратного вызова при завершении работы процесса кластера
 	this->_callback.set("cluster_exit", callback);
@@ -1222,7 +1230,7 @@ void awh::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("cluster_state", callback);
 	// Выполняем установку функции обратного вызова при пересоздании процесса кластера
 	this->_callback.set("cluster_rebase", callback);
-	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКЕ процесса кластера
+	// Выполняем установку функции обратного вызова при запуске/остановке процесса кластера
 	this->_callback.set("cluster_events", callback);
 	// Выполняем установку функции обратного вызова при отправке сообщения кластера
 	this->_callback.set("cluster_sending", callback);
@@ -1321,13 +1329,14 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
  * @return     результат выполнения объединения
  */
 bool awh::Server::splice(const event::id_t eid, const event::id_t dest) noexcept {
-	// Если идентификатор клиента найден в списке обслуживаемых клиентов
-	if(((eid != this->_id.eid) && this->_unit->server.isActual(eid)) ||
-	   ((dest != this->_id.eid) && this->_unit->server.isActual(dest)))
-		// Объединяем данные между событиями
-		return this->_unit->server.splice(eid, dest);
+	// Если объединяемые события не принадлежат текущему серверу
+	if((eid != this->_id.eid) && (dest != this->_id.eid)){
+		// Если один из идентификаторов события принадлежит к пирам текущего сервера
+		if(this->_unit->server.isActual(eid) || this->_unit->server.isActual(dest))
+			// Объединяем данные между событиями
+			return this->_unit->server.splice(eid, dest);
 	// Если идентификатор клиента не найден в списке обслуживаемых клиентов
-	else {
+	} else {
 		/**
 		 * Если включён режим отладки
 		 */
@@ -1820,7 +1829,7 @@ bool awh::Server::setAddress(const event::address_t address, string_view value) 
 			// Устанавливаем адрес сервера
 			if((result = this->_unit->server.setAddress(this->_id.eid, address, value))){
 				/**
-				 * Определяем семейство адресов с которым работает сервер
+				 * Определяем семейство адресов, с которым работает сервер
 				 */
 				switch(static_cast <uint8_t> (this->_unit->server.family(this->_id.eid))){
 					// Если сервер работает с адресами Unix Domain Socket
@@ -1908,7 +1917,7 @@ bool awh::Server::setAddress(const event::address_t address, const net::addr_t *
 			// Устанавливаем адрес сервера
 			if((result = this->_unit->server.setAddress(this->_id.eid, address, value))){
 				/**
-				 * Определяем семейство адресов с которым работает сервер
+				 * Определяем семейство адресов, с которым работает сервер
 				 */
 				switch(static_cast <uint8_t> (this->_unit->server.family(this->_id.eid))){
 					// Если сервер работает с адресами IPv4
@@ -2115,7 +2124,7 @@ bool awh::Server::setDelivery(const event::id_t eid, const event::delivery_mode_
 		// Если идентификатор сервера или клиента является активным
 		if((eid == this->_id.eid) || this->_unit->server.isActual(eid))
 			// Устанавливаем режим трансляции пакетов сервера или удалённого клиента
-			return this->_unit->server.setDelivery(this->_id.eid, delivery);
+			return this->_unit->server.setDelivery(eid, delivery);
 		// Если идентификатор сервера или клиента не установлен
 		else {
 			/**
@@ -2480,7 +2489,7 @@ bool awh::Server::bandwidth(const event::limiting_t limiting, string_view bandwi
 	// Если идентификатор сервера установлен
 	if(this->_id.eid > 0)
 		// Устанавливаем пропускную способность сервера
-		this->_unit->server.bandwidth(this->_id.eid, limiting, bandwidth);
+		return this->_unit->server.bandwidth(this->_id.eid, limiting, bandwidth);
 	// Если идентификатор сервера не установлен
 	else {
 		/**
@@ -2512,7 +2521,7 @@ bool awh::Server::bandwidth(const event::id_t eid, const event::limiting_t limit
 	// Если идентификатор сервера или клиента является активным
 	if((eid == this->_id.eid) || this->_unit->server.isActual(eid))
 		// Устанавливаем пропускную способность сервера или клиента
-		this->_unit->server.bandwidth(eid, limiting, bandwidth);
+		return this->_unit->server.bandwidth(eid, limiting, bandwidth);
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -2545,7 +2554,7 @@ bool awh::Server::keepAlive(const event::id_t eid, const int32_t cnt, const int3
 	// Если идентификатор сервера или клиента является активным
 	if((eid == this->_id.eid) || this->_unit->server.isActual(eid))
 		// Устанавливаем параметры keep-alive для сервера или клиента
-		this->_unit->server.keepAlive(eid, cnt, idle, intvl);
+		return this->_unit->server.keepAlive(eid, cnt, idle, intvl);
 	// Если идентификатор сервера или клиента не найден в списке обслуживаемых клиентов
 	else {
 		/**
@@ -3018,7 +3027,7 @@ awh::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_unit->server.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных сервера
 	this->_unit->server.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &server_t::available, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
+	// Устанавливаем функцию обратного вызова на событие невозможности отправки данных сервером
 	this->_unit->server.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 	// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
 	this->_unit->server.on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
@@ -3086,7 +3095,7 @@ awh::Server::Server(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) no
 	this->_unit->server.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных сервера
 	this->_unit->server.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &server_t::available, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
+	// Устанавливаем функцию обратного вызова на событие невозможности отправки данных сервером
 	this->_unit->server.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 	// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
 	this->_unit->server.on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
@@ -3134,7 +3143,7 @@ awh::Server::Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 	this->_unit->server.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных сервера
 	this->_unit->server.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &server_t::available, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
+	// Устанавливаем функцию обратного вызова на событие невозможности отправки данных сервером
 	this->_unit->server.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 	// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
 	this->_unit->server.on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
@@ -3162,9 +3171,9 @@ awh::Server::Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 		this->_dns.client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &server_t::error, this, _1, _2, _3);
 		// Устанавливаем функции обратного вызова для обработки попыток подключения клиента к удалённому серверу
 		this->_dns.client->on <void (const unit::dns_t::id_t, const string &, const uint8_t)> ("attempts", &server_t::attempts, this, _1, _2, _3);
-		// Устанавливаем функции обратного вызова для обработки событий неотправленных данных DNS-резолвера
+		// Устанавливаем функции обратного вызова для обработки событий невозможности отправки данных DNS-резолвером
 		this->_dns.client->on <void (const unit::dns_t::id_t, const unit::dns_t::record_t, const string &)>  ("failure", &server_t::failure, this, _1, _2, _3);
-		// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+		// Устанавливаем функции обратного вызова для обработки разрешения доменного имени в сетевой адрес
 		this->_dns.client->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server_t::resolve, this, _1, _2, _3, _4);
 	// Если объект DNS-резолвера не установлен
 	} else {
@@ -3235,7 +3244,7 @@ awh::Server::Server(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, co
 	this->_unit->server.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных сервера
 	this->_unit->server.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &server_t::available, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
+	// Устанавливаем функцию обратного вызова на событие невозможности отправки данных сервером
 	this->_unit->server.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &server_t::spool, this, _1, _2, _3, _4);
 	// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
 	this->_unit->server.on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
@@ -3263,9 +3272,9 @@ awh::Server::Server(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, co
 		this->_dns.client->on <void (const event::id_t, const event::error_t, const string &)> ("error", &server_t::error, this, _1, _2, _3);
 		// Устанавливаем функции обратного вызова для обработки попыток подключения клиента к удалённому серверу
 		this->_dns.client->on <void (const unit::dns_t::id_t, const string &, const uint8_t)> ("attempts", &server_t::attempts, this, _1, _2, _3);
-		// Устанавливаем функции обратного вызова для обработки событий неотправленных данных DNS-резолвера
+		// Устанавливаем функции обратного вызова для обработки событий невозможности отправки данных DNS-резолвером
 		this->_dns.client->on <void (const unit::dns_t::id_t, const unit::dns_t::record_t, const string &)>  ("failure", &server_t::failure, this, _1, _2, _3);
-		// Устанавливаем функции обратного вызова для обработки резолвинга доменного имени в сетевой адрес
+		// Устанавливаем функции обратного вызова для обработки разрешения доменного имени в сетевой адрес
 		this->_dns.client->on <void (const unit::dns_t::id_t, const event::family_t, const string &, const net::addr_t *)> ("address", &server_t::resolve, this, _1, _2, _3, _4);
 	// Если объект DNS-резолвера не установлен
 	} else {
