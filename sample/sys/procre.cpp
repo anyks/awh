@@ -19,7 +19,9 @@
 #include <net/addr.hpp>
 #include <sys/procre.hpp>
 
-// Подключаем пространство имён
+/**
+ * Используем пространство имён AWH
+ */
 using namespace awh;
 
 /**

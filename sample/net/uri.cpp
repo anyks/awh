@@ -18,7 +18,7 @@
 #include <net/uri.hpp>
 
 /**
- * Подписываемся на пространство имён AWH
+ * Используем пространство имён AWH
  */
 using namespace awh;
 

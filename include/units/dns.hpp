@@ -40,9 +40,10 @@ namespace awh {
 	 */
 	namespace unit {
 		/**
-		 * Стандартное пространство имён
+		 * Используем стандартное пространство имён
 		 */
 		using namespace std;
+
 		/**
 		 * @brief Класс DNS-резолвера
 		 *

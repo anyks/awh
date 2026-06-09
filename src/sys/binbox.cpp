@@ -24,7 +24,7 @@
 #include <sys/version.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
@@ -33,7 +33,7 @@ using namespace std;
  */
 namespace binbox {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 

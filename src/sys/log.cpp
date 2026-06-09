@@ -47,12 +47,12 @@
 #include <sys/log.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
 /**
- * Подписываемся на пространство имён placeholders
+ * Используем пространство имён placeholders
  */
 using namespace placeholders;
 
@@ -71,7 +71,7 @@ awh::Logging::Payload & awh::Logging::Payload::operator = (payload_t && payload)
 	return (* this);
 }
 /**
- * @brief Оператор [=] присванивания параметров полезной нагрузки
+ * @brief Оператор [=] присваивания параметров полезной нагрузки
  *
  * @param payload объект полезной нагрузки для копирования
  * @return        текущий объект полезной нагрузки

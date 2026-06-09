@@ -37,12 +37,12 @@
 #include <units/ntp.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
 /**
- * Подписываемся на пространство имён placeholders
+ * Используем пространство имён placeholders
  */
 using namespace placeholders;
 
@@ -79,11 +79,27 @@ using namespace placeholders;
 #endif
 
 /**
+ * Инкапсулируем статические типы данных в пространство имён
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Генератор случайных чисел для рандомизации NTP-серверов
+	 *
+	 */
+	random_device __awh_randev__;
+};
+
+/**
  * Инкапсулируем параметры NTP-серверов в пространство имён
  */
 namespace servers {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -147,22 +163,6 @@ namespace servers {
 			::freeaddrinfo(result);
 		}
 	}
-};
-
-/**
- * Инкапсулируем статические типы данных в пространство имён
- */
-namespace {
-	/**
-	 * Подписываемся на пространство имён AWH
-	 */
-	using namespace awh;
-
-	/**
-	 * @brief Генератор случайных чисел для рандомизации NTP-серверов
-	 *
-	 */
-	random_device __awh_randev__;
 };
 
 /**

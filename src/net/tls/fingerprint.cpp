@@ -51,8 +51,8 @@
 /**
  * Стандартные модули
  */
-#include <cstdint>
 #include <vector>
+#include <cstdint>
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -70,7 +70,7 @@
 #include <net/tls/fingerprint.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
@@ -79,7 +79,7 @@ using namespace std;
  */
 namespace local {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1288,7 +1288,7 @@ namespace local {
  */
 namespace fingerprint {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 

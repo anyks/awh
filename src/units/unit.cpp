@@ -176,12 +176,12 @@
 #endif
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
 /**
- * Подписываемся на пространство имён placeholders
+ * Используем пространство имён placeholders
  */
 using namespace placeholders;
 
@@ -190,7 +190,7 @@ using namespace placeholders;
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 

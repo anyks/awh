@@ -18,7 +18,7 @@
 #include <units/server.hpp>
 
 /**
- * Используем пространство имён std
+ * Используем стандартное пространство имён
  */
 using namespace std;
 

@@ -62,7 +62,7 @@
 #include <net/eth/socket.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
@@ -77,7 +77,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 	int32_t result = -1;
 	// Размер кода ошибки
 	socklen_t size = sizeof(result);
-	// Если мы получили ошибку, выходим сообщение
+	// Если мы получили ошибку, выводим сообщение
 	if(::getsockopt(sock, SOL_SOCKET, SO_ERROR, &result, &size) != 0){
 		/**
 		 * Если включён режим отладки

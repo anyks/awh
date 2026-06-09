@@ -18,12 +18,12 @@
 #include <units/client.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
 /**
- * Подписываемся на пространство имён placeholders
+ * Используем пространство имён placeholders
  */
 using namespace placeholders;
 
@@ -66,7 +66,7 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 	}
 }
 /**
- * @brief Метод обработки событий подключения клиента к удалённому серверу
+ * @brief Метод обработки события подключения клиента к удалённому узлу
  *
  * @param eid идентификатор события
  * @param ok  результат подключения
@@ -108,7 +108,7 @@ void awh::unit::Client::action(const event::id_t eid, const event::action_t acti
  * @param status новый статус клиента
  */
 void awh::unit::Client::status(const event::id_t eid, const event::status_t status) noexcept {
-	// Если статус сервера представляет из себя уничтожение
+	// Если событие клиента уничтожено
 	if(status == event::status_t::DESTROYED){
 		// Выполняем поиск идентификатора события клиента в списке событий
 		auto i = this->_events.find(eid);
@@ -350,7 +350,7 @@ bool awh::unit::Client::resume(const event::id_t eid) noexcept {
 	return false;
 }
 /**
- * @brief Метод отключения клиента от удалённого сервера
+ * @brief Метод отключения клиента от удалённого узла
  *
  * @param eid идентификатор события клиента
  * @return    результат выполнения отключения
@@ -358,7 +358,7 @@ bool awh::unit::Client::resume(const event::id_t eid) noexcept {
 bool awh::unit::Client::disconnect(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем отключение клиента от сервера
+		// Выполняем отключение клиента от удалённого узла
 		return this->_io->disconnect(eid);
 	// Выводим результат по умолчанию
 	return false;
@@ -382,11 +382,11 @@ bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
 		if(!this->isActual(eid))
 			// Выводим результат по умолчанию
 			return false;
-	// Выполняем подключение клиента к серверу
+	// Выполняем подключение клиента к удалённому узлу
 	return this->_io->connect(ids);
 }
 /**
- * @brief Метод получения данных от сервера
+ * @brief Метод получения данных от удалённого узла
  *
  * @param eid идентификатор события клиента
  * @return    результат получения данных
@@ -394,38 +394,38 @@ bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
 bool awh::unit::Client::recv(const event::id_t eid) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем получение данных от сервера
+		// Выполняем получение данных от удалённого узла
 		return this->_io->recv(eid);
 	// Выводим результат по умолчанию
 	return false;
 }
 /**
- * @brief Метод отправки данных серверу
+ * @brief Метод отправки данных удалённому узлу
  *
  * @param eid    идентификатор события клиента
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
- * @return       количество байт данных, отправленных серверу
+ * @return       количество байт, отправленных удалённому узлу
  */
 size_t awh::unit::Client::send(const event::id_t eid, const void * buffer, const size_t size) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем отправку данных серверу
+		// Выполняем отправку данных удалённому узлу
 		return this->_io->send(eid, buffer, size);
 	// Выводим результат по умолчанию
 	return 0;
 }
 /**
- * @brief Метод объединения данных между клиентом и другим событием
+ * @brief Метод объединения потоков данных между двумя событиями
  *
  * @param eid  идентификатор события-источника
  * @param dest идентификатор события-приёмника
- * @return     результат выполнения объединения
+ * @return     результат объединения
  */
 bool awh::unit::Client::splice(const event::id_t eid, const event::id_t dest) noexcept {
-	// Если событие клиента является актуальным
-	if(this->isActual(eid) || this->isActual(dest))
-		// Выполняем объединение данных между событием клиента и другим событием
+	// Объединение возможно только когда оба события актуальны
+	if(this->isActual(eid) && this->isActual(dest))
+		// Выполняем объединение потоков данных между событиями
 		return this->_io->splice(eid, dest);
 	// Выводим результат по умолчанию
 	return false;
@@ -563,30 +563,30 @@ bool awh::unit::Client::setSourcePort(const event::id_t eid, const uint16_t port
 	return false;
 }
 /**
- * @brief Метод получения порта удаленного сервера
+ * @brief Метод получения порта удалённого узла
  *
  * @param eid идентификатор события клиента
- * @return    порт удаленного сервера
+ * @return    порт удалённого узла
  */
 uint16_t awh::unit::Client::getDestinationPort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем получение порта удаленного сервера для события клиента
+		// Выполняем получение порта удалённого узла для события клиента
 		return this->_io->getDestinationPort(eid);
 	// Выводим результат по умолчанию
 	return 0;
 }
 /**
- * @brief Метод установки порта удаленного сервера
+ * @brief Метод установки порта удалённого узла
  *
  * @param eid  идентификатор события клиента
- * @param port порт удаленного сервера для установки
+ * @param port порт удалённого узла для установки
  * @return     результат выполнения установки
  */
 bool awh::unit::Client::setDestinationPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем установку порта удаленного сервера для события клиента
+		// Выполняем установку порта удалённого узла для события клиента
 		return this->_io->setDestinationPort(eid, port);
 	// Выводим результат по умолчанию
 	return false;
@@ -919,21 +919,21 @@ bool awh::unit::Client::setDifferentiatedServicesCodePoint(const event::id_t eid
 	return false;
 }
 /**
- * @brief Метод получения обнаружения максимального размера пакета (MTU)
+ * @brief Метод получения режима обнаружения максимального размера пакета (MTU)
  *
  * @param eid идентификатор события клиента
- * @return    режим обнаружения максимального размера пакета (MTU)
+ * @return    текущий режим обнаружения MTU
  */
 awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем получение обнаружения максимального размера пакета (MTU) для клиента
+		// Выполняем получение режима обнаружения MTU для клиента
 		return this->_io->getMaximumTransmissionUnitDiscover(eid, this->_io->family(eid));
 	// Выводим результат по умолчанию
 	return event::mtu_discover_t::NONE;
 }
 /**
- * @brief Метод установки обнаружения максимального размера пакета (MTU)
+ * @brief Метод установки режима обнаружения максимального размера пакета (MTU)
  *
  * @param eid  идентификатор события клиента
  * @param mode режим обнаружения максимального размера пакета (MTU)
@@ -942,13 +942,13 @@ awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover
 bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем установку обнаружения максимального размера пакета (MTU) для клиента
+		// Выполняем установку режима обнаружения MTU для клиента
 		return this->_io->setMaximumTransmissionUnitDiscover(eid, this->_io->family(eid), mode);
 	// Выводим результат по умолчанию
 	return false;
 }
 /**
- * @brief Метод активации/деактивации мультикаст группы
+ * @brief Метод активации/деактивации мультикаст-группы
  *
  * @param eid    идентификатор события клиента
  * @param mode   режим активации/деактивации
@@ -960,13 +960,13 @@ bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid
 bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем активацию/деактивацию мультикаст группы для клиента
+		// Выполняем активацию/деактивацию мультикаст-группы для клиента
 		return this->_io->membership(eid, mode, group, source, port);
 	// Выводим результат по умолчанию
 	return false;
 }
 /**
- * @brief Метод активации/деактивации мультикаст группы
+ * @brief Метод активации/деактивации мультикаст-группы
  *
  * @param eid    идентификатор события клиента
  * @param mode   режим активации/деактивации
@@ -978,13 +978,13 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
 bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
-		// Выполняем активацию/деактивацию мультикаст группы для клиента
+		// Выполняем активацию/деактивацию мультикаст-группы для клиента
 		return this->_io->membership(eid, mode, group, source, port);
 	// Выводим результат по умолчанию
 	return false;
 }
 /**
- * @brief Метод остановки сервера
+ * @brief Метод остановки клиента
  *
  */
 void awh::unit::Client::stop() noexcept {
@@ -994,7 +994,7 @@ void awh::unit::Client::stop() noexcept {
 		unit_t::stop();
 }
 /**
- * @brief Метод запуска сервера
+ * @brief Метод запуска клиента
  *
  */
 void awh::unit::Client::start() noexcept {
@@ -1018,9 +1018,9 @@ void awh::unit::Client::start() noexcept {
 void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
-	// Выполняем установку функции обратного вызова при получении данных от сервера
+	// Выполняем установку функции обратного вызова при получении данных от удалённого узла
 	this->_callback.set("read", callback);
-	// Выполняем установку функции обратного вызова при отправке данных на сервер
+	// Выполняем установку функции обратного вызова при отправке данных удалённому узлу
 	this->_callback.set("write", callback);
 	// Выполняем установку функции обратного вызова при получении состояния клиента
 	this->_callback.set("state", callback);
@@ -1030,7 +1030,7 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова при обработке действий клиента
 	this->_callback.set("action", callback);
-	// Выполняем установку функции обратного вызова при подключении клиента к серверу
+	// Выполняем установку функции обратного вызова при подключении клиента к удалённому узлу
 	this->_callback.set("connect", callback);
 	// Выполняем установку функции обратного вызова на событие истечения таймаута клиента
 	this->_callback.set("timeout", callback);
@@ -1090,7 +1090,7 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
 			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
-			// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+			// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому узлу
 			this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
 			// Добавляем идентификатор события клиента в список событий клиента
 			this->_events.emplace(result);

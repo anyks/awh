@@ -40,9 +40,10 @@ namespace awh {
 	 */
 	namespace unit {
 		/**
-		 * Используем пространство имён std
+		 * Используем стандартное пространство имён
 		 */
 		using namespace std;
+
 		/**
 		 * @brief Класс сервера
 		 *

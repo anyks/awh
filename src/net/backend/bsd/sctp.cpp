@@ -16,8 +16,6 @@
  * Стандартные модули
  */
 #include <cerrno>
-#include <memory>
-#include <vector>
 #include <cstring>
 #include <cstdlib>
 
@@ -33,7 +31,7 @@
 #include <net/eth/sctp.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 

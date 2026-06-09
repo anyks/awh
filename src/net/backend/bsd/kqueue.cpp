@@ -214,7 +214,7 @@
 #include <sys/threadpool.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
@@ -320,7 +320,7 @@ namespace action {
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -497,7 +497,7 @@ namespace {
  */
 namespace std {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -582,7 +582,7 @@ namespace std {
  */
 namespace io {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1349,7 +1349,7 @@ namespace io {
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1395,7 +1395,7 @@ namespace {
  */
 namespace fs {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1574,7 +1574,7 @@ namespace fs {
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1957,7 +1957,7 @@ namespace bandwidth {
  */
 namespace local {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1983,7 +1983,7 @@ namespace local {
  */
 namespace local {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -2543,7 +2543,7 @@ namespace eth {
  */
 namespace events {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -3024,7 +3024,7 @@ namespace events {
  */
 namespace io {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -3160,7 +3160,7 @@ namespace io {
  */
 namespace timer {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -3208,7 +3208,7 @@ namespace timer {
  */
 namespace timer1 {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -4221,7 +4221,7 @@ namespace timer1 {
  */
 namespace timer2 {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -5434,7 +5434,7 @@ namespace timer2 {
  */
 namespace sctp {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -5467,7 +5467,7 @@ namespace sctp {
  */
 namespace io {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -9752,7 +9752,7 @@ namespace io {
  */
 namespace io {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -13034,7 +13034,7 @@ namespace io {
  */
 namespace io {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -21900,7 +21900,7 @@ namespace io {
  */
 namespace io {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -26193,7 +26193,7 @@ namespace io {
  */
 namespace sctp {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 

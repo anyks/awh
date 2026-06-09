@@ -13,7 +13,7 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного включения заголовочного файла
  */
 #ifndef __AWH_UNIT_CLIENT__
 #define __AWH_UNIT_CLIENT__
@@ -24,19 +24,20 @@
 #include "unit.hpp"
 
 /**
- * @brief Основное пространство имён
+ * @brief Пространство имён библиотеки
  *
  */
 namespace awh {
 	/**
-	 * @brief Пространство имён узла источника
+	 * @brief Пространство имён модулей юнита
 	 *
 	 */
 	namespace unit {
 		/**
-		 * Подписываемся на стандартное пространство имён
+		 * Используем стандартное пространство имён
 		 */
 		using namespace std;
+
 		/**
 		 * @brief Класс клиента
 		 *
@@ -53,7 +54,7 @@ namespace awh {
 				 */
 				void launch(const event::status_t status) noexcept;
 				/**
-				 * @brief Метод обработки событий подключения клиента к удалённому серверу
+				 * @brief Метод обработки события подключения клиента к удалённому узлу
 				 *
 				 * @param eid идентификатор события
 				 * @param ok  результат подключения
@@ -163,7 +164,7 @@ namespace awh {
 				bool resume(const event::id_t eid) noexcept;
 			public:
 				/**
-				 * @brief Метод отключения клиента от удалённого сервера
+				 * @brief Метод отключения клиента от удалённого узла
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат выполнения отключения
@@ -195,28 +196,28 @@ namespace awh {
 				bool connect(const vector <event::id_t> & ids) noexcept;
 			public:
 				/**
-				 * @brief Метод получения данных от сервера
+				 * @brief Метод получения данных от удалённого узла
 				 *
 				 * @param eid идентификатор события клиента
 				 * @return    результат получения данных
 				 */
 				bool recv(const event::id_t eid) noexcept;
 				/**
-				 * @brief Метод отправки данных серверу
+				 * @brief Метод отправки данных удалённому узлу
 				 *
 				 * @param eid    идентификатор события клиента
 				 * @param buffer буфер данных для отправки
 				 * @param size   размер данных для отправки
-				 * @return       количество байт данных, отправленных серверу
+				 * @return       количество байт, отправленных удалённому узлу
 				 */
 				size_t send(const event::id_t eid, const void * buffer, const size_t size) noexcept;
 			public:
 				/**
-				 * @brief Метод объединения данных между клиентом и другим событием
+				 * @brief Метод объединения потоков данных между двумя событиями
 				 *
 				 * @param eid  идентификатор события-источника
 				 * @param dest идентификатор события-приёмника
-				 * @return     результат выполнения объединения
+				 * @return     результат объединения
 				 */
 				bool splice(const event::id_t eid, const event::id_t dest) noexcept;
 			public:
@@ -294,17 +295,17 @@ namespace awh {
 				bool setSourcePort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
 				/**
-				 * @brief Метод получения порта удаленного сервера
+				 * @brief Метод получения порта удалённого узла
 				 *
 				 * @param eid идентификатор события клиента
-				 * @return    порт удаленного сервера
+				 * @return    порт удалённого узла
 				 */
 				uint16_t getDestinationPort(const event::id_t eid) const noexcept;
 				/**
-				 * @brief Метод установки порта удаленного сервера
+				 * @brief Метод установки порта удалённого узла
 				 *
 				 * @param eid  идентификатор события клиента
-				 * @param port порт удаленного сервера для установки
+				 * @param port порт удалённого узла для установки
 				 * @return     результат выполнения установки
 				 */
 				bool setDestinationPort(const event::id_t eid, const uint16_t port) noexcept;
@@ -499,14 +500,14 @@ namespace awh {
 				bool setDifferentiatedServicesCodePoint(const event::id_t eid, const event::dscp_t dscp) const noexcept;
 			public:
 				/**
-				 * @brief Метод получения обнаружения максимального размера пакета (MTU)
+				 * @brief Метод получения режима обнаружения максимального размера пакета (MTU)
 				 *
 				 * @param eid идентификатор события клиента
-				 * @return    режим обнаружения максимального размера пакета (MTU)
+				 * @return    текущий режим обнаружения MTU
 				 */
 				event::mtu_discover_t getMaximumTransmissionUnitDiscover(const event::id_t eid) const noexcept;
 				/**
-				 * @brief Метод установки обнаружения максимального размера пакета (MTU)
+				 * @brief Метод установки режима обнаружения максимального размера пакета (MTU)
 				 *
 				 * @param eid  идентификатор события клиента
 				 * @param mode режим обнаружения максимального размера пакета (MTU)
@@ -515,7 +516,7 @@ namespace awh {
 				bool setMaximumTransmissionUnitDiscover(const event::id_t eid, const event::mtu_discover_t mode) const noexcept;
 			public:
 				/**
-				 * @brief Метод активации/деактивации мультикаст группы
+				 * @brief Метод активации/деактивации мультикаст-группы
 				 *
 				 * @param eid    идентификатор события клиента
 				 * @param mode   режим активации/деактивации
@@ -526,7 +527,7 @@ namespace awh {
 				 */
 				bool membership(const event::id_t eid, const event::mode_t mode, string_view group, string_view source, const uint16_t port = 0) noexcept;
 				/**
-				 * @brief Метод активации/деактивации мультикаст группы
+				 * @brief Метод активации/деактивации мультикаст-группы
 				 *
 				 * @param eid    идентификатор события клиента
 				 * @param mode   режим активации/деактивации
@@ -538,12 +539,12 @@ namespace awh {
 				bool membership(const event::id_t eid, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept;
 			public:
 				/**
-				 * @brief Метод остановки сервера
+				 * @brief Метод остановки клиента
 				 *
 				 */
 				void stop() noexcept;
 				/**
-				 * @brief Метод запуска сервера
+				 * @brief Метод запуска клиента
 				 *
 				 */
 				void start() noexcept;

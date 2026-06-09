@@ -13,7 +13,6 @@
  */
 
 #include <iostream>
-#include <cinttypes>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -21,12 +20,12 @@
 #include <net/io.hpp>
 
 /**
- * Подписываемся на пространство имён AWH
+ * Используем пространство имён AWH
  */
 using namespace awh;
 
 /**
- * Подписываемся на пространство имён заполнителя
+ * Используем пространство имён placeholders
  */
 using namespace placeholders;
 

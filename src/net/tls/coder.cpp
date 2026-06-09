@@ -48,7 +48,7 @@
 #include <net/tls/coder.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем стандартное пространство имён
  */
 using namespace std;
 
@@ -67,7 +67,7 @@ using namespace std;
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -119,7 +119,7 @@ namespace {
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -400,7 +400,7 @@ namespace state {
  */
 namespace {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -503,7 +503,7 @@ namespace local {
  */
 namespace ssl {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1310,7 +1310,7 @@ namespace ssl {
 	 */
 	namespace compressor {
 		/**
-		 * Подписываемся на пространство имён AWH
+		 * Используем пространство имён AWH
 		 */
 		using namespace awh;
 
@@ -1539,7 +1539,7 @@ namespace ssl {
 	 */
 	namespace boringssl {
 		/**
-		 * Подписываемся на пространство имён AWH
+		 * Используем пространство имён AWH
 		 */
 		using namespace awh;
 
@@ -1605,7 +1605,7 @@ namespace ssl {
  */
 namespace cookie {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
@@ -1870,7 +1870,7 @@ namespace cookie {
  */
 namespace verify {
 	/**
-	 * Подписываемся на пространство имён AWH
+	 * Используем пространство имён AWH
 	 */
 	using namespace awh;
 
