@@ -59,6 +59,18 @@ void awh::unit::Filesystem::read(const event::id_t eid, const uint8_t * data, co
  * @param status статус события
  */
 void awh::unit::Filesystem::state(const event::id_t eid, const event::status_t status) noexcept {
+	// Если статус файловой системы представляет из себя уничтожение
+	if(status == event::status_t::DESTROYED){
+		// Если в списке событий файловой системы есть события
+		if(!this->_events.empty()){
+			// Выполняем поиск идентификатора события файловой системы в списке событий файловой системы
+			auto i = this->_events.find(eid);
+			// Если идентификатор события файловой системы найден в списке событий файловой системы
+			if(i != this->_events.end())
+				// Удаляем идентификатор события файловой системы из списка событий файловой системы
+				this->_events.erase(i);
+		}
+	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("state"))
 		// Выполняем функцию обратного вызова
@@ -97,18 +109,8 @@ void awh::unit::Filesystem::vnode(const event::id_t eid, const event::action_t a
  * @param eid идентификатор события файловой системы
  */
 void awh::unit::Filesystem::destroy(const event::id_t eid) noexcept {
-	// Если в списке событий файловой системы есть события
-	if(!this->_events.empty()){
-		// Выполняем поиск идентификатора события файловой системы в списке событий файловой системы
-		auto i = this->_events.find(eid);
-		// Если идентификатор события файловой системы найден в списке событий файловой системы
-		if(i != this->_events.end()){
-			// Удаляем событие файловой системы
-			this->_io->destroy(* i);
-			// Удаляем идентификатор события файловой системы из списка событий файловой системы
-			this->_events.erase(i);
-		}
-	}
+	// Удаляем событие файловой системы
+	this->_io->destroy(eid);
 }
 /**
  * @brief Метод создания события файловой системы
@@ -321,8 +323,10 @@ awh::unit::Filesystem::Filesystem(const fmk_t * fmk, const log_t * log) noexcept
 awh::unit::Filesystem::~Filesystem() noexcept {
 	// Если в списке событий файловой системы есть события
 	if(!this->_events.empty()){
+		// Копируем список событий файловой системы для безопасного удаления событий файловой системы во время итерации
+		auto events = this->_events;
 		// Выполняем удаление всех событий файловой системы
-		for(const auto & eid : this->_events)
+		for(const auto & eid : events)
 			// Удаляем событие файловой системы
 			this->_io->destroy(eid);
 	}

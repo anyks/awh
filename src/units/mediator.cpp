@@ -350,8 +350,10 @@ awh::unit::Mediator::Mediator(const fmk_t * fmk, const log_t * log) noexcept : u
 awh::unit::Mediator::~Mediator() noexcept {
 	// Если в списке событий посредника есть события
 	if(!this->_events.empty()){
+		// Копируем список событий посредника для безопасного удаления событий посредника во время итерации
+		auto events = this->_events;
 		// Выполняем удаление всех событий посредника
-		for(const auto & eid : this->_events)
+		for(const auto & eid : events)
 			// Удаляем событие посредника
 			this->_io->destroy(eid);
 	}

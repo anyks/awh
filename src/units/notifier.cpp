@@ -59,6 +59,18 @@ void awh::unit::Notifier::read(const event::id_t eid, const uint8_t * data, cons
  * @param status статус события
  */
 void awh::unit::Notifier::state(const event::id_t eid, const event::status_t status) noexcept {
+	// Если статус уведомителя представляет из себя уничтожение
+	if(status == event::status_t::DESTROYED){
+		// Если в списке событий уведомителя есть события
+		if(!this->_events.empty()){
+			// Выполняем поиск идентификатора события уведомителя в списке событий уведомителя
+			auto i = this->_events.find(eid);
+			// Если идентификатор события уведомителя найден в списке событий уведомителя
+			if(i != this->_events.end())
+				// Удаляем идентификатор события уведомителя из списка событий уведомителя
+				this->_events.erase(i);
+		}
+	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("state"))
 		// Выполняем функцию обратного вызова
@@ -162,15 +174,6 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 void awh::unit::Notifier::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие уведомителя
 	this->_io->destroy(eid);
-	// Если в списке событий уведомителя есть события
-	if(!this->_events.empty()){
-		// Выполняем поиск идентификатора события уведомителя в списке событий уведомителя
-		auto i = this->_events.find(eid);
-		// Если идентификатор события уведомителя найден в списке событий уведомителя
-		if(i != this->_events.end())
-			// Удаляем идентификатор события уведомителя из списка событий уведомителя
-			this->_events.erase(i);
-	}
 }
 /**
  * @brief Метод установки функций обратного вызова
@@ -215,8 +218,10 @@ awh::unit::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : u
 awh::unit::Notifier::~Notifier() noexcept {
 	// Если в списке событий уведомителя есть события
 	if(!this->_events.empty()){
+		// Копируем список событий уведомителя для безопасного удаления событий уведомителя во время итерации
+		auto events = this->_events;
 		// Выполняем удаление всех событий уведомителя
-		for(const auto & eid : this->_events)
+		for(const auto & eid : events)
 			// Удаляем событие уведомителя
 			this->_io->destroy(eid);
 	}

@@ -417,8 +417,10 @@ awh::unit::Tunnel::Tunnel(const fmk_t * fmk, const log_t * log) noexcept : unit_
 awh::unit::Tunnel::~Tunnel() noexcept {
 	// Если в списке событий туннеля есть события
 	if(!this->_events.empty()){
+		// Копируем список событий туннеля для безопасного удаления событий туннеля во время итерации
+		auto events = this->_events;
 		// Выполняем удаление всех событий туннеля
-		for(const auto & eid : this->_events)
+		for(const auto & eid : events)
 			// Удаляем событие туннеля
 			this->_io->destroy(eid);
 	}
