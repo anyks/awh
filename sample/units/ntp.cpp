@@ -72,7 +72,7 @@ int32_t main(int32_t argc, char * argv[]){
 					// Выводим сообщение о запуске события NTP-клиента
 					log.print("Событие NTP-клиента было запущено", log_t::flag_t::INFO);
 					// Выполняем синхронизацию времени с NTP-сервером
-					if(!ntp.sync(unit::ntp_t::version_t::V4, 5000))
+					if(!ntp.sync(unit::ntp_t::version_t::V4))
 						// Выводим сообщение об ошибке
 						log.print("Не удалось выполнить синхронизацию времени с NTP-сервером", log_t::flag_t::CRITICAL);
 				} break;

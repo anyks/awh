@@ -15,6 +15,7 @@
 /**
  * Стандартные модули
  */
+#include <mutex>
 #include <array>
 #include <chrono>
 #include <vector>
@@ -88,10 +89,16 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Генератор случайных чисел для рандомизации NTP-серверов
+	 * @brief Генератор случайных чисел для перемешивания списка NTP-серверов
 	 *
 	 */
 	random_device __awh_randev__;
+
+	/**
+	 * @brief Флаг одноразовой инициализации NTP-клиента
+	 *
+	 */
+	once_flag __awh_ntp_init_once__;
 };
 
 /**
@@ -117,18 +124,18 @@ namespace servers {
 	static void push(string_view server) noexcept {
 		// Создаём объект IP-адреса для параметров NTP-сервера
 		struct addrinfo hints = {};
-		// Результат получения параметров NTP-сервера
+		// Результат разрешения имени NTP-сервера
 		struct addrinfo * result = nullptr;
 		// Устанавливаем семейство протоколов для NTP-сервера (IPv4 + IPv6)
 		hints.ai_family = AF_UNSPEC;
-		// Устанавливаем тип сокета для NTP-сервера (TCP)
+		// Устанавливаем тип сокета для фильтрации адресов при разрешении имени
 		hints.ai_socktype = SOCK_STREAM;
 		/**
-		 * Выполняем получение параметров NTP-сервера по его адресу
+		 * Получаем параметры NTP-сервера по доменному имени
 		 */
 		if(::getaddrinfo(server.data(), nullptr, &hints, &result) == 0){
 			/**
-			 * Выполняем перебор всех полученных параметров NTP-сервера и сохраняем их в общий список NTP-серверов
+			 * Проходим по всем адресам и сохраняем их в общий список NTP-серверов
 			 */
 			for(auto * p = result; p != nullptr; p = p->ai_next){
 				/**
@@ -137,7 +144,7 @@ namespace servers {
 				switch(p->ai_family){
 					// Если адрес является IPv4
 					case AF_INET: {
-						// Выполняем инициализацию объекта IP-адреса
+						// Создаём объект IP-адреса
 						unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv4_t> ();
 						// Получаем объект с IPv4-адресом NTP-сервера
 						auto * sa = reinterpret_cast <sockaddr_in *> (p->ai_addr);
@@ -148,7 +155,7 @@ namespace servers {
 					} break;
 					// Если адрес является IPv6
 					case AF_INET6: {
-						// Выполняем инициализацию объекта IP-адреса
+						// Создаём объект IP-адреса
 						unique_ptr <net::addr_t> ip = make_unique <net::addr_net_ipv6_t> ();
 						// Получаем объект с IPv6-адресом NTP-сервера
 						auto * sa = reinterpret_cast <sockaddr_in6 *> (p->ai_addr);
@@ -176,9 +183,9 @@ namespace ntp {
 	typedef struct Packet {
 		/**
 		 * Восемь бит (li, vn и mode):
-		 * li:   Два бита, индикатор прыжка
+		 * li:   Два бита, индикатор секундной коррекции (leap indicator)
 		 * vn:   Три бита, номер версии протокола
-		 * mode: Три бита, клиент выберет режим 3 для клиента
+		 * mode: Три бита, режим клиента (значение 3)
 		 */
 		uint8_t mode;
 		// Уровень страты местных часов
@@ -189,7 +196,7 @@ namespace ntp {
 		uint8_t precision;
 		// Общее время задержки туда и обратно
 		uint32_t rootDelay;
-		// Максимально-ощутимая ошибка от основного источника синхронизации
+		// Максимально допустимая ошибка относительно опорного источника синхронизации
 		uint32_t rootDispersion;
 		// Идентификатор опорных часов
 		uint32_t refId;
@@ -449,9 +456,9 @@ void awh::unit::NTP::error(const event::id_t eid, const event::error_t error, co
 /**
  * @brief Метод обработки ответов от NTP-сервера на запросы NTP-клиента
  *
- * @param eid  идентификатор события чтения из NTP-клиента
- * @param data данные события чтения из NTP-клиента
- * @param size размер данных события чтения из NTP-клиента
+ * @param eid  идентификатор события чтения
+ * @param data данные, полученные от NTP-сервера
+ * @param size размер полученных данных
  */
 void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
 	/**
@@ -459,11 +466,11 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 	 */
 	try {
 		// Снимаем флаг ожидания ответа от NTP-сервера
-		this->_transfer.waiting = !this->_transfer.waiting;
+		this->_transfer.waiting = false;
 		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
 		if(this->_callback.is("timestamp")){
-			// Если данные события чтения из DNS-резолвера не пустые
-			if((data != nullptr) && (size > 0)){
+			// Если получены данные ответа от NTP-сервера
+			if((data != nullptr) && (size >= sizeof(::ntp::packet_t))){
 				// Получаем объект заголовка запроса
 				const ::ntp::packet_t * packet = reinterpret_cast <const ::ntp::packet_t *> (data);
 				/**
@@ -478,17 +485,20 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 				 * 2208988800 = разница в секундах между 1900 и 1970 годами
 				 */
 				constexpr uint64_t NTP_TO_UNIX_EPOCH = 2208988800ULL;
-				/**
-				 * Получаем время в миллисекундах, вычитая секунды с 1900 года из секунд с 1970 года и умножая на 1000 для получения миллисекунд
-				 */
-				uint64_t timestamp = ((static_cast <uint64_t> (sec) - NTP_TO_UNIX_EPOCH) * 1000ULL);
-				/**
-				 * 3. Добавляем дробную часть для точности до миллисекунд (опционально)
-				 * 2^32 / 1000 ≈ 4294967
-				 */
-				timestamp += (static_cast <uint64_t> (frac) / 4294967ULL);
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const uint64_t)> ("timestamp", timestamp);
+				// Если время ответа от NTP-сервера больше или равно эпохе Unix (1970)
+				if(sec >= NTP_TO_UNIX_EPOCH){
+					/**
+					 * Получаем время в миллисекундах, вычитая секунды с 1900 года из секунд с 1970 года и умножая на 1000 для получения миллисекунд
+					 */
+					uint64_t timestamp = ((static_cast <uint64_t> (sec) - NTP_TO_UNIX_EPOCH) * 1000ULL);
+					/**
+					 * 3. Добавляем дробную часть для точности до миллисекунд (опционально)
+					 * 2^32 / 1000 ≈ 4294967
+					 */
+					timestamp += (static_cast <uint64_t> (frac) / 4294967ULL);
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const uint64_t)> ("timestamp", timestamp);
+				}
 			}
 		}
 	/**
@@ -511,7 +521,7 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 	}
 }
 /**
- * @brief Метод обработки событий таймаута при ожидании ответа от NTP-клиента
+ * @brief Метод обработки таймаута ожидания ответа от NTP-сервера
  *
  * @param eid    идентификатор события NTP-клиента
  * @param action действие события таймера NTP-клиента
@@ -519,7 +529,7 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
  * @return       нужно ли завершить клиента после истечения таймаута
  */
 bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
-	// Если попытки резолвинга не превышают максимально допустимое количество
+	// Если число попыток запроса не превышает максимально допустимое значение
 	if(this->_transfer.attempt < this->_transfer.attempts){
 		// Увеличиваем количество попыток получения ответа от NTP-сервера
 		this->_transfer.attempt++;
@@ -540,9 +550,9 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event
 		}
 		// Устанавливаем версию протокола NTP
 		packet.origTimeStampSec = ::ntp::timesec();
-		// Отправляем запрос на NTP-сервер для синхронизации времени, если отправить не удалось то таймаут убьёт клиента, так-как мы не можем отправить запрос
+		// Отправляем запрос на NTP-сервер; при ошибке отправки обработка перейдёт в сценарий таймаута
 		return (this->_io->send(this->_client.eid, &packet, sizeof(packet)) == 0);
-	// Если попытки резолвинга превышают максимально допустимое количество
+	// Если исчерпано максимально допустимое число попыток
 	} else {
 		// Снимаем флаг ожидания ответа от NTP-сервера
 		this->_transfer.waiting = !this->_transfer.waiting;
@@ -688,7 +698,7 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
-					// Выполняем фиксацию параметров события и его запуск
+					// Фиксируем параметры события и запускаем его
 					if(!(result = this->_io->commit(this->_client.eid) && this->_io->launch(this->_client.eid))){
 						// Удаляем событие NTP-клиента
 						this->_io->destroy(this->_client.eid);
@@ -1161,7 +1171,7 @@ void awh::unit::NTP::addServer(const event::family_t family, string_view server)
 /**
  * @brief Метод установки списка адресов NTP-серверов
  *
- * @param server адреса NTP-серверов для установки
+ * @param servers адреса NTP-серверов для установки
  */
 void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 	/**
@@ -1249,7 +1259,7 @@ void awh::unit::NTP::setServers(const vector <string> & servers) noexcept {
 /**
  * @brief Метод установки списка адресов NTP-серверов
  *
- * @param server адреса NTP-серверов для установки
+ * @param servers адреса NTP-серверов для установки
  */
 void awh::unit::NTP::setServers(const vector <const net::addr_t *> & servers) noexcept {
 	/**
@@ -1433,7 +1443,7 @@ void awh::unit::NTP::setServers(const event::family_t family, const vector <stri
 	}
 }
 /**
- * @brief Метод установки адреса сети с которого будет выполняться запрос
+ * @brief Метод установки локального адреса для выполнения запроса
  *
  * @param source адрес сети для выполнения запроса
  */
@@ -1484,7 +1494,7 @@ void awh::unit::NTP::setSource(string_view source) noexcept {
 	}
 }
 /**
- * @brief Метод установки адреса сети с которого будет выполняться запрос
+ * @brief Метод установки локального адреса для выполнения запроса
  *
  * @param source адрес сети для выполнения запроса
  */
@@ -1536,7 +1546,7 @@ void awh::unit::NTP::setSource(const net::addr_t * source) noexcept {
 	}
 }
 /**
- * @brief Метод установки адреса сети с которого будет выполняться запрос
+ * @brief Метод установки локального адреса для выполнения запроса
  *
  * @param family семейство IP-адресов IPv4/IPv6
  * @param source адрес сети для выполнения запроса
@@ -1592,10 +1602,9 @@ void awh::unit::NTP::setSource(const event::family_t family, string_view source)
  * @brief Метод синхронизации времени с NTP-сервером
  *
  * @param version версия протокола NTP для выполнения запроса
- * @param timeout время ожидания ответа от NTP-сервера (в миллисекундах)
  * @return        результат выполнения запроса
  */
-bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexcept {
+bool awh::unit::NTP::sync(const version_t version) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -1637,7 +1646,7 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
 		 */
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
+			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -1655,23 +1664,27 @@ bool awh::unit::NTP::sync(const version_t version, const uint32_t timeout) noexc
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::unit::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _addr(fmk, log) {
-	// Если общие NTP-серверы ещё не добавлены в глобальный список
-	if(::servers::general.empty()){
-		// Создаём массив стандартных NTP-серверов
-		array <string_view, 22> resolvers = {AWH_NTP_SERVERS};
-		// Выбираем стандарт рандомайзера
-		mt19937 generator(::__awh_randev__());
-		// Выполняем рандомную сортировку списка DNS-серверов
-		::shuffle(resolvers.begin(), resolvers.end(), generator);
-		// Выполняем перебор всех NTP-серверов из массива
-		for(const auto & item : resolvers)
-			// Добавляем NTP-сервер в глобальный список для использования при выполнении запросов к NTP-серверам
-			::servers::push(item);
-	}
+awh::unit::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log), _addr(fmk, log) {
 	/**
-	 * Инициализация NTP-сервера
+	 * Выполняем одноразовую инициализацию общего списка NTP-серверов
+	 */
+	std::call_once(::__awh_ntp_init_once__, [this]() noexcept {
+		// Если общие NTP-серверы ещё не добавлены в глобальный список
+		if(::servers::general.empty()){
+			// Создаём массив стандартных NTP-серверов
+			array <string_view, 22> resolvers = {AWH_NTP_SERVERS};
+			// Инициализируем генератор случайных чисел
+			mt19937 generator(::__awh_randev__());
+			// Выполняем случайное перемешивание списка NTP-серверов
+			::shuffle(resolvers.begin(), resolvers.end(), generator);
+			// Выполняем перебор всех NTP-серверов из массива
+			for(const auto & item : resolvers)
+				// Добавляем NTP-сервер в глобальный список для использования при выполнении запросов к NTP-серверам
+				::servers::push(item);
+		}
+	});
+	/**
+	 * Инициализация списка NTP-серверов клиента
 	 */
 	this->_client.servers.init();
 }

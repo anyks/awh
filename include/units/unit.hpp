@@ -31,7 +31,7 @@
  */
 namespace awh {
 	/**
-	 * @brief Пространство имён узла источника
+	 * @brief Пространство имён модулей
 	 *
 	 */
 	namespace unit {
@@ -41,7 +41,7 @@ namespace awh {
 		using namespace std;
 
 		/**
-		 * @brief Класс базового узла источника
+		 * @brief Класс базового модуля
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Unit {
@@ -55,7 +55,7 @@ namespace awh {
 				// Флаг активации перехвата сигналов
 				event::mode_t _intercep;
 			protected:
-				// Статус работы узла источника
+				// Статус работы модуля
 				event::status_t _status;
 			private:
 				// Объект работы с сигналами

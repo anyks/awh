@@ -15,6 +15,7 @@
 /**
  * Стандартные модули
  */
+#include <mutex>
 #include <array>
 #include <vector>
 #include <random>
@@ -285,6 +286,12 @@ namespace {
 	 *
 	 */
 	random_device __awh_randev__;
+
+	/**
+	 * @brief Флаг одноразовой инициализации DNS-серверов
+	 *
+	 */
+	once_flag __awh_dns_init_once__;
 };
 
 /**
@@ -6997,40 +7004,44 @@ awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept :
  * @param fmk    объект фреймворка
  * @param log    объект для работы с логами
  */
-awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _addr(fmk, log), _binbox(fmk, log) {
-	// Если общие DNS-резолверы ещё не добавлены в глобальный список
-	if(::ns::general.empty()){
-		{
-			// Создаём массив стандартных DNS-серверов IPv4
-			array <string_view, 6> resolvers = {AWH_IPV4_NS};
-			// Выбираем стандарт рандомайзера
-			mt19937 generator(::__awh_randev__());
-			// Выполняем рандомную сортировку списка DNS-серверов
-			::shuffle(resolvers.begin(), resolvers.end(), generator);
-			// Выполняем перебор всех DNS-серверов из массива
-			for(const auto & item : resolvers){
-				// Выполняем парсинг IP-адреса
-				if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
-					// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
-					::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
-			}
-		}{
-			// Создаём массив стандартных DNS-серверов IPv6
-			array <string_view, 6> resolvers = {AWH_IPV6_NS};
-			// Выбираем стандарт рандомайзера
-			mt19937 generator(::__awh_randev__());
-			// Выполняем рандомную сортировку списка DNS-серверов
-			::shuffle(resolvers.begin(), resolvers.end(), generator);
-			// Выполняем перебор всех DNS-серверов из массива
-			for(const auto & item : resolvers){
-				// Выполняем парсинг IP-адреса
-				if(this->_addr.parse(item, net_addr_t::type_t::IPV6))
-					// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
-					::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk, log), _addr(fmk, log), _binbox(fmk, log) {
+	/**
+	 * Выполняем одноразовую инициализацию DNS-серверов для всех экземпляров класса DNS
+	 */
+	std::call_once(::__awh_dns_init_once__, [this]() noexcept {
+		// Если общие DNS-резолверы ещё не добавлены в глобальный список
+		if(::ns::general.empty()){
+			{
+				// Создаём массив стандартных DNS-серверов IPv4
+				array <string_view, 6> resolvers = {AWH_IPV4_NS};
+				// Выбираем стандарт рандомайзера
+				mt19937 generator(::__awh_randev__());
+				// Выполняем рандомную сортировку списка DNS-серверов
+				::shuffle(resolvers.begin(), resolvers.end(), generator);
+				// Выполняем перебор всех DNS-серверов из массива
+				for(const auto & item : resolvers){
+					// Выполняем парсинг IP-адреса
+					if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
+						// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
+						::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+				}
+			}{
+				// Создаём массив стандартных DNS-серверов IPv6
+				array <string_view, 6> resolvers = {AWH_IPV6_NS};
+				// Выбираем стандарт рандомайзера
+				mt19937 generator(::__awh_randev__());
+				// Выполняем рандомную сортировку списка DNS-серверов
+				::shuffle(resolvers.begin(), resolvers.end(), generator);
+				// Выполняем перебор всех DNS-серверов из массива
+				for(const auto & item : resolvers){
+					// Выполняем парсинг IP-адреса
+					if(this->_addr.parse(item, net_addr_t::type_t::IPV6))
+						// Добавляем DNS-сервер в глобальный список для использования при выполнении запросов к DNS-серверам
+						::ns::general.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+				}
 			}
 		}
-	}
+	});
 	/**
 	 * Инициализация DNS-сервера
 	 */

@@ -13,7 +13,7 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного включения заголовочного файла
  */
 #ifndef __AWH_UNIT_NTP__
 #define __AWH_UNIT_NTP__
@@ -29,7 +29,7 @@
  */
 namespace awh {
 	/**
-	 * @brief Пространство имён узла источника
+	 * @brief Пространство имён модулей
 	 *
 	 */
 	namespace unit {
@@ -178,9 +178,9 @@ namespace awh {
 				/**
 				 * @brief Метод обработки ответов от NTP-сервера на запросы NTP-клиента
 				 *
-				 * @param eid  идентификатор события чтения из NTP-клиента
-				 * @param data данные события чтения из NTP-клиента
-				 * @param size размер данных события чтения из NTP-клиента
+				 * @param eid  идентификатор события чтения
+				 * @param data данные, полученные от NTP-сервера
+				 * @param size размер полученных данных
 				 */
 				void response(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
 				/**
@@ -310,13 +310,13 @@ namespace awh {
 				/**
 				 * @brief Метод установки списка адресов NTP-серверов
 				 *
-				 * @param server адреса NTP-серверов для установки
+				 * @param servers адреса NTP-серверов для установки
 				 */
 				void setServers(const vector <string> & servers) noexcept;
 				/**
 				 * @brief Метод установки списка адресов NTP-серверов
 				 *
-				 * @param server адреса NTP-серверов для установки
+				 * @param servers адреса NTP-серверов для установки
 				 */
 				void setServers(const vector <const net::addr_t *> & servers) noexcept;
 				/**
@@ -328,19 +328,19 @@ namespace awh {
 				void setServers(const event::family_t family, const vector <string> & servers) noexcept;
 			public:
 				/**
-				 * @brief Метод установки адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки локального адреса для выполнения запроса
 				 *
 				 * @param source адрес сети для выполнения запроса
 				 */
 				void setSource(string_view source) noexcept;
 				/**
-				 * @brief Метод установки адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки локального адреса для выполнения запроса
 				 *
 				 * @param source адрес сети для выполнения запроса
 				 */
 				void setSource(const net::addr_t * source) noexcept;
 				/**
-				 * @brief Метод установки адреса сети с которого будет выполняться запрос
+				 * @brief Метод установки локального адреса для выполнения запроса
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param source адрес сети для выполнения запроса
@@ -351,10 +351,9 @@ namespace awh {
 				 * @brief Метод синхронизации времени с NTP-сервером
 				 *
 				 * @param version версия протокола NTP для выполнения запроса
-				 * @param timeout время ожидания ответа от NTP-сервера (в миллисекундах)
 				 * @return        результат выполнения запроса
 				 */
-				bool sync(const version_t version = version_t::V4, const uint32_t timeout = 0) noexcept;
+				bool sync(const version_t version = version_t::V4) noexcept;
 			private:
 				/**
 				 * @brief Конструктор копирования (запрещаем)
