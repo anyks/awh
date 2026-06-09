@@ -680,8 +680,6 @@ namespace io {
 		uint16_t actions;
 		// Очередь отправки данных
 		net_queue_t queue;
-		// Метаданные последнего принятого RAW-пакета
-		raw_endpoint_t raw;
 		/**
 		 * Если операционной системой является FreeBSD
 		 */
@@ -1290,6 +1288,8 @@ namespace io {
 	typedef struct Client : public node_t {
 		// Флаги активированных событий
 		uint8_t activity;
+		// Метаданные последнего принятого RAW-пакета
+		raw_endpoint_t raw;
 		// Объект передачи данных
 		transfer_t transfer;
 		// Объект параметров конечной точки
@@ -1331,6 +1331,8 @@ namespace io {
 		wrate_t wrate;
 		// Размер очереди ожидания подключения
 		backlog_t backlog;
+		// Метаданные последнего принятого RAW-пакета
+		raw_endpoint_t raw;
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
 		// Активные таймауты события подключённого клиента
@@ -8388,29 +8390,29 @@ namespace io {
 								 */
 								if(client->state.options & event::options::DGRAM_INFO){
 									// Устанавливаем семейство адресов текущего события
-									client->transfer.raw.info.family = client->state.family;
+									client->raw.info.family = client->state.family;
 									// Устанавливаем протокол текущего события
-									client->transfer.raw.info.protocol = client->state.protocol;
+									client->raw.info.protocol = client->state.protocol;
 									// Зануляем буфер для получения данных и информационных метаданных из сокета
-									::memset(&client->transfer.raw.msg, 0, sizeof(client->transfer.raw.msg));
+									::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 									// Устанавливаем буфер для получения данных из сокета
-									client->transfer.raw.iov.iov_base = ::__awh_buffer__;
+									client->raw.iov.iov_base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									client->transfer.raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									client->transfer.raw.msg.msg_iov = &client->transfer.raw.iov;
+									client->raw.msg.msg_iov = &client->raw.iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									client->transfer.raw.msg.msg_iovlen = 1;
+									client->raw.msg.msg_iovlen = 1;
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									client->transfer.raw.msg.msg_control = ::__awh_cmsgbuf__;
+									client->raw.msg.msg_control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									client->transfer.raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(client->transfer.fd, &client->transfer.raw.msg, MSG_NOSIGNAL);
+									bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->transfer.raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->transfer.raw.msg, cmsg)){
+									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
 										/** 
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -8420,11 +8422,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
 													// Сохраняем класс трафика IPv4 (TOS)
-													client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											} break;
 											// Если уровень control message соответствует IPv6
 											case IPPROTO_IPV6: {
@@ -8453,7 +8455,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -8463,12 +8465,12 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS:
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 														break;
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS:
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 														break;
 														/**
 														 * Если тип control message соответствует PKTINFO,
@@ -8480,7 +8482,7 @@ namespace io {
 																// Извлекаем структуру in6_pktinfo из control message
 																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
-																client->transfer.raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
+																client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
 														#endif
 													}	
@@ -8587,6 +8589,12 @@ namespace io {
 									// Формируем отрицательный результат
 									return result;
 								}
+								/**
+								 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
+								 */
+								if(client->state.options & event::options::DGRAM_INFO)
+									// Выходим из цикла после получения данных, так-как функция recvmsg заблокирует поток на неблокирующем сокете
+									break;
 							}
 						// Если событие является блокирующим
 						} else {
@@ -8601,29 +8609,29 @@ namespace io {
 							 */
 							if(client->state.options & event::options::DGRAM_INFO){
 								// Устанавливаем семейство адресов текущего события
-								client->transfer.raw.info.family = client->state.family;
+								client->raw.info.family = client->state.family;
 								// Устанавливаем протокол текущего события
-								client->transfer.raw.info.protocol = client->state.protocol;
+								client->raw.info.protocol = client->state.protocol;
 								// Зануляем буфер для получения данных и информационных метаданных из сокета
-								::memset(&client->transfer.raw.msg, 0, sizeof(client->transfer.raw.msg));
+								::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 								// Устанавливаем буфер для получения данных из сокета
-								client->transfer.raw.iov.iov_base = ::__awh_buffer__;
+								client->raw.iov.iov_base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								client->transfer.raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								client->transfer.raw.msg.msg_iov = &client->transfer.raw.iov;
+								client->raw.msg.msg_iov = &client->raw.iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								client->transfer.raw.msg.msg_iovlen = 1;
+								client->raw.msg.msg_iovlen = 1;
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								client->transfer.raw.msg.msg_control = ::__awh_cmsgbuf__;
+								client->raw.msg.msg_control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								client->transfer.raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(client->transfer.fd, &client->transfer.raw.msg, MSG_NOSIGNAL);
+								bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->transfer.raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->transfer.raw.msg, cmsg)){
+								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
 									/** 
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
@@ -8633,11 +8641,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
 												// Сохраняем класс трафика IPv4 (TOS)
-												client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 										} break;
 										// Если уровень control message соответствует IPv6
 										case IPPROTO_IPV6: {
@@ -8666,7 +8674,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -8676,12 +8684,12 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS:
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 													break;
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS:
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 													break;
 													/**
 													 * Если тип control message соответствует PKTINFO,
@@ -8693,7 +8701,7 @@ namespace io {
 															// Извлекаем структуру in6_pktinfo из control message
 															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
-															client->transfer.raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
+															client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;
 													#endif
 												}	
@@ -8786,33 +8794,33 @@ namespace io {
 								 */
 								if(client->state.options & event::options::DGRAM_INFO){
 									// Устанавливаем семейство адресов текущего события
-									client->transfer.raw.info.family = client->state.family;
+									client->raw.info.family = client->state.family;
 									// Устанавливаем протокол текущего события
-									client->transfer.raw.info.protocol = client->state.protocol;
+									client->raw.info.protocol = client->state.protocol;
 									// Зануляем буфер для получения данных и информационных метаданных из сокета
-									::memset(&client->transfer.raw.msg, 0, sizeof(client->transfer.raw.msg));
+									::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 									// Устанавливаем буфер для получения данных из сокета
-									client->transfer.raw.iov.iov_base = ::__awh_buffer__;
+									client->raw.iov.iov_base = ::__awh_buffer__;
 									// Устанавливаем размер буфера для получения данных из сокета
-									client->transfer.raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-									client->transfer.raw.msg.msg_iov = &client->transfer.raw.iov;
+									client->raw.msg.msg_iov = &client->raw.iov;
 									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-									client->transfer.raw.msg.msg_iovlen = 1;
+									client->raw.msg.msg_iovlen = 1;
 									// Устанавливаем размер буфера для получения адреса отправителя из сокета
-									client->transfer.raw.msg.msg_namelen = client->endpoint.size;
+									client->raw.msg.msg_namelen = client->endpoint.size;
 									// Устанавливаем буфер для получения адреса отправителя из сокета
-									client->transfer.raw.msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
+									client->raw.msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
 									// Устанавливаем буфер для получения служебных метаданных из сокета
-									client->transfer.raw.msg.msg_control = ::__awh_cmsgbuf__;
+									client->raw.msg.msg_control = ::__awh_cmsgbuf__;
 									// Устанавливаем размер буфера для получения служебных метаданных из сокета
-									client->transfer.raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 									// Выполняем чтение данных и служебных метаданных из RAW-сокета
-									bytes = ::recvmsg(client->transfer.fd, &client->transfer.raw.msg, MSG_NOSIGNAL);
+									bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
 									/**
 									 * Извлекаем значение TTL/HopLimit из control message
 									 */
-									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->transfer.raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->transfer.raw.msg, cmsg)){
+									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
 										/** 
 										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 										 */
@@ -8822,11 +8830,11 @@ namespace io {
 												// Если тип control message соответствует TTL или RECVTTL
 												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 													// Сохраняем сырое значение TTL (IPv4)
-													client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
 												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
 													// Сохраняем класс трафика IPv4 (TOS)
-													client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											} break;
 											// Если уровень control message соответствует IPv6
 											case IPPROTO_IPV6: {
@@ -8855,7 +8863,7 @@ namespace io {
 												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 												if(match)
 													// Сохраняем сырое значение Hop Limit (IPv6)
-													client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если флаг совпадения не установлен
 												else {
 													/**
@@ -8865,12 +8873,12 @@ namespace io {
 														// Если тип control message соответствует TCLASS
 														case IPV6_TCLASS:
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 														break;
 														// Если тип control message соответствует RECVTCLASS
 														case IPV6_RECVTCLASS:
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 														break;
 														/**
 														 * Если тип control message соответствует PKTINFO,
@@ -8882,7 +8890,7 @@ namespace io {
 																// Извлекаем структуру in6_pktinfo из control message
 																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
 																// Сохраняем индекс сетевого интерфейса источника
-																client->transfer.raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
+																client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 															} break;
 														#endif
 													}	
@@ -8998,6 +9006,12 @@ namespace io {
 									// Формируем отрицательный результат
 									return result;
 								}
+								/**
+								 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
+								 */
+								if(client->state.options & event::options::DGRAM_INFO)
+									// Выходим из цикла после получения данных, так-как функция recvmsg заблокирует поток на неблокирующем сокете
+									break;
 							}
 						// Если событие является блокирующим
 						} else {
@@ -9012,33 +9026,33 @@ namespace io {
 							 */
 							if(client->state.options & event::options::DGRAM_INFO){
 								// Устанавливаем семейство адресов текущего события
-								client->transfer.raw.info.family = client->state.family;
+								client->raw.info.family = client->state.family;
 								// Устанавливаем протокол текущего события
-								client->transfer.raw.info.protocol = client->state.protocol;
+								client->raw.info.protocol = client->state.protocol;
 								// Зануляем буфер для получения данных и информационных метаданных из сокета
-								::memset(&client->transfer.raw.msg, 0, sizeof(client->transfer.raw.msg));
+								::memset(&client->raw.msg, 0, sizeof(client->raw.msg));
 								// Устанавливаем буфер для получения данных из сокета
-								client->transfer.raw.iov.iov_base = ::__awh_buffer__;
+								client->raw.iov.iov_base = ::__awh_buffer__;
 								// Устанавливаем размер буфера для получения данных из сокета
-								client->transfer.raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								client->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
 								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
-								client->transfer.raw.msg.msg_iov = &client->transfer.raw.iov;
+								client->raw.msg.msg_iov = &client->raw.iov;
 								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
-								client->transfer.raw.msg.msg_iovlen = 1;
+								client->raw.msg.msg_iovlen = 1;
 								// Устанавливаем размер буфера для получения адреса отправителя из сокета
-								client->transfer.raw.msg.msg_namelen = client->endpoint.size;
+								client->raw.msg.msg_namelen = client->endpoint.size;
 								// Устанавливаем буфер для получения адреса отправителя из сокета
-								client->transfer.raw.msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
+								client->raw.msg.msg_name = &::trust_cast <struct sockaddr> (client->endpoint.server);
 								// Устанавливаем буфер для получения служебных метаданных из сокета
-								client->transfer.raw.msg.msg_control = ::__awh_cmsgbuf__;
+								client->raw.msg.msg_control = ::__awh_cmsgbuf__;
 								// Устанавливаем размер буфера для получения служебных метаданных из сокета
-								client->transfer.raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								client->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
 								// Выполняем чтение данных и служебных метаданных из RAW-сокета
-								bytes = ::recvmsg(client->transfer.fd, &client->transfer.raw.msg, MSG_NOSIGNAL);
+								bytes = ::recvmsg(client->transfer.fd, &client->raw.msg, MSG_NOSIGNAL);
 								/**
 								 * Извлекаем значение TTL/HopLimit из control message
 								 */
-								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->transfer.raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->transfer.raw.msg, cmsg)){
+								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&client->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&client->raw.msg, cmsg)){
 									/** 
 									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
 									 */
@@ -9048,11 +9062,11 @@ namespace io {
 											// Если тип control message соответствует TTL или RECVTTL
 											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
 												// Сохраняем сырое значение TTL (IPv4)
-												client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
 											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
 												// Сохраняем класс трафика IPv4 (TOS)
-												client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 										} break;
 										// Если уровень control message соответствует IPv6
 										case IPPROTO_IPV6: {
@@ -9081,7 +9095,7 @@ namespace io {
 											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
 											if(match)
 												// Сохраняем сырое значение Hop Limit (IPv6)
-												client->transfer.raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если флаг совпадения не установлен
 											else {
 												/**
@@ -9091,12 +9105,12 @@ namespace io {
 													// Если тип control message соответствует TCLASS
 													case IPV6_TCLASS:
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 													break;
 													// Если тип control message соответствует RECVTCLASS
 													case IPV6_RECVTCLASS:
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														client->transfer.raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 													break;
 													/**
 													 * Если тип control message соответствует PKTINFO,
@@ -9108,7 +9122,7 @@ namespace io {
 															// Извлекаем структуру in6_pktinfo из control message
 															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
 															// Сохраняем индекс сетевого интерфейса источника
-															client->transfer.raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
+															client->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
 														} break;
 													#endif
 												}	
@@ -9910,12 +9924,127 @@ namespace io {
 								 * Сбрасываем значение errno перед чтением
 								 */
 								errno = 0;
-								// Выполняем чтение данных из UDP-сокета или RAW-сокета
-								bytes = ::recvfrom(
-									server->fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
-									&::trust_cast <struct sockaddr> (server->endpoint.client),
-									&server->endpoint.size
-								);
+								/**
+								 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
+								 */
+								if(server->state.options & event::options::DGRAM_INFO){
+									// Устанавливаем семейство адресов текущего события
+									server->raw.info.family = server->state.family;
+									// Устанавливаем протокол текущего события
+									server->raw.info.protocol = server->state.protocol;
+									// Зануляем буфер для получения данных и информационных метаданных из сокета
+									::memset(&server->raw.msg, 0, sizeof(server->raw.msg));
+									// Устанавливаем буфер для получения данных из сокета
+									server->raw.iov.iov_base = ::__awh_buffer__;
+									// Устанавливаем размер буфера для получения данных из сокета
+									server->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+									// Устанавливаем буфер для получения данных и информационных метаданных из сокета
+									server->raw.msg.msg_iov = &server->raw.iov;
+									// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
+									server->raw.msg.msg_iovlen = 1;
+									// Устанавливаем размер буфера для получения адреса отправителя из сокета
+									server->raw.msg.msg_namelen = server->endpoint.size;
+									// Устанавливаем буфер для получения адреса отправителя из сокета
+									server->raw.msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
+									// Устанавливаем буфер для получения служебных метаданных из сокета
+									server->raw.msg.msg_control = ::__awh_cmsgbuf__;
+									// Устанавливаем размер буфера для получения служебных метаданных из сокета
+									server->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+									// Выполняем чтение данных и служебных метаданных из RAW-сокета
+									bytes = ::recvmsg(server->fd, &server->raw.msg, MSG_NOSIGNAL);
+									/**
+									 * Извлекаем значение TTL/HopLimit из control message
+									 */
+									for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&server->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&server->raw.msg, cmsg)){
+										/** 
+										 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
+										 */
+										switch(cmsg->cmsg_level){
+											// Если уровень control message соответствует IPv4
+											case IPPROTO_IP: {
+												// Если тип control message соответствует TTL или RECVTTL
+												if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
+													// Сохраняем сырое значение TTL (IPv4)
+													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												// Если тип control message соответствует TOS или RECVTOS
+												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+													// Сохраняем класс трафика IPv4 (TOS)
+													server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+											} break;
+											// Если уровень control message соответствует IPv6
+											case IPPROTO_IPV6: {
+												// Флаг совпадения для определения наличия значения Hop Limit в control message
+												bool match = false;
+												/**
+												 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
+												 */
+												#if IPV6_HOPLIMIT
+													// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
+													match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
+												/**
+												 * Если тип control message соответствует 2292HOPLIMIT
+												 */
+												#elif IPV6_2292HOPLIMIT
+													// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
+													match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
+												#endif
+												/**
+												 * Если тип control message соответствует RECVHOPLIMIT
+												 */
+												#if IPV6_RECVHOPLIMIT
+													// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
+													match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
+												#endif
+												// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
+												if(match)
+													// Сохраняем сырое значение Hop Limit (IPv6)
+													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												// Если флаг совпадения не установлен
+												else {
+													/**
+													 * Определяем тип control message для извлечения класса трафика IPv6
+													 */
+													switch(cmsg->cmsg_type){
+														// Если тип control message соответствует TCLASS
+														case IPV6_TCLASS:
+															// Сохраняем класс трафика IPv6 (TCLASS)
+															server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														break;
+														// Если тип control message соответствует RECVTCLASS
+														case IPV6_RECVTCLASS:
+															// Сохраняем класс трафика IPv6 (RECVTCLASS)
+															server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														break;
+														/**
+														 * Если тип control message соответствует PKTINFO,
+														 * извлекаем индекс сетевого интерфейса источника из control message
+														 */
+														#if IPV6_PKTINFO
+															// Если тип control message соответствует PKTINFO
+															case IPV6_PKTINFO: {
+																// Извлекаем структуру in6_pktinfo из control message
+																auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+																// Сохраняем индекс сетевого интерфейса источника
+																server->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
+															} break;
+														#endif
+													}	
+												}
+											} break;
+										}
+									}
+								// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
+								} else {
+									// Выполняем чтение данных из UDP-сокета или RAW-сокета
+									bytes = ::recvfrom(
+										server->fd,
+										::__awh_buffer__,
+										AWH_EVENT_MAX_BUFFER_SIZE,
+										MSG_NOSIGNAL,
+										&::trust_cast <struct sockaddr> (server->endpoint.client),
+										&server->endpoint.size
+									);
+								}
 								// Если мы получили ошибку
 								if(bytes < 0){
 									// Если нам нужно повторить попытку позже
@@ -9990,6 +10119,12 @@ namespace io {
 											// Устанавливаем фриз на время, необходимое для чтения данных, с учётом установленного ограничения пропускной способности
 											this_thread::sleep_for(chrono::nanoseconds(static_cast <uint64_t> (static_cast <double> (bytes) / static_cast <double> (::bandwidth::read)) * 1000000000ULL));
 									}
+									/**
+									 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
+									 */
+									if(server->state.options & event::options::DGRAM_INFO)
+										// Выходим из цикла после получения данных, так-как функция recvmsg заблокирует поток на неблокирующем сокете
+										break;
 								// Если произошёл дисконнект
 								} else {
 									// Идентификатор полученной ошибки
@@ -10052,14 +10187,126 @@ namespace io {
 							}
 						// Если событие является блокирующим
 						} else {
-							// Выполняем чтение данных из UDP-сокета или RAW-сокета
-							bytes = ::recvfrom(
-								server->fd,
-								::__awh_buffer__,
-								AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
-								&::trust_cast <struct sockaddr> (server->endpoint.client),
-								&server->endpoint.size
-							);
+							/**
+							 * Если активирован режим получения информационных метаданных для дейтаграммных пакетов
+							 */
+							if(server->state.options & event::options::DGRAM_INFO){
+								// Устанавливаем семейство адресов текущего события
+								server->raw.info.family = server->state.family;
+								// Устанавливаем протокол текущего события
+								server->raw.info.protocol = server->state.protocol;
+								// Зануляем буфер для получения данных и информационных метаданных из сокета
+								::memset(&server->raw.msg, 0, sizeof(server->raw.msg));
+								// Устанавливаем буфер для получения данных из сокета
+								server->raw.iov.iov_base = ::__awh_buffer__;
+								// Устанавливаем размер буфера для получения данных из сокета
+								server->raw.iov.iov_len = AWH_EVENT_MAX_BUFFER_SIZE;
+								// Устанавливаем буфер для получения данных и информационных метаданных из сокета
+								server->raw.msg.msg_iov = &server->raw.iov;
+								// Устанавливаем количество буферов для получения данных и информационных метаданных из сокета
+								server->raw.msg.msg_iovlen = 1;
+								// Устанавливаем размер буфера для получения адреса отправителя из сокета
+								server->raw.msg.msg_namelen = server->endpoint.size;
+								// Устанавливаем буфер для получения адреса отправителя из сокета
+								server->raw.msg.msg_name = &::trust_cast <struct sockaddr> (server->endpoint.client),
+								// Устанавливаем буфер для получения служебных метаданных из сокета
+								server->raw.msg.msg_control = ::__awh_cmsgbuf__;
+								// Устанавливаем размер буфера для получения служебных метаданных из сокета
+								server->raw.msg.msg_controllen = sizeof(::__awh_cmsgbuf__);
+								// Выполняем чтение данных и служебных метаданных из RAW-сокета
+								bytes = ::recvmsg(server->fd, &server->raw.msg, MSG_NOSIGNAL);
+								/**
+								 * Извлекаем значение TTL/HopLimit из control message
+								 */
+								for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&server->raw.msg); cmsg != nullptr; cmsg = CMSG_NXTHDR(&server->raw.msg, cmsg)){
+									/** 
+									 * Определяем уровень и тип control message для извлечения информационных метаданных о дейтаграммных пакетах
+									 */
+									switch(cmsg->cmsg_level){
+										// Если уровень control message соответствует IPv4
+										case IPPROTO_IP: {
+											// Если тип control message соответствует TTL или RECVTTL
+											if((cmsg->cmsg_type == IP_TTL) || (cmsg->cmsg_type == IP_RECVTTL))
+												// Сохраняем сырое значение TTL (IPv4)
+												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+											// Если тип control message соответствует TOS или RECVTOS
+											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+												// Сохраняем класс трафика IPv4 (TOS)
+												server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+										} break;
+										// Если уровень control message соответствует IPv6
+										case IPPROTO_IPV6: {
+											// Флаг совпадения для определения наличия значения Hop Limit в control message
+											bool match = false;
+											/**
+											 * Если тип control message соответствует Hop Limit или RECVHOPLIMIT
+											 */
+											#if IPV6_HOPLIMIT
+												// Устанавливаем флаг совпадения, если тип control message соответствует Hop Limit или RECVHOPLIMIT
+												match = (match || (cmsg->cmsg_type == IPV6_HOPLIMIT));
+											/**
+											 * Если тип control message соответствует 2292HOPLIMIT
+											 */
+											#elif IPV6_2292HOPLIMIT
+												// Устанавливаем флаг совпадения, если тип control message соответствует 2292HOPLIMIT
+												match = (match || (cmsg->cmsg_type == IPV6_2292HOPLIMIT));
+											#endif
+											/**
+											 * Если тип control message соответствует RECVHOPLIMIT
+											 */
+											#if IPV6_RECVHOPLIMIT
+												// Устанавливаем флаг совпадения, если тип control message соответствует RECVHOPLIMIT
+												match = (match || (cmsg->cmsg_type == IPV6_RECVHOPLIMIT));
+											#endif
+											// Если флаг совпадения установлен, сохраняем сырое значение Hop Limit (IPv6)
+											if(match)
+												// Сохраняем сырое значение Hop Limit (IPv6)
+												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+											// Если флаг совпадения не установлен
+											else {
+												/**
+												 * Определяем тип control message для извлечения класса трафика IPv6
+												 */
+												switch(cmsg->cmsg_type){
+													// Если тип control message соответствует TCLASS
+													case IPV6_TCLASS:
+														// Сохраняем класс трафика IPv6 (TCLASS)
+														server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													break;
+													// Если тип control message соответствует RECVTCLASS
+													case IPV6_RECVTCLASS:
+														// Сохраняем класс трафика IPv6 (RECVTCLASS)
+														server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													break;
+													/**
+													 * Если тип control message соответствует PKTINFO,
+													 * извлекаем индекс сетевого интерфейса источника из control message
+													 */
+													#if IPV6_PKTINFO
+														// Если тип control message соответствует PKTINFO
+														case IPV6_PKTINFO: {
+															// Извлекаем структуру in6_pktinfo из control message
+															auto * pktinfo = reinterpret_cast <const struct in6_pktinfo *> (CMSG_DATA(cmsg));
+															// Сохраняем индекс сетевого интерфейса источника
+															server->raw.info.ifaceIndex = pktinfo->ipi6_ifindex;
+														} break;
+													#endif
+												}	
+											}
+										} break;
+									}
+								}
+							// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
+							} else {
+								// Выполняем чтение данных из UDP-сокета или RAW-сокета
+								bytes = ::recvfrom(
+									server->fd,
+									::__awh_buffer__,
+									AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL,
+									&::trust_cast <struct sockaddr> (server->endpoint.client),
+									&server->endpoint.size
+								);
+							}
 							// Если мы получили ошибку
 							if(bytes < 0){
 								// Если установлена функция обратного вызова
@@ -47740,23 +47987,33 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 									case static_cast <uint8_t> (event::family_t::IPV4):
 									// Для семейства IPv6
 									case static_cast <uint8_t> (event::family_t::IPV6): {
-										// Если опция передана как DGRAM_INFO
-										if(event::options::DGRAM_INFO & options){
-											// Устанавливаем режим генерации информации о трафике
-											if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
-												// Устанавливаем опцию события
-												i->second->state.options |= event::options::DGRAM_INFO;
-										// Если опция не передана как DGRAM_INFO
-										} else {
-											// Снимаем режим генерации информации о трафике
-											if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
-												// Снимаем опцию события
-												i->second->state.options &= ~event::options::DGRAM_INFO;
+										/**
+										 * Определяем чем является текущий узел
+										 */
+										switch(static_cast <uint8_t> (i->second->state.node)){
+											// Если узел является клиентом
+											case static_cast <uint8_t> (event::node_t::CLIENT):
+											// Если узел является сервером
+											case static_cast <uint8_t> (event::node_t::SERVER): {
+												// Если опция передана как DGRAM_INFO
+												if(event::options::DGRAM_INFO & options){
+													// Устанавливаем режим генерации информации о трафике
+													if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
+														// Устанавливаем опцию события
+														i->second->state.options |= event::options::DGRAM_INFO;
+												// Если опция не передана как DGRAM_INFO
+												} else {
+													// Снимаем режим генерации информации о трафике
+													if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
+														// Снимаем опцию события
+														i->second->state.options &= ~event::options::DGRAM_INFO;
+												}
+												// Если опция не установлена
+												if(result && !isSetup)
+													// Устанавливаем результат работы функции как ложь
+													result = isSetup;
+											} break;
 										}
-										// Если опция не установлена
-										if(result && !isSetup)
-											// Устанавливаем результат работы функции как ложь
-											result = isSetup;
 										// Если опция передана как HDRINCL
 										if(event::options::HDRINCL & options){
 											// Устанавливаем режим широковещательной передачи
@@ -47839,30 +48096,40 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								// Если событие принадлежит к типу DATAGRAM
 								if(i->second->state.type == event::type_t::DATAGRAM){
 									/**
-									 * Определяем семейство адресов
+									 * Определяем чем является текущий узел
 									 */
-									switch(static_cast <uint8_t> (i->second->state.family)){
-										// Для семейства IPv4
-										case static_cast <uint8_t> (event::family_t::IPV4):
-										// Для семейства IPv6
-										case static_cast <uint8_t> (event::family_t::IPV6): {
-											// Если опция передана как DGRAM_INFO
-											if(event::options::DGRAM_INFO & options){
-												// Устанавливаем режим генерации информации о трафике
-												if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
-													// Устанавливаем опцию события
-													i->second->state.options |= event::options::DGRAM_INFO;
-											// Если опция не передана как DGRAM_INFO
-											} else {
-												// Снимаем режим генерации информации о трафике
-												if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
-													// Снимаем опцию события
-													i->second->state.options &= ~event::options::DGRAM_INFO;
+									switch(static_cast <uint8_t> (i->second->state.node)){
+										// Если узел является клиентом
+										case static_cast <uint8_t> (event::node_t::CLIENT):
+										// Если узел является сервером
+										case static_cast <uint8_t> (event::node_t::SERVER): {
+											/**
+											 * Определяем семейство адресов
+											 */
+											switch(static_cast <uint8_t> (i->second->state.family)){
+												// Для семейства IPv4
+												case static_cast <uint8_t> (event::family_t::IPV4):
+												// Для семейства IPv6
+												case static_cast <uint8_t> (event::family_t::IPV6): {
+													// Если опция передана как DGRAM_INFO
+													if(event::options::DGRAM_INFO & options){
+														// Устанавливаем режим генерации информации о трафике
+														if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::ENABLED)))
+															// Устанавливаем опцию события
+															i->second->state.options |= event::options::DGRAM_INFO;
+													// Если опция не передана как DGRAM_INFO
+													} else {
+														// Снимаем режим генерации информации о трафике
+														if((isSetup = this->_eth.socket.trafficInfoGeneration(fd, i->second->state.family, net::socket_mode_t::DISABLED)))
+															// Снимаем опцию события
+															i->second->state.options &= ~event::options::DGRAM_INFO;
+													}
+													// Если опция не установлена
+													if(result && !isSetup)
+														// Устанавливаем результат работы функции как ложь
+														result = isSetup;
+												} break;
 											}
-											// Если опция не установлена
-											if(result && !isSetup)
-												// Устанавливаем результат работы функции как ложь
-												result = isSetup;
 										} break;
 									}
 								}
@@ -48550,16 +48817,10 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 						 * Определяем чем является текущий узел
 						 */
 						switch(static_cast <uint8_t> (i->second->state.node)){
-							// Если узел является директорией
-							case static_cast <uint8_t> (event::node_t::DIR):
-							// Если узел является файловой системой
-							case static_cast <uint8_t> (event::node_t::FILE):
-							// Если узел является межпроцессным взаимодействием
-							case static_cast <uint8_t> (event::node_t::IPC):
-							// Если узел является туннелем
-							case static_cast <uint8_t> (event::node_t::TUNNEL): break;
-							// Для других типов узлов
-							default: {
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT):
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
 								/**
 								 * Определяем тип сокета
 								 */
@@ -53910,15 +54171,11 @@ awh::event::hops_t awh::engine::IO::getRecvHops(const event::id_t id) const noex
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Выводим количество хопов последнего принятого пакета
-					return static_cast <event::hops_t> (awh_cast <::io::client_t *> (i->second.get())->transfer.raw.info.hops);
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER):
+					return static_cast <event::hops_t> (awh_cast <::io::client_t *> (i->second.get())->raw.info.hops);
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим количество хопов последнего принятого пакета
-					return static_cast <event::hops_t> (awh_cast <::io::peer_t *> (i->second.get())->transfer.raw.info.hops);
-				// Если узел является одноранговым узлом-источником
-				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Выводим количество хопов последнего принятого пакета
-					return static_cast <event::hops_t> (awh_cast <::io::origin_t *> (i->second.get())->transfer.raw.info.hops);
+					return static_cast <event::hops_t> (awh_cast <::io::server_t *> (i->second.get())->raw.info.hops);
 			}
 		}
 	/**
@@ -53965,15 +54222,11 @@ awh::net::dgram_info_t awh::engine::IO::getDatagramInfo(const event::id_t id) co
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
 					// Выводим метаданные последнего принятого дейтаграммного пакета
-					return awh_cast <::io::client_t *> (i->second.get())->transfer.raw.info;
-				// Если узел является одноранговым узлом
-				case static_cast <uint8_t> (event::node_t::PEER):
+					return awh_cast <::io::client_t *> (i->second.get())->raw.info;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
 					// Выводим метаданные последнего принятого дейтаграммного пакета
-					return awh_cast <::io::peer_t *> (i->second.get())->transfer.raw.info;
-				// Если узел является одноранговым узлом-источником
-				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Выводим метаданные последнего принятого дейтаграммного пакета
-					return awh_cast <::io::origin_t *> (i->second.get())->transfer.raw.info;
+					return awh_cast <::io::server_t *> (i->second.get())->raw.info;
 			}
 		}
 	/**

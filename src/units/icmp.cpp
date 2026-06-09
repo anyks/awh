@@ -331,7 +331,7 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
  * @param data данные события чтения ICMP-ответа
  * @param size размер данных события чтения ICMP-ответа
  */
-void awh::unit::ICMP::response([[maybe_unused]] const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept {
+void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const uint8_t * data, const size_t size) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
