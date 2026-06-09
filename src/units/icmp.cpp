@@ -542,7 +542,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 			else this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::RAW, event::protocol_t::ICMP);
 		#endif
 		// Если адрес назначения сервера установлен
-		if((result = (this->_client.target != nullptr))){
+		if((result = ((this->_client.eid > 0) && (this->_client.target != nullptr)))){
 			// Устанавливаем адрес сервера назначения
 			this->_io->setTarget(this->_client.eid, this->_client.target.get());
 			// Если адрес сети для выполнения запроса установлен

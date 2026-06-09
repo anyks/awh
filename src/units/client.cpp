@@ -52,6 +52,8 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 				for(const auto & eid : this->_events)
 					// Удаляем событие клиента
 					this->_io->destroy(eid);
+				// Очищаем список событий клиента
+				this->_events.clear();
 			}
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("clientStatus")){
@@ -1070,26 +1072,29 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 	try {
 		// Добавляем новое событие клиента
 		result = this->_io->event(event::node_t::CLIENT, family, type, protocol);
-		// Устанавливаем функцию обратного вызова на событие записи данных
-		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-		this->_io->on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-		this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-		this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
-		// Добавляем идентификатор события клиента в список событий клиента
-		this->_events.emplace(result);
+		// Если событие клиента успешно создано
+		if(result > 0){
+			// Устанавливаем функцию обратного вызова на событие записи данных
+			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&client_t::write, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие чтения данных
+			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&client_t::read, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие изменения действий клиента
+			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+			this->_io->on(result, static_cast <engine::callback::timeout_t> (std::bind(&client_t::timeout, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&client_t::spool, this, _1, _2, _3, _4)));
+			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&client_t::available, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+			this->_io->on(result, static_cast <engine::callback::connect_t> (std::bind(static_cast <void (client_t::*)(const event::id_t, const bool)> (&client_t::connect), this, _1, _2)));
+			// Добавляем идентификатор события клиента в список событий клиента
+			this->_events.emplace(result);
+		}
 	/**
 	 * Если возникает ошибка
 	 */

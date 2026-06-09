@@ -13,13 +13,13 @@
  */
 
 /**
- * Экранируем повторную инициализацию модуля
+ * Защита от повторного включения заголовочного файла
  */
 #ifndef __AWH_UNIT_SERVER__
 #define __AWH_UNIT_SERVER__
 
 /**
- * Наши модули
+ * Заголовочные файлы проекта
  */
 #include "unit.hpp"
 #include "cluster.hpp"
@@ -30,12 +30,12 @@
  */
 namespace awh {
 	/**
-	 * @brief Пространство имён узла источника
+	 * @brief Пространство имён модулей
 	 *
 	 */
 	namespace unit {
 		/**
-		 * Подписываемся на стандартное пространство имён
+		 * Используем пространство имён std
 		 */
 		using namespace std;
 		/**
@@ -312,17 +312,17 @@ namespace awh {
 				bool launch(const event::id_t eid) noexcept;
 			public:
 				/**
-				 * @brief Метод приостановки работы клиента
+				 * @brief Метод приостановки обработки события
 				 *
-				 * @param eid идентификатор события клиента
-				 * @return    результат выполнения приостановки работы
+				 * @param eid идентификатор события
+				 * @return    результат выполнения приостановки
 				 */
 				bool pause(const event::id_t eid) noexcept;
 				/**
-				 * @brief Метод возобновления работы клиента
+				 * @brief Метод возобновления обработки события
 				 *
-				 * @param eid идентификатор события клиента
-				 * @return    результат выполнения возобновления работы
+				 * @param eid идентификатор события
+				 * @return    результат выполнения возобновления
 				 */
 				bool resume(const event::id_t eid) noexcept;
 			public:
@@ -661,12 +661,12 @@ namespace awh {
 				void destroy(const event::id_t eid) noexcept;
 			public:
 				/**
-				 * @brief Метод получения идентификатора сервера для выполнения запросов к серверу
+				 * @brief Метод создания серверного события
 				 *
 				 * @param family   семейство адресов
 				 * @param type     тип события
 				 * @param protocol протокол события
-				 * @return         идентификатор созданного сервера
+				 * @return         идентификатор созданного серверного события
 				 */
 				event::id_t issue(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 			public:
@@ -698,10 +698,9 @@ namespace awh {
 				 */
 				event::mode_t clusterMode() const noexcept;
 				/**
-				 * @brief Метод установки количества процессов кластера
+				 * @brief Метод установки режима работы кластера
 				 *
-				 * @param mode флаг активации/деактивации кластера
-				 * @param size количество рабочих процессов
+				 * @param mode режим активации/деактивации кластера
 				 */
 				void clusterMode(const event::mode_t mode) noexcept;
 			public:
@@ -771,12 +770,12 @@ namespace awh {
 				bool clusterSetBufferSize(const pid_t pid, const event::action_t action, const size_t size) noexcept;
 			private:
 				/**
-				 * @brief Конструктор копирования (запрещаем)
+				 * @brief Конструктор копирования удалён
 				 *
 				 */
 				Server(const Server &) = delete;
 				/**
-				 * @brief Оператор копирования (запрещаем)
+				 * @brief Оператор копирующего присваивания удалён
 				 *
 				 * @return текущее значение объекта
 				 */

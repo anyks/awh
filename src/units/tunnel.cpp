@@ -34,6 +34,18 @@ using namespace placeholders;
  * @param status новый статус туннеля
  */
 void awh::unit::Tunnel::status(const event::id_t eid, const event::status_t status) noexcept {
+	// Если статус туннеля представляет из себя уничтожение
+	if(status == event::status_t::DESTROYED){
+		// Если в списке событий туннеля есть события
+		if(!this->_events.empty()){
+			// Выполняем поиск идентификатора события туннеля в списке событий туннеля
+			auto i = this->_events.find(eid);
+			// Если идентификатор события туннеля найден в списке событий туннеля
+			if(i != this->_events.end())
+				// Удаляем идентификатор события туннеля из списка событий туннеля
+				this->_events.erase(i);
+		}
+	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("state"))
 		// Выполняем функцию обратного вызова
@@ -343,15 +355,6 @@ void awh::unit::Tunnel::callback(const callback_t & callback) noexcept {
 void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие туннеля
 	this->_io->destroy(eid);
-	// Если в списке событий туннеля есть события
-	if(!this->_events.empty()){
-		// Выполняем поиск идентификатора события туннеля в списке событий туннеля
-		auto i = this->_events.find(eid);
-		// Если идентификатор события туннеля найден в списке событий туннеля
-		if(i != this->_events.end())
-			// Удаляем идентификатор события туннеля из списка событий туннеля
-			this->_events.erase(i);
-	}
 }
 /**
  * @brief Метод получения идентификатора туннеля
@@ -368,14 +371,17 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
 	try {
 		// Добавляем новое событие туннеля
 		result = this->_io->event(event::node_t::TUNNEL, family);
-		// Устанавливаем функцию обратного вызова на событие изменения статуса туннеля
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
-		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
-		// Добавляем идентификатор события туннеля в список событий туннеля
-		this->_events.emplace(result);
+		// Если событие туннеля успешно создано
+		if(result > 0){
+			// Устанавливаем функцию обратного вызова на событие изменения статуса туннеля
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&tunnel_t::status, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&tunnel_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
+			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&tunnel_t::available, this, _1, _2, _3)));
+			// Добавляем идентификатор события туннеля в список событий туннеля
+			this->_events.emplace(result);
+		}
 	/**
 	 * Если возникает ошибка
 	 */

@@ -18,12 +18,12 @@
 #include <units/server.hpp>
 
 /**
- * Подписываемся на стандартное пространство имён
+ * Используем пространство имён std
  */
 using namespace std;
 
 /**
- * Подписываемся на пространство имён placeholders
+ * Используем пространство имён placeholders
  */
 using namespace placeholders;
 
@@ -61,7 +61,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
 			 */
-			#elif __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
+			#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				/**
 				 * Проверяем требуется ли активировать кластер
 				 */
@@ -110,7 +110,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				}
 			#endif
 		} break;
-		// Если работа кластера подлежит уничтожению
+		// Если сервер завершает работу
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если в списке событий сервера есть события
 			if(!this->_events.empty()){
@@ -118,18 +118,20 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				for(const auto & event : this->_events)
 					// Удаляем событие сервера
 					this->_io->destroy(event.first);
+				// Очищаем список событий сервера
+				this->_events.clear();
 			}
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("server_status")){
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const event::status_t)> ("server_status", status);
-				// Выполняем получение функции обратного вызова
+				// Восстанавливаем callback status
 				this->_callback.set("server_status", "status", this->_callback);
 			}
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
 			 */
-			#if __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
+			#if __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				// Если необходимо деактивировать кластер
 				if(this->_clusterParams.mode == event::mode_t::ENABLED){
 					// Если кластер инициализирован
@@ -259,21 +261,21 @@ void awh::unit::Server::status(const event::id_t eid, const event::status_t stat
 			// Если идентификатор события является сервером
 			if(i->second == 0){
 				/**
-				 * Удаляем все события, которые принадлежат этому серверу
+				 * Удаляем все клиентские события, привязанные к данному серверу
 				 */
 				for(auto j = this->_events.begin(); j != this->_events.end();){
-					// Если найден пир принадлежащий этому серверу
+					// Если найдено клиентское событие, принадлежащее этому серверу
 					if(i->first == j->second){
-						// Удаляем событие пира
+						// Удаляем клиентское событие
 						this->_io->destroy(j->first);
-						// Удаляем идентификатор события пира из списка событий
+						// Удаляем идентификатор клиентского события из списка
 						j = this->_events.erase(j);
-					// Если найденный пир не принадлежит этому серверу, переходим к следующему событию
+					// Если событие не относится к этому серверу, переходим к следующему
 					} else ++j;
 				}
 				// Удаляем идентификатор события сервера
 				this->_events.erase(i);
-			// Если идентификатор события является пиром, просто удаляем его
+			// Если идентификатор относится к клиентскому событию, удаляем его
 			} else this->_events.erase(i);
 		}
 	}
@@ -303,7 +305,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 				if(!this->working()){
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("status"))
-						// Выполняем получение функции обратного вызова
+						// Переименовываем callback status в server_status
 						this->_callback.set("status", "server_status", this->_callback);
 					// Устанавливаем функцию обратного вызова на запуск системы
 					this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
@@ -313,7 +315,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 			/**
 			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
 			 */
-			#elif __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
+			#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				// Если процесс является дочерним
 				if(!this->_cluster->master()){
 					// Если функция обратного вызова установлена
@@ -712,10 +714,10 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 	return result;
 }
 /**
- * @brief Метод приостановки работы клиента
+ * @brief Метод приостановки обработки события
  *
- * @param eid идентификатор события клиента
- * @return    результат выполнения приостановки работы
+ * @param eid идентификатор события
+ * @return    результат выполнения приостановки
  */
 bool awh::unit::Server::pause(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -726,10 +728,10 @@ bool awh::unit::Server::pause(const event::id_t eid) noexcept {
 	return false;
 }
 /**
- * @brief Метод возобновления работы клиента
+ * @brief Метод возобновления обработки события
  *
- * @param eid идентификатор события клиента
- * @return    результат выполнения возобновления работы
+ * @param eid идентификатор события
+ * @return    результат выполнения возобновления
  */
 bool awh::unit::Server::resume(const event::id_t eid) noexcept {
 	// Если событие сервера является актуальным
@@ -1360,7 +1362,7 @@ void awh::unit::Server::stop() noexcept {
 						// Останавливаем работу кластера
 						this->_cluster->stop();
 				} break;
-				// Если необходимо кластер в работе не используется
+				// Если кластер отключён
 				case static_cast <uint8_t> (event::mode_t::DISABLED):
 					// Выполняем остановку работы основного юнита
 					unit_t::stop();
@@ -1369,11 +1371,11 @@ void awh::unit::Server::stop() noexcept {
 		/**
 		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
 		 */
-		#elif __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
+		#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 			// Выполняем остановку работы основного юнита
 			unit_t::stop();
 		/**
-		 * Операционной системой не распознана
+			 * Операционная система не поддерживается
 		 */
 		#else
 			/**
@@ -1407,7 +1409,7 @@ void awh::unit::Server::start() noexcept {
 		#if _WIN32 || _WIN64
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("status"))
-				// Выполняем получение функции обратного вызова
+				// Переименовываем callback status в server_status
 				this->_callback.set("status", "server_status", this->_callback);
 			// Устанавливаем функцию обратного вызова на запуск системы
 			this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
@@ -1455,11 +1457,11 @@ void awh::unit::Server::start() noexcept {
 					// Запускаем работу кластера
 					this->_cluster->start();
 				} break;
-				// Если необходимо кластер в работе не используется
+				// Если кластер отключён
 				case static_cast <uint8_t> (event::mode_t::DISABLED): {
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("status"))
-						// Выполняем получение функции обратного вызова
+						// Переименовываем callback status в server_status
 						this->_callback.set("status", "server_status", this->_callback);
 					// Устанавливаем функцию обратного вызова на запуск системы
 					this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
@@ -1470,17 +1472,17 @@ void awh::unit::Server::start() noexcept {
 		/**
 		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
 		 */
-		#elif __OpenBSD__ || ___NetBSD__ || __sun__ || __APPLE__ || __MACH__
+		#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("status"))
-				// Выполняем получение функции обратного вызова
+				// Переименовываем callback status в server_status
 				this->_callback.set("status", "server_status", this->_callback);
 			// Устанавливаем функцию обратного вызова на запуск системы
 			this->_callback.on <void (const event::status_t)> ("status", static_cast <void (server_t::*)(const event::status_t)> (&server_t::launch), this, _1);
 			// Выполняем запуск работы основного юнита
 			unit_t::start();
 		/**
-		 * Операционной системой не распознана
+		 * Операционная система не поддерживается
 		 */
 		#else
 			/**
@@ -1533,13 +1535,13 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("cluster_state", callback);
 	// Выполняем установку функции обратного вызова при пересоздании процесса кластера
 	this->_callback.set("cluster_rebase", callback);
-	// Выполняем установку функции обратного вызова при ЗАПУСКЕ/ОСТАНОВКЕ процесса кластера
+	// Выполняем установку функции обратного вызова при запуске/остановке процесса кластера
 	this->_callback.set("cluster_events", callback);
 	// Выполняем установку функции обратного вызова при отправке сообщения кластера
 	this->_callback.set("cluster_sending", callback);
 	// Выполняем установку функции обратного вызова при получении сообщения кластера
 	this->_callback.set("cluster_message", callback);
-	// Выполняем установку функции обратного вызова при получении доступности размера очереди сообщений кластера
+	// Выполняем установку функции обратного вызова при изменении доступности очереди исходящих сообщений кластера
 	this->_callback.set("cluster_available", callback);
 }
 /**
@@ -1557,39 +1559,39 @@ void awh::unit::Server::destroy(const event::id_t eid) noexcept {
 			// Если идентификатор события является сервером
 			if(i->second == 0){
 				/**
-				 * Удаляем все события, которые принадлежат этому серверу
+				 * Удаляем все клиентские события, привязанные к данному серверу
 				 */
 				for(auto j = this->_events.begin(); j != this->_events.end();){
-					// Если найден пир принадлежащий этому серверу
+					// Если найдено клиентское событие, принадлежащее этому серверу
 					if(i->first == j->second){
-						// Удаляем событие пира
+						// Удаляем клиентское событие
 						this->_io->destroy(j->first);
-						// Удаляем идентификатор события пира из списка событий
+						// Удаляем идентификатор клиентского события из списка
 						j = this->_events.erase(j);
-					// Если найденный пир не принадлежит этому серверу, переходим к следующему событию
+					// Если событие не относится к этому серверу, переходим к следующему
 					} else ++j;
 				}
 				// Удаляем событие сервера
 				this->_io->destroy(i->first);
 				// Удаляем идентификатор события сервера из списка событий
 				this->_events.erase(i);
-			// Если идентификатор события является пиром
+			// Если идентификатор относится к клиентскому событию
 			} else {
 				// Удаляем событие сервера
 				this->_io->destroy(i->first);
-				// Удаляем идентификатор события пира из списка событий
+				// Удаляем идентификатор клиентского события из списка
 				this->_events.erase(i);
 			}
 		}
 	}
 }
 /**
- * @brief Метод получения идентификатора сервера для выполнения запросов к серверу
+ * @brief Метод создания серверного события
  *
  * @param family   семейство адресов
  * @param type     тип события
  * @param protocol протокол события
- * @return         идентификатор созданного сервера
+ * @return         идентификатор созданного серверного события
  */
 awh::event::id_t awh::unit::Server::issue(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
 	// Результат работы функции
@@ -1600,20 +1602,23 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 	try {
 		// Добавляем новое событие сервера
 		result = this->_io->event(event::node_t::SERVER, family, type, protocol);
-		// Устанавливаем функцию обратного вызова на событие изменения действий сервера
-		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие записи данных
-		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие разрешения подключения
-		this->_io->on(result, static_cast <engine::callback::accept_t> (std::bind(&server_t::accept, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
-		this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4)));
-		// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t)> (&server_t::status), this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3)));
-		// Добавляем идентификатор события сервера в список событий сервера
-		this->_events.emplace(result, 0);
+		// Если событие сервера успешно создано
+		if(result > 0){
+			// Устанавливаем функцию обратного вызова на событие изменения действий сервера
+			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие записи данных
+			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие разрешения подключения
+			this->_io->on(result, static_cast <engine::callback::accept_t> (std::bind(&server_t::accept, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
+			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4)));
+			// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t)> (&server_t::status), this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3)));
+			// Добавляем идентификатор события сервера в список событий сервера
+			this->_events.emplace(result, 0);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1689,10 +1694,9 @@ awh::event::mode_t awh::unit::Server::clusterMode() const noexcept {
 	return this->_clusterParams.mode;
 }
 /**
- * @brief Метод установки количества процессов кластера
+ * @brief Метод установки режима работы кластера
  *
- * @param mode флаг активации/деактивации кластера
- * @param size количество рабочих процессов
+ * @param mode режим активации/деактивации кластера
  */
 void awh::unit::Server::clusterMode(const event::mode_t mode) noexcept {
 	// Устанавливаем режим активации кластера

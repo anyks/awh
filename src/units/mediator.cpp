@@ -46,6 +46,18 @@ void awh::unit::Mediator::action(const event::id_t eid, const event::action_t ac
  * @param status новый статус посредника
  */
 void awh::unit::Mediator::status(const event::id_t eid, const event::status_t status) noexcept {
+	// Если статус посредника представляет из себя уничтожение
+	if(status == event::status_t::DESTROYED){
+		// Если в списке событий посредника есть события
+		if(!this->_events.empty()){
+			// Выполняем поиск идентификатора события посредника в списке событий посредника
+			auto i = this->_events.find(eid);
+			// Если идентификатор события посредника найден в списке событий посредника
+			if(i != this->_events.end())
+				// Удаляем идентификатор события посредника из списка событий посредника
+				this->_events.erase(i);
+		}
+	}
 	// Если функция обратного вызова установлена
 	if(this->_callback.is("state"))
 		// Выполняем функцию обратного вызова
@@ -274,15 +286,6 @@ void awh::unit::Mediator::callback(const callback_t & callback) noexcept {
 void awh::unit::Mediator::destroy(const event::id_t eid) noexcept {
 	// Удаляем событие посредника
 	this->_io->destroy(eid);
-	// Если в списке событий посредника есть события
-	if(!this->_events.empty()){
-		// Выполняем поиск идентификатора события посредника в списке событий посредника
-		auto i = this->_events.find(eid);
-		// Если идентификатор события посредника найден в списке событий посредника
-		if(i != this->_events.end())
-			// Удаляем идентификатор события посредника из списка событий посредника
-			this->_events.erase(i);
-	}
 }
 /**
  * @brief Метод получения идентификатора посредника для перехвата пакетов тоннеля
@@ -299,16 +302,19 @@ awh::event::id_t awh::unit::Mediator::issue(const event::family_t family) noexce
 	try {
 		// Добавляем новое событие посредника для перехвата пакетов тоннеля
 		result = this->_io->event(event::node_t::MEDIATOR, family);
-		// Устанавливаем функцию обратного вызова на событие изменения действий посредника
-		this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&mediator_t::action, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие чтения данных
-		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&mediator_t::read, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения статуса посредника
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&mediator_t::status, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&mediator_t::error, this, _1, _2, _3)));
-		// Добавляем идентификатор события посредника в список событий посредника
-		this->_events.emplace(result);
+		// Если событие посредника успешно создано
+		if(result > 0){
+			// Устанавливаем функцию обратного вызова на событие изменения действий посредника
+			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&mediator_t::action, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие чтения данных
+			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&mediator_t::read, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие изменения статуса посредника
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&mediator_t::status, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&mediator_t::error, this, _1, _2, _3)));
+			// Добавляем идентификатор события посредника в список событий посредника
+			this->_events.emplace(result);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
