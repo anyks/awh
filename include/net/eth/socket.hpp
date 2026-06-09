@@ -135,6 +135,16 @@ namespace awh {
 				bool setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) const noexcept;
 			public:
 				/**
+				 * @brief Метод активации/деактивации генерации информации о трафике
+				 *
+				 * @param sock   сетевой сокет
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @param mode   режим активации или деактивации
+				 * @return       результат работы функции
+				 */
+				bool trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept;
+			public:
+				/**
 				 * @brief Метод переключения опции сокета
 				 *
 				 * @param sock   сетевой сокет

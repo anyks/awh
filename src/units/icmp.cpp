@@ -505,6 +505,8 @@ void awh::unit::ICMP::response([[maybe_unused]] const event::id_t eid, const mod
 						icmp = reinterpret_cast <const header_t *> (data);
 						// Извлекаем IP-адрес установленный в событии
 						this->_io->getTarget(eid, address);
+						// Извлекаем TTL/Hop Limit последнего принятого пакета
+						timeToLive = static_cast <uint32_t> (this->_io->getRecvHops(eid));
 					// Если размер данных меньше размера заголовка ICMP
 					} else return;
 				}
@@ -513,6 +515,14 @@ void awh::unit::ICMP::response([[maybe_unused]] const event::id_t eid, const mod
 			const id_t id = ntohs(icmp->meta.echo.identifier);
 			// Извлекаем номер последовательности запроса
 			const uint16_t sequence = ntohs(icmp->meta.echo.sequence);
+			// Получаем метаданные последнего принятого дейтаграммного пакета
+			net::dgram_info_t info = this->_io->getDatagramInfo(eid);
+			// Извлекаем TTL/Hop Limit последнего принятого пакета
+			info.hops = static_cast <uint8_t> (this->_io->getRecvHops(eid));
+			// Если TTL/Hop Limit не удалось извлечь из IP-заголовка
+			if(timeToLive == 0)
+				// Устанавливаем TTL/Hop Limit из метаданных пакета
+				timeToLive = static_cast <uint32_t> (info.hops);
 			// Получаем текущую метку времени
 			const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
 			// Если функция обратного вызова установлена для получения ответа от удалённого сервера
@@ -532,6 +542,10 @@ void awh::unit::ICMP::response([[maybe_unused]] const event::id_t eid, const mod
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const id_t, const response_t &)> ("ping", id, response);
 			}
+			// Если функция обратного вызова установлена для получения метаданных дейтаграммного пакета
+			if(this->_callback.is("info"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const id_t, const net::dgram_info_t &)> ("info", id, info);
 			// Выполняем фиксацию текущей метки времени для данного запроса
 			this->_transfer.timestamp = now;
 			// Если выполняется асинхронный режим пинга удалённого сервера
@@ -634,6 +648,29 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 			this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (std::bind(&icmp_t::error, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие чтения данных
 			this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode_t::ASYNC, _2, _3)));
+			// Если опции события не установлены
+			if(!this->_io->setOptions(this->_client.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::DGRAM_INFO)){
+				// Удаляем событие ICMP-клиента
+				this->_io->destroy(this->_client.eid);
+				// Если функция обратного вызова не установлена
+				if(!this->_callback.is("error")){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
+					#endif
+				}
+				// Выходим из функции
+				return false;
+			}
 			// Устанавливаем адрес сервера назначения
 			this->_io->setTarget(this->_client.eid, this->_client.target.get());
 			// Если адрес сети для выполнения запроса установлен
@@ -732,6 +769,8 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 void awh::unit::ICMP::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита
 	unit_t::callback(callback);
+	// Выполняем установку функции обратного вызова при получении метаданных дейтаграммного пакета
+	this->_callback.set("info", callback);
 	// Выполняем установку функции обратного вызова при получении ответа от удалённого сервера
 	this->_callback.set("ping", callback);
 	// Выполняем установку функции обратного вызова при наступлении таймаута ожидания ответа от удалённого сервера
@@ -1261,7 +1300,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					// Устанавливаем функцию обратного вызова на событие чтения данных
 					this->_io->on(eid, static_cast <engine::callback::read_t> (std::bind(&icmp_t::response, this, _1, mode, _2, _3)));
 					// Если опции события не установлены
-					if(!this->_io->setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+					if(!this->_io->setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::CLOSE_ON_EXEC | event::options::DGRAM_INFO)){
 						// Удаляем событие ICMP-клиента
 						this->_io->destroy(eid);
 						// Если функция обратного вызова не установлена
@@ -1280,8 +1319,10 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 								this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
 							#endif
 						}
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
+						// Устанавливаем флаг ожидания ответа от сервера
+						this->_transfer.waiting = !this->_transfer.waiting;
+						// Выходим из функции
+						return false;
 					}
 					// Если адрес назначения сервера установлен
 					if(this->_client.target != nullptr){

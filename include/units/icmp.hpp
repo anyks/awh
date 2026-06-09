@@ -173,7 +173,7 @@ namespace awh {
 				/**
 				 * @brief Метод установки функций обратного вызова
 				 *
-				 * @param callback функции обратного вызова
+				 * @param callback функции обратного вызова (ping, timeout, datagram)
 				 */
 				void callback(const callback_t & callback) noexcept;
 			public:

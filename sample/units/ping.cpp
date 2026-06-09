@@ -102,7 +102,7 @@ int32_t main(int32_t argc, char * argv[]){
 		addr.source(response.address);
 		// Выводим информацию о полученном ответе от удалённого сервера (добавить размер отправляемого пакета)
 		// log.print("Ответ от %s: icmp_seq=%d time=%dms (ID: %d)", log_t::flag_t::INFO, static_cast <string> (addr).c_str(), sequence, elapsed, identifier);
-		log.print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, response.size, static_cast <string> (addr).c_str(), response.sequence, (response.timeToLive / 1000), abbr.second, label.c_str());
+		log.print("%zu bytes from %s: icmp_seq=%u ttl=%u time=%.1f %s", log_t::flag_t::INFO, response.size, static_cast <string> (addr).c_str(), response.sequence, response.timeToLive, abbr.second, label.c_str());
 	}, placeholders::_1, placeholders::_2);
 	// Выполняем ICMP-запрос к удалённому серверу
 	if(icmp.ping(icmp.issue(), 10, unit::icmp_t::mode_t::SYNC)){

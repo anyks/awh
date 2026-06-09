@@ -332,6 +332,32 @@ namespace awh {
 		} attr_uds_t;
 
 		/**
+		 * @brief Структура метаданных последнего принятого дейтаграммного пакета
+		 *
+		 */
+		typedef struct Datagram_Info {
+			// Сырое значение TTL/Hop Limit последнего принятого пакета (RFC, 0..255)
+			uint8_t hops;
+			// Индекс входного интерфейса
+			uint32_t ifaceIndex;
+			// Семейство принятого пакета
+			event::family_t family;
+			// Протокол принятого пакета
+			event::protocol_t protocol;
+			// Класс трафика (TOS/Traffic Class)
+			event::dscp_t trafficClass;
+			/**
+			 * @brief Конструктор
+			 *
+			 */
+			explicit Datagram_Info() noexcept :
+			 hops(0), ifaceIndex(0),
+			 family(event::family_t::NONE),
+			 protocol(event::protocol_t::NONE),
+			 trafficClass(event::dscp_t::CS0) {}
+		} dgram_info_t;
+
+		/**
 		 * @brief Структура информации о пакетах в тоннеле
 		 *
 		 */

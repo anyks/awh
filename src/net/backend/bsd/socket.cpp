@@ -930,6 +930,237 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 	return result;
 }
 /**
+ * @brief Метод активации/деактивации генерации информации о трафике
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param mode   режим активации или деактивации
+ * @return       результат работы функции
+ */
+bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Если сокет корректен
+	if(sock != net::invalid_socket_t){
+		// Флаги установки опции
+		int32_t flags = 0;
+		/**
+		 * Определяем режим блокировки
+		 */
+		switch(static_cast <uint8_t> (mode)){
+			// Если необходимо активировать заголовки в сокете
+			case static_cast <uint8_t> (net::socket_mode_t::ENABLED):
+				// Устанавливаем флаг активации
+				flags = 1;
+			break;
+			// Если необходимо деактивировать заголовки в сокете
+			case static_cast <uint8_t> (net::socket_mode_t::DISABLED):
+				// Устанавливаем флаг деактивации
+				flags = 0;
+			break;
+		}
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Флаг выполнения операции
+				bool ok1 = false, ok2 = false;
+				// Активируем/деактивируем генерацию информации о хопах (TTL) в сокете
+				if(!(ok1 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_RECVTTL, &flags, sizeof(flags))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+				// Получаем размер установленного размера буфера
+				socklen_t length = sizeof(flags);
+				// Считываем тип сокета для определения его семейства
+				if(!(ok2 = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_TYPE, &flags, &length)))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::CRITICAL,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+				// Если сокет является RAW-сокетом
+				if(ok2 && (flags == SOCK_RAW)){
+					// Активируем/деактивируем генерацию информации о типе сервиса (TOS) в сокете
+					if(!(ok2 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_RECVTOS, &flags, sizeof(flags))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+				}
+				// Формируем итоговый результат
+				result = (ok1 && ok2);
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Получаем размер установленного размера буфера
+				socklen_t length = sizeof(flags);
+				// Считываем тип сокета для определения его семейства
+				if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_TYPE, &flags, &length)))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (mode)
+							), log_t::flag_t::CRITICAL,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+				// Если сокет не является RAW-сокетом
+				if(flags != SOCK_RAW){
+					// Флаг выполнения операции
+					bool ok1 = false, ok2 = false, ok3 = false;
+					// Активируем/деактивируем генерацию информации о хопах (Hop Limit) в сокете
+					if(!(ok1 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_RECVHOPLIMIT, &flags, sizeof(flags))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+					// Активируем/деактивируем генерацию информации о типе трафика (Traffic Class) в сокете
+					if(!(ok2 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_RECVTCLASS, &flags, sizeof(flags))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+					// Активируем/деактивируем генерацию информации о пакете (Packet Info) в сокете
+					if(!(ok3 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_RECVPKTINFO, &flags, sizeof(flags))))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Выводим сообщение об ошибке
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								make_tuple(
+									sock,
+									static_cast <uint16_t> (family),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING,
+								::strerror(errno)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Выводим сообщение об ошибке
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					}
+					// Формируем итоговый результат
+					result = (ok1 && ok2 && ok3);
+				}
+			} break;
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод переключения опции сокета
  *
  * @param sock   сетевой сокет

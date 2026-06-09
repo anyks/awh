@@ -681,6 +681,20 @@ namespace awh {
 				 */
 				event::hops_t getHops(const event::id_t id) const noexcept;
 				/**
+				 * @brief Метод получения количества хопов последнего принятого пакета
+				 *
+				 * @param id идентификатор события
+				 * @return   количество хопов последнего принятого пакета
+				 */
+				event::hops_t getRecvHops(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+				 *
+				 * @param id идентификатор события
+				 * @return   метаданные последнего принятого дейтаграммного пакета
+				 */
+				net::dgram_info_t getDatagramInfo(const event::id_t id) const noexcept;
+				/**
 				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 				 *
 				 * @param id     идентификатор события

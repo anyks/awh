@@ -420,10 +420,10 @@ namespace awh {
 			 */
 			static constexpr uint16_t TCP_CORK = 0x02;
 			/**
-			 * @brief Опция отключения алгоритма Нейгла
+			 * @brief Опция отключения сигнала SIGILL
 			 *
 			 */
-			static constexpr uint16_t TCP_NO_DELAY = 0x04;
+			static constexpr uint16_t NO_SIGILL = 0x04;
 			/**
 			 * @brief Опция широковещательного адреса
 			 *
@@ -440,25 +440,25 @@ namespace awh {
 			 */
 			static constexpr uint16_t IPV6_ONLY = 0x20;
 			/**
-			 * @brief Опция отключения сигнала SIGILL
-			 *
-			 */
-			static constexpr uint16_t NO_SIGILL = 0x40;
-			/**
 			 * @brief Опция отключения сигнала SIGPIPE
 			 *
 			 */
-			static constexpr uint16_t NO_SIGPIPE = 0x80;
+			static constexpr uint16_t NO_SIGPIPE = 0x40;
 			/**
 			 * @brief Опция повторного использования адреса
 			 *
 			 */
-			static constexpr uint16_t REUSE_ADDR = 0x100;
+			static constexpr uint16_t REUSE_ADDR = 0x80;
 			/**
 			 * @brief Опция повторного использования порта
 			 *
 			 */
-			static constexpr uint16_t REUSE_PORT = 0x200;
+			static constexpr uint16_t REUSE_PORT = 0x100;
+			/**
+			 * @brief Опция получения метаданных дейтаграммного пакета
+			 *
+			 */
+			static constexpr uint16_t DGRAM_INFO = 0x200;
 			/**
 			 * @brief Опция неблокирующего ввода-вывода
 			 *
@@ -470,15 +470,20 @@ namespace awh {
 			 */
 			static constexpr uint16_t SM_IO_BLOCK = 0x800;
 			/**
+			 * @brief Опция отключения алгоритма Нейгла
+			 *
+			 */
+			static constexpr uint16_t TCP_NO_DELAY = 0x1000;
+			/**
 			 * @brief Опция закрытия сокета при выполнении exec
 			 *
 			 */
-			static constexpr uint16_t CLOSE_ON_EXEC = 0x1000;
+			static constexpr uint16_t CLOSE_ON_EXEC = 0x2000;
 			/**
 			 * @brief Опция включения мультикастовой петли
 			 *
 			 */
-			static constexpr uint16_t MULTICAST_LOOPBACK = 0x2000;
+			static constexpr uint16_t MULTICAST_LOOPBACK = 0x4000;
 		};
 	};
 };
