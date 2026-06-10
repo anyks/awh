@@ -22,7 +22,7 @@
  * Стандартные модули
  */
 #include <string>
-#include <unordered_set>
+#include <vector>
 #include <unordered_map>
 
 /**
@@ -170,12 +170,12 @@ namespace awh {
 					uint16_t end;
 					// Количество выделенных портов для UDP-серверов
 					uint16_t count;
+					// Список идентификаторов активных событий UDP-серверов
+					vector <event::id_t> events;
 					// Объект контекста заголовка UDP пакета
 					proto::socks5_t::udp_head_t ctx;
 					// Адрес для запуска UDP-серверов
 					unique_ptr <net::addr_t> address;
-					// Список идентификаторов активных событий UDP-серверов
-					unordered_set <event::id_t> events;
 					/**
 					 * @brief Конструктор
 					 *
@@ -209,6 +209,22 @@ namespace awh {
 				unordered_map <origin_t, unique_ptr <net::attr_t>, origin_hash_t> _aliases;
 				// Активные сессии клиентов, работающих через прокси
 				unordered_map <origin_t, pair <event::id_t, event::id_t>, origin_hash_t> _sessions;
+			private:
+				/**
+				 * @brief Метод удаления связи DNS-запроса с пиром
+				 *
+				 * @param did идентификатор DNS-запроса
+				 */
+				void dropResolve(const unit::dns_t::id_t did) noexcept;
+				/**
+				 * @brief Метод отправки SOCKS5-ответа прокси-клиенту
+				 *
+				 * @param eid      идентификатор пира
+				 * @param ctx      контекст протокола SOCKS5
+				 * @param dropPeer закрыть пира после ответа об ошибке
+				 * @return         результат отправки ответа
+				 */
+				bool sendReply(const event::id_t eid, proto::socks5_t::ctx_t & ctx, const bool dropPeer = false) noexcept;
 			private:
 				/**
 				 * @brief Метод изменения статуса сервера
