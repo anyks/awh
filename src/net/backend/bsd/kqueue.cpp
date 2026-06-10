@@ -3395,53 +3395,56 @@ namespace timer1 {
 					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
 					// Активируем событие в ядре операционной системы через Kqueue
 					if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
+						// Если объект логирования доступен
+						if(log != nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
 					}
 				} break;
 				// Если нужно выполнить отложенное событие
 				case static_cast <uint8_t> (event::rate_t::DEFERRED): {
+					// Создаём объект события для Kqueue
+					struct kevent event{};
 					// Выполняем поиск узла в глобальном списке узлов событий
 					auto i = ::__awh_nodes__.find(__awh_heap__.begin()->eid);
-					// Если узел найден
-					if(i != ::__awh_nodes__.end()){
-						// Создаём объект события для Kqueue
-						struct kevent event{};
-						// Устанавливаем событие таймера для Kqueue
-						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), i->second.get());
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
-					}
+					// Устанавливаем событие таймера для Kqueue
+					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ((i != ::__awh_nodes__.end()) ? i->second.get() : (void *) 1));
+					// Добавляем новое событие в список изменений
+					::events::add(::move(event));
 				} break;
 			}
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект логирования доступен
+			if(log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
 		}
 	}
 
@@ -3499,15 +3502,18 @@ namespace timer1 {
 	static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 		// Если таймаут ожидания уже активирован для данного события
 		if(tm.status == event::status_t::PENDING){
-			// Снимаем статус таймаута (отключаем таймер)
-			tm.status = event::status_t::NONE;
 			// Ищем таймер в списке активных таймеров по ключу таймера
 			if(auto i = __awh_lookup__.find({tm.id, eid}); i != __awh_lookup__.end()){
+				// Снимаем статус таймаута (отключаем таймер)
+				tm.status = event::status_t::NONE;
 				// Удаляем таймер из приоритетной очереди таймеров
 				__awh_heap__.erase(i->second);
 				// Удаляем таймер из списка активных таймеров
 				__awh_lookup__.erase(i);
-			}
+				// Перезапускаем таймер ядра, так-как ближайший дедлайн мог измениться
+				__reschedule_kernel_timer__(event::rate_t::INSTANT, nullptr);
+			// Если таймер не найден в lookup, снимаем только локальный статус
+			} else tm.status = event::status_t::NONE;
 		}
 	}
 
@@ -4546,53 +4552,56 @@ namespace timer2 {
 					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
 					// Активируем событие в ядре операционной системы через Kqueue
 					if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-						#endif
+						// Если объект логирования доступен
+						if(log != nullptr){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						}
 					}
 				} break;
 				// Если нужно выполнить отложенное событие
 				case static_cast <uint8_t> (event::rate_t::DEFERRED): {
+					// Создаём объект события для Kqueue
+					struct kevent event{};
 					// Выполняем поиск узла в глобальном списке узлов событий
 					auto i = ::__awh_nodes__.find(__awh_heap__[0].eid);
-					// Если узел найден
-					if(i != ::__awh_nodes__.end()){
-						// Создаём объект события для Kqueue
-						struct kevent event{};
-						// Устанавливаем событие таймера для Kqueue
-						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), i->second.get());
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
-					}
+					// Устанавливаем событие таймера для Kqueue
+					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ((i != ::__awh_nodes__.end()) ? i->second.get() : (void *) 1));
+					// Добавляем новое событие в список изменений
+					::events::add(::move(event));
 				} break;
 			}
 		/**
 		 * Если возникает ошибка
 		 */
 		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+			// Если объект логирования доступен
+			if(log != nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					log->print("%s", log_t::flag_t::CRITICAL, error.what());
+				#endif
+			}
 		}
 	}
 
@@ -4672,28 +4681,46 @@ namespace timer2 {
 	static void cancel(::io::timeout_t & tm, const event::id_t eid) noexcept {
 		// Если таймаут ожидания уже активирован для данного события
 		if(tm.status == event::status_t::PENDING){
-			// Снимаем статус таймаута (отключаем таймер)
-			tm.status = event::status_t::NONE;
 			// Вычисляем индекс чанка для данного идентификатора события
 			const size_t index = (eid >> 10);
-			// Если индекс чанка превышает текущий размер вектора чанков, таймер для данного события не существует, и функция может завершиться
-			if(index >= __awh_chunks__.size())
-				// Выходим из функции, так-как таймер для данного события не существует и отменять нечего
+			// Если индекс чанка превышает текущий размер вектора чанков, таймер для данного события не существует
+			if(index >= __awh_chunks__.size()){
+				// Снимаем локальный статус таймаута
+				tm.status = event::status_t::NONE;
+				// Выходим из функции, так-как отменять нечего
 				return;
+			}
 			// Получаем объект чанка для данного индекса
 			auto & ptr = __awh_chunks__[index];
-			// Если чанк для данного индекса не существует, таймер для данного события не существует, и функция может завершиться
-			if(ptr == nullptr)
-				// Выходим из функции, так-как таймер для данного события не существует и отменять нечего
+			// Если чанк для данного индекса не существует, таймер для данного события не существует
+			if(ptr == nullptr){
+				// Снимаем локальный статус таймаута
+				tm.status = event::status_t::NONE;
+				// Выходим из функции, так-как отменять нечего
 				return;
+			}
 			// Вычисляем смещение внутри чанка для данного идентификатора события
 			const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1));
 			// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
 			const int32_t idx = ptr->slots[offset][tm.id];
-			// Если индекс таймера в куче равен -1, таймер не существует, и функция может завершиться
-			if(idx == -1)
-				// Выходим из функции, так-как таймер для данного события не существует и отменять нечего
+			// Если индекс таймера в куче равен -1, таймер не существует
+			if(idx == -1){
+				// Снимаем локальный статус таймаута
+				tm.status = event::status_t::NONE;
+				// Выходим из функции, так-как отменять нечего
 				return;
+			}
+			// Если индекс в куче повреждён, восстанавливаем слот и снимаем статус
+			if((idx < 0) || (static_cast <size_t> (idx) >= __awh_heap__.size())){
+				// Сбрасываем повреждённый слот
+				ptr->slots[offset][tm.id] = -1;
+				// Снимаем локальный статус таймаута
+				tm.status = event::status_t::NONE;
+				// Выходим из функции
+				return;
+			}
+			// Снимаем статус таймаута (отключаем таймер)
+			tm.status = event::status_t::NONE;
 			// Получаем индекс последнего элемента в куче, который будет использоваться для замены удаляемого элемента
 			const int32_t last = (static_cast <int32_t> (__awh_heap__.size()) - 1);
 			// Если удаляемый элемент не является последним, обмениваем его с последним элементом кучи
@@ -4715,6 +4742,8 @@ namespace timer2 {
 			}
 			// Пытаемся освободить чанк, если в нём нет активных таймеров, с возвратом в пул для переиспользования
 			__try_release_chunk__(eid);
+			// Перезапускаем таймер ядра, так-как ближайший дедлайн мог измениться
+			__reschedule_kernel_timer__(event::rate_t::INSTANT, nullptr);
 		}
 	}
 
@@ -4842,48 +4871,58 @@ namespace timer2 {
 				case static_cast <uint8_t> (::timer::flag_t::SIMPLE): {
 					// Если время задержки таймаута установлено
 					if(tm.delay > 0){
-						// Устанавливаем статус таймаута в ожидание
-						tm.status = event::status_t::PENDING;
-						// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
-						const uint64_t deadline = (now + static_cast <uint64_t> (tm.delay));
-						// Получаем объект чанка для данного идентификатора события
-						Chunk * chunk = __get_chunk__(eid);
-						// Вычисляем смещение внутри чанка для данного идентификатора события
-						const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
-						// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
-						int32_t & index = chunk->slots[offset][tm.id];
-						// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
-						if(index != -1){
-							// Таймер уже существует: обновляем дедлайн
-							Timer & timer = __awh_heap__[index];
-							// Сохраняем старый дедлайн для оптимизации перестройки кучи
-							const uint64_t old = timer.deadline;
-							// Обновляем дедлайн таймера на новый рассчитанный дедлайн
-							timer.deadline = deadline;
-							/**
-							 * Оптимизация:
-							 * - Пропускаем перестройку кучи при незначительном сдвиге (погрешность планировщика + syscall всё равно съест разницу ≤2 мс)
-							 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
-							 */
-							// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
-							if(deadline < (old - AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
-								// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
-								__sift_up__(index);
-							// Если дедлайн сдвинут значительно в сторону более позднего времени → опускаем элемент вниз по куче
-							else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
-								// Выполняем опускание элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера
-								__sift_down__(index);
-							// else: дедлайн сдвинут незначительно → оставляем как есть
-						// Если индекс таймера в куче равен -1, таймер не существует, и нам нужно создать новый таймер
-						} else {
-							// Добавляем новый таймер в кучу с заданным идентификатором таймера
-							__awh_heap__.push_back({tm.id, eid, deadline});
-							// Получаем индекс нового таймера в куче, который будет использоваться для обновления слота в чанке
-							index = static_cast <int32_t> (__awh_heap__.size() - 1);
-							// Увеличиваем счётчик активных таймеров в чанке, так-как мы добавили новый таймер
-							chunk->count++;
-							// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после добавления нового таймера
-							__sift_up__(index);
+						/**
+						 * В зависимости от текущего статуса события создаём новый или обновляем таймер
+						 */
+						switch(static_cast <uint8_t> (tm.status)){
+							// Если таймаут ожидания не активирован ранее
+							case static_cast <uint8_t> (event::status_t::NONE):
+								// Устанавливаем статус таймаута в ожидание
+								tm.status = event::status_t::PENDING;
+							// Если таймаут ожидания уже активирован для данного события
+							case static_cast <uint8_t> (event::status_t::PENDING): {
+								// Вычисляем дедлайн таймера как сумму текущего времени и заданной задержки в миллисекундах
+								const uint64_t deadline = (now + static_cast <uint64_t> (tm.delay));
+								// Получаем объект чанка для данного идентификатора события
+								Chunk * chunk = __get_chunk__(eid);
+								// Вычисляем смещение внутри чанка для данного идентификатора события
+								const size_t offset = (eid & (AWH_CHUNK_EIDS_INTERNAL_TIMER - 1)); // eid % 1024
+								// Получаем индекс таймера в куче для данного идентификатора таймера и смещения внутри чанка
+								int32_t & index = chunk->slots[offset][tm.id];
+								// Если индекс таймера в куче не равен -1, таймер уже существует, и нам нужно обновить его дедлайн
+								if(index != -1){
+									// Таймер уже существует: обновляем дедлайн
+									Timer & timer = __awh_heap__[index];
+									// Сохраняем старый дедлайн для оптимизации перестройки кучи
+									const uint64_t old = timer.deadline;
+									// Обновляем дедлайн таймера на новый рассчитанный дедлайн
+									timer.deadline = deadline;
+									/**
+									 * Оптимизация:
+									 * - Пропускаем перестройку кучи при незначительном сдвиге (погрешность планировщика + syscall всё равно съест разницу ≤2 мс)
+									 * - На случай если дедлайн сдвинулся в обе стороны (хотя в реальной жизни это маловероятно), проверяем оба направления
+									 */
+									// Если дедлайн сдвинут значительно в сторону более раннего времени → поднимаем элемент вверх по куче
+									if(deadline < (old - AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
+										// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после изменения дедлайна таймера
+										__sift_up__(index);
+									// Если дедлайн сдвинут значительно в сторону более позднего времени → опускаем элемент вниз по куче
+									else if(deadline > (old + AWH_SIFT_THRESHOLD_MS_INTERNAL_TIMER))
+										// Выполняем опускание элемента вниз по куче для восстановления свойства кучи после изменения дедлайна таймера
+										__sift_down__(index);
+									// else: дедлайн сдвинут незначительно → оставляем как есть
+								// Если индекс таймера в куче равен -1, таймер не существует, и нам нужно создать новый таймер
+								} else {
+									// Добавляем новый таймер в кучу с заданным идентификатором таймера
+									__awh_heap__.push_back({tm.id, eid, deadline});
+									// Получаем индекс нового таймера в куче, который будет использоваться для обновления слота в чанке
+									index = static_cast <int32_t> (__awh_heap__.size() - 1);
+									// Увеличиваем счётчик активных таймеров в чанке, так-как мы добавили новый таймер
+									chunk->count++;
+									// Выполняем подъём элемента вверх по куче для восстановления свойства кучи после добавления нового таймера
+									__sift_up__(index);
+								}
+							} break;
 						}
 					}
 				} break;
@@ -26325,72 +26364,76 @@ namespace io {
 			} break;
 			// Если мы детектировали событие готовности сокета на запись данных
 			case EVFILT_WRITE: {
-				// Если мы детектировали событие закрытия подключения или ошибку
-				if(ev.flags & EV_ERROR)
+				// Если мы детектировали наличие ошибки
+				if(ev.flags & EV_ERROR){
 					// Выполняем обработку ошибки
 					::io::error(node, ev.data, log);
+					// Выполняем удаление узла
+					return !::io::destroy(node, eth, log);
+				}
+				// Если удалённая сторона закрыла соединение
+				if(ev.flags & EV_EOF)
+					// Выполняем удаление узла без попытки записи в закрытый сокет
+					return !::io::destroy(node, eth, log);
 				// Если в сокете нет ошибок
-				else {
-					// Если в сокете нет ошибок
-					if(eth->socket.getError(ev.ident) == 0){
-						/**
-						 * Определяем чем является текущий узел
-						 */
-						switch(static_cast <uint8_t> (node->state.node)){
-							// Если узел является одноранговым узлом
-							case static_cast <uint8_t> (event::node_t::PEER): {
-								// Получаем текущее значение объекта однорангового узла
-								::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
-								// Снимаем статус активности на запись данных
-								peer->activity &= ~::activity::WRITE;
-								// Если таймаут ожидания записи данных установлен
-								if(peer->timeouts.write.delay > 0){
-									/**
-									 * Определяем тип таймера для событий сетевого движка
-									 */
-									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-										// Если тип таймера для событий сетевого движка является простым
-										case static_cast <uint8_t> (event::timer_t::SIMPLE):
-											// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
-											::timer1::cancel(peer->timeouts.write, peer->id);
-										break;
-										// Если тип таймера для событий сетевого движка является сложным
-										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-											// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
-											::timer2::cancel(peer->timeouts.write, peer->id);
-										break;
-									}
+				if(eth->socket.getError(ev.ident) == 0){
+					/**
+					 * Определяем чем является текущий узел
+					 */
+					switch(static_cast <uint8_t> (node->state.node)){
+						// Если узел является одноранговым узлом
+						case static_cast <uint8_t> (event::node_t::PEER): {
+							// Получаем текущее значение объекта однорангового узла
+							::io::peer_t * peer = awh_cast <::io::peer_t *> (node);
+							// Снимаем статус активности на запись данных
+							peer->activity &= ~::activity::WRITE;
+							// Если таймаут ожидания записи данных установлен
+							if(peer->timeouts.write.delay > 0){
+								/**
+								 * Определяем тип таймера для событий сетевого движка
+								 */
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+									// Если тип таймера для событий сетевого движка является простым
+									case static_cast <uint8_t> (event::timer_t::SIMPLE):
+										// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
+										::timer1::cancel(peer->timeouts.write, peer->id);
+									break;
+									// Если тип таймера для событий сетевого движка является сложным
+									case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+										// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
+										::timer2::cancel(peer->timeouts.write, peer->id);
+									break;
 								}
-							} break;
-							// Если узел является клиентом
-							case static_cast <uint8_t> (event::node_t::CLIENT): {
-								// Получаем текущее значение объекта клиента
-								::io::client_t * client = awh_cast <::io::client_t *> (node);
-								// Снимаем статус активности на запись данных
-								client->activity &= ~::activity::WRITE;
-								// Если таймаут ожидания записи данных установлен
-								if(client->timeouts.write.delay > 0){
-									/**
-									 * Определяем тип таймера для событий сетевого движка
-									 */
-									switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-										// Если тип таймера для событий сетевого движка является простым
-										case static_cast <uint8_t> (event::timer_t::SIMPLE):
-											// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
-											::timer1::cancel(client->timeouts.write, client->id);
-										break;
-										// Если тип таймера для событий сетевого движка является сложным
-										case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-											// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
-											::timer2::cancel(client->timeouts.write, client->id);
-										break;
-									}
+							}
+						} break;
+						// Если узел является клиентом
+						case static_cast <uint8_t> (event::node_t::CLIENT): {
+							// Получаем текущее значение объекта клиента
+							::io::client_t * client = awh_cast <::io::client_t *> (node);
+							// Снимаем статус активности на запись данных
+							client->activity &= ~::activity::WRITE;
+							// Если таймаут ожидания записи данных установлен
+							if(client->timeouts.write.delay > 0){
+								/**
+								 * Определяем тип таймера для событий сетевого движка
+								 */
+								switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+									// Если тип таймера для событий сетевого движка является простым
+									case static_cast <uint8_t> (event::timer_t::SIMPLE):
+										// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
+										::timer1::cancel(client->timeouts.write, client->id);
+									break;
+									// Если тип таймера для событий сетевого движка является сложным
+									case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+										// Сбрасываем таймаут ожидания записи данных, так как сокет готов к записи
+										::timer2::cancel(client->timeouts.write, client->id);
+									break;
 								}
-							} break;
-						}
-						// Обрабатываем событие доступности сокета на запись
-						return ::io::write(node, io, eth, fmk, log);
+							}
+						} break;
 					}
+					// Обрабатываем событие доступности сокета на запись
+					return ::io::write(node, io, eth, fmk, log);
 				}
 				// Выполняем удаление узла
 				return !::io::destroy(node, eth, log);
@@ -60158,10 +60201,40 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 				pts = &ts;
 			// Если установлено время ожидания
 			} else if(timeout > 0) {
+				// Получаем время ожидания с учётом ближайшего внутреннего таймера
+				uint64_t wait = static_cast <uint64_t> (timeout);
+				// Получаем дедлайн ближайшего внутреннего таймера
+				uint64_t next = UINT64_MAX;
+				/**
+				 * Определяем тип таймера для событий сетевого движка
+				 */
+				switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+					// Если тип таймера для событий сетевого движка является простым
+					case static_cast <uint8_t> (event::timer_t::SIMPLE):
+						// Получаем дедлайн ближайшего таймера
+						next = ::timer1::deadline();
+					break;
+					// Если тип таймера для событий сетевого движка является сложным
+					case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+						// Получаем дедлайн ближайшего таймера
+						next = ::timer2::deadline();
+					break;
+				}
+				// Если активные таймеры присутствуют
+				if(next != UINT64_MAX){
+					// Получаем текущее значение времени
+					const uint64_t now = ::timer::timestamp();
+					// Вычисляем время ожидания до ближайшего таймера
+					const uint64_t timerWait = ((next > now) ? (next - now) : 0);
+					// Ограничиваем пользовательский таймаут ближайшим внутренним таймером
+					if(timerWait < wait)
+						// Устанавливаем время ожидания до ближайшего таймера
+						wait = timerWait;
+				}
 				// Устанавливаем количество секунд
-				ts.tv_sec = (timeout / 1000);
+				ts.tv_sec = (wait / 1000);
 				// Устанавливаем количество наносекунд
-				ts.tv_nsec = ((timeout % 1000) * 1000000L);
+				ts.tv_nsec = ((wait % 1000) * 1000000L);
 				// Активируем параметры таймаута
 				pts = &ts;
 			// Если нужно ждать бесконечно, но с учётом ближайшего внутреннего таймера
