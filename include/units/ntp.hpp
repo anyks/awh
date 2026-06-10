@@ -147,6 +147,10 @@ namespace awh {
 					uint8_t attempt;
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempts;
+					// Метка transmit из последнего запроса (сетевой порядок байтов)
+					uint32_t origSec;
+					// Дробная часть метки transmit из последнего запроса (сетевой порядок байтов)
+					uint32_t origFrac;
 					// Версия протокола NTP для выполнения запроса
 					version_t version;
 					/**
@@ -154,9 +158,11 @@ namespace awh {
 					 *
 					 */
 					 explicit Transfer() noexcept :
-					  waiting(false), attempt(0),
-					  attempts(3), version(version_t::V4) {}
-				} transfer_t;
+					  waiting(false),
+					  attempt(0), attempts(3),
+					  origSec(0), origFrac(0),
+					  version(version_t::V4) {}
+				} __attribute__((packed)) transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
 				net_addr_t _addr;
