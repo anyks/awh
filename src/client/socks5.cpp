@@ -43,6 +43,11 @@
 #endif
 
 /**
+ * Подключаем стандартные модули
+ */
+#include <climits>
+
+/**
  * Подключаем заголовочный файл модуля
  */
 #include <client/socks5.hpp>
@@ -428,8 +433,31 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				}
 			// Если текущее состояние находится ещё в процессе общения с socks5 прокси-сервером
 			} else {
+				// Добавляем данные в буфер накопления SOCKS5-кадров
+				this->_rx.insert(this->_rx.end(), buffer, buffer + size);
+				// Если размер буфера превышает допустимый
+				if(this->_rx.size() > proto::socks5_t::SOCKS5_RX_MAX_FRAME)
+					// Выходим из функции
+					return;
+				// Определяем полный размер SOCKS5-кадра
+				const size_t frame = this->_socks5.frameSize(this->_ctx.state, this->_rx.data(), this->_rx.size());
+				// Если кадр ещё неполный
+				if(frame == 0)
+					// Выходим и ожидаем продолжение кадра
+					return;
+				// Если кадр некорректный
+				if(frame == SIZE_MAX){
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("connect"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+					// Выходим из функции
+					return;
+				}
 				// Если парсинг данных от прокси-сервера выполнен успешно
-				if(this->_socks5.parse(buffer, size, this->_ctx)){
+				if(this->_socks5.parse(this->_rx.data(), frame, this->_ctx)){
+					// Удаляем обработанный кадр из буфера
+					this->_rx.erase(this->_rx.begin(), this->_rx.begin() + frame);
 					/**
 					 * Определяем состояние парсинга данных от прокси-сервера
 					 */
@@ -756,12 +784,20 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							}
 							// Если адрес хоста для подключения к удалённому серверу получен успешно
 							if(!target.empty()){
+								// Доменное имя хоста для callback ready
+								string domain = target;
+								// Если конечная точка клиента установлена
+								if((this->_endpoint.attr != nullptr) && (this->_endpoint.attr->type == net::type_t::FQDN))
+									// Устанавливаем доменное имя хоста
+									domain = awh_cast <net::attr_fqdn_t *> (this->_endpoint.attr.get())->domain;
 								// Устанавливаем состояние клиента как "завершённый"
 								this->_ctx.state = proto::socks5_t::state_t::COMPLETED;
+								// Очищаем буфер накопления SOCKS5-кадров
+								this->_rx.clear();
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("ready"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_unit->client.family(eid), target, target);
+									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_unit->client.family(eid), domain, target);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("launch"))
 									// Выполняем функцию обратного вызова
@@ -853,7 +889,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 						}
 					}
-				// Если парсинг данных от прокси-сервера не выполнен
+				// Если парсинг полного SOCKS5-кадра не выполнен
 				} else {
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
@@ -872,6 +908,10 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						#endif
 					// Выполняем функцию обратного вызова
 					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, "Failed to parse data from proxy server");
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("connect"))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 				}
 			}
 		/**
@@ -940,6 +980,8 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 							if(this->_unit->client.launch(this->_endpoint.udp.eid)){
 								// Устанавливаем состояние клиента как "завершённый"
 								this->_ctx.state = proto::socks5_t::state_t::COMPLETED;
+								// Очищаем буфер накопления SOCKS5-кадров
+								this->_rx.clear();
 								// Получаем адрес хоста для подключения к удалённому серверу
 								const string & target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
 								// Получаем порт хоста для подключения к удалённому серверу
@@ -947,7 +989,7 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("ready"))
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, target, target);
+									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, target);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("launch"))
 									// Выполняем функцию обратного вызова

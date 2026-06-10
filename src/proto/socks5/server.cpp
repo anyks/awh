@@ -165,9 +165,14 @@ namespace {
 };
 
 /**
- * Инкапсулируем статические функции в пространство имён
+ * Инкапсулируем статические параметры в пространство имён
  */
 namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Размер данных в буфере
 	 *
@@ -178,7 +183,17 @@ namespace {
 	 * @brief Буфер временного хранения данных
 	 *
 	 */
-	thread_local uint8_t __awh_buffer__[0x106] = {0};
+	thread_local uint8_t __awh_buffer__[proto::socks5_t::SOCKS5_TX_BUFFER_SIZE] = {0};
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
 
 	/**
 	 * @brief Шаблон функции добавления полезной нагрузки в буфер
@@ -194,6 +209,10 @@ namespace {
 	void addPayload(const T & data) noexcept {
 		// Получаем размер данных для добавления в буфер
 		const size_t size = sizeof(data);
+		// Если данных слишком много для буфера
+		if((::__awh_size__ + size) > proto::socks5_t::SOCKS5_TX_BUFFER_SIZE)
+			// Выходим из функции
+			return;
 		// Устанавливаем первый октет
 		::memcpy(::__awh_buffer__ + ::__awh_size__, &data, size);
 		// Возвращаем размер смещения
@@ -205,6 +224,10 @@ namespace {
 	 * @param data данные для добавления в буфер
 	 */
 	void addPayload(const string & data) noexcept {
+		// Если данных слишком много для буфера
+		if((::__awh_size__ + data.length()) > proto::socks5_t::SOCKS5_TX_BUFFER_SIZE)
+			// Выходим из функции
+			return;
 		// Устанавливаем первый октет
 		::memcpy(::__awh_buffer__ + ::__awh_size__, data.c_str(), data.length());
 		// Возвращаем размер смещения
@@ -382,10 +405,15 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
 							 * Определяем запрошенную команду подключения
 							 */
 							switch(request.cmd){
+								// Если запрошенная команда соответствует методу обратного подключения (сервера к клиенту)
+								case static_cast <uint8_t> (command_t::BIND): {
+									// Устанавливаем результат парсинга
+									result = true;
+									// Устанавливаем статус неподдерживаемой команды
+									ctx.status = proto::socks5_t::status_t::NOCOMMAND;
+								} break;
 								// Если запрошенная команда соответствует работе с UDP протоколом
 								case static_cast <uint8_t> (command_t::UDP):
-								// Если запрошенная команда соответствует методу обратного подключения (сервера к клиенту)
-								case static_cast <uint8_t> (command_t::BIND):
 								// Если запрошенная команда соответствует методу подключения
 								case static_cast <uint8_t> (command_t::CONNECT): {
 									/**
@@ -535,7 +563,7 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 			// Выполняем чтение данных заголовка пакета из буфера входящих данных
 			::memcpy(&header, buffer, sizeof(header));
 			// Если зарезервированный октет в заголовке пакета соответствует установленному значению
-			if(header.rsv == 0x0000){
+			if((header.rsv == 0x0000) && (header.frag == 0x00)){
 				// Устанавливаем фрагментацию в объекте UDP заголовка
 				udp.frag = header.frag;
 				// Устанавливаем размер данных в объекте UDP заголовка

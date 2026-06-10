@@ -22,6 +22,7 @@
  * Стандартные модули
  */
 #include <string>
+#include <cstddef>
 
 /**
  * Наши модуля
@@ -50,6 +51,17 @@ namespace awh {
 		 *
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Socks5 {
+			public:
+				/**
+				 * @brief Максимальный размер входящего SOCKS5-кадра по TCP
+				 *
+				 */
+				static constexpr size_t SOCKS5_RX_MAX_FRAME = 0x202;
+				/**
+				 * @brief Максимальный размер исходящего SOCKS5-кадра (RFC 1929 USER/PASS)
+				 *
+				 */
+				static constexpr size_t SOCKS5_TX_BUFFER_SIZE = 0x202;
 			public:
 				/**
 				 * @brief Комманды запроса клиента
@@ -147,7 +159,17 @@ namespace awh {
 				 * @param code код статуса
 				 * @return     текстовое значение кода статуса
 				 */
-				string statusMessage(const status_t code) const noexcept;
+				static string statusMessage(const status_t code) noexcept;
+			public:
+				/**
+				 * @brief Метод определения полного размера SOCKS5-кадра
+				 *
+				 * @param state текущее состояние протокола
+				 * @param data  буфер входящих данных
+				 * @param size  размер буфера входящих данных
+				 * @return      0 — кадр неполный; SIZE_MAX — кадр некорректный; иначе размер кадра
+				 */
+				static size_t frameSize(const state_t state, const uint8_t * data, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод парсинга входящих данных

@@ -22,6 +22,7 @@
  * Стандартные модули
  */
 #include <string>
+#include <vector>
 
 /**
  * Наши модули
@@ -82,6 +83,9 @@ namespace awh {
 			private:
 				// Объект для работы с протоколом SOCKS5
 				proto::client_socks5_t _socks5;
+			private:
+				// Буфер накопления входящих SOCKS5-кадров по TCP
+				vector <uint8_t> _rx;
 			private:
 				/**
 				 * @brief Метод изменения статуса клиента

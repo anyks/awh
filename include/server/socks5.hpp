@@ -24,6 +24,7 @@
 #include <string>
 #include <vector>
 #include <unordered_map>
+#include <unordered_set>
 
 /**
  * Заголовки проекта
@@ -153,6 +154,10 @@ namespace awh {
 					unit::dns_t::id_t did;
 					// Контекст для хранения параметров сообщений
 					proto::socks5_t::ctx_t ctx;
+					// Контекст UDP-заголовка для текущего пира
+					proto::socks5_t::udp_head_t udp;
+					// Буфер накопления входящих SOCKS5-кадров по TCP
+					vector <uint8_t> rx;
 					/**
 					 * @brief Конструктор
 					 *
@@ -176,6 +181,8 @@ namespace awh {
 					proto::socks5_t::udp_head_t ctx;
 					// Адрес для запуска UDP-серверов
 					unique_ptr <net::addr_t> address;
+					// Множество идентификаторов UDP-серверов для быстрой проверки
+					unordered_set <event::id_t> eventSet;
 					/**
 					 * @brief Конструктор
 					 *
@@ -204,7 +211,7 @@ namespace awh {
 				unordered_map <unit::dns_t::id_t, event::id_t> _resolves;
 			private:
 				// Отображение идентификаторов событий клиентов для конечных точек
-				unordered_map <event::id_t, const origin_t *> _mapping;
+				unordered_map <event::id_t, origin_t> _mapping;
 				// Алиасы для внутренних адресов если мы работаем за NAT
 				unordered_map <origin_t, unique_ptr <net::attr_t>, origin_hash_t> _aliases;
 				// Активные сессии клиентов, работающих через прокси

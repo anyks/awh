@@ -169,9 +169,14 @@ namespace {
 };
 
 /**
- * Инкапсулируем статические функции в пространство имён
+ * Инкапсулируем статические параметры в пространство имён
  */
 namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
 	/**
 	 * @brief Размер данных в буфере
 	 *
@@ -182,7 +187,17 @@ namespace {
 	 * @brief Буфер временного хранения данных
 	 *
 	 */
-	thread_local uint8_t __awh_buffer__[0x106] = {0};
+	thread_local uint8_t __awh_buffer__[proto::socks5_t::SOCKS5_TX_BUFFER_SIZE] = {0};
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
 
 	/**
 	 * @brief Шаблон функции добавления полезной нагрузки в буфер
@@ -198,6 +213,10 @@ namespace {
 	void addPayload(const T & data) noexcept {
 		// Получаем размер данных для добавления в буфер
 		const size_t size = sizeof(data);
+		// Если данных слишком много для буфера
+		if((::__awh_size__ + size) > proto::socks5_t::SOCKS5_TX_BUFFER_SIZE)
+			// Выходим из функции
+			return;
 		// Устанавливаем первый октет
 		::memcpy(::__awh_buffer__ + ::__awh_size__, &data, size);
 		// Возвращаем размер смещения
@@ -209,6 +228,10 @@ namespace {
 	 * @param data данные для добавления в буфер
 	 */
 	void addPayload(const string & data) noexcept {
+		// Если данных слишком много для буфера
+		if((::__awh_size__ + data.length()) > proto::socks5_t::SOCKS5_TX_BUFFER_SIZE)
+			// Выходим из функции
+			return;
 		// Устанавливаем первый октет
 		::memcpy(::__awh_buffer__ + ::__awh_size__, data.c_str(), data.length());
 		// Возвращаем размер смещения
@@ -488,7 +511,7 @@ bool awh::proto::Client_Socks5::parse(const void * buffer, const size_t size, ud
 			// Выполняем чтение данных заголовка пакета из буфера входящих данных
 			::memcpy(&header, buffer, sizeof(header));
 			// Если зарезервированный октет в заголовке пакета соответствует установленному значению
-			if(header.rsv == 0x0000){
+			if((header.rsv == 0x0000) && (header.frag == 0x00)){
 				// Устанавливаем фрагментацию в объекте UDP заголовка
 				udp.frag = header.frag;
 				// Устанавливаем размер данных в объекте UDP заголовка
@@ -647,7 +670,7 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 			// Если текущее состояние соответствует этапу аутентификации
 			case static_cast <uint8_t> (state_t::AUTH): {
 				// Если имя и пароль пользователя для авторизации на сервере установлены
-				if((result = (!this->_username.empty() && !this->_password.empty()))){
+				if((result = (!this->_username.empty() && !this->_password.empty() && (this->_username.length() <= 0xFF) && (this->_password.length() <= 0xFF)))){
 					// Устанавливаем состояние клиента как "ожидание получения ответа от сервера"
 					ctx.state = state_t::RESPONSE;
 					// Добавляем версию соглашения авторизации в буфер для отправки данных
@@ -680,10 +703,19 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 					switch(static_cast <uint8_t> (ctx.host->type)){
 						// Если тип адреса соответствует FQDN
 						case static_cast <uint8_t> (net::type_t::FQDN): {
-							// Добавляем тип адреса "доменные имена" в буфер для отправки данных
-							::addPayload(addr_type_t::FQDN);
 							// Извлекаем доменное имя хоста для подключения
 							const string & fqdn = awh_cast <net::attr_fqdn_t *> (ctx.host.get())->domain;
+							// Если длина доменного имени превышает допустимый размер
+							if(fqdn.length() > 0xFF){
+								// Устанавливаем отрицательный результат
+								result = false;
+								// Выходим из обработки
+								break;
+							}
+							// Устанавливаем результат для отправки данных
+							result = true;
+							// Добавляем тип адреса "доменные имена" в буфер для отправки данных
+							::addPayload(addr_type_t::FQDN);
 							// Добавляем размер доменного имени хоста для подключения в буфер для отправки данных
 							::addPayload(static_cast <uint8_t> (fqdn.length()));
 							// Устанавливаем доменное имя хоста для подключения в буфер для отправки данных
@@ -834,9 +866,9 @@ bool awh::proto::Client_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
  */
 void awh::proto::Client_Socks5::setUser(const string & username, const string & password) noexcept {
 	// Устанавливаем имя пользователя для авторизации на сервере
-	this->_username = username;
+	this->_username = (username.length() <= 0xFF) ? username : username.substr(0, 0xFF);
 	// Устанавливаем пароль пользователя для авторизации на сервере
-	this->_password = password;
+	this->_password = (password.length() <= 0xFF) ? password : password.substr(0, 0xFF);
 }
 /**
  * @brief Конструктор
