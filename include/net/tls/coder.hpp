@@ -190,6 +190,9 @@ namespace awh {
 				/**
 				 * @brief Функция обратного вызова срабатывающая при чтении
 				 *
+				 * @note Указатель buffer действителен только до возврата из callback.
+				 *       Callback обязан синхронно скопировать данные; при реентрантном
+				 *       вызове внутренний thread_local буфер может быть перезаписан.
 				 */
 				using read_callback_t = std::function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
 			private:
@@ -211,6 +214,18 @@ namespace awh {
 				 * @return версия OpenSSL
 				 */
 				string version() const noexcept;
+			public:
+				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 *
+				 * @note Защищает только глобальный реестр TLS (ids, members, splice_map,
+				 *       init OpenSSL). Методы модуля после закрепления id выполняются без
+				 *       глобального lock; синхронизацию вызовов из разных потоков должен
+				 *       обеспечивать вызывающий код.
+				 */
+				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод подключения объекта для работы с отпечатками TLS

@@ -20,6 +20,7 @@
 #include <atomic>
 #include <memory>
 #include <csignal>
+#include <shared_mutex>
 #include <net/event.hpp>
 #include <unordered_set>
 
@@ -117,6 +118,215 @@ namespace {
 	 *
 	 */
 	int32_t __awh_ssl_index__[7] = {-1, -1, -1, -1, -1, -1, -1};
+};
+
+/**
+ * Инкапсулируем статические параметры защиты потоков в пространство имён
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Флаг одноразовой инициализации TLS-модуля
+	 *
+	 */
+	once_flag __awh_ssl_init_once__;
+
+	/**
+	 * @brief Мьютекс блокировки глобального состояния TLS-модуля
+	 *
+	 */
+	lock_state_t <std::shared_mutex> __awh_ssl_mutex__;
+
+	/**
+	 * @brief Режим безопасности работы потоков TLS-модуля
+	 *
+	 */
+	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
+};
+
+/**
+ * @brief Пространство имён доступа к глобальному реестру TLS
+ *
+ * Lock удерживается только внутри методов registry.
+ * pin() закрепляет участника (refs++) без lock на время дальнейшей работы.
+ */
+namespace ssl {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Пространство имён глобального реестра TLS
+	 *
+	 */
+	namespace registry {
+		/**
+		 * @brief Тип блокировки глобального реестра TLS
+		 *
+		 */
+		using global_lock_t = locker_t <std::shared_mutex>;
+
+		/**
+		 * @brief Метод получения блокировки глобального реестра TLS
+		 *
+		 * @return объект блокировки
+		 */
+		inline global_lock_t globalExclusive() noexcept {
+			// Возвращаем объект блокировки глобального реестра TLS
+			return global_lock_t(::__awh_ssl_mutex__, global_lock_t::mode_t::EXCLUSIVE);
+		}
+		/**
+		 * @brief Метод проверки регистрации идентификатора TLS
+		 *
+		 * @param id идентификатор контекста TLS
+		 * @return   результат проверки
+		 */
+		inline bool contains(const ::tls::coder_t::id_t id) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Возвращаем результат проверки регистрации идентификатора TLS
+			return ::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end();
+		}
+		/**
+		 * @brief Метод регистрации идентификатора TLS
+		 *
+		 * @param id идентификатор контекста TLS
+		 */
+		inline void add(const ::tls::coder_t::id_t id) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Регистрируем идентификатор контекста TLS
+			::__awh_ssl_ids__.emplace(id);
+		}
+		/**
+		 * @brief Метод удаления участника из глобального реестра TLS
+		 *
+		 * @param id       идентификатор контекста TLS
+		 * @param members  контейнер участников обмена защищёнными данными
+		 * @param iterator итератор удаляемого участника
+		 */
+		inline void drop(const ::tls::coder_t::id_t id, members_t & members, const members_t::iterator & iterator) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
+			auto i = ::__awh_ssl_ids__.find(id);
+			// Если идентификатор контекста TLS найден
+			if(i != ::__awh_ssl_ids__.end())
+				// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
+				::__awh_ssl_ids__.erase(i);
+			// Удаляем уровень защищённых сокетов из контейнера
+			members.erase(iterator);
+		}
+		/**
+		 * @brief Метод добавления участника в глобальный контейнер TLS
+		 *
+		 * @param item объект участника обмена защищёнными данными
+		 * @return   итератор добавленного участника
+		 */
+		inline members_t::iterator emplace(members_t::value_type item) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Добавляем участника в глобальный контейнер и возвращаем итератор
+			return ::__awh_ssl_members__.emplace(std::move(item)).first;
+		}
+		/**
+		 * @brief Метод удаления записи из карты сплайса TLS
+		 *
+		 * @param proto тип протокола события
+		 * @param host  имя хоста
+		 */
+		inline void spliceErase(const event::protocol_t proto, const std::string & host) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
+			auto i = ::__awh_ssl_splice_map__.find(std::make_pair(proto, host));
+			// Если запись найдена
+			if(i != ::__awh_ssl_splice_map__.end())
+				// Удаляем запись из глобальной карты сопоставления имён хостов и идентификаторов узлов TLS
+				::__awh_ssl_splice_map__.erase(i);
+		}
+		/**
+		 * @brief Метод добавления записи в карту сплайса TLS
+		 *
+		 * @param proto тип протокола события
+		 * @param host  имя хоста
+		 * @param id    идентификатор контекста TLS
+		 */
+		inline void spliceEmplace(const event::protocol_t proto, const std::string & host, const ::tls::coder_t::id_t id) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Добавляем запись в глобальную карту сопоставления имён хостов и идентификаторов узлов TLS
+			::__awh_ssl_splice_map__.emplace(std::make_pair(proto, host), id);
+		}
+		/**
+		 * @brief Метод поиска идентификатора контекста TLS в карте сплайса
+		 *
+		 * @param proto тип протокола события
+		 * @param host  имя хоста
+		 * @return      идентификатор контекста TLS или 0
+		 */
+		inline ::tls::coder_t::id_t spliceResolve(const event::protocol_t proto, const std::string & host) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
+			auto i = ::__awh_ssl_splice_map__.find(std::make_pair(proto, host));
+			// Если запись не найдена
+			if(i == ::__awh_ssl_splice_map__.end())
+				// Возвращаем нулевой идентификатор
+				return 0;
+			// Если идентификатор контекста TLS не зарегистрирован
+			if(::__awh_ssl_ids__.find(i->second) == ::__awh_ssl_ids__.end())
+				// Возвращаем нулевой идентификатор
+				return 0;
+			// Возвращаем идентификатор контекста TLS
+			return i->second;
+		}
+		/**
+		 * @brief Метод увеличения счётчика инициализации OpenSSL
+		 *
+		 * @return флаг необходимости инициализации OpenSSL
+		 */
+		inline bool acquireInit() noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Увеличиваем счётчик инициализации библиотеки OpenSSL
+			::__awh_ssl_init_count__++;
+			// Если библиотека OpenSSL ещё не инициализирована
+			if(!::__awh_ssl_initialized__){
+				// Устанавливаем флаг инициализации библиотеки OpenSSL
+				::__awh_ssl_initialized__ = true;
+				// Сообщаем о необходимости инициализации OpenSSL
+				return true;
+			}
+			// Сообщаем об отсутствии необходимости инициализации OpenSSL
+			return false;
+		}
+		/**
+		 * @brief Метод уменьшения счётчика инициализации OpenSSL
+		 *
+		 * @return флаг необходимости деинициализации OpenSSL
+		 */
+		inline bool releaseInit() noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Уменьшаем счётчик инициализации библиотеки OpenSSL
+			::__awh_ssl_init_count__--;
+			// Если счётчик инициализации библиотеки OpenSSL равен нулю
+			if(::__awh_ssl_init_count__ == 0){
+				// Сбрасываем флаг инициализации библиотеки OpenSSL
+				::__awh_ssl_initialized__ = false;
+				// Сообщаем о необходимости деинициализации OpenSSL
+				return true;
+			}
+			// Сообщаем об отсутствии необходимости деинициализации OpenSSL
+			return false;
+		}
+	}
 };
 
 /**
@@ -293,14 +503,12 @@ namespace {
 	 * @param members контейнер участников обмена защищёнными данными
 	 */
 	void Member::erase(members_t & members) noexcept {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())));
-		// Если идентификатор контекста TLS найден
-		if(i != ::__awh_ssl_ids__.end())
-			// Удаляем идентификатор контекста TLS из глобального набора идентификаторов контекстов TLS
-			::__awh_ssl_ids__.erase(i);
-		// Удаляем уровень защищённых сокетов из контейнера
-		members.erase(this->iterator);
+		// Удаляем участника из глобального реестра TLS
+		::ssl::registry::drop(
+			static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> ((* this->iterator).get())),
+			members,
+			this->iterator
+		);
 	}
 
 	/**
@@ -497,10 +705,81 @@ namespace local {
 	using guard_t = Guard_Transport_Layer_Security;
 
 	/**
-	 * @brief Буфер для обмена данными SSL
+	 * @brief Буфер для компрессии/декомпрессии сертификатов TLS
 	 *
 	 */
+	thread_local vector <uint8_t> payload;
+
+	/**
+	 * @brief Буфер для обмена данными SSL
+	 *
+	 * @note Буфер thread_local: указатель передаётся в read_callback и
+	 *       действителен только до возврата из callback. Callback обязан
+	 *       синхронно скопировать данные; при реентрантном вызове буфер
+	 *       может быть перезаписан.
+	 */
 	thread_local uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
+};
+
+/**
+ * Инкапсулируем функции защитника в пространство имён
+ */
+namespace ssl {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Закрепление участника в глобальном реестре TLS
+	 *
+	 * Lock удерживается только внутри pin(). Дальнейшая работа/callbacks — без lock.
+	 */
+	namespace registry {
+		/**
+		 * @brief Закрепление участника в глобальном реестре TLS
+		 *
+		 */
+		class pin_t {
+			private:
+				// Охранник участника обмена защищёнными данными
+				::local::guard_t _guard;
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param member объект участника обмена защищёнными данными
+				 */
+				explicit pin_t(::member_t * member) noexcept : _guard(member) {}
+				/**
+				 * @brief Конструктор копирования
+				 *
+				 */
+				pin_t(const pin_t &) = delete;
+				/**
+				 * @brief Конструктор перемещения
+				 *
+				 */
+				pin_t(pin_t &&) noexcept = delete;
+		};
+
+		/**
+		 * @brief Метод закрепления участника в глобальном реестре TLS
+		 *
+		 * @param id идентификатор контекста TLS
+		 * @return   объект закрепления или nullptr
+		 */
+		static unique_ptr <pin_t> pin(const ::tls::coder_t::id_t id) noexcept {
+			// Выполняем блокировку глобального реестра TLS
+			const global_lock_t lock = globalExclusive();
+			// Если идентификатор контекста TLS не зарегистрирован
+			if(::__awh_ssl_ids__.find(id) == ::__awh_ssl_ids__.end())
+				// Возвращаем пустой результат
+				return nullptr;
+			// Возвращаем объект закрепления участника
+			return make_unique <pin_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id)));
+		}
+	};
 };
 
 /**
@@ -1368,13 +1647,13 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
-				vector <uint8_t> buffer;
+				::local::payload.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::ZLIB, buffer);
+				compressor->compress(in, size, awh::compressor_t::method_t::ZLIB, ::local::payload);
 				// Если буфер не пустой
-				if(!buffer.empty()){
+				if(!::local::payload.empty()){
 					// Выполняем копирование данных в выходной буфер
-					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
+					if(::CBB_add_bytes(out, &::local::payload[0], ::local::payload.size()))
 						// Возвращаем true
 						return 1;
 				}
@@ -1401,13 +1680,13 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
-				vector <uint8_t> buffer;
+				::local::payload.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::BROTLI, buffer);
+				compressor->compress(in, size, awh::compressor_t::method_t::BROTLI, ::local::payload);
 				// Если буфер не пустой
-				if(!buffer.empty()){
+				if(!::local::payload.empty()){
 					// Выполняем копирование данных в выходной буфер
-					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
+					if(::CBB_add_bytes(out, &::local::payload[0], ::local::payload.size()))
 						// Возвращаем true
 						return 1;
 				}
@@ -1434,13 +1713,13 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
-				vector <uint8_t> buffer;
+				::local::payload.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::ZSTD, buffer);
+				compressor->compress(in, size, awh::compressor_t::method_t::ZSTD, ::local::payload);
 				// Если буфер не пустой
-				if(!buffer.empty()){
+				if(!::local::payload.empty()){
 					// Выполняем копирование данных в выходной буфер
-					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
+					if(::CBB_add_bytes(out, &::local::payload[0], ::local::payload.size()))
 						// Возвращаем true
 						return 1;
 				}
@@ -1468,15 +1747,15 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
-				vector <uint8_t> buffer;
+				::local::payload.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, buffer);
+				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, ::local::payload);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
-				if(buffer.size() != length)
+				if(::local::payload.size() != length)
 					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
-				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
+				(* out) = ::CRYPTO_BUFFER_new(&::local::payload[0], ::local::payload.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
 					// Возвращаем true
@@ -1505,15 +1784,15 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
-				vector <uint8_t> buffer;
+				::local::payload.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, buffer);
+				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, ::local::payload);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
-				if(buffer.size() != length)
+				if(::local::payload.size() != length)
 					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
-				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
+				(* out) = ::CRYPTO_BUFFER_new(&::local::payload[0], ::local::payload.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
 					// Возвращаем true
@@ -1542,15 +1821,15 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
-				vector <uint8_t> buffer;
+				::local::payload.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, buffer);
+				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, ::local::payload);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
-				if(buffer.size() != length)
+				if(::local::payload.size() != length)
 					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
-				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
+				(* out) = ::CRYPTO_BUFFER_new(&::local::payload[0], ::local::payload.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
 					// Возвращаем true
@@ -2091,17 +2370,14 @@ namespace verify {
 			member->host.name = sni;
 			// Если установлен режим работы с несколькими сертификатами TLS
 			if(member->state & state::MULTICERT_MODE){
-				// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
-				auto i = ::__awh_ssl_splice_map__.find(make_pair(member->proto, string{sni}));
-				// Если запись найдена
-				if(i != ::__awh_ssl_splice_map__.end()){
-					// Выполняем поиск идентификатора узла приёмника в глобальном наборе идентификаторов контекстов TLS
-					if(::__awh_ssl_ids__.find(i->second) != ::__awh_ssl_ids__.end()){
-						// Выполняем подмену сертификата на основной
-						::SSL_set_SSL_CTX(ssl, reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (i->second))->ctx);
-						// Устанавливаем результат обработки
-						result = SSL_TLSEXT_ERR_OK;
-					}
+				// Выполняем поиск идентификатора контекста TLS в карте сплайса
+				const ::tls::coder_t::id_t spliceId = ::ssl::registry::spliceResolve(member->proto, string{sni});
+				// Если идентификатор контекста TLS найден
+				if(spliceId != 0){
+					// Выполняем подмену сертификата на основной
+					::SSL_set_SSL_CTX(ssl, reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (spliceId))->ctx);
+					// Устанавливаем результат обработки
+					result = SSL_TLSEXT_ERR_OK;
 				}
 			// Устанавливаем результат обработки
 			} else result = SSL_TLSEXT_ERR_OK;
@@ -2534,6 +2810,19 @@ string awh::tls::Coder::version() const noexcept {
 	return ::OpenSSL_version(OPENSSL_VERSION);
 }
 /**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::tls::Coder::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности работы потоков для компрессора
+	this->_compressor.threadSafety(mode);
+	// Активируем работу мьютекса блокировки глобального состояния TLS
+	::__awh_ssl_mutex__.enabled = mode;
+	// Устанавливаем режим безопасности работы потоков
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+}
+/**
  * @brief Метод подключения объекта для работы с отпечатками TLS
  *
  * @param fgp объект для работы с отпечатками TLS
@@ -2555,8 +2844,10 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -2565,8 +2856,6 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -2598,8 +2887,6 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Объект SSL сертификата
 					X509 * x509 = nullptr;
 					/**
@@ -2788,8 +3075,10 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -2798,8 +3087,6 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если версия OpenSSL не соответствует указанной при сборке
 					if(::OpenSSL_version_num() != OPENSSL_VERSION_NUMBER){
 						// Если функция обратного вызова состояния установлена
@@ -2981,8 +3268,6 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если версия OpenSSL не соответствует указанной при сборке
 					if(::OpenSSL_version_num() != OPENSSL_VERSION_NUMBER){
 						// Если функция обратного вызова состояния установлена
@@ -3259,8 +3544,10 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -3269,8 +3556,6 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -3338,8 +3623,10 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -3348,8 +3635,6 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -3381,8 +3666,6 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					/**
 					 * Определяем узел события к которому относится контекст TLS
 					 */
@@ -3463,8 +3746,10 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -3473,8 +3758,6 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если объект CRL-файла сертификата создан
 					if(member->crl != nullptr){
 						// Создаём memory BIO
@@ -3559,8 +3842,6 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если объект CRL-файла сертификата создан
 					if((member->crl != nullptr) && ((* member->crl) != nullptr)){
 						// Создаём memory BIO
@@ -3677,355 +3958,356 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Объект для хранения информации о шифре
-		cipher_info_t info;
-		/**
-		 * TLSv1.3 (фиксированы RFC 8446, всегда доступны в TLS_method())
-		 * В BoringSSL нет публичного API для итерации cipher_list_tls13.
-		 * Стандартные шифры жестко определены, их коды не меняются.
-		 */
-		static const struct { uint16_t code; const char * name; const char * origin; } ciphers[] = {
-			{ 0x1301, "AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256" },
-			{ 0x1302, "AES_256_GCM_SHA384", "TLS_AES_256_GCM_SHA384" },
-			{ 0x1303, "CHACHA20_POLY1305_SHA256", "TLS_CHACHA20_POLY1305_SHA256" }
-		};
-		/**
-		 * Выполняем перебор всех стандартных шифров TLSv1.3 и добавляем их в результат, если они поддерживаются
-		 */
-		for(const auto & cipher : ciphers){
-			// Определяем поддерживает ли шифр TLSv1.3
-			info.tls13 = true;
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
+			// Объект для хранения информации о шифре
+			cipher_info_t info;
 			/**
-			 * Определяем код шифра
+			 * TLSv1.3 (фиксированы RFC 8446, всегда доступны в TLS_method())
+			 * В BoringSSL нет публичного API для итерации cipher_list_tls13.
+			 * Стандартные шифры жестко определены, их коды не меняются.
 			 */
-			switch(cipher.code){
-				// Если код шифра соответствует TLS_AES_128_GCM_SHA256
-				case 0x1301:
-					// Получаем код шифра
-					info.cipher = cipher_t::TLS_AES_128_GCM_SHA256;
-				break;
-				// Если код шифра соответствует TLS_AES_256_GCM_SHA384
-				case 0x1302:
-					// Получаем код шифра
-					info.cipher = cipher_t::TLS_AES_256_GCM_SHA384;
-				break;
-				// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
-				case 0x1303:
-					// Получаем код шифра
-					info.cipher = cipher_t::TLS_CHACHA20_POLY1305_SHA256;
-				break;
+			static const struct { uint16_t code; const char * name; const char * origin; } ciphers[] = {
+				{ 0x1301, "AES_128_GCM_SHA256", "TLS_AES_128_GCM_SHA256" },
+				{ 0x1302, "AES_256_GCM_SHA384", "TLS_AES_256_GCM_SHA384" },
+				{ 0x1303, "CHACHA20_POLY1305_SHA256", "TLS_CHACHA20_POLY1305_SHA256" }
+			};
+			/**
+			 * Выполняем перебор всех стандартных шифров TLSv1.3 и добавляем их в результат, если они поддерживаются
+			 */
+			for(const auto & cipher : ciphers){
+				// Определяем поддерживает ли шифр TLSv1.3
+				info.tls13 = true;
+				/**
+				 * Определяем код шифра
+				 */
+				switch(cipher.code){
+					// Если код шифра соответствует TLS_AES_128_GCM_SHA256
+					case 0x1301:
+						// Получаем код шифра
+						info.cipher = cipher_t::TLS_AES_128_GCM_SHA256;
+					break;
+					// Если код шифра соответствует TLS_AES_256_GCM_SHA384
+					case 0x1302:
+						// Получаем код шифра
+						info.cipher = cipher_t::TLS_AES_256_GCM_SHA384;
+					break;
+					// Если код шифра соответствует TLS_CHACHA20_POLY1305_SHA256
+					case 0x1303:
+						// Получаем код шифра
+						info.cipher = cipher_t::TLS_CHACHA20_POLY1305_SHA256;
+					break;
+				}
+				// Получаем название шифра
+				info.name = cipher.name;
+				// Получаем стандартное название шифра
+				info.origin = cipher.origin;
+				// Добавляем информацию о шифре в результат
+				result.push_back(::move(info));
 			}
-			// Получаем название шифра
-			info.name = cipher.name;
-			// Получаем стандартное название шифра
-			info.origin = cipher.origin;
-			// Добавляем информацию о шифре в результат
-			result.push_back(::move(info));
-		}
-		/**
-		 * Определяем уровень транспортной безопасности
-		 */
-		switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
-			// Если уровень является шаблонным контекстом безопасности
-			case static_cast <uint8_t> (layer_t::CTS): {
-				// Выполняем извлечение объекта шаблона контекста безопасности
-				auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-				// Создаём охранника участника обмена защищёнными данными
-				::local::guard_t guard(member);
-				// Если объект контекста безопасности создан
-				if(member->ctx != nullptr){
-					// Получаем список доступных шифров
-					const STACK_OF(SSL_CIPHER) * ciphers = ::SSL_CTX_get_ciphers(member->ctx);
-					// Получаем количество шифров в списке
-					const size_t count = static_cast <size_t> (::sk_SSL_CIPHER_num(ciphers));
-					// Если в списке есть шифры
-					if(count > 0){
-						// Текущее значение кода шифра
-						uint16_t code = 0;
-						// Получаем текущий размер результата
-						const size_t size = result.size();
-						// Выделяем память для хранения информации о шифрах
-						result.resize(size + count);
-						// Проходим по каждому шифру в списке
-						for(size_t i = 0; i < count; ++i){
-							// Получаем объект шифра
-							const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
-							// Получаем код шифра
-							code = static_cast <uint16_t> (::SSL_CIPHER_get_id(c) & 0xFFFF);
-							/**
-							 * Определяем код шифра
-							 */
-							switch(code){
-								// Если код шифра соответствует AES128-SHA
-								case 0x002F:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES128_SHA;
-								break;
-								// Если код шифра соответствует AES256-SHA
-								case 0x0035:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES256_SHA;
-								break;
-								// Если код шифра соответствует AES128-GCM-SHA256
-								case 0x009C:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES128_GCM_SHA256;
-								break;
-								// Если код шифра соответствует AES256-GCM-SHA384
-								case 0x009D:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES256_GCM_SHA384;
-								break;
-								// Если код шифра соответствует PSK-AES128-CBC-SHA
-								case 0x008C:
-									// Получаем код шифра
-									info.cipher = cipher_t::PSK_AES128_CBC_SHA;
-								break;
-								// Если код шифра соответствует PSK-AES256-CBC-SHA
-								case 0x008D:
-									// Получаем код шифра
-									info.cipher = cipher_t::PSK_AES256_CBC_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES128-SHA
-								case 0xC013:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES256-SHA
-								case 0xC014:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES256_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
-								case 0xC009:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
-								case 0xC00A:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES256_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
-								case 0xC027:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
-								case 0xC035:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_PSK_AES128_CBC_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
-								case 0xC036:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_PSK_AES256_CBC_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
-								case 0xC023:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
-								case 0xC02F:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
-								case 0xC030:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
-								case 0xCCA8:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
-								break;
-								// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
-								case 0xCCAC:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
-								case 0xC02B:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
-								case 0xC02C:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
-								case 0xCCA9:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
-								break;
-								// Если код шифра не соответствует ни одному из известных
-								default: info.cipher = cipher_t::UNKNOWN;
+			/**
+			 * Определяем уровень транспортной безопасности
+			 */
+			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+				// Если уровень является шаблонным контекстом безопасности
+				case static_cast <uint8_t> (layer_t::CTS): {
+					// Выполняем извлечение объекта шаблона контекста безопасности
+					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+					// Если объект контекста безопасности создан
+					if(member->ctx != nullptr){
+						// Получаем список доступных шифров
+						const STACK_OF(SSL_CIPHER) * ciphers = ::SSL_CTX_get_ciphers(member->ctx);
+						// Получаем количество шифров в списке
+						const size_t count = static_cast <size_t> (::sk_SSL_CIPHER_num(ciphers));
+						// Если в списке есть шифры
+						if(count > 0){
+							// Текущее значение кода шифра
+							uint16_t code = 0;
+							// Получаем текущий размер результата
+							const size_t size = result.size();
+							// Выделяем память для хранения информации о шифрах
+							result.resize(size + count);
+							// Проходим по каждому шифру в списке
+							for(size_t i = 0; i < count; ++i){
+								// Получаем объект шифра
+								const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
+								// Получаем код шифра
+								code = static_cast <uint16_t> (::SSL_CIPHER_get_id(c) & 0xFFFF);
+								/**
+								 * Определяем код шифра
+								 */
+								switch(code){
+									// Если код шифра соответствует AES128-SHA
+									case 0x002F:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES128_SHA;
+									break;
+									// Если код шифра соответствует AES256-SHA
+									case 0x0035:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES256_SHA;
+									break;
+									// Если код шифра соответствует AES128-GCM-SHA256
+									case 0x009C:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES128_GCM_SHA256;
+									break;
+									// Если код шифра соответствует AES256-GCM-SHA384
+									case 0x009D:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES256_GCM_SHA384;
+									break;
+									// Если код шифра соответствует PSK-AES128-CBC-SHA
+									case 0x008C:
+										// Получаем код шифра
+										info.cipher = cipher_t::PSK_AES128_CBC_SHA;
+									break;
+									// Если код шифра соответствует PSK-AES256-CBC-SHA
+									case 0x008D:
+										// Получаем код шифра
+										info.cipher = cipher_t::PSK_AES256_CBC_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES128-SHA
+									case 0xC013:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES128_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES256-SHA
+									case 0xC014:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES256_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
+									case 0xC009:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
+									case 0xC00A:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES256_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
+									case 0xC027:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES128_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
+									case 0xC035:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_PSK_AES128_CBC_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
+									case 0xC036:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_PSK_AES256_CBC_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
+									case 0xC023:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
+									case 0xC02F:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
+									case 0xC030:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
+									case 0xCCA8:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
+									break;
+									// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
+									case 0xCCAC:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+									case 0xC02B:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+									case 0xC02C:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+									case 0xCCA9:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
+									break;
+									// Если код шифра не соответствует ни одному из известных
+									default: info.cipher = cipher_t::UNKNOWN;
+								}
+								// Получаем название шифра
+								info.name = ::SSL_CIPHER_get_name(c);
+								// Получаем стандартное название шифра
+								info.origin = ::SSL_CIPHER_standard_name(c);
+								// Определяем поддерживает ли шифр TLSv1.3
+								info.tls13 = ((code >= 0x1300) && (code <= 0x13FF));
+								// Добавляем информацию о шифре в результат
+								result[size + i] = ::move(info);
 							}
-							// Получаем название шифра
-							info.name = ::SSL_CIPHER_get_name(c);
-							// Получаем стандартное название шифра
-							info.origin = ::SSL_CIPHER_standard_name(c);
-							// Определяем поддерживает ли шифр TLSv1.3
-							info.tls13 = ((code >= 0x1300) && (code <= 0x13FF));
-							// Добавляем информацию о шифре в результат
-							result[size + i] = ::move(info);
 						}
 					}
-				}
-			} break;
-			// Если уровень является транспортной передачей данных
-			case static_cast <uint8_t> (layer_t::CTL): {
-				// Выполняем извлечение объекта транспортного уровня передачи
-				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-				// Создаём охранника участника обмена защищёнными данными
-				::local::guard_t guard(member);
-				// Если объект подключения создан и сертификат передан
-				if(member->ssl != nullptr){
-					// Получаем список доступных шифров
-					const STACK_OF(SSL_CIPHER) * ciphers = ::SSL_get_ciphers(member->ssl);
-					// Получаем количество шифров в списке
-					const size_t count = static_cast <size_t> (::sk_SSL_CIPHER_num(ciphers));
-					// Если в списке есть шифры
-					if(count > 0){
-						// Текущее значение кода шифра
-						uint16_t code = 0;
-						// Получаем текущий размер результата
-						const size_t size = result.size();
-						// Выделяем память для хранения информации о шифрах
-						result.resize(size + count);
-						// Проходим по каждому шифру в списке
-						for(size_t i = 0; i < count; ++i){
-							// Получаем объект шифра
-							const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
-							// Получаем код шифра
-							code = static_cast <uint16_t> (::SSL_CIPHER_get_id(c) & 0xFFFF);
-							/**
-							 * Определяем код шифра
-							 */
-							switch(code){
-								// Если код шифра соответствует AES128-SHA
-								case 0x002F:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES128_SHA;
-								break;
-								// Если код шифра соответствует AES256-SHA
-								case 0x0035:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES256_SHA;
-								break;
-								// Если код шифра соответствует AES128-GCM-SHA256
-								case 0x009C:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES128_GCM_SHA256;
-								break;
-								// Если код шифра соответствует AES256-GCM-SHA384
-								case 0x009D:
-									// Получаем код шифра
-									info.cipher = cipher_t::AES256_GCM_SHA384;
-								break;
-								// Если код шифра соответствует PSK-AES128-CBC-SHA
-								case 0x008C:
-									// Получаем код шифра
-									info.cipher = cipher_t::PSK_AES128_CBC_SHA;
-								break;
-								// Если код шифра соответствует PSK-AES256-CBC-SHA
-								case 0x008D:
-									// Получаем код шифра
-									info.cipher = cipher_t::PSK_AES256_CBC_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES128-SHA
-								case 0xC013:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES256-SHA
-								case 0xC014:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES256_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
-								case 0xC009:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
-								case 0xC00A:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES256_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
-								case 0xC027:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES128_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
-								case 0xC035:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_PSK_AES128_CBC_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
-								case 0xC036:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_PSK_AES256_CBC_SHA;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
-								case 0xC023:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
-								case 0xC02F:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
-								case 0xC030:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
-								break;
-								// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
-								case 0xCCA8:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
-								break;
-								// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
-								case 0xCCAC:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
-								case 0xC02B:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
-								case 0xC02C:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
-								break;
-								// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
-								case 0xCCA9:
-									// Получаем код шифра
-									info.cipher = cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
-								break;
-								// Если код шифра не соответствует ни одному из известных
-								default: info.cipher = cipher_t::UNKNOWN;
+				} break;
+				// Если уровень является транспортной передачей данных
+				case static_cast <uint8_t> (layer_t::CTL): {
+					// Выполняем извлечение объекта транспортного уровня передачи
+					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+					// Если объект подключения создан и сертификат передан
+					if(member->ssl != nullptr){
+						// Получаем список доступных шифров
+						const STACK_OF(SSL_CIPHER) * ciphers = ::SSL_get_ciphers(member->ssl);
+						// Получаем количество шифров в списке
+						const size_t count = static_cast <size_t> (::sk_SSL_CIPHER_num(ciphers));
+						// Если в списке есть шифры
+						if(count > 0){
+							// Текущее значение кода шифра
+							uint16_t code = 0;
+							// Получаем текущий размер результата
+							const size_t size = result.size();
+							// Выделяем память для хранения информации о шифрах
+							result.resize(size + count);
+							// Проходим по каждому шифру в списке
+							for(size_t i = 0; i < count; ++i){
+								// Получаем объект шифра
+								const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
+								// Получаем код шифра
+								code = static_cast <uint16_t> (::SSL_CIPHER_get_id(c) & 0xFFFF);
+								/**
+								 * Определяем код шифра
+								 */
+								switch(code){
+									// Если код шифра соответствует AES128-SHA
+									case 0x002F:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES128_SHA;
+									break;
+									// Если код шифра соответствует AES256-SHA
+									case 0x0035:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES256_SHA;
+									break;
+									// Если код шифра соответствует AES128-GCM-SHA256
+									case 0x009C:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES128_GCM_SHA256;
+									break;
+									// Если код шифра соответствует AES256-GCM-SHA384
+									case 0x009D:
+										// Получаем код шифра
+										info.cipher = cipher_t::AES256_GCM_SHA384;
+									break;
+									// Если код шифра соответствует PSK-AES128-CBC-SHA
+									case 0x008C:
+										// Получаем код шифра
+										info.cipher = cipher_t::PSK_AES128_CBC_SHA;
+									break;
+									// Если код шифра соответствует PSK-AES256-CBC-SHA
+									case 0x008D:
+										// Получаем код шифра
+										info.cipher = cipher_t::PSK_AES256_CBC_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES128-SHA
+									case 0xC013:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES128_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES256-SHA
+									case 0xC014:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES256_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA
+									case 0xC009:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES256-SHA
+									case 0xC00A:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES256_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES128-SHA256
+									case 0xC027:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES128_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-PSK-AES128-CBC-SHA
+									case 0xC035:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_PSK_AES128_CBC_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-PSK-AES256-CBC-SHA
+									case 0xC036:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_PSK_AES256_CBC_SHA;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES128-SHA256
+									case 0xC023:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES128_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES128-GCM-SHA256
+									case 0xC02F:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES128_GCM_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-AES256-GCM-SHA384
+									case 0xC030:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_AES256_GCM_SHA384;
+									break;
+									// Если код шифра соответствует ECDHE-RSA-CHACHA20-POLY1305
+									case 0xCCA8:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_RSA_CHACHA20_POLY1305;
+									break;
+									// Если код шифра соответствует ECDHE-PSK-CHACHA20-POLY1305
+									case 0xCCAC:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_PSK_CHACHA20_POLY1305;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES128-GCM-SHA256
+									case 0xC02B:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES128_GCM_SHA256;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-AES256-GCM-SHA384
+									case 0xC02C:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_AES256_GCM_SHA384;
+									break;
+									// Если код шифра соответствует ECDHE-ECDSA-CHACHA20-POLY1305
+									case 0xCCA9:
+										// Получаем код шифра
+										info.cipher = cipher_t::ECDHE_ECDSA_CHACHA20_POLY1305;
+									break;
+									// Если код шифра не соответствует ни одному из известных
+									default: info.cipher = cipher_t::UNKNOWN;
+								}
+								// Получаем название шифра
+								info.name = ::SSL_CIPHER_get_name(c);
+								// Получаем стандартное название шифра
+								info.origin = ::SSL_CIPHER_standard_name(c);
+								// Определяем поддерживает ли шифр TLSv1.3
+								info.tls13 = ((code >= 0x1300) && (code <= 0x13FF));
+								// Добавляем информацию о шифре в результат
+								result[size + i] = ::move(info);
 							}
-							// Получаем название шифра
-							info.name = ::SSL_CIPHER_get_name(c);
-							// Получаем стандартное название шифра
-							info.origin = ::SSL_CIPHER_standard_name(c);
-							// Определяем поддерживает ли шифр TLSv1.3
-							info.tls13 = ((code >= 0x1300) && (code <= 0x13FF));
-							// Добавляем информацию о шифре в результат
-							result[size + i] = ::move(info);
 						}
 					}
-				}
-			} break;
+				} break;
+			}
 		}
 	/**
 	 * Если возникает ошибка
@@ -4061,8 +4343,10 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -4071,8 +4355,6 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -4104,8 +4386,6 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Объект SSL сертификата
 					X509 * x509 = nullptr;
 					/**
@@ -4179,8 +4459,10 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -4189,8 +4471,6 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -4222,8 +4502,6 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Шаг 1: Получить сертификат
 					X509 * x509 = ::SSL_get_peer_certificate(member->ssl);
 					// Если сертификат не получен
@@ -4450,8 +4728,10 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -4460,8 +4740,6 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если режим проверки хоста суревра установлен
 					if(mode)
 						// Устанавливаем режим проверки сертификата
@@ -4496,8 +4774,6 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если режим проверки хоста суревра установлен
 					if(mode)
 						// Устанавливаем режим проверки сертификата
@@ -4560,8 +4836,10 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -4570,8 +4848,6 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если установлен режим работы с несколькими сертификатами TLS
 					if(member->state & state::MULTICERT_MODE)
 						// Возвращаем режим работы с несколькими сертификатами TLS
@@ -4583,8 +4859,6 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если установлен режим работы с несколькими сертификатами TLS
 					if(member->state & state::MULTICERT_MODE)
 						// Возвращаем режим работы с несколькими сертификатами TLS
@@ -4626,8 +4900,10 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -4636,8 +4912,6 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					/**
 					 * Определяем режим работы TLS
 					 */
@@ -4649,14 +4923,9 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 							// Если узел является сервером
 							if(member->node == event::node_t::SERVER){
 								// Если название хоста уже установлено
-								if(!member->host.empty()){
+								if(!member->host.empty())
 									// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
-									auto i = ::__awh_ssl_splice_map__.find(make_pair(member->proto, member->host));
-									// Если запись найдена
-									if(i != ::__awh_ssl_splice_map__.end())
-										// Удаляем старую запись из глобальной карты сопоставления имён хостов и идентификаторов узлов TLS
-										::__awh_ssl_splice_map__.erase(i);
-								}
+									::ssl::registry::spliceErase(member->proto, member->host);
 							}
 						} break;
 						// Если режим работы с несколькими сертификатами TLS
@@ -4670,8 +4939,6 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					/**
 					 * Определяем режим работы TLS
 					 */
@@ -4720,8 +4987,10 @@ string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -4770,8 +5039,10 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 	try {
 		// Если имя хоста сервера не пустое
 		if(!sni.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -4780,23 +5051,16 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Если узел является сервером
 						if(member->node == event::node_t::SERVER){
 							// Если установлен режим работы с несколькими сертификатами TLS
 							if(member->state & state::MULTICERT_MODE){
 								// Если название хоста уже установлено
-								if(!member->host.empty()){
+								if(!member->host.empty())
 									// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
-									auto i = ::__awh_ssl_splice_map__.find(make_pair(member->proto, member->host));
-									// Если запись найдена
-									if(i != ::__awh_ssl_splice_map__.end())
-										// Удаляем старую запись из глобальной карты сопоставления имён хостов и идентификаторов узлов TLS
-										::__awh_ssl_splice_map__.erase(i);
-								}
+									::ssl::registry::spliceErase(member->proto, member->host);
 								// Добавляем новую запись в глобальную карту сопоставления имён хостов и идентификаторов узлов TLS
-								::__awh_ssl_splice_map__.emplace(make_pair(member->proto, sni), id);
+								::ssl::registry::spliceEmplace(member->proto, string{sni}, id);
 							}
 						}
 						// Устанавливаем хост для уровня защищённых сокетов
@@ -4806,8 +5070,6 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
 							// Устанавливаем имя хоста для SNI расширения
@@ -4891,8 +5153,10 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 	try {
 		// Если IP-адрес сервера не пустой и порт сервера задан верно
 		if((!ip.empty()) && (port > 0)){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -4901,8 +5165,6 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Если функция обратного вызова состояния установлена
 						if(member->callback.state != nullptr)
 							// Вызываем функцию обратного вызова состояния
@@ -4934,8 +5196,6 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Выполняем парсинг I-адреса
 						if(this->_addr.parse(ip)){
 							// Выполняем инициализацию объекта хоста IPv4-адреса
@@ -5059,14 +5319,12 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		auto i = ::__awh_ssl_ids__.find(id);
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
 		// Если идентификатор контекста TLS найден
-		if((result = (i != ::__awh_ssl_ids__.end()))){
+		if((result = (pin != nullptr))){
 			// Выполняем извлечение участника обмена защищёнными данными
 			::member_t * member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
-			// Создаём охранника участника обмена защищёнными данными
-			::local::guard_t guard(member);
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -5078,14 +5336,9 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 					// Если узел является сервером
 					if(member->node == event::node_t::SERVER){
 						// Если название хоста уже установлено
-						if(!member->host.empty()){
+						if(!member->host.empty())
 							// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
-							auto i = ::__awh_ssl_splice_map__.find(make_pair(member->proto, member->host));
-							// Если запись найдена
-							if(i != ::__awh_ssl_splice_map__.end())
-								// Удаляем старую запись из глобальной карты сопоставления имён хостов и идентификаторов узлов TLS
-								::__awh_ssl_splice_map__.erase(i);
-						}
+							::ssl::registry::spliceErase(member->proto, member->host);
 					}
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
@@ -5141,8 +5394,10 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -5151,8 +5406,6 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -5181,9 +5434,32 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 					}
 				} break;
 				// Если уровень является транспортной передачей данных
-				case static_cast <uint8_t> (layer_t::CTL):
+				case static_cast <uint8_t> (layer_t::CTL): {
+					// Выполняем извлечение объекта транспортного уровня передачи
+					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Выполняем завершение TLS соединения
-					return (::SSL_shutdown(reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->ssl) >= 0);
+					const int32_t shutdown = ::SSL_shutdown(member->ssl);
+					// Если завершение TLS соединения выполнено
+					if(shutdown >= 0)
+						// Устанавливаем положительный результат
+						result = true;
+					// Если завершение TLS соединения не выполнено
+					else {
+						// Получаем код ошибки
+						const int32_t error = ::SSL_get_error(member->ssl, shutdown);
+						// Если ошибка связана с необходимостью повторного чтения или записи
+						result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE));
+					}
+					/**
+					 * Дренируем bio.write после SSL_shutdown.
+					 * close_notify попадает в memory BIO и должен быть отправлен пиру немедленно.
+					 */
+					if(result && !::ssl::emitWriteBio(member, id))
+						// Устанавливаем отрицательный результат
+						result = false;
+					// Возвращаем результат
+					return result;
+				}
 			}
 		}
 	/**
@@ -5472,12 +5748,18 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 						for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 							// Извлекаем размер протокола
 							size = member->alpn.buffer[i];
+							// Если размер протокола некорректен или выходит за пределы буфера
+							if((size == 0) || ((static_cast <size_t> (i) + 1 + size) > member->alpn.buffer.size()))
+								// Выходим из цикла
+								break;
 							// Если размер протокола совпадает с длиной извлекаемого протокола
-							if(size == static_cast <uint8_t> (length)){
+							if((proto != nullptr) && (size == static_cast <uint8_t> (length))){
 								// Если протокол совпадает с извлекаемым протоколом
 								if(::memcmp(&member->alpn.buffer[i + 1], proto, length) == 0){
-									// Устанавливаем активный протокол
-									member->alpn.id = member->alpn.ids[index];
+									// Если индекс протокола не выходит за пределы списка
+									if(index < member->alpn.ids.size())
+										// Устанавливаем активный протокол
+										member->alpn.id = member->alpn.ids[index];
 									// Выход из цикла
 									break;
 								}
@@ -5529,8 +5811,10 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -5539,8 +5823,6 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если функция обратного вызова состояния установлена
 					if(member->callback.state != nullptr)
 						// Вызываем функцию обратного вызова состояния
@@ -5572,41 +5854,23 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					/**
 					 * Если используется OpenSSL (не BoringSSL)
 					 */
 					#ifndef OPENSSL_IS_BORINGSSL
 						// Выполняем повторную передачу данных для DTLS/QUIC
-						if(::SSL_handle_events(member->ssl) == 1){
+						if(::SSL_handle_events(member->ssl) == 1)
+							// Отправляем данные из BIO буфера записи
+							result = ::ssl::emitWriteBio(member, id);
 					/**
 					 * Если используется BoringSSL
 					 */
 					#else
 						// Выполняем повторную передачу данных для DTLS/QUIC
-						if(::BIO_ctrl_pending(member->bio.write) > 0){
+						if(::BIO_ctrl_pending(member->bio.write) > 0)
+							// Отправляем данные из BIO буфера записи
+							result = ::ssl::emitWriteBio(member, id);
 					#endif
-							// Количество прочитанных данных
-							int32_t bytes = 0;
-							// Количество ожидающих данных для чтения
-							size_t pending = 0;
-							/**
-							 * Читаем все ожидающие данные из BIO буфера записи
-							 */
-							while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
-								// Читаем данные из BIO буфера записи
-								bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-								// Если данные не прочитаны
-								if(bytes <= 0)
-									// Выходим из цикла
-									break;
-								// Если функция обратного вызова чтения данных установлена
-								else if((result = (member->callback.read != nullptr)))
-									// Вызываем функцию обратного вызова чтения данных
-									member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
-							}
-						}
 				} break;
 			}
 		}
@@ -5644,8 +5908,10 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -5655,14 +5921,16 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto cts = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём новый транспортный уровень передачи и добавляем его в контейнер
-					auto ret = ::__awh_ssl_members__.emplace(::make_unique <::ctl_t> ());
+					auto ret = ::ssl::registry::emplace(::make_unique <::ctl_t> ());
 					// Извлекаем объект транспортного уровня передачи
-					::ctl_t * member = awh_cast <::ctl_t *> ((* ret.first).get());
+					::ctl_t * member = awh_cast <::ctl_t *> ((* ret).get());
 					{
 						// Устанавливаем контекст TLS
 						member->ctx = cts->ctx;
 						// Устанавливаем список отзыва сертификатов
 						member->crl = &cts->crl;
+						// Устанавливаем идентификатор цифрового отпечатка браузера
+						member->fid = cts->fid;
 						// Устанавливаем ALPN-протоколов
 						member->alpn = cts->alpn;
 						// Устанавливаем тип узла события
@@ -5672,9 +5940,9 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Устанавливаем объект состояния
 						member->state = cts->state;
 						// Сохраняем итератор уровня защищённых сокетов
-						member->iterator = ret.first;
+						member->iterator = ret;
 						// Выполняем получение идентификатора контекста TLS
-						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
+						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret).get()));
 						// Создаем SSL объект
 						member->ssl = ::SSL_new(cts->ctx);
 						// Если объект не создан
@@ -5711,7 +5979,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 							return 0;
 						}
 						// Привязываем текущий объект TLS к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[0], (* ret.first).get());
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[0], (* ret).get());
 						// Привязываем текущий объект фреймворка к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[1], const_cast <fmk_t *> (this->_fmk));
 						// Привязываем текущий объект лога к SSL объекту
@@ -5839,7 +6107,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Устанавливаем хост для уровня защищённых сокетов
 						member->host.name = cts->host;
 						// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
-						::__awh_ssl_ids__.emplace(result);
+						::ssl::registry::add(result);
 					}
 				} break;
 				// Если уровень является транспортной передачей данных
@@ -5847,14 +6115,18 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto cts = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём новый транспортный уровень передачи и добавляем его в контейнер
-					auto ret = ::__awh_ssl_members__.emplace(::make_unique <::ctl_t> ());
+					auto ret = ::ssl::registry::emplace(::make_unique <::ctl_t> ());
 					// Извлекаем объект транспортного уровня передачи
-					::ctl_t * member = awh_cast <::ctl_t *> ((* ret.first).get());
+					::ctl_t * member = awh_cast <::ctl_t *> ((* ret).get());
 					{
 						// Устанавливаем контекст TLS
 						member->ctx = cts->ctx;
 						// Устанавливаем список отзыва сертификатов
 						member->crl = cts->crl;
+						// Устанавливаем идентификатор цифрового отпечатка браузера
+						member->fid = cts->fid;
+						// Устанавливаем ALPN-протоколов
+						member->alpn = cts->alpn;
 						// Устанавливаем тип узла события
 						member->node = cts->node;
 						// Устанавливаем тип протокола события
@@ -5862,9 +6134,9 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Устанавливаем объект состояния
 						member->state = cts->state;
 						// Сохраняем итератор уровня защищённых сокетов
-						member->iterator = ret.first;
+						member->iterator = ret;
 						// Выполняем получение идентификатора контекста TLS
-						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
+						result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret).get()));
 						// Создаем SSL объект
 						member->ssl = ::SSL_new(cts->ctx);
 						// Если объект не создан
@@ -5901,7 +6173,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 							return 0;
 						}
 						// Привязываем текущий объект TLS к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[0], (* ret.first).get());
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[0], (* ret).get());
 						// Привязываем текущий объект фреймворка к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[1], const_cast <fmk_t *> (this->_fmk));
 						// Привязываем текущий объект лога к SSL объекту
@@ -6020,7 +6292,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Устанавливаем хост для уровня защищённых сокетов
 						member->host.name = cts->host.name;
 						// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
-						::__awh_ssl_ids__.emplace(result);
+						::ssl::registry::add(result);
 					}
 				} break;
 			}
@@ -6061,19 +6333,19 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 	 */
 	try {
 		// Создаём новый уровень защищённых сокетов и добавляем его в контейнер
-		auto ret = ::__awh_ssl_members__.emplace(::make_unique <::cts_t> ());
+		auto ret = ::ssl::registry::emplace(::make_unique <::cts_t> ());
 		// Извлекаем объект шаблона контекста безопасности
-		::cts_t * member = awh_cast <::cts_t *> ((* ret.first).get());
+		::cts_t * member = awh_cast <::cts_t *> ((* ret).get());
 		// Устанавливаем тип узла события
 		member->node = node;
 		// Устанавливаем тип протокола события
 		member->proto = proto;
 		// Сохраняем итератор уровня защищённых сокетов
-		member->iterator = ret.first;
+		member->iterator = ret;
 		// Устанавливаем режим проверки сертификата
 		member->state |= state::CERTIFICATE_VERIFY;
 		// Выполняем получение идентификатора контекста TLS
-		result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret.first).get()));
+		result = static_cast <id_t> (reinterpret_cast <uintptr_t> ((* ret).get()));
 		/**
 		 * Определяем узел события к которому относится контекст TLS
 		 */
@@ -6211,7 +6483,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					// Устанавливаем функцию обратного вызова для обработки сообщений TLS
 					::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
 					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
-					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret.first).get());
+					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret).get());
 				#endif
 				// Получаем данные стора
 				X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
@@ -6292,15 +6564,15 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				// Устанавливаем проверку сертификата сервера
 				::SSL_CTX_set_verify(member->ctx, SSL_VERIFY_PEER, &::verify::certificate);
 				// Выполняем проверку всех дочерних сертификатов
-				::SSL_CTX_set_cert_verify_callback(member->ctx, &::verify::hostname, (* ret.first).get());
+				::SSL_CTX_set_cert_verify_callback(member->ctx, &::verify::hostname, (* ret).get());
 				// Привязываем текущий объект TLS к SSL_CTX объекту
-				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[4], (* ret.first).get());
+				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[4], (* ret).get());
 				// Привязываем текущий объект фреймворка к SSL_CTX объекту
 				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[5], const_cast <fmk_t *> (this->_fmk));
 				// Привязываем текущий объект лога к SSL_CTX объекту
 				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[6], const_cast <log_t *> (this->_log));
 				// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
-				::__awh_ssl_ids__.emplace(result);
+				::ssl::registry::add(result);
 			} break;
 			// Если узел является сервером
 			case static_cast <uint8_t> (event::node_t::SERVER): {
@@ -6412,7 +6684,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					// Устанавливаем функцию обратного вызова для обработки сообщений TLS
 					::SSL_CTX_set_msg_callback(member->ctx, &::ssl::message);
 					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
-					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret.first).get());
+					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret).get());
 				#endif
 				// Выполняем создание объекта кривой prime256v1, доступны также (P-384 и P-521)
 				EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
@@ -6655,20 +6927,20 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 */
 				#if OPENSSL_VERSION_NUMBER >= 0x10002000L
 					// Устанавливаем функцию обратного вызова для переключения протокола на другой
-					::SSL_CTX_set_alpn_select_cb(member->ctx, &::ssl::serverNextProtoSelect, (* ret.first).get());
+					::SSL_CTX_set_alpn_select_cb(member->ctx, &::ssl::serverNextProtoSelect, (* ret).get());
 				#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
 				// Устанавливаем функцию обратного вызова для обработки SNI
 				::SSL_CTX_set_tlsext_servername_callback(member->ctx, &::verify::matchSNI);
 				// Устанавливаем аргумент функции обратного вызова для обработки SNI
-				::SSL_CTX_set_tlsext_servername_arg(member->ctx, (* ret.first).get());
+				::SSL_CTX_set_tlsext_servername_arg(member->ctx, (* ret).get());
 				// Привязываем текущий объект TLS к SSL_CTX объекту
-				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[4], (* ret.first).get());
+				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[4], (* ret).get());
 				// Привязываем текущий объект фреймворка к SSL_CTX объекту
 				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[5], const_cast <fmk_t *> (this->_fmk));
 				// Привязываем текущий объект лога к SSL_CTX объекту
 				::SSL_CTX_set_ex_data(member->ctx, ::__awh_ssl_index__[6], const_cast <log_t *> (this->_log));
 				// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
-				::__awh_ssl_ids__.emplace(result);
+				::ssl::registry::add(result);
 			} break;
 			// Во всех остальных случаях
 			default: {
@@ -7164,8 +7436,10 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 	try {
 		// Если список групп эллиптических кривых не пустой
 		if(!groups.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Если версия OpenSSL ниже версии 3.0.0 и не используется BoringSSL.
 				 */
@@ -7238,8 +7512,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 							case static_cast <uint8_t> (layer_t::CTS): {
 								// Выполняем извлечение объекта шаблона контекста безопасности
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем элептическую кривую для алгоритма обмена ключами в контексте TLS
 								if(::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7274,8 +7546,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 							case static_cast <uint8_t> (layer_t::CTL): {
 								// Выполняем извлечение объекта транспортного уровня передачи
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем элептическую кривую для алгоритма обмена ключами в контексте TLS
 								if(::SSL_set_tmp_ecdh(member->ssl, ecdh) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7382,8 +7652,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 							case static_cast <uint8_t> (layer_t::CTS): {
 								// Выполняем извлечение объекта шаблона контекста безопасности
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
 								if(::SSL_CTX_set1_groups(member->ctx, &support[0], support.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7418,8 +7686,6 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 							case static_cast <uint8_t> (layer_t::CTL): {
 								// Выполняем извлечение объекта транспортного уровня передачи
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
 								if(::SSL_set1_groups(member->ssl, &support[0], support.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -7487,8 +7753,10 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 	try {
 		// Если список алгоритмов шифрования не пустой
 		if(!ciphers.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				// Результирующая строка алгоритмов шифрования
 				string result = "";
 				/**
@@ -7628,8 +7896,6 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 						case static_cast <uint8_t> (layer_t::CTS): {
 							// Выполняем извлечение объекта шаблона контекста безопасности
 							auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							// Устанавливаем все основные алгоритмы шифрования
 							if(::SSL_CTX_set_cipher_list(member->ctx, result.c_str()) != 1){
 								// Если функция обратного вызова состояния установлена
@@ -7664,8 +7930,6 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 						case static_cast <uint8_t> (layer_t::CTL): {
 							// Выполняем извлечение объекта транспортного уровня передачи
 							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							// Устанавливаем все основные алгоритмы шифрования
 							if(::SSL_set_cipher_list(member->ssl, result.c_str()) != 1){
 								// Если функция обратного вызова состояния установлена
@@ -7734,8 +7998,10 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -7746,8 +8012,6 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Определяем режим активации/деактивации GREASE-значений (мусорных кодов)
 							 */
@@ -7799,8 +8063,6 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Определяем режим активации/деактивации GREASE-значений (мусорных кодов)
 							 */
@@ -7883,8 +8145,10 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -7895,8 +8159,6 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Определяем режим активации/деактивации перемешивания поддерживаемых расширений TLS
 							 */
@@ -7948,8 +8210,6 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Определяем режим активации/деактивации перемешивания поддерживаемых расширений TLS
 							 */
@@ -8027,8 +8287,10 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -8038,24 +8300,18 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
-					if(member->node == event::node_t::CLIENT){
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
+					if(member->node == event::node_t::CLIENT)
 						// Активируем поддержку SCT (Signed Certificate Timestamp) в контексте TLS
 						::SSL_CTX_enable_signed_cert_timestamps(member->ctx);
-					}
 				} break;
 				// Если уровень является транспортной передачей данных
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
-					if(member->node == event::node_t::CLIENT){
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
+					if(member->node == event::node_t::CLIENT)
 						// Активируем поддержку SCT (Signed Certificate Timestamp) в транспортной передаче данных
 						::SSL_enable_signed_cert_timestamps(member->ssl);
-					}
 				} break;
 			}
 		}
@@ -8088,8 +8344,10 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -8100,8 +8358,6 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
 					if(member->node == event::node_t::CLIENT){
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Активируем поддержку Stapling (OCSP) в контексте TLS
 						::SSL_CTX_enable_ocsp_stapling(member->ctx);
 					}
@@ -8112,8 +8368,6 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
 					if(member->node == event::node_t::CLIENT){
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Активируем поддержку Stapling (OCSP) в транспортной передаче данных
 						::SSL_enable_ocsp_stapling(member->ssl);
 					}
@@ -8154,8 +8408,10 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -8166,8 +8422,6 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 						// Если протокол подключения TCP
 						if(member->proto == event::protocol_t::TCP){
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Определяем режим активации/деактивации поддержки расширения Next Protocol Negotiation (NPN)
 							 */
@@ -8217,8 +8471,6 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Если протокол подключения TCP
 						if(member->proto == event::protocol_t::TCP){
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Определяем режим активации/деактивации поддержки расширения Next Protocol Negotiation (NPN)
 							 */
@@ -8295,8 +8547,10 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -8307,8 +8561,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
 					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Выполняем установку идентификатора цифрового отпечатка браузера
 						member->fid = fid;
 						// Получаем объект браузера из шаблона контекста безопасности
@@ -8458,8 +8710,6 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Если узел является клиентом
 					if((member->node == event::node_t::CLIENT) && (this->_fgp != nullptr)){
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Выполняем установку идентификатора цифрового отпечатка браузера
 						member->fid = fid;
 						// Получаем объект браузера из шаблона контекста безопасности
@@ -8677,8 +8927,10 @@ uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -8727,8 +8979,10 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 	try {
 		// Если список поддерживаемых ALPN-протоколов не пустой
 		if(!alpn.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -8737,8 +8991,6 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
 						member->alpn.ids.clear();
 						// Выполняем сброс буфера поддерживаемых ALPN-протоколов
@@ -8771,8 +9023,6 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Выполняем сброс списка идентификаторов поддерживаемых ALPN-протоколов
 						member->alpn.ids.clear();
 						// Выполняем сброс буфера поддерживаемых ALPN-протоколов
@@ -8837,8 +9087,10 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 	try {
 		// Если список поддерживаемых ALPS-протоколов не пустой
 		if(!alps.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -8888,8 +9140,6 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 							// Если узел является клиентом
 							if(member->node == event::node_t::CLIENT){
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Буфер ALPS-протоколов
 								vector <uint8_t> buffer;
 								/**
@@ -9004,8 +9254,10 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 	try {
 		// Если список поддерживаемых алгоритмов подписи не пустой
 		if(!signatures.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Если используется OpenSSL (не BoringSSL), строим пары (NID_hash, EVP_PKEY_type)
 				 * для передачи в SSL_CTX_set1_sigalgs / SSL_set1_sigalgs
@@ -9118,8 +9370,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 							case static_cast <uint8_t> (layer_t::CTS): {
 								// Выполняем извлечение объекта шаблона контекста безопасности
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(::SSL_CTX_set1_sigalgs(member->ctx, &sigalgs[0], sigalgs.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -9154,8 +9404,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 							case static_cast <uint8_t> (layer_t::CTL): {
 								// Выполняем извлечение объекта транспортного уровня передачи
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(::SSL_set1_sigalgs(member->ctx, &sigalgs[0], sigalgs.size()) != 1){
 									// Если функция обратного вызова состояния установлена
@@ -9285,8 +9533,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 							case static_cast <uint8_t> (layer_t::CTS): {
 								// Выполняем извлечение объекта шаблона контекста безопасности
 								auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(
 									(::SSL_CTX_set_signing_algorithm_prefs(member->ctx, &sigalgs[0], sigalgs.size()) != 1) ||
@@ -9324,8 +9570,6 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 							case static_cast <uint8_t> (layer_t::CTL): {
 								// Выполняем извлечение объекта транспортного уровня передачи
 								auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-								// Создаём охранника участника обмена защищёнными данными
-								::local::guard_t guard(member);
 								// Устанавливаем все поддерживаемые алгоритмы подписи в контексте TLS
 								if(
 									(::SSL_set_signing_algorithm_prefs(member->ssl, &sigalgs[0], sigalgs.size()) != 1) ||
@@ -9400,8 +9644,10 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 		try {
 			// Если список поддерживаемых алгоритмов компрессии сертификата не пустой
 			if(!methods.empty()){
-				// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-				if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+				// Выполняем закрепление участника в глобальном реестре TLS
+				const auto pin = ::ssl::registry::pin(id);
+				// Если идентификатор контекста TLS найден
+				if(pin != nullptr){
 					/**
 					 * Определяем уровень транспортной безопасности
 					 */
@@ -9410,8 +9656,6 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 						case static_cast <uint8_t> (layer_t::CTS): {
 							// Выполняем извлечение объекта шаблона контекста безопасности
 							auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Перебираем все поддерживаемые алгоритмы компрессии сертификата
 							 */
@@ -9576,8 +9820,6 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 						case static_cast <uint8_t> (layer_t::CTL): {
 							// Выполняем извлечение объекта транспортного уровня передачи
 							auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-							// Создаём охранника участника обмена защищёнными данными
-							::local::guard_t guard(member);
 							/**
 							 * Перебираем все поддерживаемые алгоритмы компрессии сертификата
 							 */
@@ -9775,8 +10017,10 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 	try {
 		// Если список поддерживаемых групп эллиптических кривых не пустой
 		if(!groups.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -9886,8 +10130,6 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 											::SSL_set_enable_ech_grease(member->ssl, 0);
 										break;
 									}
-									// Создаём охранника участника обмена защищёнными данными
-									::local::guard_t guard(member);
 									// Устанавливаем все группы эллиптических кривых для алгоритмов обмена ключами в контексте TLS
 									if(::SSL_set1_client_key_shares(member->ssl, &support[0], support.size()) != 1){
 										// Если функция обратного вызова состояния установлена
@@ -9982,8 +10224,10 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -9992,8 +10236,6 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если путь к файлу центра сертификации указан
 					if(!filename.empty()){
 						// Создаём новое хранилище
@@ -10104,8 +10346,6 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если путь к файлу центра сертификации указан
 					if(!filename.empty()){
 						// Создаём новое хранилище
@@ -10211,8 +10451,10 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -10221,8 +10463,6 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если название файла центра сертификации не пустое
 					if(!file.empty()){
 						// Создаём новое хранилище
@@ -10347,8 +10587,6 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Если название файла центра сертификации не пустое
 					if(!file.empty()){
 						// Создаём новое хранилище
@@ -10503,8 +10741,10 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 	try {
 		// Если путь к файлу сертификата указан
 		if(!filename.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -10513,8 +10753,6 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Если CRL-файл сертификата уже создан
 						if(member->crl != nullptr)
 							// Выполняем освобождение памяти
@@ -10623,8 +10861,6 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						// Если CRL-файл сертификата уже создан
 						if((member->crl != nullptr) && ((* member->crl) != nullptr))
 							// Выполняем освобождение памяти
@@ -10765,8 +11001,10 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 	try {
 		// Если путь к файлу сертификата указан
 		if(!filename.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -10775,8 +11013,6 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						/**
 						 * Определяем тип файла приватного ключа клиента
 						 */
@@ -10884,8 +11120,6 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						/**
 						 * Определяем тип файла приватного ключа клиента
 						 */
@@ -11025,8 +11259,10 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 	try {
 		// Если путь к файлу сертификата указан
 		if(!filename.empty()){
-			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
 				/**
 				 * Определяем уровень транспортной безопасности
 				 */
@@ -11035,8 +11271,6 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 					case static_cast <uint8_t> (layer_t::CTS): {
 						// Выполняем извлечение объекта шаблона контекста безопасности
 						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						/**
 						 * Определяем узел события к которому относится контекст TLS
 						 */
@@ -11191,8 +11425,6 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 					case static_cast <uint8_t> (layer_t::CTL): {
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-						// Создаём охранника участника обмена защищёнными данными
-						::local::guard_t guard(member);
 						/**
 						 * Определяем узел события к которому относится контекст TLS
 						 */
@@ -11390,14 +11622,14 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			// Если уровень является транспортной передачей данных
 			if((result = (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTL))){
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-				// Создаём охранника участника обмена защищёнными данными
-				::local::guard_t guard(member);
 				// Устанавливаем функцию обратного вызова получения данных
 				member->callback.read = ::move(callback);
 			}
@@ -11437,14 +11669,14 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			// Если уровень является транспортной передачей данных
 			if((result = (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTL))){
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-				// Создаём охранника участника обмена защищёнными данными
-				::local::guard_t guard(member);
 				// Устанавливаем функцию обратного вызова передачи данных
 				member->callback.write = ::move(callback);
 			}
@@ -11484,8 +11716,10 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if((result = (pin != nullptr))){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -11494,8 +11728,6 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Устанавливаем функцию обратного вызова изменения состояния
 					member->callback.state = ::move(callback);
 				} break;
@@ -11503,8 +11735,6 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Устанавливаем функцию обратного вызова изменения состояния
 					member->callback.state = ::move(callback);
 				} break;
@@ -11545,8 +11775,10 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if((result = (::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()))){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if((result = (pin != nullptr))){
 			/**
 			 * Определяем уровень транспортной безопасности
 			 */
@@ -11555,8 +11787,6 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 				case static_cast <uint8_t> (layer_t::CTS): {
 					// Выполняем извлечение объекта шаблона контекста безопасности
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Устанавливаем функцию обратного вызова получения ошибок
 					member->callback.error = ::move(callback);
 				} break;
@@ -11564,8 +11794,6 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 				case static_cast <uint8_t> (layer_t::CTL): {
 					// Выполняем извлечение объекта транспортного уровня передачи
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-					// Создаём охранника участника обмена защищёнными данными
-					::local::guard_t guard(member);
 					// Устанавливаем функцию обратного вызова получения ошибок
 					member->callback.error = ::move(callback);
 				} break;
@@ -11606,14 +11834,14 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
-		if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
 			// Если уровень является транспортной передачей данных
 			if((result = (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer == layer_t::CTL))){
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
-				// Создаём охранника участника обмена защищёнными данными
-				::local::guard_t guard(member);
 				// Устанавливаем функцию обратного вызова получения снимка браузера приславшего ClientHello
 				member->callback.fingerprint = ::move(callback);
 			}
@@ -11647,12 +11875,19 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
  */
 awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _compressor(log), _fgp(nullptr), _fmk(fmk), _log(log) {
+	// Устанавливаем режим безопасности работы потоков для компрессора
+	this->_compressor.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
+	/**
+	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
+	 */
+	std::call_once(::__awh_ssl_init_once__, []() noexcept {
+		// Активируем работу мьютекса блокировки глобального состояния TLS
+		::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	});
 	// Увеличиваем счётчик инициализации библиотеки OpenSSL
-	::__awh_ssl_init_count__++;
+	const bool needInit = ::ssl::registry::acquireInit();
 	// Если библиотека OpenSSL ещё не инициализирована
-	if(!::__awh_ssl_initialized__){
-		// Устанавливаем флаг инициализации библиотеки OpenSSL
-		::__awh_ssl_initialized__ = !::__awh_ssl_initialized__;
+	if(needInit){
 		// Выполняем игнорирование сигналов SIGPIPE
 		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
 			/**
@@ -11690,8 +11925,13 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
 		::ERR_load_crypto_strings();
 		// Выполняем загрузки описаний ошибок OpenSSL
 		::SSL_load_error_strings();
-		// Добавляем все алгоритмы шифрования
-		::OpenSSL_add_all_algorithms();
+		/**
+		 * Если версия OpenSSL ниже версии 3.0.0
+		 */
+		#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			// Добавляем все алгоритмы шифрования
+			::OpenSSL_add_all_algorithms();
+		#endif
 		// Активируем рандомный генератор
 		if(::RAND_poll() != 1){
 			/**
@@ -11735,12 +11975,19 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
  */
 awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) noexcept :
  _addr(fmk, log), _compressor(log), _fgp(fgp), _fmk(fmk), _log(log) {
+	// Устанавливаем режим безопасности работы потоков для компрессора
+	this->_compressor.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
+	/**
+	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
+	 */
+	std::call_once(::__awh_ssl_init_once__, []() noexcept {
+		// Активируем работу мьютекса блокировки глобального состояния TLS
+		::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	});
 	// Увеличиваем счётчик инициализации библиотеки OpenSSL
-	::__awh_ssl_init_count__++;
+	const bool needInit = ::ssl::registry::acquireInit();
 	// Если библиотека OpenSSL ещё не инициализирована
-	if(!::__awh_ssl_initialized__){
-		// Устанавливаем флаг инициализации библиотеки OpenSSL
-		::__awh_ssl_initialized__ = !::__awh_ssl_initialized__;
+	if(needInit){
 		// Выполняем игнорирование сигналов SIGPIPE
 		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
 			/**
@@ -11778,8 +12025,13 @@ awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) 
 		::ERR_load_crypto_strings();
 		// Выполняем загрузки описаний ошибок OpenSSL
 		::SSL_load_error_strings();
-		// Добавляем все алгоритмы шифрования
-		::OpenSSL_add_all_algorithms();
+		/**
+		 * Если версия OpenSSL ниже версии 3.0.0
+		 */
+		#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			// Добавляем все алгоритмы шифрования
+			::OpenSSL_add_all_algorithms();
+		#endif
 		// Активируем рандомный генератор
 		if(::RAND_poll() != 1){
 			/**
@@ -11820,11 +12072,9 @@ awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) 
  */
 awh::tls::Coder::~Coder() noexcept {
 	// Уменьшаем счётчик инициализации библиотеки OpenSSL
-	::__awh_ssl_init_count__--;
+	const bool needCleanup = ::ssl::registry::releaseInit();
 	// Если счётчик инициализации библиотеки OpenSSL равен нулю
-	if(::__awh_ssl_init_count__ == 0){
-		// Сбрасываем флаг инициализации библиотеки OpenSSL
-		::__awh_ssl_initialized__ = !::__awh_ssl_initialized__;
+	if(needCleanup){
 		/**
 		 * Если версия OPENSSL ниже версии 1.1.0
 		 */
