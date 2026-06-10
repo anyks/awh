@@ -420,9 +420,11 @@ size_t awh::server::Socks5::Origin_Hash::operator()(const origin_t & id) const n
 		case static_cast <uint8_t> (net::type_t::IPV6): {
 			// Комбинируем хеш-код порта
 			::combine(result, hash <uint16_t> {}(id.ip6.port));
-			// Безопасное чтение 128-битного адреса как двух uint64_t
-			const uint64_t hi = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0]));
-			const uint64_t lo = (* reinterpret_cast <const uint64_t *> (&id.ip6.address[0] + 8));
+			// Инициализируем переменные для хранения частей IPv6 адреса
+			uint64_t hi = 0, lo = 0;
+			// Читаем 128-битный адрес как два uint64_t без невыровненного доступа
+			::memcpy(&hi, &id.ip6.address[0], sizeof(hi));
+			::memcpy(&lo, &id.ip6.address[8], sizeof(lo));
 			// Комбинируем хеш-коды IPv6 адреса
 			::combine(result, hash <uint64_t> {}(hi));
 			::combine(result, hash <uint64_t> {}(lo));
@@ -459,9 +461,14 @@ bool awh::server::Socks5::sendReply(const event::id_t eid, proto::socks5_t::ctx_
 	// Буфер данных ответа
 	uint8_t * buffer = nullptr;
 	// Если извлечение буфера данных ответа не выполнено
-	if(!this->_socks5.buffer(&buffer, size, ctx))
+	if(!this->_socks5.buffer(&buffer, size, ctx)){
+		// Если требуется закрыть пира после ответа об ошибке
+		if(dropPeer)
+			// Удаляем подключённого пира
+			this->_unit->server.destroy(eid);
 		// Возвращаем отрицательный результат
 		return false;
+	}
 	// Если отправка ответа прокси-клиенту не выполнена
 	if(this->_unit->server.send(eid, buffer, size) != size){
 		// Удаляем подключённого пира
@@ -1809,6 +1816,16 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
 						// Удаляем пира из списка активных пиров
 						this->_peers.erase(i);
 					}
+					// Если завершён UDP data-пир, сбрасываем ссылку в активной сессии
+					for(auto s = this->_sessions.begin(); s != this->_sessions.end(); ++s){
+						// Если идентификатор завершённого пира соответствует data-пиру сессии
+						if(s->second.second == eid){
+							// Сбрасываем идентификатор data-пира, control-соединение остаётся активным
+							s->second.second = 0;
+							// Выходим из цикла
+							break;
+						}
+					}
 					// Выполняем поиск идентификатора пира, для удаления принадлежащих ему UDP-сессий
 					auto j = this->_mapping.find(eid);
 					// Если идентификатор пира найден в списке
@@ -2244,145 +2261,185 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				} else {
 					// Добавляем данные в буфер накопления SOCKS5-кадров
 					i->second.rx.insert(i->second.rx.end(), buffer, buffer + size);
-					// Если размер буфера превышает допустимый
-					if(i->second.rx.size() > proto::socks5_t::SOCKS5_RX_MAX_FRAME){
-						// Удаляем подключённого пира
-						this->_unit->server.destroy(eid);
-						// Выходим из функции
-						return;
-					}
-					// Определяем полный размер SOCKS5-кадра
-					const size_t frame = this->_socks5.frameSize(i->second.ctx.state, i->second.rx.data(), i->second.rx.size());
-					// Если кадр ещё неполный
-					if(frame == 0)
-						// Выходим и ожидаем продолжение кадра
-						return;
-					// Если кадр некорректный
-					if(frame == SIZE_MAX){
-						// Удаляем подключённого пира
-						this->_unit->server.destroy(eid);
-						// Выходим из функции
-						return;
-					}
-					// Если парсинг данных от прокси-клиента выполнен успешно
-					if(this->_socks5.parse(i->second.rx.data(), frame, i->second.ctx)){
-						// Удаляем обработанный кадр из буфера
-						i->second.rx.erase(i->second.rx.begin(), i->second.rx.begin() + frame);
-						/**
-						 * Определяем состояние парсинга данных от прокси-клиента
-						 */
-						switch(static_cast <uint8_t> (i->second.ctx.state)){
-							// Если текущее состояние соответствует ошибке работе с прокси-сервером
-							case static_cast <uint8_t> (proto::socks5_t::state_t::BROKEN): {
-								// Если функция обратного вызова не установлена
-								if(!this->_callback.is("error")){
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, this->_socks5.statusMessage(i->second.ctx.status));
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(i->second.ctx.status));
-									#endif
-								// Выполняем функцию обратного вызова
-								} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(i->second.ctx.status));
-								// Удаляем подключённого пира
-								this->_unit->server.destroy(eid);
-							} break;
-							// Если текущее состояние соответствует выполненному рукопожатию
-							case static_cast <uint8_t> (proto::socks5_t::state_t::HANDSHAKE): {
-								/**
-								 * Определяем команду, которую выполняет прокси-клиент
-								 */
-								switch(static_cast <uint8_t> (i->second.ctx.command)){
-									// Если команда соответствует CONNECT
-									case static_cast <uint8_t> (proto::socks5_t::command_t::CONNECT): {
+					/**
+					 * Разбираем все полные кадры, накопленные в буфере
+					 */
+					while(i->second.ctx.state != proto::socks5_t::state_t::COMPLETED){
+						// Если размер буфера превышает допустимый
+						if(i->second.rx.size() > proto::socks5_t::SOCKS5_RX_MAX_FRAME){
+							// Удаляем подключённого пира
+							this->_unit->server.destroy(eid);
+							// Выходим из функции
+							return;
+						}
+						// Определяем полный размер SOCKS5-кадра
+						const size_t frame = this->_socks5.frameSize(i->second.ctx.state, i->second.rx.data(), i->second.rx.size());
+						// Если кадр ещё неполный
+						if(frame == 0)
+							// Выходим и ожидаем продолжение кадра
+							return;
+						// Если кадр некорректный
+						if(frame == SIZE_MAX){
+							// Удаляем подключённого пира
+							this->_unit->server.destroy(eid);
+							// Выходим из функции
+							return;
+						}
+						// Если парсинг данных от прокси-клиента выполнен успешно
+						if(this->_socks5.parse(i->second.rx.data(), frame, i->second.ctx)){
+							// Удаляем обработанный кадр из буфера
+							i->second.rx.erase(i->second.rx.begin(), i->second.rx.begin() + frame);
+							/**
+							 * Определяем состояние парсинга данных от прокси-клиента
+							 */
+							switch(static_cast <uint8_t> (i->second.ctx.state)){
+								// Если текущее состояние соответствует ошибке работе с прокси-сервером
+								case static_cast <uint8_t> (proto::socks5_t::state_t::BROKEN): {
+									// Если функция обратного вызова не установлена
+									if(!this->_callback.is("error")){
 										/**
-										 * Определяем тип адреса хоста для подключения
+										 * Если включён режим отладки
 										 */
-										switch(static_cast <uint8_t> (i->second.ctx.host->type)){
-											// Если тип адреса соответствует FQDN
-											case static_cast <uint8_t> (net::type_t::FQDN): {
-												// Если DNS-резолвер не установлен или не находится в рабочем состоянии
-												if((this->_dns.client == nullptr) || !this->_dns.client->working())
-													// Устанавливаем статус недоступности хоста
-													i->second.ctx.status = proto::socks5_t::status_t::UNAVHOST;
-												// Если DNS-резолвер установлен и находится в рабочем состоянии
-												else {
-													// Создаём идентификатор резолвера для текущего пира
-													i->second.did = this->_dns.client->issue();
-													// Выполняем добавление связи DNS-резолвера и идентификатора пира
-													auto ret = this->_resolves.emplace(i->second.did, eid);
-													// Выполняем резолвинг хоста текущего сервера
-													if(!this->_dns.client->resolve(ret.first->first, this->_unit->server.family(eid), awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain, this->_dns.alive.load(std::memory_order_acquire))){
-														// Удаляем связь DNS-резолвера и идентификатора пира
-														this->dropResolve(ret.first->first);
-														// Обнуляем идентификатор DNS-резолвера
-														i->second.did = 0;
-														// Устанавливаем статус недоступности адреса
-														i->second.ctx.status = proto::socks5_t::status_t::NOADDR;
-														// Создаём текст ошибки резолвинга хоста текущего сервера
-														const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain.c_str());
-														// Если функция обратного вызова не установлена
-														if(!this->_callback.is("error")){
-															/**
-															 * Если включён режим отладки
-															 */
-															#if DEBUG_MODE
-																// Записываем ошибку в лог
-																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
-															/**
-															 * Если режим отладки не включён
-															 */
-															#else
-																// Записываем ошибку в лог
-																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-															#endif
-														// Выполняем функцию обратного вызова
-														} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
-													// Если резолвинг хоста не выполнен, выходим
-													} else return;
-												}
-											} break;
-											// Если тип адреса соответствует IPv4
-											case static_cast <uint8_t> (net::type_t::IPV4):
-											// Если тип адреса соответствует IPv6
-											case static_cast <uint8_t> (net::type_t::IPV6): {
-												// Получаем семейство адресов для подключения к удалённому серверу
-												const event::family_t family = this->_unit->server.family(eid);
-												// Выполняем создание клиента для подключения к удалённому серверу
-												i->second.eid = this->_client.issue(family, event::type_t::STREAM, event::protocol_t::TCP);
-												// Устанавливаем опции события
-												if(this->_client.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
-													// Извлекаем сетевой интерфейс для подключения к удалённому серверу
-													const string & iface = this->_unit->server.getIface(eid);
-													// Устанавливаем интерфейс для подключения к удалённому серверу
-													if(this->_client.setIface(i->second.eid, iface)){
-														// Устанавливаем порт и адрес удалённого сервера для подключения
-														if(this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get()) &&
-														   this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port)){
-															// Если функция обратного вызова установлена
-															if(this->_callback.is("ready")){
-																// Получаем IP-адрес для подключения к удалённому серверу
-																const string & address = this->_client.getTarget(i->second.eid);
-																// Выполняем функцию обратного вызова
-																this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, address, address);
-															}
-															// Если функция обратного вызова установлена
-															if(this->_callback.is("accept"))
-																// Выполняем функцию обратного вызова
-																this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_id.eid, eid);
-															// Выполняем фиксацию настроек события сервера
-															if(this->_client.commit(i->second.eid)){
-																// Если подключение к серверу прошло успешно
-																if(this->_client.connect(i->second.eid)){
-																	// Выполняем запуск события
-																	if(!this->_client.launch(i->second.eid)){
+										#if DEBUG_MODE
+											// Записываем ошибку в лог
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::CRITICAL, this->_socks5.statusMessage(i->second.ctx.status));
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(i->second.ctx.status));
+										#endif
+									// Выполняем функцию обратного вызова
+									} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(i->second.ctx.status));
+									// Удаляем подключённого пира
+									this->_unit->server.destroy(eid);
+									// Выходим из функции
+									return;
+								} break;
+								// Если текущее состояние соответствует выполненному рукопожатию
+								case static_cast <uint8_t> (proto::socks5_t::state_t::HANDSHAKE): {
+									/**
+									 * Определяем команду, которую выполняет прокси-клиент
+									 */
+									switch(static_cast <uint8_t> (i->second.ctx.command)){
+										// Если команда соответствует CONNECT
+										case static_cast <uint8_t> (proto::socks5_t::command_t::CONNECT): {
+											/**
+											 * Определяем тип адреса хоста для подключения
+											 */
+											switch(static_cast <uint8_t> (i->second.ctx.host->type)){
+												// Если тип адреса соответствует FQDN
+												case static_cast <uint8_t> (net::type_t::FQDN): {
+													// Если DNS-резолвер не установлен или не находится в рабочем состоянии
+													if((this->_dns.client == nullptr) || !this->_dns.client->working())
+														// Устанавливаем статус недоступности хоста
+														i->second.ctx.status = proto::socks5_t::status_t::UNAVHOST;
+													// Если DNS-резолвер установлен и находится в рабочем состоянии
+													else {
+														// Создаём идентификатор резолвера для текущего пира
+														i->second.did = this->_dns.client->issue();
+														// Выполняем добавление связи DNS-резолвера и идентификатора пира
+														auto ret = this->_resolves.emplace(i->second.did, eid);
+														// Выполняем резолвинг хоста текущего сервера
+														if(!this->_dns.client->resolve(ret.first->first, this->_unit->server.family(eid), awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain, this->_dns.alive.load(std::memory_order_acquire))){
+															// Удаляем связь DNS-резолвера и идентификатора пира
+															this->dropResolve(ret.first->first);
+															// Обнуляем идентификатор DNS-резолвера
+															i->second.did = 0;
+															// Устанавливаем статус недоступности адреса
+															i->second.ctx.status = proto::socks5_t::status_t::NOADDR;
+															// Создаём текст ошибки резолвинга хоста текущего сервера
+															const string error = this->_fmk->format("It was not possible to obtain an IP address for the remote host \"%s\"", awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain.c_str());
+															// Если функция обратного вызова не установлена
+															if(!this->_callback.is("error")){
+																/**
+																 * Если включён режим отладки
+																 */
+																#if DEBUG_MODE
+																	// Записываем ошибку в лог
+																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, error.c_str());
+																/**
+																 * Если режим отладки не включён
+																 */
+																#else
+																	// Записываем ошибку в лог
+																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+																#endif
+															// Выполняем функцию обратного вызова
+															} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+														// Если резолвинг хоста не выполнен, выходим
+														} else return;
+													}
+												} break;
+												// Если тип адреса соответствует IPv4
+												case static_cast <uint8_t> (net::type_t::IPV4):
+												// Если тип адреса соответствует IPv6
+												case static_cast <uint8_t> (net::type_t::IPV6): {
+													// Получаем семейство адресов для подключения к удалённому серверу
+													const event::family_t family = this->_unit->server.family(eid);
+													// Выполняем создание клиента для подключения к удалённому серверу
+													i->second.eid = this->_client.issue(family, event::type_t::STREAM, event::protocol_t::TCP);
+													// Устанавливаем опции события
+													if(this->_client.setOptions(i->second.eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
+														// Извлекаем сетевой интерфейс для подключения к удалённому серверу
+														const string & iface = this->_unit->server.getIface(eid);
+														// Устанавливаем интерфейс для подключения к удалённому серверу
+														if(this->_client.setIface(i->second.eid, iface)){
+															// Устанавливаем порт и адрес удалённого сервера для подключения
+															if(this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get()) &&
+															this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port)){
+																// Если функция обратного вызова установлена
+																if(this->_callback.is("ready")){
+																	// Получаем IP-адрес для подключения к удалённому серверу
+																	const string & address = this->_client.getTarget(i->second.eid);
+																	// Выполняем функцию обратного вызова
+																	this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, family, address, address);
+																}
+																// Если функция обратного вызова установлена
+																if(this->_callback.is("accept"))
+																	// Выполняем функцию обратного вызова
+																	this->_callback.call <void (const event::id_t, const event::id_t)> ("accept", this->_id.eid, eid);
+																// Выполняем фиксацию настроек события сервера
+																if(this->_client.commit(i->second.eid)){
+																	// Если подключение к серверу прошло успешно
+																	if(this->_client.connect(i->second.eid)){
+																		// Выполняем запуск события
+																		if(!this->_client.launch(i->second.eid)){
+																			// Если функция обратного вызова не установлена
+																			if(!this->_callback.is("error")){
+																				/**
+																				 * Если включён режим отладки
+																				 */
+																				#if DEBUG_MODE
+																					// Записываем ошибку в лог
+																					this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+																				/**
+																				 * Если режим отладки не включён
+																				 */
+																				#else
+																					// Записываем ошибку в лог
+																					this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, eid);
+																				#endif
+																			}
+																		// Если резолвинг хоста не выполнен
+																		} else {
+																			// Получаем опции события для идентификатора события клиента
+																			uint16_t options = this->_client.getOptions(i->second.eid);
+																			// Если опция KEEPALIVE установлена
+																			if(options & event::options::KEEPALIVE){
+																				// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
+																				options &= ~event::options::KEEPALIVE;
+																				// Устанавливаем опции события для идентификатора события клиента
+																				this->_client.setOptions(i->second.eid, options);
+																			}
+																			// Добавляем связь между клиентом и пиром которому он принадлежит
+																			this->_clients.emplace(i->second.eid, eid);
+																			// Выходим из функции
+																			return;
+																		}
+																	// Если подключение к серверу не прошло успешно
+																	} else {
 																		// Если функция обратного вызова не установлена
 																		if(!this->_callback.is("error")){
 																			/**
@@ -2390,32 +2447,17 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																			 */
 																			#if DEBUG_MODE
 																				// Записываем ошибку в лог
-																				this->_log->debug("Creating client for peer ID=%u is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+																				this->_log->debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, this->_client.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
 																			/**
 																			 * Если режим отладки не включён
 																			 */
 																			#else
 																				// Записываем ошибку в лог
-																				this->_log->print("Creating client for peer ID=%u is failed", log_t::flag_t::WARNING, eid);
+																				this->_log->print("Connection to the server \"%s:%u\" is failed", log_t::flag_t::WARNING, this->_client.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
 																			#endif
 																		}
-																	// Если резолвинг хоста не выполнен
-																	} else {
-																		// Получаем опции события для идентификатора события клиента
-																		uint16_t options = this->_client.getOptions(i->second.eid);
-																		// Если опция KEEPALIVE установлена
-																		if(options & event::options::KEEPALIVE){
-																			// Сбрасываем опцию KEEPALIVE для идентификатора события клиента
-																			options &= ~event::options::KEEPALIVE;
-																			// Устанавливаем опции события для идентификатора события клиента
-																			this->_client.setOptions(i->second.eid, options);
-																		}
-																		// Добавляем связь между клиентом и пиром которому он принадлежит
-																		this->_clients.emplace(i->second.eid, eid);
-																		// Выходим из функции
-																		return;
 																	}
-																// Если подключение к серверу не прошло успешно
+																// Если фиксация настроек события сервера не выполнена
 																} else {
 																	// Если функция обратного вызова не установлена
 																	if(!this->_callback.is("error")){
@@ -2424,17 +2466,17 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																		 */
 																		#if DEBUG_MODE
 																			// Записываем ошибку в лог
-																			this->_log->debug("Connection to the server \"%s:%u\" is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, this->_client.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
+																			this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
 																			// Записываем ошибку в лог
-																			this->_log->print("Connection to the server \"%s:%u\" is failed", log_t::flag_t::WARNING, this->_client.getTarget(i->second.eid).c_str(), awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port);
+																			this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
 																		#endif
 																	}
 																}
-															// Если фиксация настроек события сервера не выполнена
+															// Если установка порта и адреса удалённого сервера для подключения не выполнена
 															} else {
 																// Если функция обратного вызова не установлена
 																if(!this->_callback.is("error")){
@@ -2443,17 +2485,17 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																	 */
 																	#if DEBUG_MODE
 																		// Записываем ошибку в лог
-																		this->_log->debug("Client parameters were not committed for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+																		this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
 																	/**
 																	 * Если режим отладки не включён
 																	 */
 																	#else
 																		// Записываем ошибку в лог
-																		this->_log->print("Client parameters were not committed for node with ID=%u", log_t::flag_t::WARNING, eid);
+																		this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
 																	#endif
 																}
 															}
-														// Если установка порта и адреса удалённого сервера для подключения не выполнена
+														// Если установка интерфейса для подключения к удалённому серверу не выполнена
 														} else {
 															// Если функция обратного вызова не установлена
 															if(!this->_callback.is("error")){
@@ -2462,17 +2504,17 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																 */
 																#if DEBUG_MODE
 																	// Записываем ошибку в лог
-																	this->_log->debug("Port and address of the remote server for connection were not set correctly for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
+																	this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, iface.c_str(), eid);
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
 																	// Записываем ошибку в лог
-																	this->_log->print("Port and address of the remote server for connection were not set correctly for node with ID=%u", log_t::flag_t::WARNING, eid);
+																	this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, iface.c_str(), eid);
 																#endif
 															}
 														}
-													// Если установка интерфейса для подключения к удалённому серверу не выполнена
+													// Если установка опций события не выполнена
 													} else {
 														// Если функция обратного вызова не установлена
 														if(!this->_callback.is("error")){
@@ -2481,408 +2523,401 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															 */
 															#if DEBUG_MODE
 																// Записываем ошибку в лог
-																this->_log->debug("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, iface.c_str(), eid);
+																this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
 																// Записываем ошибку в лог
-																this->_log->print("Network interface \"%s\" for connecting to the remote server could not be established for node with ID=%u", log_t::flag_t::WARNING, iface.c_str(), eid);
+																this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, eid);
 															#endif
 														}
 													}
-												// Если установка опций события не выполнена
-												} else {
-													// Если функция обратного вызова не установлена
-													if(!this->_callback.is("error")){
-														/**
-														 * Если включён режим отладки
-														 */
-														#if DEBUG_MODE
-															// Записываем ошибку в лог
-															this->_log->debug("Failed to configure client events settings for node with ID=%u", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, eid);
-														/**
-														 * Если режим отладки не включён
-														 */
-														#else
-															// Записываем ошибку в лог
-															this->_log->print("Failed to configure client events settings for node with ID=%u", log_t::flag_t::WARNING, eid);
-														#endif
-													}
+													// Удаляем клиента принадлежащего пиру
+													this->_client.destroy(i->second.eid);
+													// Устанавливаем статус ошибки, так как мы получили ошибку
+													i->second.ctx.status = proto::socks5_t::status_t::NOADDR;
+												} break;
+											}
+											// Если команда CONNECT завершилась ошибкой, отправляем ответ прокси-клиенту
+											if(i->second.ctx.status != proto::socks5_t::status_t::SUCCESS)
+												// Выполняем отправку ответа прокси-клиенту
+												this->sendReply(eid, i->second.ctx, true);
+										} break;
+										// Если команда соответствует UDP ASSOCIATE
+										case static_cast <uint8_t> (proto::socks5_t::command_t::UDP): {
+											// Если список поддерживаемых UDP-серверов пустой
+											if(!this->_udp.events.empty()){
+												// Создаём объект параметров подключения для идентификатора события клиента
+												unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+												/**
+												 * Определяем тип адреса хоста для подключения
+												 */
+												switch(static_cast <uint8_t> (i->second.ctx.host->type)){
+													// Если тип адреса соответствует IPv4
+													case static_cast <uint8_t> (net::type_t::IPV4): {
+														// Устанавливаем тип параметров подключения для идентификатора события клиента
+														attr->type = net::type_t::IPV4;
+														// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
+														if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address == 0)
+															// Устанавливаем IP-адрес подключённого клиента для идентификатора события клиента
+															this->_unit->server.getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (attr.get())->ip);
+														// Устанавливаем полученный IP-адрес
+														else awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+													} break;
+													// Если тип адреса соответствует IPv6
+													case static_cast <uint8_t> (net::type_t::IPV6): {
+														// Устанавливаем тип параметров подключения для идентификатора события клиента
+														attr->type = net::type_t::IPV6;
+														// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
+														if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], (uint8_t[16]){0}, 16) == 0)
+															// Устанавливаем IP-адрес подключённого клиента для идентификатора события клиента
+															this->_unit->server.getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (attr.get())->ip);
+														// Устанавливаем полученный IP-адрес
+														else awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
+													} break;
 												}
-												// Удаляем клиента принадлежащего пиру
-												this->_client.destroy(i->second.eid);
-												// Устанавливаем статус ошибки, так как мы получили ошибку
-												i->second.ctx.status = proto::socks5_t::status_t::NOADDR;
-											} break;
-										}
-										// Если команда CONNECT завершилась ошибкой, отправляем ответ прокси-клиенту
-										if(i->second.ctx.status != proto::socks5_t::status_t::SUCCESS)
-											// Выполняем отправку ответа прокси-клиенту
-											this->sendReply(eid, i->second.ctx, true);
-									} break;
-									// Если команда соответствует UDP ASSOCIATE
-									case static_cast <uint8_t> (proto::socks5_t::command_t::UDP): {
-										// Если список поддерживаемых UDP-серверов пустой
-										if(!this->_udp.events.empty()){
-											// Создаём объект параметров подключения для идентификатора события клиента
-											unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-											/**
-											 * Определяем тип адреса хоста для подключения
-											 */
-											switch(static_cast <uint8_t> (i->second.ctx.host->type)){
-												// Если тип адреса соответствует IPv4
-												case static_cast <uint8_t> (net::type_t::IPV4): {
-													// Устанавливаем тип параметров подключения для идентификатора события клиента
-													attr->type = net::type_t::IPV4;
-													// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
-													if(awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address == 0)
-														// Устанавливаем IP-адрес подключённого клиента для идентификатора события клиента
-														this->_unit->server.getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (attr.get())->ip);
-													// Устанавливаем полученный IP-адрес
-													else awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
-												} break;
-												// Если тип адреса соответствует IPv6
-												case static_cast <uint8_t> (net::type_t::IPV6): {
-													// Устанавливаем тип параметров подключения для идентификатора события клиента
-													attr->type = net::type_t::IPV6;
-													// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
-													if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], (uint8_t[16]){0}, 16) == 0)
-														// Устанавливаем IP-адрес подключённого клиента для идентификатора события клиента
-														this->_unit->server.getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (attr.get())->ip);
-													// Устанавливаем полученный IP-адрес
-													else awh_cast <net::attr_net_t *> (attr.get())->ip = ::move(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
-												} break;
-											}
-											// Если порт которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
-											if(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port == 0)
-												// Устанавливаем порт подключённого клиента для идентификатора события клиента
-												awh_cast <net::attr_net_t *> (attr.get())->port = this->_unit->server.getPort(eid);
-											// Устанавливаем полученный порт
-											else awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
-											// Создаём идентификатор конечной точки для идентификатора события клиента
-											const origin_t endpoint = origin_t().from(attr.get());
-											// Добавляем идентификатор события клиента для конечной точки
-											auto ret = this->_sessions.emplace(endpoint, make_pair(eid, 0));
-											// Обновляем control-сессию, если endpoint уже зарегистрирован
-											if(!ret.second)
-												// Обновляем идентификатор события клиента для конечной точки
-												ret.first->second.first = eid;
-											// Устанавливаем статус успешного выполнения команды
-											i->second.ctx.status = proto::socks5_t::status_t::SUCCESS;
-											// Инициализируем генератор случайных чисел
-											static ::random_device randev;
-											// Инициализируем генератор случайных чисел с помощью устройства случайных чисел
-											static ::mt19937 gen(randev());
-											// Генерируем индекс от 0 до size - 1
-											::uniform_int_distribution <> distrib(0, this->_udp.events.size() - 1);
-											// Последовательно перебираем итераторы. Это операция O(N)!
-											const event::id_t sid = this->_udp.events[distrib(gen)];
-											// Устанавливаем порт для UDP-сервера
-											awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = this->_unit->server.getPort(sid);
-											/**
-											 * Определяем тип адреса хоста для подключения
-											 */
-											switch(static_cast <uint8_t> (i->second.ctx.host->type)){
-												// Если тип адреса соответствует IPv4
-												case static_cast <uint8_t> (net::type_t::IPV4): {
-													// Если семейство адресов для этого сервера соответствует IPv4
-													if(this->_unit->server.family(sid) == event::family_t::IPV4){
-														// Создаём новый объект адреса сервера IPv4
-														unique_ptr <net::addr_t> addr = nullptr;
-														// Извлекаем IP-адрес этого сервера
-														this->_unit->server.getAddress(sid, event::address_t::IPV4, addr);
-														// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу установлен
-														if(awh_cast <net::addr_net_ipv4_t *> (addr.get())->address == 0)
-															// Устанавливаем текущий IP-адрес этого сервера для установки подключения
-															this->_unit->server.getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
-														// Устанавливаем полученный IP-адрес
-														else awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = ::move(addr);
-														// Если список алиасов для этого сервера не пустой
-														if(!this->_aliases.empty()){
-															// Создаём объект параметров подключения
-															unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-															// Устанавливаем тип параметров подключения
-															attr->type = net::type_t::IPV4;
-															// Устанавливаем полученный порт
-															awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+												// Если порт которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
+												if(awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port == 0)
+													// Устанавливаем порт подключённого клиента для идентификатора события клиента
+													awh_cast <net::attr_net_t *> (attr.get())->port = this->_unit->server.getPort(eid);
+												// Устанавливаем полученный порт
+												else awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+												// Создаём идентификатор конечной точки для идентификатора события клиента
+												const origin_t endpoint = origin_t().from(attr.get());
+												// Добавляем идентификатор события клиента для конечной точки
+												auto ret = this->_sessions.emplace(endpoint, make_pair(eid, 0));
+												// Обновляем control-сессию, если endpoint уже зарегистрирован
+												if(!ret.second)
+													// Обновляем идентификатор события клиента для конечной точки
+													ret.first->second.first = eid;
+												// Устанавливаем статус успешного выполнения команды
+												i->second.ctx.status = proto::socks5_t::status_t::SUCCESS;
+												// Инициализируем генератор случайных чисел
+												static ::random_device randev;
+												// Инициализируем генератор случайных чисел с помощью устройства случайных чисел
+												static ::mt19937 gen(randev());
+												// Генерируем индекс от 0 до size - 1
+												::uniform_int_distribution <> distrib(0, this->_udp.events.size() - 1);
+												// Выбираем UDP-сервер случайным образом
+												const event::id_t sid = this->_udp.events[distrib(gen)];
+												// Устанавливаем порт для UDP-сервера
+												awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = this->_unit->server.getPort(sid);
+												/**
+												 * Определяем тип адреса хоста для подключения
+												 */
+												switch(static_cast <uint8_t> (i->second.ctx.host->type)){
+													// Если тип адреса соответствует IPv4
+													case static_cast <uint8_t> (net::type_t::IPV4): {
+														// Если семейство адресов для этого сервера соответствует IPv4
+														if(this->_unit->server.family(sid) == event::family_t::IPV4){
+															// Создаём новый объект адреса сервера IPv4
+															unique_ptr <net::addr_t> addr = nullptr;
+															// Извлекаем IP-адрес этого сервера
+															this->_unit->server.getAddress(sid, event::address_t::IPV4, addr);
+															// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу установлен
+															if(awh_cast <net::addr_net_ipv4_t *> (addr.get())->address == 0)
+																// Устанавливаем текущий IP-адрес этого сервера для установки подключения
+																this->_unit->server.getAddress(eid, event::address_t::IPV4, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
 															// Устанавливаем полученный IP-адрес
-															awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address;
-															// Создаём идентификатор конечной точки для идентификатора события клиента
-															const origin_t endpoint = origin_t().from(attr.get());
-															// Выполняем поиск алиаса для указанного адреса конечной точки
-															auto j = this->_aliases.find(endpoint);
-															// Если алиас для указанного адреса конечной точки найден
-															if(j != this->_aliases.end()){
-																/**
-																 * Определяем тип полученного IP-адреса
-																 */
-																switch(static_cast <uint8_t> (j->second->type)){
-																	// Для типа FQDN
-																	case static_cast <uint8_t> (net::type_t::FQDN): {
-																		// Получаем порт для подключения к удалённому серверу
-																		uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
-																		// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
-																		if(awh_cast <const net::attr_fqdn_t *> (j->second.get())->port > 0)
-																			// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
-																			port = awh_cast <const net::attr_fqdn_t *> (j->second.get())->port;
-																		// Создаём объект параметров подключения для алиаса
-																		i->second.ctx.host = make_unique <net::attr_fqdn_t> ();
-																		// Устанавливаем тип параметров подключения
-																		i->second.ctx.host->type = net::type_t::FQDN;
-																		// Устанавливаем полученный порт
-																		awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->port = port;
-																		// Устанавливаем полученное доменное имя
-																		awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain = awh_cast <const net::attr_fqdn_t *> (j->second.get())->domain;
-																	} break;
-																	// Для типа IPv4
-																	case static_cast <uint8_t> (net::type_t::IPV4): {
-																		// Получаем порт для подключения к удалённому серверу
-																		uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
-																		// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
-																		if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
-																			// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
-																			port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
-																		// Создаём объект параметров подключения для алиаса
-																		i->second.ctx.host = make_unique <net::attr_net_t> ();
-																		// Устанавливаем тип параметров подключения
-																		i->second.ctx.host->type = net::type_t::IPV4;
-																		// Устанавливаем полученный порт
-																		awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
-																		// Устанавливаем полученный IP-адрес
-																		awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address;
-																	} break;
-																	// Для типа IPv6
-																	case static_cast <uint8_t> (net::type_t::IPV6): {
-																		// Получаем порт для подключения к удалённому серверу
-																		uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
-																		// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
-																		if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
-																			// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
-																			port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
-																		// Создаём объект параметров подключения для алиаса
-																		i->second.ctx.host = make_unique <net::attr_net_t> ();
-																		// Устанавливаем тип параметров подключения
-																		i->second.ctx.host->type = net::type_t::IPV6;
-																		// Устанавливаем полученный порт
-																		awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
-																		// Устанавливаем полученный IP-адрес
-																		::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address[0], 16);
-																	} break;
+															else awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = ::move(addr);
+															// Если список алиасов для этого сервера не пустой
+															if(!this->_aliases.empty()){
+																// Создаём объект параметров подключения
+																unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+																// Устанавливаем тип параметров подключения
+																attr->type = net::type_t::IPV4;
+																// Устанавливаем полученный порт
+																awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																// Устанавливаем полученный IP-адрес
+																awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address;
+																// Создаём идентификатор конечной точки для идентификатора события клиента
+																const origin_t endpoint = origin_t().from(attr.get());
+																// Выполняем поиск алиаса для указанного адреса конечной точки
+																auto j = this->_aliases.find(endpoint);
+																// Если алиас для указанного адреса конечной точки найден
+																if(j != this->_aliases.end()){
+																	/**
+																	 * Определяем тип полученного IP-адреса
+																	 */
+																	switch(static_cast <uint8_t> (j->second->type)){
+																		// Для типа FQDN
+																		case static_cast <uint8_t> (net::type_t::FQDN): {
+																			// Получаем порт для подключения к удалённому серверу
+																			uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																			// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
+																			if(awh_cast <const net::attr_fqdn_t *> (j->second.get())->port > 0)
+																				// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
+																				port = awh_cast <const net::attr_fqdn_t *> (j->second.get())->port;
+																			// Создаём объект параметров подключения для алиаса
+																			i->second.ctx.host = make_unique <net::attr_fqdn_t> ();
+																			// Устанавливаем тип параметров подключения
+																			i->second.ctx.host->type = net::type_t::FQDN;
+																			// Устанавливаем полученный порт
+																			awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->port = port;
+																			// Устанавливаем полученное доменное имя
+																			awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain = awh_cast <const net::attr_fqdn_t *> (j->second.get())->domain;
+																		} break;
+																		// Для типа IPv4
+																		case static_cast <uint8_t> (net::type_t::IPV4): {
+																			// Получаем порт для подключения к удалённому серверу
+																			uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																			// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
+																			if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
+																				// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
+																				port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
+																			// Создаём объект параметров подключения для алиаса
+																			i->second.ctx.host = make_unique <net::attr_net_t> ();
+																			// Устанавливаем тип параметров подключения
+																			i->second.ctx.host->type = net::type_t::IPV4;
+																			// Устанавливаем полученный порт
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
+																			// Устанавливаем полученный IP-адрес
+																			awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address;
+																		} break;
+																		// Для типа IPv6
+																		case static_cast <uint8_t> (net::type_t::IPV6): {
+																			// Получаем порт для подключения к удалённому серверу
+																			uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																			// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
+																			if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
+																				// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
+																				port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
+																			// Создаём объект параметров подключения для алиаса
+																			i->second.ctx.host = make_unique <net::attr_net_t> ();
+																			// Устанавливаем тип параметров подключения
+																			i->second.ctx.host->type = net::type_t::IPV6;
+																			// Устанавливаем полученный порт
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
+																			// Устанавливаем полученный IP-адрес
+																			::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address[0], 16);
+																		} break;
+																	}
 																}
 															}
+														// Если семейство адресов для этого сервера не соответствует IPv4
+														} else {
+															// Устанавливаем статус ошибки, так как команда не поддерживается
+															i->second.ctx.status = proto::socks5_t::status_t::DENIED;
+															// Отправляем ответ прокси-клиенту, так как команда не поддерживается
+															goto End;
 														}
-													// Если семейство адресов для этого сервера не соответствует IPv4
-													} else {
-														// Устанавливаем статус ошибки, так как команда не поддерживается
-														i->second.ctx.status = proto::socks5_t::status_t::DENIED;
-														// Отправляем ответ прокси-клиенту, так как команда не поддерживается
-														goto End;
-													}
-												} break;
-												// Если тип адреса соответствует IPv6
-												case static_cast <uint8_t> (net::type_t::IPV6): {
-													// Если семейство адресов для этого сервера соответствует IPv6
-													if(this->_unit->server.family(sid) == event::family_t::IPV6){
-														// Создаём новый объект адреса сервера IPv6
-														unique_ptr <net::addr_t> addr = nullptr;
-														// Извлекаем IP-адрес этого сервера
-														this->_unit->server.getAddress(sid, event::address_t::IPV6, addr);
-														// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу установлен
-														if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], (uint8_t[16]){0}, 16) == 0)
-															// Устанавливаем текущий IP-адрес этого сервера для установки подключения
-															this->_unit->server.getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
-														// Устанавливаем полученный IP-адрес
-														else awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = ::move(addr);
-														// Если список алиасов для этого сервера не пустой
-														if(!this->_aliases.empty()){
-															// Создаём объект параметров подключения
-															unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
-															// Устанавливаем тип параметров подключения
-															attr->type = net::type_t::IPV6;
-															// Устанавливаем полученный порт
-															awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+													} break;
+													// Если тип адреса соответствует IPv6
+													case static_cast <uint8_t> (net::type_t::IPV6): {
+														// Если семейство адресов для этого сервера соответствует IPv6
+														if(this->_unit->server.family(sid) == event::family_t::IPV6){
+															// Создаём новый объект адреса сервера IPv6
+															unique_ptr <net::addr_t> addr = nullptr;
+															// Извлекаем IP-адрес этого сервера
+															this->_unit->server.getAddress(sid, event::address_t::IPV6, addr);
+															// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу установлен
+															if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], (uint8_t[16]){0}, 16) == 0)
+																// Устанавливаем текущий IP-адрес этого сервера для установки подключения
+																this->_unit->server.getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
 															// Устанавливаем полученный IP-адрес
-															::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], 16);
-															// Создаём идентификатор конечной точки для идентификатора события клиента
-															const origin_t endpoint = origin_t().from(attr.get());
-															// Выполняем поиск алиаса для указанного адреса конечной точки
-															auto j = this->_aliases.find(endpoint);
-															// Если алиас для указанного адреса конечной точки найден
-															if(j != this->_aliases.end()){
-																/**
-																 * Определяем тип полученного IP-адреса
-																 */
-																switch(static_cast <uint8_t> (j->second->type)){
-																	// Для типа FQDN
-																	case static_cast <uint8_t> (net::type_t::FQDN): {
-																		// Получаем порт для подключения к удалённому серверу
-																		uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
-																		// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
-																		if(awh_cast <const net::attr_fqdn_t *> (j->second.get())->port > 0)
-																			// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
-																			port = awh_cast <const net::attr_fqdn_t *> (j->second.get())->port;
-																		// Создаём объект параметров подключения для алиаса
-																		i->second.ctx.host = make_unique <net::attr_fqdn_t> ();
-																		// Устанавливаем тип параметров подключения
-																		i->second.ctx.host->type = net::type_t::FQDN;
-																		// Устанавливаем полученный порт
-																		awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->port = port;
-																		// Устанавливаем полученное доменное имя
-																		awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain = awh_cast <const net::attr_fqdn_t *> (j->second.get())->domain;
-																	} break;
-																	// Для типа IPv4
-																	case static_cast <uint8_t> (net::type_t::IPV4): {
-																		// Получаем порт для подключения к удалённому серверу
-																		uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
-																		// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
-																		if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
-																			// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
-																			port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
-																		// Создаём объект параметров подключения для алиаса
-																		i->second.ctx.host = make_unique <net::attr_net_t> ();
-																		// Устанавливаем тип параметров подключения
-																		i->second.ctx.host->type = net::type_t::IPV4;
-																		// Устанавливаем полученный порт
-																		awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
-																		// Устанавливаем полученный IP-адрес
-																		awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address;
-																	} break;
-																	// Для типа IPv6
-																	case static_cast <uint8_t> (net::type_t::IPV6): {
-																		// Получаем порт для подключения к удалённому серверу
-																		uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
-																		// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
-																		if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
-																			// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
-																			port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
-																		// Создаём объект параметров подключения для алиаса
-																		i->second.ctx.host = make_unique <net::attr_net_t> ();
-																		// Устанавливаем тип параметров подключения
-																		i->second.ctx.host->type = net::type_t::IPV6;
-																		// Устанавливаем полученный порт
-																		awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
-																		// Устанавливаем полученный IP-адрес
-																		::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address[0], 16);
-																	} break;
+															else awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip = ::move(addr);
+															// Если список алиасов для этого сервера не пустой
+															if(!this->_aliases.empty()){
+																// Создаём объект параметров подключения
+																unique_ptr <net::attr_t> attr = make_unique <net::attr_net_t> ();
+																// Устанавливаем тип параметров подключения
+																attr->type = net::type_t::IPV6;
+																// Устанавливаем полученный порт
+																awh_cast <net::attr_net_t *> (attr.get())->port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																// Устанавливаем полученный IP-адрес
+																::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (attr.get())->ip.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], 16);
+																// Создаём идентификатор конечной точки для идентификатора события клиента
+																const origin_t endpoint = origin_t().from(attr.get());
+																// Выполняем поиск алиаса для указанного адреса конечной точки
+																auto j = this->_aliases.find(endpoint);
+																// Если алиас для указанного адреса конечной точки найден
+																if(j != this->_aliases.end()){
+																	/**
+																	 * Определяем тип полученного IP-адреса
+																	 */
+																	switch(static_cast <uint8_t> (j->second->type)){
+																		// Для типа FQDN
+																		case static_cast <uint8_t> (net::type_t::FQDN): {
+																			// Получаем порт для подключения к удалённому серверу
+																			uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																			// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
+																			if(awh_cast <const net::attr_fqdn_t *> (j->second.get())->port > 0)
+																				// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
+																				port = awh_cast <const net::attr_fqdn_t *> (j->second.get())->port;
+																			// Создаём объект параметров подключения для алиаса
+																			i->second.ctx.host = make_unique <net::attr_fqdn_t> ();
+																			// Устанавливаем тип параметров подключения
+																			i->second.ctx.host->type = net::type_t::FQDN;
+																			// Устанавливаем полученный порт
+																			awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->port = port;
+																			// Устанавливаем полученное доменное имя
+																			awh_cast <net::attr_fqdn_t *> (i->second.ctx.host.get())->domain = awh_cast <const net::attr_fqdn_t *> (j->second.get())->domain;
+																		} break;
+																		// Для типа IPv4
+																		case static_cast <uint8_t> (net::type_t::IPV4): {
+																			// Получаем порт для подключения к удалённому серверу
+																			uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																			// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
+																			if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
+																				// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
+																				port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
+																			// Создаём объект параметров подключения для алиаса
+																			i->second.ctx.host = make_unique <net::attr_net_t> ();
+																			// Устанавливаем тип параметров подключения
+																			i->second.ctx.host->type = net::type_t::IPV4;
+																			// Устанавливаем полученный порт
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
+																			// Устанавливаем полученный IP-адрес
+																			awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address = awh_cast <net::addr_net_ipv4_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address;
+																		} break;
+																		// Для типа IPv6
+																		case static_cast <uint8_t> (net::type_t::IPV6): {
+																			// Получаем порт для подключения к удалённому серверу
+																			uint16_t port = awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port;
+																			// Если порт для подключения к удалённому серверу установлен в алиасе, то используем его
+																			if(awh_cast <const net::attr_net_t *> (j->second.get())->port > 0)
+																				// Устанавливаем порт для подключения к удалённому серверу, полученный из алиаса
+																				port = awh_cast <const net::attr_net_t *> (j->second.get())->port;
+																			// Создаём объект параметров подключения для алиаса
+																			i->second.ctx.host = make_unique <net::attr_net_t> ();
+																			// Устанавливаем тип параметров подключения
+																			i->second.ctx.host->type = net::type_t::IPV6;
+																			// Устанавливаем полученный порт
+																			awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port = port;
+																			// Устанавливаем полученный IP-адрес
+																			::memcpy(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (awh_cast <const net::attr_net_t *> (j->second.get())->ip.get())->address[0], 16);
+																		} break;
+																	}
 																}
 															}
+														// Если семейство адресов для этого сервера не соответствует IPv6
+														} else {
+															// Устанавливаем статус ошибки, так как команда не поддерживается
+															i->second.ctx.status = proto::socks5_t::status_t::DENIED;
+															// Отправляем ответ прокси-клиенту, так как команда не поддерживается
+															goto End;
 														}
-													// Если семейство адресов для этого сервера не соответствует IPv6
-													} else {
-														// Устанавливаем статус ошибки, так как команда не поддерживается
-														i->second.ctx.status = proto::socks5_t::status_t::DENIED;
-														// Отправляем ответ прокси-клиенту, так как команда не поддерживается
-														goto End;
-													}
-												} break;
+													} break;
+												}
+											// Если список поддерживаемых UDP-серверов пустой
+											} else {
+												// Устанавливаем статус ошибки, так как UDP-серверы недоступны
+												i->second.ctx.status = proto::socks5_t::status_t::DENIED;
+												// Отправляем ответ прокси-клиенту
+												goto End;
 											}
-										// Если список поддерживаемых UDP-серверов пустой
-										} else {
-											// Устанавливаем статус ошибки, так как UDP-серверы недоступны
-											i->second.ctx.status = proto::socks5_t::status_t::DENIED;
-											// Отправляем ответ прокси-клиенту
-											goto End;
-										}
-									} break;
-									// В остальных случаях
-									default:
-										// Устанавливаем статус ошибки, так как команда не поддерживается
-										i->second.ctx.status = proto::socks5_t::status_t::NOCOMMAND;
-								}
-								/**
-								 * Устанавливаем метку для формирования ответа прокси-сервером, который будет отправлен прокси-клиенту.
-								 * Эта метка будет указывать на то, что ответ должен быть отправлен после выполнения команды CONNECT или UDP ASSOCIATE,
-								 * так как эти команды требуют установления подключения к удалённому серверу и отправки ответа после выполнения этих действий.
-								 * В остальных случаях, ответ может быть отправлен сразу же после обработки данных от прокси-клиента,
-								 * так как эти команды не требуют установления подключения к удалённому серверу и могут быть обработаны в автоматическом режиме.
-								 */
-								End:
-								// Размер буфера данных
-								size_t size = 0;
-								// Буфер данных ответа
-								uint8_t * buffer = nullptr;
-								// Если извлечение буфера данных ответа выполнено успешно
-								if(this->_socks5.buffer(&buffer, size, i->second.ctx)){
-									// Если отправка ответа прокси-клиенту не выполнена
-									if(this->_unit->server.send(eid, buffer, size) != size){
-										// Если функция обратного вызова не установлена
-										if(!this->_callback.is("error")){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Записываем ошибку в лог
-												this->_log->debug("Failed to send data to client", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Записываем ошибку в лог
-												this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
-											#endif
-										}
-										// Удаляем подключённого пира
-										this->_unit->server.destroy(eid);
-									// Если отправка ответа прокси-клиенту выполнена успешно
-									} else {
-										// Если статус ответа от прокси-сервера соответствует успешному выполнению команды
-										if(i->second.ctx.status == proto::socks5_t::status_t::SUCCESS){
-											// Устанавливаем статус успешного выполнения команды
-											i->second.ctx.state = proto::socks5_t::state_t::COMPLETED;
-											// Очищаем буфер накопления SOCKS5-кадров
-											i->second.rx.clear();
-										}
-										// Если статус ответа от прокси-сервера как запрещённый, так и не поддерживаемый
-										else i->second.ctx.state = proto::socks5_t::state_t::BROKEN;
+										} break;
+										// В остальных случаях
+										default:
+											// Устанавливаем статус ошибки, так как команда не поддерживается
+											i->second.ctx.status = proto::socks5_t::status_t::NOCOMMAND;
 									}
-								}
-							} break;
-							// В остальных случаях, проходим процедуру общения с клиентом в автоматическом режиме
-							default: {
-								// Размер буфера данных
-								size_t size = 0;
-								// Буфер данных ответа
-								uint8_t * buffer = nullptr;
-								// Если извлечение буфера данных ответа выполнено успешно
-								if(this->_socks5.buffer(&buffer, size, i->second.ctx)){
-									// Если отправка ответа прокси-клиенту не выполнена
-									if(this->_unit->server.send(eid, buffer, size) != size){
-										// Если функция обратного вызова не установлена
-										if(!this->_callback.is("error")){
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Записываем ошибку в лог
-												this->_log->debug("Failed to send data to client", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Записываем ошибку в лог
-												this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
-											#endif
+									/**
+									 * Устанавливаем метку для формирования ответа прокси-сервером, который будет отправлен прокси-клиенту.
+									 * Эта метка будет указывать на то, что ответ должен быть отправлен после выполнения команды CONNECT или UDP ASSOCIATE,
+									 * так как эти команды требуют установления подключения к удалённому серверу и отправки ответа после выполнения этих действий.
+									 * В остальных случаях, ответ может быть отправлен сразу же после обработки данных от прокси-клиента,
+									 * так как эти команды не требуют установления подключения к удалённому серверу и могут быть обработаны в автоматическом режиме.
+									 */
+									End:
+									// Размер буфера данных
+									size_t size = 0;
+									// Буфер данных ответа
+									uint8_t * buffer = nullptr;
+									// Если извлечение буфера данных ответа выполнено успешно
+									if(this->_socks5.buffer(&buffer, size, i->second.ctx)){
+										// Если отправка ответа прокси-клиенту не выполнена
+										if(this->_unit->server.send(eid, buffer, size) != size){
+											// Если функция обратного вызова не установлена
+											if(!this->_callback.is("error")){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Записываем ошибку в лог
+													this->_log->debug("Failed to send data to client", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем ошибку в лог
+													this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
+												#endif
+											}
+											// Удаляем подключённого пира
+											this->_unit->server.destroy(eid);
+										// Если отправка ответа прокси-клиенту выполнена успешно
+										} else {
+											// Если статус ответа от прокси-сервера соответствует успешному выполнению команды
+											if(i->second.ctx.status == proto::socks5_t::status_t::SUCCESS){
+												// Устанавливаем статус успешного выполнения команды
+												i->second.ctx.state = proto::socks5_t::state_t::COMPLETED;
+												// Очищаем буфер накопления SOCKS5-кадров
+												i->second.rx.clear();
+											}
+											// Если статус ответа от прокси-сервера как запрещённый, так и не поддерживаемый
+											else i->second.ctx.state = proto::socks5_t::state_t::BROKEN;
 										}
+									// Если извлечение буфера данных ответа не выполнено
+									} else if(i->second.ctx.status != proto::socks5_t::status_t::SUCCESS)
 										// Удаляем подключённого пира
 										this->_unit->server.destroy(eid);
+								} break;
+								// В остальных случаях, проходим процедуру общения с клиентом в автоматическом режиме
+								default: {
+									// Размер буфера данных
+									size_t size = 0;
+									// Буфер данных ответа
+									uint8_t * buffer = nullptr;
+									// Если извлечение буфера данных ответа выполнено успешно
+									if(this->_socks5.buffer(&buffer, size, i->second.ctx)){
+										// Если отправка ответа прокси-клиенту не выполнена
+										if(this->_unit->server.send(eid, buffer, size) != size){
+											// Если функция обратного вызова не установлена
+											if(!this->_callback.is("error")){
+												/**
+												 * Если включён режим отладки
+												 */
+												#if DEBUG_MODE
+													// Записываем ошибку в лог
+													this->_log->debug("Failed to send data to client", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
+												/**
+												 * Если режим отладки не включён
+												 */
+												#else
+													// Записываем ошибку в лог
+													this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
+												#endif
+											}
+											// Удаляем подключённого пира
+											this->_unit->server.destroy(eid);
+										}
 									}
 								}
 							}
+							// Прекращаем разбор накопленных кадров
+							if(i->second.rx.empty() ||
+							   i->second.ctx.state == proto::socks5_t::state_t::BROKEN ||
+							   i->second.ctx.state == proto::socks5_t::state_t::COMPLETED)
+								// Выходим из цикла обработки кадров
+								break;
+						// Если парсинг полного SOCKS5-кадра не выполнен
+						} else {
+							// Выполняем поиск идентификатора клиента принадлежащего этому пиру
+							auto j = this->_clients.find(i->second.eid);
+							// Если идентификатор клиента найден в списке
+							if(j != this->_clients.end()){
+								// Удаляем подключённого клиента
+								this->_client.destroy(j->first);
+								// Удаляем клиента из списка активных клиентов
+								this->_clients.erase(j);
+							}
+							// Удаляем подключённого пира
+							this->_unit->server.destroy(eid);
+							// Выходим из функции
+							return;
 						}
-					// Если парсинг полного SOCKS5-кадра не выполнен
-					} else {
-						// Выполняем поиск идентификатора клиента принадлежащего этому пиру
-						auto j = this->_clients.find(i->second.eid);
-						// Если идентификатор клиента найден в списке
-						if(j != this->_clients.end()){
-							// Удаляем подключённого клиента
-							this->_client.destroy(j->first);
-							// Удаляем клиента из списка активных клиентов
-							this->_clients.erase(j);
-						}
-						// Удаляем подключённого пира
-						this->_unit->server.destroy(eid);
 					}
 				}
 			}

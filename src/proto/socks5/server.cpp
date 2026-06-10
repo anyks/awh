@@ -762,7 +762,7 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 					// Устанавливаем статус запроса ожидания подключения к серверу
 					ctx.state = state_t::CONNECT;
 				// Если хост для подключения установлен
-				if((result = (ctx.host != nullptr))){
+				if(ctx.host != nullptr){
 					/**
 					 * Определяем тип адреса хоста для подключения
 					 */
@@ -799,6 +799,18 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 							::addPayload(htons(awh_cast <net::attr_net_t *> (ctx.host.get())->port));
 						} break;
 					}
+					// Устанавливаем положительный результат
+					result = true;
+				// Если хост не установлен, формируем ответ с пустым адресом (RFC 1928)
+				} else if(ctx.status != proto::socks5_t::status_t::SUCCESS){
+					// Добавляем тип адреса "IPv4" в буфер для отправки данных
+					::addPayload(addr_type_t::IPV4);
+					// Добавляем IP-адрес 0.0.0.0 в буфер для отправки данных
+					::addPayload(static_cast <uint32_t> (0));
+					// Добавляем порт 0 в буфер для отправки данных
+					::addPayload(static_cast <uint16_t> (0));
+					// Устанавливаем положительный результат
+					result = true;
 				}
 			} break;
 		}

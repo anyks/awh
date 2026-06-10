@@ -527,8 +527,8 @@ void awh::Server::spool(const event::id_t eid, const event::send_error_t error, 
  * @param addr   указатель на структуру для хранения результата разрешения
  */
 void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept {
-	// Если DNS-резолвер находится в рабочем состоянии
-	if(this->_dns.client->working()){
+	// Если DNS-резолвер установлен и находится в рабочем состоянии
+	if((this->_dns.client != nullptr) && this->_dns.client->working()){
 		/**
 		 * Определяем семейство адресов, с которым работает сервер
 		 */
@@ -720,9 +720,9 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 					if(i != this->_tls.safety.end())
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
-					// Уничтожаем подключившегося клиента
-					this->_unit->server.destroy(eid);
 				}
+				// Уничтожаем подключившегося клиента
+				this->_unit->server.destroy(eid);
 			} break;
 			// Если состояние рукопожатия успешно завершено
 			case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED): {
