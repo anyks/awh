@@ -2799,7 +2799,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			} break;
 		}
 		// Блокируем доступ к состоянию передачи DNS-запросов
-		const locker_t <> releaseLock(this->_mtx);
+		const locker_t <> lock(this->_mtx);
 		// Ищем идентификатор запроса, привязанный к событию DNS-резолвера
 		auto j = this->_transfer.attached.find(eid);
 		// Если привязка события к запросу найдена
