@@ -25,6 +25,7 @@
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <shared_mutex>
 #include <unordered_map>
 
 /**
@@ -1281,6 +1282,9 @@ namespace awh {
 				// Список поддерживаемых цифровых отпечатков браузеров
 				unordered_map <uint8_t, browser_t> _browsers;
 			private:
+				// Мьютекс для потокобезопасного доступа к хранилищу отпечатков
+				mutable lock_state_t <std::shared_mutex> _mtx;
+			private:
 				// Объект фреймворка
 				const fmk_t * _fmk;
 				// Объект работы с логами
@@ -1358,6 +1362,12 @@ namespace awh {
 				 * @param size    размер буфера в байтах
 				 * @param browser объект с распарсенными данными ClientHello
 				 * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
+				 *
+				 * @note Возвращаемый буфер — временный объект. Указатель на его данные
+				 *       действителен только до конца полного выражения вызова (до возврата
+				 *       из синхронного read_callback). Callback обязан скопировать данные.
+				 * @note buffer должен содержать полный TLS/DTLS record layer; при неполной
+				 *       записи метод возвращает пустой vector.
 				 */
 				vector <uint8_t> apply(const uint8_t * buffer, const size_t size, const browser_t & browser) const noexcept;
 			public:
@@ -1387,6 +1397,13 @@ namespace awh {
 				 * @return список идентификаторов цифровых отпечатков браузеров
 				 */
 				vector <id_t> list() const noexcept;
+			public:
+				/**
+				 * @brief Метод установки режима потокобезопасности хранилища отпечатков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод удаления цифрового отпечатка браузера из хранилища по идентификатору

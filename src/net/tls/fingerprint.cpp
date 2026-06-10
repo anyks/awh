@@ -53,6 +53,8 @@
  */
 #include <vector>
 #include <cstdint>
+#include <atomic>
+#include <limits>
 #include <cstring>
 #include <sstream>
 #include <iostream>
@@ -73,6 +75,38 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Инкапсулируем статические объекты в пространство имён локальных параметров
+ */
+namespace local {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Тип блокировки хранилища отпечатков браузеров для совместного доступа
+	 *
+	 */
+	using fgp_shared_lock_t = locker_t <std::shared_mutex>;
+	/**
+	 * @brief Тип блокировки хранилища отпечатков браузеров для эксклюзивного доступа
+	 *
+	 */
+	using fgp_exclusive_lock_t = locker_t <std::shared_mutex>;
+
+	/**
+	 * @brief Режим совместного доступа к хранилищу отпечатков браузеров
+	 *
+	 */
+	constexpr auto fgp_shared = fgp_shared_lock_t::mode_t::SHARED;
+	/**
+	 * @brief Режим эксклюзивной блокировки хранилища отпечатков браузеров
+	 *
+	 */
+	constexpr auto fgp_exclusive = fgp_exclusive_lock_t::mode_t::EXCLUSIVE;
+};
 
 /**
  * Инкапсулируем статические объекты в пространство имён локальных вспомогательных функций
@@ -105,6 +139,37 @@ namespace local {
 	static inline uint16_t u16(const uint8_t * buffer) noexcept {
 		// Читаем 16-битное значение из буфера в формате big-endian
 		return ((static_cast <uint16_t> (buffer[0]) << 8) | buffer[1]);
+	}
+
+	/**
+	 * @brief Вычисляет полный размер TLS/DTLS record layer
+	 *
+	 * @param buffer буфер с данными record layer
+	 * @param size   размер буфера в байтах
+	 * @return       полный размер record layer или 0, если данных недостаточно
+	 */
+	static inline size_t recordLayerSize(const uint8_t * buffer, const size_t size) noexcept {
+		// Если буфер пустой или слишком короткий
+		if((buffer == nullptr) || (size < 3u))
+			// Возвращаем 0 — размер определить нельзя
+			return 0;
+		// Получаем версию протокола из заголовка record layer
+		const uint16_t version = u16(buffer + 1);
+		// Если это DTLS record layer
+		if((version == 0xFEFFu) || (version == 0xFEFDu)){
+			// Если данных недостаточно для DTLS record header
+			if(size < 13u)
+				// Возвращаем 0 — размер определить нельзя
+				return 0;
+			// Возвращаем полный размер DTLS record layer
+			return (13u + static_cast <size_t> (u16(buffer + 11)));
+		}
+		// Если данных недостаточно для TLS record header
+		if(size < 5u)
+			// Возвращаем 0 — размер определить нельзя
+			return 0;
+		// Возвращаем полный размер TLS record layer
+		return (5u + static_cast <size_t> (u16(buffer + 3)));
 	}
 
 	/**
@@ -6140,7 +6205,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				);
 			}
 			// Если запись рукопожатия не соответствует ClientHello
-			if(buffer[recordSize] != 0x01){ 
+			if(buffer[recordSize] != 0x01){
 				/**
 				 * Если это не DTLS, то выводим предупреждение,
 				 * что запись рукопожатия не соответствует ClientHello,
@@ -7293,6 +7358,12 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
  * @param size    размер буфера в байтах
  * @param browser объект с распарсенными данными ClientHello
  * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
+ *
+ * @note Возвращаемый буфер — временный объект. Указатель на его данные
+ *       действителен только до конца полного выражения вызова (до возврата
+ *       из синхронного read_callback). Callback обязан скопировать данные.
+ * @note buffer должен содержать полный TLS/DTLS record layer; при неполной
+ *       записи метод возвращает пустой vector.
  */
 vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size_t size, const browser_t & browser) const noexcept {
 	// Переменная результата
@@ -7305,6 +7376,26 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		if((buffer == nullptr) || (size == 0) || browser.ciphers.empty())
 			// Возвращаем пустой результат
 			return result;
+		// Получаем полный размер TLS/DTLS record layer
+		const size_t recordLen = ::local::recordLayerSize(buffer, size);
+		// Если record layer неполный — возвращаем пустой результат
+		if((recordLen == 0) || (size < recordLen)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем предупреждение в лог
+				this->_log->debug("ClientHello record is incomplete", __PRETTY_FUNCTION__, make_tuple(size, recordLen), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем предупреждение в лог
+				this->_log->print("ClientHello record is incomplete", log_t::flag_t::WARNING);
+			#endif
+			// Возвращаем пустой результат
+			return result;
+		}
 		// Парсим исходный буфер для получения структурированных данных
 		browser_t src{};
 		// Если парсинг не удался — возвращаем пустой результат
@@ -8165,6 +8256,8 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
  *
  */
 void awh::tls::Fingerprint::clear() noexcept {
+	// Блокируем хранилище отпечатков для записи
+	const local::fgp_exclusive_lock_t lock(this->_mtx, local::fgp_exclusive);
 	// Очищаем хранилище цифровых отпечатков браузеров
 	this->_browsers.clear();
 }
@@ -8174,6 +8267,8 @@ void awh::tls::Fingerprint::clear() noexcept {
  * @return результат проверки
  */
 bool awh::tls::Fingerprint::empty() const noexcept {
+	// Блокируем хранилище отпечатков для чтения
+	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Проверяем, что хранилище цифровых отпечатков браузеров пусто
 	return this->_browsers.empty();
 }
@@ -8183,6 +8278,8 @@ bool awh::tls::Fingerprint::empty() const noexcept {
  * @return количество цифровых отпечатков браузеров
  */
 size_t awh::tls::Fingerprint::size() const noexcept {
+	// Блокируем хранилище отпечатков для чтения
+	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Возвращаем количество цифровых отпечатков браузеров в хранилище
 	return this->_browsers.size();
 }
@@ -8194,12 +8291,23 @@ size_t awh::tls::Fingerprint::size() const noexcept {
 vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcept {
 	// Переменная результата
 	vector <id_t> result;
+	// Блокируем хранилище отпечатков для чтения
+	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Выполняем перебор всех цифровых отпечатков браузеров в хранилище
 	for(const auto & [id, browser] : this->_browsers)
 		// Добавляем идентификатор цифрового отпечатка браузера в результат
 		result.push_back(id);
 	// Возвращаем результат
 	return result;
+}
+/**
+ * @brief Метод установки режима потокобезопасности хранилища отпечатков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::tls::Fingerprint::threadSafety(const bool mode) noexcept {
+	// Активируем работу мьютекса блокировки хранилища отпечатков
+	this->_mtx.enabled = mode;
 }
 /**
  * @brief Метод удаления цифрового отпечатка браузера из хранилища по идентификатору
@@ -8214,6 +8322,8 @@ bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Блокируем хранилище отпечатков для записи
+		const local::fgp_exclusive_lock_t lock(this->_mtx, local::fgp_exclusive);
 		// Ищем цифровой отпечаток браузера по идентификатору
 		auto i = this->_browsers.find(id);
 		// Если цифровой отпечаток браузера найден — удаляем его из хранилища
@@ -8254,12 +8364,30 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Блокируем хранилище отпечатков для чтения
+		const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 		// Ищем цифровой отпечаток браузера по идентификатору
 		auto i = this->_browsers.find(id);
 		// Если цифровой отпечаток браузера найден
 		if(i != this->_browsers.end())
 			// Возвращаем цифровой отпечаток браузера, соответствующий указанному идентификатору
 			return i->second;
+		// Если идентификатор задан, но отпечаток не найден
+		if(id != 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем предупреждение в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::WARNING, "Browser fingerprint id is not found");
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем предупреждение в лог
+				this->_log->print("%s", log_t::flag_t::WARNING, "Browser fingerprint id is not found");
+			#endif
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -8295,15 +8423,43 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
 	 */
 	try {
 		// Начинаем с 1 (0 можно оставить как "invalid")
-		static atomic_uint8_t id{1};
-		// Получаем следующий идентификатор
-		result = id.fetch_add(1, memory_order_relaxed);
-		// Если идентификатор обнулился после переполнения счётчика
-		if(result == 0)
-			// Получаем следующий идентификатор рекурсивно
-			result = id.fetch_add(1, memory_order_relaxed);
-		// Добавляем цифровой отпечаток браузера в хранилище с новым идентификатором
-		this->_browsers.emplace(result, browser);
+		static atomic_uint8_t nextId{1};
+		// Блокируем хранилище отпечатков для записи
+		const local::fgp_exclusive_lock_t lock(this->_mtx, local::fgp_exclusive);
+		/**
+		 * Выполняем перебор идентификаторов до успешной вставки или исчерпания диапазона
+		 */
+		for(uint16_t attempt = 0; attempt < numeric_limits <id_t>::max(); ++attempt){
+			// Получаем следующий идентификатор
+			const id_t candidate = nextId.fetch_add(1, memory_order_relaxed);
+			// Пропускаем зарезервированный идентификатор
+			if(candidate == 0)
+				// Переходим к следующей попытке
+				continue;
+			// Пробуем добавить цифровой отпечаток браузера в хранилище
+			if(this->_browsers.emplace(candidate, browser).second){
+				// Сохраняем идентификатор добавленного цифрового отпечатка
+				result = candidate;
+				// Выходим из цикла
+				break;
+			}
+		}
+		// Если свободный идентификатор не найден
+		if(result == 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Browser fingerprint storage is full");
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, "Browser fingerprint storage is full");
+			#endif
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -8378,6 +8534,8 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Блокируем хранилище отпечатков для чтения
+		const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 		// Если список цифровых отпечатков браузеров заполнен
 		if(!this->_browsers.empty()){
 			// Бинарный буфер снимка цифрового отпечатка браузера
@@ -8441,6 +8599,8 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
+		// Блокируем хранилище отпечатков для записи
+		const local::fgp_exclusive_lock_t lock(this->_mtx, local::fgp_exclusive);
 		// Очищаем хранилище от предыдущих данных
 		this->_browsers.clear();
 		// Если буфер с данными цифровых отпечатков браузеров не пустой
@@ -10148,6 +10308,9 @@ bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & o
  * @param fgp объект Fingerprint для обмена данными
  */
 void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
+	// Блокируем оба хранилища отпечатков для записи
+	const local::fgp_exclusive_lock_t lock(this->_mtx, local::fgp_exclusive);
+	const local::fgp_exclusive_lock_t lockFgp(fgp._mtx, local::fgp_exclusive);
 	// Обмениваемся данными между объектами
 	this->_browsers.swap(fgp._browsers);
 }
@@ -10157,6 +10320,8 @@ void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
  * @return конечный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
+	// Блокируем хранилище отпечатков для чтения
+	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Возвращаем результат
 	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
 }
@@ -10166,6 +10331,8 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
  * @return начальный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
+	// Блокируем хранилище отпечатков для чтения
+	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Возвращаем результат
 	return iterator_t(this->_browsers.begin(), this->_fmk, this->_log);
 }
@@ -10182,6 +10349,8 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noe
 		 * Выполняем отлов ошибок
 		 */
 		try {
+			// Блокируем хранилище отпечатков для чтения
+			const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 			// Извлекаем текущий итератор
 			return iterator_t(this->_browsers.find(id), this->_fmk, this->_log);
 		/**
@@ -10222,6 +10391,8 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const
  * @return результат проверки
  */
 awh::tls::Fingerprint::operator bool() const noexcept {
+	// Блокируем хранилище отпечатков для чтения
+	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Возвращаем результат выполенной проверки
 	return !this->_browsers.empty();
 }
@@ -10231,6 +10402,8 @@ awh::tls::Fingerprint::operator bool() const noexcept {
  * @return количество цифровых отпечатков браузеров
  */
 awh::tls::Fingerprint::operator size_t() const noexcept {
+	// Блокируем хранилище отпечатков для чтения
+	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
 	// Возвращаем результат количество цифровых отпечатков браузеров, хранящихся в хранилище
 	return this->_browsers.size();
 }
@@ -10250,6 +10423,9 @@ awh::tls::Fingerprint::operator vector <uint8_t> () const noexcept {
  * @return    результат сравнения
  */
 bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept {
+	// Блокируем оба хранилища отпечатков для чтения
+	const local::fgp_shared_lock_t lock1(fgp._mtx, local::fgp_shared);
+	const local::fgp_shared_lock_t lock2(this->_mtx, local::fgp_shared);
 	/**
 	 * Перебираем отпечатки браузеров в текущем контейнере отпечатков браузеров
 	 */
@@ -10288,9 +10464,13 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) noexcept {
 	// Если объект для перемещения не является текущим объектом
-	if(this != &fgp)
+	if(this != &fgp){
+		// Блокируем оба хранилища отпечатков для записи
+		const local::fgp_exclusive_lock_t lock1(fgp._mtx, local::fgp_exclusive);
+		const local::fgp_exclusive_lock_t lock2(this->_mtx, local::fgp_exclusive);
 		// Перемещаем данные из объекта для перемещения в текущий объект
 		this->_browsers = ::move(fgp._browsers);
+	}
 	// Возвращаем текущий контейнер отпечатков браузеров
 	return (* this);
 }
@@ -10302,9 +10482,13 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) n
  */
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & fgp) noexcept {
 	// Если объект для копирования не является текущим объектом
-	if(this != &fgp)
+	if(this != &fgp){
+		// Блокируем оба хранилища отпечатков
+		const local::fgp_shared_lock_t lock1(fgp._mtx, local::fgp_shared);
+		const local::fgp_exclusive_lock_t lock2(this->_mtx, local::fgp_exclusive);
 		// Копируем данные из объекта для копирования в текущий объект
 		this->_browsers = fgp._browsers;
+	}
 	// Возвращаем текущий контейнер отпечатков браузеров
 	return (* this);
 }
@@ -10314,7 +10498,10 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & f
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::tls::Fingerprint::Fingerprint(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+	// Мьютекс выключен по умолчанию; включается через threadSafety(true)
+	this->_mtx.enabled = false;
+}
 /**
  * @brief Деструктор
  *

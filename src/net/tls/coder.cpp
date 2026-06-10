@@ -648,6 +648,7 @@ namespace {
 		alpn_t alpn;                  // Объект ALPN-протоколов
 		cookie_t cookie;              // Объект cookie SSL
 		callback_transfer_t callback; // Объект обратных вызовов
+		vector <uint8_t> hello;       // Буфер сборки TLS/DTLS record для apply()
 		/**
 		 * @brief Конструктор
 		 *
@@ -810,6 +811,41 @@ namespace local {
 	 *       может быть перезаписан.
 	 */
 	thread_local uint8_t buffer[AWH_MAX_SSL_BUFFER_SIZE];
+
+	/**
+	 * @brief Вычисляет полный размер TLS/DTLS record layer
+	 *
+	 * @param buffer буфер с данными record layer
+	 * @param size   размер буфера в байтах
+	 * @return       полный размер record layer или 0, если данных недостаточно
+	 */
+	static inline size_t tlsRecordLayerSize(const uint8_t * buffer, const size_t size) noexcept {
+		// Если буфер пустой или слишком короткий
+		if((buffer == nullptr) || (size < 3u))
+			// Возвращаем 0 — размер определить нельзя
+			return 0;
+		// Получаем версию протокола из заголовка record layer
+		const uint16_t version = static_cast <uint16_t> ((static_cast <uint16_t> (buffer[1]) << 8) | static_cast <uint16_t> (buffer[2]));
+		// Если это DTLS record layer
+		if((version == 0xFEFFu) || (version == 0xFEFDu)){
+			// Если данных недостаточно для DTLS record header
+			if(size < 13u)
+				// Возвращаем 0 — размер определить нельзя
+				return 0;
+			// Получаем длину payload DTLS record layer
+			const size_t payload = static_cast <size_t> ((static_cast <uint16_t> (buffer[11]) << 8) | static_cast <uint16_t> (buffer[12]));
+			// Возвращаем полный размер DTLS record layer
+			return (13u + payload);
+		}
+		// Если данных недостаточно для TLS record header
+		if(size < 5u)
+			// Возвращаем 0 — размер определить нельзя
+			return 0;
+		// Получаем длину payload TLS record layer
+		const size_t payload = static_cast <size_t> ((static_cast <uint16_t> (buffer[3]) << 8) | static_cast <uint16_t> (buffer[4]));
+		// Возвращаем полный размер TLS record layer
+		return (5u + payload);
+	}
 };
 
 /**
@@ -2918,6 +2954,10 @@ string awh::tls::Coder::version() const noexcept {
 void awh::tls::Coder::threadSafety(const bool mode) noexcept {
 	// Устанавливаем режим безопасности работы потоков для компрессора
 	this->_compressor.threadSafety(mode);
+	// Если объект для работы с отпечатками TLS установлен
+	if(this->_fgp != nullptr)
+		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков
+		const_cast <fgp_t *> (this->_fgp)->threadSafety(mode);
 	// Активируем работу мьютекса блокировки глобального состояния TLS
 	::__awh_ssl_mutex__.enabled = mode;
 	// Устанавливаем режим безопасности работы потоков
@@ -2931,6 +2971,10 @@ void awh::tls::Coder::threadSafety(const bool mode) noexcept {
 void awh::tls::Coder::fingerprint(const fgp_t * fgp) noexcept {
 	// Сохраняем объект для работы с отпечатками TLS
 	this->_fgp = fgp;
+	// Если объект для работы с отпечатками TLS установлен
+	if(this->_fgp != nullptr)
+		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков
+		const_cast <fgp_t *> (this->_fgp)->threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
 }
 /**
  * @brief Метод получения общей информации о TLS соединении
@@ -5713,14 +5757,22 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 												const fgp_t::browser_t & browser = this->_fgp->get(member->fid);
 												// Если объект браузера получен
 												if(!browser.ciphers.empty() && !browser.extensions.empty()){
-													// Выполняем применение шаблона отпечатка браузера к данным рукопожатия TLS
-													const auto & buffer = this->_fgp->apply(::local::buffer, static_cast <size_t> (bytes), browser);
-													// Если отпечатк браузера TLS успешно наложен
-													if(!buffer.empty())
+													// Добавляем прочитанный фрагмент в буфер сборки ClientHello
+													member->hello.insert(member->hello.end(), ::local::buffer, ::local::buffer + bytes);
+													// Получаем полный размер TLS/DTLS record layer
+													const size_t recordLen = ::local::tlsRecordLayerSize(member->hello.data(), member->hello.size());
+													// Если record layer ещё не собран полностью — ждём следующий фрагмент
+													if((recordLen == 0) || (member->hello.size() < recordLen))
+														// Переходим к следующему фрагменту из BIO
+														continue;
+													// Выполняем применение шаблона отпечатка браузера к полному ClientHello
+													const auto applied = this->_fgp->apply(member->hello.data(), recordLen, browser);
+													// Если отпечаток браузера TLS успешно наложен
+													if(!applied.empty()){
 														// Вызываем функцию обратного вызова чтения данных
-														member->callback.read(id, event_t::ENCRYPTION, &buffer[0], buffer.size());
+														member->callback.read(id, event_t::ENCRYPTION, applied.data(), applied.size());
 													// Если отпечаток браузера TLS не наложен
-													else {
+													} else {
 														// Если функция обратного вызова состояния установлена
 														if(member->callback.state != nullptr)
 															// Вызываем функцию обратного вызова на получение ошибки
@@ -5738,7 +5790,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 															 */
 															#if DEBUG_MODE
 																// Записываем ошибку в лог
-																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, recordLen), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
@@ -5747,9 +5799,17 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
-														// Вызываем функцию обратного вызова чтения данных
-														member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+														// Отправляем исходный ClientHello без модификации
+														member->callback.read(id, event_t::ENCRYPTION, member->hello.data(), recordLen);
 													}
+													// Удаляем обработанный record layer из буфера сборки
+													member->hello.erase(member->hello.begin(), member->hello.begin() + recordLen);
+													// Если в буфере остались данные — отправляем их без модификации
+													if(!member->hello.empty())
+														// Вызываем функцию обратного вызова чтения данных
+														member->callback.read(id, event_t::ENCRYPTION, member->hello.data(), member->hello.size());
+													// Очищаем буфер сборки ClientHello
+													member->hello.clear();
 													// Возвращаем результат
 													return result;
 												}
@@ -5814,6 +5874,8 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 						::ssl::emitWriteBio(member, id);
 					// Устанавливаем режим выполненного рукопожатия
 					member->state |= state::HANDSHAKE_MODE;
+					// Очищаем буфер сборки ClientHello
+					member->hello.clear();
 					// Если узел является клиентом
 					if(member->node == event::node_t::CLIENT){
 						// Длина извлекаемого протокола
@@ -6188,6 +6250,10 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						member->host.name = cts->host;
 						// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
 						::ssl::registry::add(result);
+						// Если идентификатор цифрового отпечатка браузера установлен — применяем CTL-настройки отпечатка
+						if((member->node == event::node_t::CLIENT) && (member->fid != 0) && (this->_fgp != nullptr))
+							// Активируем поддержку наложения цифрового отпечатка браузера на TLS-соединение
+							this->browser(result, member->fid);
 					}
 				} break;
 				// Если уровень является транспортной передачей данных
@@ -8750,6 +8816,21 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									break;
 								}
 							}
+						// Если шаблон отпечатка браузера пустой
+						} else if(fid != 0) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем предупреждение в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::WARNING, "Browser fingerprint template is empty");
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем предупреждение в лог
+								this->_log->print("%s", log_t::flag_t::WARNING, "Browser fingerprint template is empty");
+							#endif
 						}
 					// Если узел является сервером
 					} else {
@@ -8941,6 +9022,21 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									} break;
 								}
 							}
+						// Если шаблон отпечатка браузера пустой
+						} else if(fid != 0) {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем предупреждение в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::WARNING, "Browser fingerprint template is empty");
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем предупреждение в лог
+								this->_log->print("%s", log_t::flag_t::WARNING, "Browser fingerprint template is empty");
+							#endif
 						}
 					// Если узел является сервером
 					} else {
@@ -12045,6 +12141,10 @@ awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) 
  _addr(fmk, log), _compressor(log), _fgp(fgp), _fmk(fmk), _log(log) {
 	// Устанавливаем режим безопасности работы потоков для компрессора
 	this->_compressor.threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Если объект для работы с отпечатками TLS установлен
+	if(this->_fgp != nullptr)
+		// Устанавливаем режим безопасности работы потоков для хранилища отпечатков
+		const_cast <fgp_t *> (this->_fgp)->threadSafety(::__awh_thread_safety__ == event::mode_t::ENABLED);
 	/**
 	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
 	 */
