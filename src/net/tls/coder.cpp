@@ -336,6 +336,88 @@ namespace ssl {
 			return false;
 		}
 	}
+	/**
+	 * @brief Метод одноразовой инициализации OpenSSL для TLS-модуля
+	 *
+	 * @param log объект для работы с логами
+	 */
+	inline void initOpenSSL(const log_t * log) noexcept {
+		// Выполняем игнорирование сигналов SIGPIPE
+		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
+			#endif
+		}
+		/**
+		 * Если версия OPENSSL ниже версии 1.1.0
+		 */
+		#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
+			// Выполняем конфигурацию OpenSSL
+			::OPENSSL_config(nullptr);
+			// Выполняем инициализацию OpenSSL
+			::SSL_library_init();
+		/**
+		 * Для более свежей версии
+		 */
+		#else
+			// Выполняем инициализацию OpenSSL
+			::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
+			// Выполняем загрузки описаний ошибок SSL
+			::ERR_load_SSL_strings();
+		#endif
+		// Выполняем загрузки описаний ошибок шифрования
+		::ERR_load_crypto_strings();
+		// Выполняем загрузки описаний ошибок OpenSSL
+		::SSL_load_error_strings();
+		/**
+		 * Если версия OpenSSL ниже версии 3.0.0
+		 */
+		#if OPENSSL_VERSION_NUMBER < 0x30000000L
+			// Добавляем все алгоритмы шифрования
+			::OpenSSL_add_all_algorithms();
+		#endif
+		// Активируем рандомный генератор
+		if(::RAND_poll() != 1){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("Rand poll is not allowed", log_t::flag_t::CRITICAL);
+			#endif
+			// Продолжаем инициализацию; без энтропии TLS может быть небезопасен
+		}
+		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
+		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL
+		::__awh_ssl_index__[1] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL
+		::__awh_ssl_index__[2] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта компрессора AWH в структуре SSL
+		::__awh_ssl_index__[3] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL_CTX
+		::__awh_ssl_index__[4] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL_CTX
+		::__awh_ssl_index__[5] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL_CTX
+		::__awh_ssl_index__[6] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
+	}
 };
 
 /**
@@ -717,7 +799,7 @@ namespace local {
 	 * @brief Буфер для компрессии/декомпрессии сертификатов TLS
 	 *
 	 */
-	thread_local vector <uint8_t> payload;
+	thread_local vector <uint8_t> certBuffer;
 
 	/**
 	 * @brief Буфер для обмена данными SSL
@@ -785,8 +867,14 @@ namespace ssl {
 			if(::__awh_ssl_ids__.find(id) == ::__awh_ssl_ids__.end())
 				// Возвращаем пустой результат
 				return nullptr;
+			// Получаем объект участника обмена защищёнными данными
+			auto member = reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id));
+			// Если участник помечен на удаление
+			if(member->state & ::state::GARBAGE_MODE)
+				// Возвращаем пустой результат
+				return nullptr;
 			// Возвращаем объект закрепления участника
-			return make_unique <pin_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id)));
+			return make_unique <pin_t> (member);
 		}
 	};
 };
@@ -820,6 +908,10 @@ namespace ssl {
 				return string{message};
 			// Если уровень является транспортной передачей данных
 			case static_cast <uint8_t> (layer_t::CTL): {
+				// Если в очереди OpenSSL нет ошибок — возвращаем только переданное сообщение
+				if((::ERR_peek_error() == 0) && !message.empty())
+					// Записываем в лог сообщение об ошибка как оно передано
+					return string{message};
 				// Выполняем извлечение объекта транспортного уровня передачи
 				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 				// Создаём охранника участника обмена защищёнными данными
@@ -904,7 +996,7 @@ namespace ssl {
 		while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
 			// Читаем данные из BIO буфера записи
 			bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-			// Если данные не прочитаны
+			// Если данные не прочитаны (SSL_get_error здесь неприменим — это BIO, не SSL)
 			if(bytes <= 0)
 				// Выходим из цикла
 				return false;
@@ -1656,13 +1748,13 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
-				::local::payload.clear();
+				::local::certBuffer.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::ZLIB, ::local::payload);
+				compressor->compress(in, size, awh::compressor_t::method_t::ZLIB, ::local::certBuffer);
 				// Если буфер не пустой
-				if(!::local::payload.empty()){
+				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
-					if(::CBB_add_bytes(out, &::local::payload[0], ::local::payload.size()))
+					if(::CBB_add_bytes(out, &::local::certBuffer[0], ::local::certBuffer.size()))
 						// Возвращаем true
 						return 1;
 				}
@@ -1689,13 +1781,13 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
-				::local::payload.clear();
+				::local::certBuffer.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::BROTLI, ::local::payload);
+				compressor->compress(in, size, awh::compressor_t::method_t::BROTLI, ::local::certBuffer);
 				// Если буфер не пустой
-				if(!::local::payload.empty()){
+				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
-					if(::CBB_add_bytes(out, &::local::payload[0], ::local::payload.size()))
+					if(::CBB_add_bytes(out, &::local::certBuffer[0], ::local::certBuffer.size()))
 						// Возвращаем true
 						return 1;
 				}
@@ -1722,13 +1814,13 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
-				::local::payload.clear();
+				::local::certBuffer.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::ZSTD, ::local::payload);
+				compressor->compress(in, size, awh::compressor_t::method_t::ZSTD, ::local::certBuffer);
 				// Если буфер не пустой
-				if(!::local::payload.empty()){
+				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
-					if(::CBB_add_bytes(out, &::local::payload[0], ::local::payload.size()))
+					if(::CBB_add_bytes(out, &::local::certBuffer[0], ::local::certBuffer.size()))
 						// Возвращаем true
 						return 1;
 				}
@@ -1756,15 +1848,15 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
-				::local::payload.clear();
+				::local::certBuffer.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, ::local::payload);
+				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
-				if(::local::payload.size() != length)
+				if(::local::certBuffer.size() != length)
 					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
-				(* out) = ::CRYPTO_BUFFER_new(&::local::payload[0], ::local::payload.size(), nullptr);
+				(* out) = ::CRYPTO_BUFFER_new(&::local::certBuffer[0], ::local::certBuffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
 					// Возвращаем true
@@ -1793,15 +1885,15 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
-				::local::payload.clear();
+				::local::certBuffer.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, ::local::payload);
+				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
-				if(::local::payload.size() != length)
+				if(::local::certBuffer.size() != length)
 					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
-				(* out) = ::CRYPTO_BUFFER_new(&::local::payload[0], ::local::payload.size(), nullptr);
+				(* out) = ::CRYPTO_BUFFER_new(&::local::certBuffer[0], ::local::certBuffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
 					// Возвращаем true
@@ -1830,15 +1922,15 @@ namespace ssl {
 				// Получаем объект компрессора из контекста SSL
 				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
-				::local::payload.clear();
+				::local::certBuffer.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, ::local::payload);
+				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
-				if(::local::payload.size() != length)
+				if(::local::certBuffer.size() != length)
 					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
-				(* out) = ::CRYPTO_BUFFER_new(&::local::payload[0], ::local::payload.size(), nullptr);
+				(* out) = ::CRYPTO_BUFFER_new(&::local::certBuffer[0], ::local::certBuffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
 					// Возвращаем true
@@ -5570,48 +5662,45 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 								while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
 									// Читаем данные из BIO буфера записи
 									bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-									// Если данные не прочитаны
+									// Если данные не прочитаны (SSL_get_error здесь неприменим — это BIO, не SSL)
 									if(bytes <= 0){
-										// Получаем код ошибки
-										const int32_t error = ::SSL_get_error(member->ssl, bytes);
-										// Если ошибка не связана с необходимостью повторного чтения или записи
-										if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE) || (error == SSL_ERROR_ZERO_RETURN)))){
-											// Если функция обратного вызова состояния установлена
-											if(member->callback.state != nullptr)
-												// Вызываем функцию обратного вызова состояния
-												member->callback.state(id, state_t::FAILED);
-											// Получаем текст ошибки
-											const string error = ::ssl::error(id, "Handshake failed");
-											// Если функция обратного вызова ошибки установлена
-											if(member->callback.error != nullptr)
-												// Вызываем функцию обратного вызова ошибки
-												member->callback.error(id, error_t::HANDSHAKE_FAILED, error);
-											// Если функция обратного вызова ошибки не установлена
-											else {
-												/**
-												 * Если включён режим отладки
-												 */
-												#if DEBUG_MODE
-													// Записываем ошибку в лог
-													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
-												/**
-												 * Если режим отладки не включён
-												 */
-												#else
-													// Записываем ошибку в лог
-													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-												#endif
-											}
-											// Если функция обратного вызова состояния установлена
-											if(member->callback.state != nullptr){
-												// Вызываем функцию обратного вызова на неудачу рукопожатия
-												member->callback.state(id, state_t::HANDSHAKE_FAILED);
-												// Вызываем функцию обратного вызова на уничтожение контекста TLS
-												member->callback.state(id, state_t::DESTROYED);
-											}
-											// Устанавливаем режим удаления участника обмена защищёнными данными
-											member->state |= ::state::GARBAGE_MODE;
+										// Устанавливаем отрицательный результат
+										result = false;
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr)
+											// Вызываем функцию обратного вызова состояния
+											member->callback.state(id, state_t::FAILED);
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "Handshake failed");
+										// Если функция обратного вызова ошибки установлена
+										if(member->callback.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки
+											member->callback.error(id, error_t::HANDSHAKE_FAILED, error);
+										// Если функция обратного вызова ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Записываем ошибку в лог
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Записываем ошибку в лог
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
 										}
+										// Если функция обратного вызова состояния установлена
+										if(member->callback.state != nullptr){
+											// Вызываем функцию обратного вызова на неудачу рукопожатия
+											member->callback.state(id, state_t::HANDSHAKE_FAILED);
+											// Вызываем функцию обратного вызова на уничтожение контекста TLS
+											member->callback.state(id, state_t::DESTROYED);
+										}
+										// Устанавливаем режим удаления участника обмена защищёнными данными
+										member->state |= ::state::GARBAGE_MODE;
 										// Выходим из цикла
 										break;
 									// Если функция обратного вызова чтения данных установлена
@@ -5720,27 +5809,9 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 					 * Если не отправить их пиру немедленно — тот никогда не завершит своё
 					 * рукопожатие (особенно критично для DTLS с memory BIO, без OS-сокетов).
 					 */
-					if(::BIO_ctrl_pending(member->bio.write) > 0){
-						// Количество прочитанных данных
-						int32_t bytes = 0;
-						// Количество ожидающих данных для чтения
-						size_t pending = 0;
-						/**
-						 * Читаем все ожидающие данные из BIO буфера записи
-						 */
-						while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
-							// Читаем данные из BIO буфера записи
-							bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-							// Если данные не прочитаны — выходим
-							if(bytes <= 0)
-								// Выходим из цикла
-								break;
-							// Если функция обратного вызова чтения данных установлена
-							else if(member->callback.read != nullptr)
-								// Вызываем функцию обратного вызова чтения данных
-								member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
-						}
-					}
+					if(::BIO_ctrl_pending(member->bio.write) > 0)
+						// Дренируем bio.write через общий helper
+						::ssl::emitWriteBio(member, id);
 					// Устанавливаем режим выполненного рукопожатия
 					member->state |= state::HANDSHAKE_MODE;
 					// Если узел является клиентом
@@ -7368,45 +7439,42 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 							 */
 							} while((::BIO_ctrl_pending(member->bio.read) > 0) || (::SSL_has_pending(member->ssl) == 1));
 						}
-					// Если данные не записаны полностью
+					// Если данные не записаны полностью (SSL_get_error здесь неприменим — это BIO, не SSL)
 					} else {
-						// Получаем код ошибки
-						const int32_t error = ::SSL_get_error(member->ssl, bytes);
-						// Если ошибка не связана с необходимостью повторного чтения или записи
-						if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
-							// Если функция обратного вызова состояния установлена
-							if(member->callback.state != nullptr)
-								// Вызываем функцию обратного вызова состояния
-								member->callback.state(id, state_t::FAILED);
-							// Получаем текст ошибки
-							const string error = ::ssl::error(id, "BIO write failed");
-							// Если функция обратного вызова ошибки установлена
-							if(member->callback.error != nullptr)
-								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, error_t::BIO_FAILED, error);
-							// Если функция обратного вызова ошибки не установлена
-							else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-								#endif
-							}
-							// Если функция обратного вызова состояния установлена
-							if(member->callback.state != nullptr)
-								// Вызываем функцию обратного вызова на уничтожение контекста TLS
-								member->callback.state(id, state_t::DESTROYED);
-							// Устанавливаем режим удаления участника обмена защищёнными данными
-							member->state |= ::state::GARBAGE_MODE;
+						// Устанавливаем отрицательный результат
+						result = false;
+						// Если функция обратного вызова состояния установлена
+						if(member->callback.state != nullptr)
+							// Вызываем функцию обратного вызова состояния
+							member->callback.state(id, state_t::FAILED);
+						// Получаем текст ошибки
+						const string error = ::ssl::error(id, "BIO write failed");
+						// Если функция обратного вызова ошибки установлена
+						if(member->callback.error != nullptr)
+							// Вызываем функцию обратного вызова ошибки
+							member->callback.error(id, error_t::BIO_FAILED, error);
+						// Если функция обратного вызова ошибки не установлена
+						else {
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+							#endif
 						}
+						// Если функция обратного вызова состояния установлена
+						if(member->callback.state != nullptr)
+							// Вызываем функцию обратного вызова на уничтожение контекста TLS
+							member->callback.state(id, state_t::DESTROYED);
+						// Устанавливаем режим удаления участника обмена защищёнными данными
+						member->state |= ::state::GARBAGE_MODE;
 					}
 				} break;
 			}
@@ -9008,6 +9076,26 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 						 * Выполняем перебор всего списка поддерживаемых ALPN-протоколов
 						 */
 						for(const auto & item : alpn){
+							// Длина имени ALPN-протокола в wire-формате — один байт (1..255)
+							if(item.protocol.empty() || (item.protocol.size() > 255)){
+								// Получаем текст ошибки
+								const string error = ::ssl::error(id, "ALPN protocol name length must be 1..255 bytes");
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, item.protocol), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+								// Пропускаем некорректный протокол
+								continue;
+							}
 							// Добавляем идентификатор протокола в список поддерживаемых протоколов
 							member->alpn.ids.push_back(item.id);
 							// Добавляем в буфер длину названия протокола
@@ -9015,6 +9103,10 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 							// Добавляем в буфер название протокола
 							member->alpn.buffer.insert(member->alpn.buffer.end(), item.protocol.begin(), item.protocol.end());
 						}
+						// Если после фильтрации не осталось допустимых протоколов
+						if(member->alpn.ids.empty())
+							// Завершаем выполнение метода
+							break;
 						// Если идентификатор выбранного ALPN-протокола не передан
 						member->alpn.id = member->alpn.ids.front();
 						// Если узел является клиентом
@@ -9040,6 +9132,26 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 						 * Выполняем перебор всего списка поддерживаемых ALPN-протоколов
 						 */
 						for(const auto & item : alpn){
+							// Длина имени ALPN-протокола в wire-формате — один байт (1..255)
+							if(item.protocol.empty() || (item.protocol.size() > 255)){
+								// Получаем текст ошибки
+								const string error = ::ssl::error(id, "ALPN protocol name length must be 1..255 bytes");
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, item.protocol), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+								// Пропускаем некорректный протокол
+								continue;
+							}
 							// Добавляем идентификатор протокола в список поддерживаемых протоколов
 							member->alpn.ids.push_back(item.id);
 							// Добавляем в буфер длину названия протокола
@@ -9047,8 +9159,10 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 							// Добавляем в буфер название протокола
 							member->alpn.buffer.insert(member->alpn.buffer.end(), item.protocol.begin(), item.protocol.end());
 						}
-						// Если идентификатор выбранного ALPN-протокола не передан
-						member->alpn.id = member->alpn.ids.front();
+						// Если после фильтрации не осталось допустимых протоколов
+						if(member->alpn.ids.empty())
+							// Завершаем выполнение метода
+							break;
 						// Если узел является клиентом
 						if(member->node == event::node_t::CLIENT){
 							/**
@@ -9155,6 +9269,26 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 								 * Выполняем перебор всего списка поддерживаемых ALPS-протоколов
 								 */
 								for(const auto & item : alps){
+									// Длина имени ALPN-протокола в wire-формате — один байт (1..255)
+									if(item.protocol.empty() || (item.protocol.size() > 255)){
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "ALPS protocol name length must be 1..255 bytes");
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Записываем ошибку в лог
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, item.protocol), log_t::flag_t::WARNING, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+										#endif
+										// Пропускаем некорректный протокол
+										continue;
+									}
 									// Добавляем в буфер длину названия протокола
 									buffer.push_back(static_cast <uint8_t> (item.protocol.size()));
 									// Добавляем в буфер название протокола
@@ -11889,91 +12023,16 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
 	/**
 	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
 	 */
-	std::call_once(::__awh_ssl_init_once__, []() noexcept {
+	std::call_once(::__awh_ssl_init_once__, [this]() noexcept {
 		// Активируем работу мьютекса блокировки глобального состояния TLS
 		::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		// Увеличиваем счётчик инициализации библиотеки OpenSSL
+		const bool needInit = ::ssl::registry::acquireInit();
+		// Если библиотека OpenSSL ещё не инициализирована
+		if(needInit)
+			// Выполняем одноразовую инициализацию OpenSSL
+			::ssl::initOpenSSL(this->_log);
 	});
-	// Увеличиваем счётчик инициализации библиотеки OpenSSL
-	const bool needInit = ::ssl::registry::acquireInit();
-	// Если библиотека OpenSSL ещё не инициализирована
-	if(needInit){
-		// Выполняем игнорирование сигналов SIGPIPE
-		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
-			#endif
-		}
-		/**
-		 * Если версия OPENSSL ниже версии 1.1.0
-		 */
-		#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
-			// Выполняем конфигурацию OpenSSL
-			::OPENSSL_config(nullptr);
-			// Выполняем инициализацию OpenSSL
-			::SSL_library_init();
-		/**
-		 * Для более свежей версии
-		 */
-		#else
-			// Выполняем инициализацию OpenSSL
-			::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
-			// Выполняем загрузки описаний ошибок SSL
-			::ERR_load_SSL_strings();
-		#endif
-		// Выполняем загрузки описаний ошибок шифрования
-		::ERR_load_crypto_strings();
-		// Выполняем загрузки описаний ошибок OpenSSL
-		::SSL_load_error_strings();
-		/**
-		 * Если версия OpenSSL ниже версии 3.0.0
-		 */
-		#if OPENSSL_VERSION_NUMBER < 0x30000000L
-			// Добавляем все алгоритмы шифрования
-			::OpenSSL_add_all_algorithms();
-		#endif
-		// Активируем рандомный генератор
-		if(::RAND_poll() != 1){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Rand poll is not allowed", log_t::flag_t::CRITICAL);
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
-		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL
-		::__awh_ssl_index__[1] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL
-		::__awh_ssl_index__[2] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта компрессора AWH в структуре SSL
-		::__awh_ssl_index__[3] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL_CTX
-		::__awh_ssl_index__[4] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL_CTX
-		::__awh_ssl_index__[5] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL_CTX
-		::__awh_ssl_index__[6] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-	}
 }
 /**
  * @brief Конструктор
@@ -11989,91 +12048,16 @@ awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) 
 	/**
 	 * Выполняем одноразовую инициализацию TLS-модуля для всех экземпляров класса Coder
 	 */
-	std::call_once(::__awh_ssl_init_once__, []() noexcept {
+	std::call_once(::__awh_ssl_init_once__, [this]() noexcept {
 		// Активируем работу мьютекса блокировки глобального состояния TLS
 		::__awh_ssl_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		// Увеличиваем счётчик инициализации библиотеки OpenSSL
+		const bool needInit = ::ssl::registry::acquireInit();
+		// Если библиотека OpenSSL ещё не инициализирована
+		if(needInit)
+			// Выполняем одноразовую инициализацию OpenSSL
+			::ssl::initOpenSSL(this->_log);
 	});
-	// Увеличиваем счётчик инициализации библиотеки OpenSSL
-	const bool needInit = ::ssl::registry::acquireInit();
-	// Если библиотека OpenSSL ещё не инициализирована
-	if(needInit){
-		// Выполняем игнорирование сигналов SIGPIPE
-		if(::signal(SIGPIPE, SIG_IGN) == SIG_ERR){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
-			#endif
-		}
-		/**
-		 * Если версия OPENSSL ниже версии 1.1.0
-		 */
-		#if (OPENSSL_VERSION_NUMBER < 0x10100000L) || (LIBRESSL_VERSION_NUMBER && (LIBRESSL_VERSION_NUMBER < 0x20700000L))
-			// Выполняем конфигурацию OpenSSL
-			::OPENSSL_config(nullptr);
-			// Выполняем инициализацию OpenSSL
-			::SSL_library_init();
-		/**
-		 * Для более свежей версии
-		 */
-		#else
-			// Выполняем инициализацию OpenSSL
-			::OPENSSL_init_ssl(OPENSSL_INIT_SSL_DEFAULT, nullptr);
-			// Выполняем загрузки описаний ошибок SSL
-			::ERR_load_SSL_strings();
-		#endif
-		// Выполняем загрузки описаний ошибок шифрования
-		::ERR_load_crypto_strings();
-		// Выполняем загрузки описаний ошибок OpenSSL
-		::SSL_load_error_strings();
-		/**
-		 * Если версия OpenSSL ниже версии 3.0.0
-		 */
-		#if OPENSSL_VERSION_NUMBER < 0x30000000L
-			// Добавляем все алгоритмы шифрования
-			::OpenSSL_add_all_algorithms();
-		#endif
-		// Активируем рандомный генератор
-		if(::RAND_poll() != 1){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("Rand poll is not allowed", log_t::flag_t::CRITICAL);
-			#endif
-			// Выходим из приложения
-			::exit(EXIT_FAILURE);
-		}
-		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL
-		::__awh_ssl_index__[0] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL
-		::__awh_ssl_index__[1] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL
-		::__awh_ssl_index__[2] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта компрессора AWH в структуре SSL
-		::__awh_ssl_index__[3] = ::SSL_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения пользовательских данных в структуре SSL_CTX
-		::__awh_ssl_index__[4] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта фреймворка AWH в структуре SSL_CTX
-		::__awh_ssl_index__[5] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-		// Регистрируем новый индекс для хранения объекта логирования AWH в структуре SSL_CTX
-		::__awh_ssl_index__[6] = ::SSL_CTX_get_ex_new_index(0, nullptr, nullptr, nullptr, nullptr);
-	}
 }
 /**
  * @brief Деструктор
