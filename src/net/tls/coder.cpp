@@ -172,7 +172,16 @@ namespace ssl {
 		using global_lock_t = locker_t <std::shared_mutex>;
 
 		/**
-		 * @brief Метод получения блокировки глобального реестра TLS
+		 * @brief Метод получения разделяемой блокировки глобального реестра TLS
+		 *
+		 * @return объект блокировки
+		 */
+		inline global_lock_t globalShared() noexcept {
+			// Возвращаем объект блокировки глобального реестра TLS
+			return global_lock_t(::__awh_ssl_mutex__, global_lock_t::mode_t::SHARED);
+		}
+		/**
+		 * @brief Метод получения эксклюзивной блокировки глобального реестра TLS
 		 *
 		 * @return объект блокировки
 		 */
@@ -187,8 +196,8 @@ namespace ssl {
 		 * @return   результат проверки
 		 */
 		inline bool contains(const ::tls::coder_t::id_t id) noexcept {
-			// Выполняем блокировку глобального реестра TLS
-			const global_lock_t lock = globalExclusive();
+			// Выполняем разделяемую блокировку глобального реестра TLS
+			const global_lock_t lock = globalShared();
 			// Возвращаем результат проверки регистрации идентификатора TLS
 			return ::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end();
 		}
@@ -198,7 +207,7 @@ namespace ssl {
 		 * @param id идентификатор контекста TLS
 		 */
 		inline void add(const ::tls::coder_t::id_t id) noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Регистрируем идентификатор контекста TLS
 			::__awh_ssl_ids__.emplace(id);
@@ -211,7 +220,7 @@ namespace ssl {
 		 * @param iterator итератор удаляемого участника
 		 */
 		inline void drop(const ::tls::coder_t::id_t id, members_t & members, const members_t::iterator & iterator) noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			auto i = ::__awh_ssl_ids__.find(id);
@@ -229,7 +238,7 @@ namespace ssl {
 		 * @return   итератор добавленного участника
 		 */
 		inline members_t::iterator emplace(members_t::value_type item) noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Добавляем участника в глобальный контейнер и возвращаем итератор
 			return ::__awh_ssl_members__.emplace(std::move(item)).first;
@@ -241,7 +250,7 @@ namespace ssl {
 		 * @param host  имя хоста
 		 */
 		inline void spliceErase(const event::protocol_t proto, const std::string & host) noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
 			auto i = ::__awh_ssl_splice_map__.find(std::make_pair(proto, host));
@@ -258,7 +267,7 @@ namespace ssl {
 		 * @param id    идентификатор контекста TLS
 		 */
 		inline void spliceEmplace(const event::protocol_t proto, const std::string & host, const ::tls::coder_t::id_t id) noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Добавляем запись в глобальную карту сопоставления имён хостов и идентификаторов узлов TLS
 			::__awh_ssl_splice_map__.emplace(std::make_pair(proto, host), id);
@@ -271,8 +280,8 @@ namespace ssl {
 		 * @return      идентификатор контекста TLS или 0
 		 */
 		inline ::tls::coder_t::id_t spliceResolve(const event::protocol_t proto, const std::string & host) noexcept {
-			// Выполняем блокировку глобального реестра TLS
-			const global_lock_t lock = globalExclusive();
+			// Выполняем разделяемую блокировку глобального реестра TLS
+			const global_lock_t lock = globalShared();
 			// Выполняем поиск записи в глобальной карте сопоставления имён хостов и идентификаторов узлов TLS
 			auto i = ::__awh_ssl_splice_map__.find(std::make_pair(proto, host));
 			// Если запись не найдена
@@ -292,7 +301,7 @@ namespace ssl {
 		 * @return флаг необходимости инициализации OpenSSL
 		 */
 		inline bool acquireInit() noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Увеличиваем счётчик инициализации библиотеки OpenSSL
 			::__awh_ssl_init_count__++;
@@ -312,7 +321,7 @@ namespace ssl {
 		 * @return флаг необходимости деинициализации OpenSSL
 		 */
 		inline bool releaseInit() noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Выполняем эксклюзивную блокировку глобального реестра TLS
 			const global_lock_t lock = globalExclusive();
 			// Уменьшаем счётчик инициализации библиотеки OpenSSL
 			::__awh_ssl_init_count__--;
@@ -770,7 +779,7 @@ namespace ssl {
 		 * @return   объект закрепления или nullptr
 		 */
 		static unique_ptr <pin_t> pin(const ::tls::coder_t::id_t id) noexcept {
-			// Выполняем блокировку глобального реестра TLS
+			// Эксклюзивная блокировка: find в ids и refs++ должны быть атомарны относительно drop()
 			const global_lock_t lock = globalExclusive();
 			// Если идентификатор контекста TLS не зарегистрирован
 			if(::__awh_ssl_ids__.find(id) == ::__awh_ssl_ids__.end())
