@@ -115,6 +115,8 @@ namespace awh {
 					bool waiting;
 					// Количество повторений запросов
 					uint16_t count;
+					// Номер последовательности последнего отправленного запроса
+					uint16_t sequence;
 					// Штамп времени начала запроса
 					uint64_t timestamp;
 					/**
@@ -122,7 +124,7 @@ namespace awh {
 					 *
 					 */
 					 explicit Transfer() noexcept :
-					  id(0), waiting(false), count(0), timestamp(0) {}
+					  id(0), waiting(false), count(0), sequence(0), timestamp(0) {}
 				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами
@@ -133,6 +135,24 @@ namespace awh {
 			private:
 				// Объект управления передачей данных при выполнении запросов ICMP
 				transfer_t _transfer;
+			private:
+				// Адрес последнего ответа для передачи в callback ping
+				unique_ptr <net::addr_t> _replyAddress;
+			private:
+				/**
+				 * @brief Метод уничтожения события ICMP-клиента
+				 *
+				 */
+				void destroyClient() noexcept;
+				/**
+				 * @brief Метод отправки ICMP Echo-запроса
+				 *
+				 * @param eid      идентификатор события ICMP-клиента
+				 * @param id       идентификатор ICMP-запроса
+				 * @param sequence номер последовательности запроса
+				 * @return         количество отправленных байт
+				 */
+				size_t sendEcho(const event::id_t eid, const id_t id, const uint16_t sequence) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки ошибок событий ICMP-клиента
