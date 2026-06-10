@@ -87,26 +87,31 @@ namespace {
 	 *
 	 */
 	members_t __awh_ssl_members__;
+
 	/**
 	 * @brief Счётчик инициализации библиотеки OpenSSL
 	 *
 	 */
 	uint16_t __awh_ssl_init_count__ = 0;
+
 	/**
 	 * @brief Флаг инициализации библиотеки OpenSSL
 	 *
 	 */
 	bool __awh_ssl_initialized__ = false;
+
 	/**
 	 * @brief Глобальный набор идентификаторов контекстов TLS
 	 *
 	 */
 	unordered_set <::tls::coder_t::id_t> __awh_ssl_ids__;
+
 	/**
 	 * @brief Глобальная карта сплайса контекстов TLS
 	 *
 	 */
 	map <pair <event::protocol_t, string>, ::tls::coder_t::id_t> __awh_ssl_splice_map__;
+
 	/**
 	 * @brief Индексы для хранения состояний проверки куков
 	 *
@@ -594,6 +599,36 @@ namespace ssl {
 		return result;
 	}
 	/**
+	 * @brief Функция отправки данных из BIO буфера записи через callback
+	 *
+	 * @param member объект транспортного уровня передачи
+	 * @param id     идентификатор события
+	 * @return       результат выполнения отправки
+	 */
+	static bool emitWriteBio(::ctl_t * member, const ::tls::coder_t::id_t id) noexcept {
+		// Количество прочитанных данных
+		int32_t bytes = 0;
+		// Количество ожидающих данных для чтения
+		size_t pending = 0;
+		/**
+		 * Читаем все ожидающие данные из BIO буфера записи
+		 */
+		while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
+			// Читаем данные из BIO буфера записи
+			bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
+			// Если данные не прочитаны
+			if(bytes <= 0)
+				// Выходим из цикла
+				return false;
+			// Если функция обратного вызова чтения данных установлена
+			if(member->callback.read != nullptr)
+				// Вызываем функцию обратного вызова чтения данных
+				member->callback.read(id, ::tls::coder_t::event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
+		}
+		// Возвращаем результат
+		return true;
+	}
+	/**
 	 * @brief Функция обратного вызова сообщений SSL
 	 *
 	 * @param write  флаг записи сообщения
@@ -618,7 +653,7 @@ namespace ssl {
 				/**
 				 * Обрабатываем тип сообщения рукопожатия SSL
 				 */
-				switch (reinterpret_cast <const uint8_t *> (buffer)[0]){
+				switch(reinterpret_cast <const uint8_t *> (buffer)[0]){
 					// Если сообщение является ClientHello
 					case SSL3_MT_CLIENT_HELLO: {
 						// Получаем объект логирования
@@ -1610,6 +1645,52 @@ namespace cookie {
 	using namespace awh;
 
 	/**
+	 * @brief Функция проверки наличия адреса однорангового узла для DTLS cookie
+	 *
+	 * @param ssl    объект SSL
+	 * @param member объект транспортного уровня передачи
+	 * @return       результат проверки
+	 */
+	static int32_t requirePeer(SSL * ssl, ::ctl_t * member) noexcept {
+		// Если адрес однорангового узла установлен
+		if((member->host.peer != nullptr) && (member->host.peer->ip != nullptr))
+			// Выходим из функции с удачей
+			return 1;
+		// Выполняем получение идентификатора контекста TLS
+		const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+		// Если функция обратного вызова состояния установлена
+		if(member->callback.state != nullptr)
+			// Вызываем функцию обратного вызова состояния
+			member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+		// Получаем текст ошибки
+		const string error = ::ssl::error(id, "Peer address is not set for DTLS cookie");
+		// Если функция обратного вызова ошибки установлена
+		if(member->callback.error != nullptr)
+			// Вызываем функцию обратного вызова ошибки
+			member->callback.error(id, ::tls::coder_t::error_t::COOKIE_FAILED, error);
+		// Если функция обратного вызова ошибки не установлена
+		else {
+			// Получаем объект логирования
+			awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
+			#endif
+		}
+		// Выходим из функции с неудачей
+		return 0;
+	}
+
+	/**
 	 * @brief Функция обратного вызова для генерации куков
 	 *
 	 * @param ssl    объект SSL
@@ -1660,6 +1741,10 @@ namespace cookie {
 				return 0;
 			}
 		}
+		// Если адрес однорангового узла не установлен
+		if(::cookie::requirePeer(ssl, member) != 1)
+			// Выходим и сообщаем, что генерация куков не удалась
+			return 0;
 		// Получаем объект хоста IPv4-адреса
 		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
 		// Размер буфера и длина сгенерированных cookie
@@ -1694,7 +1779,7 @@ namespace cookie {
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Записываем ошибку в лог
+					// Записываем ошибку в log
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
 				#endif
 			}
@@ -1718,7 +1803,11 @@ namespace cookie {
 				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], 16);
 			break;
 			// Если производится работа с другими протоколами, выходим
-			default: return 0;
+			default:
+				// Очищаем ранее выделенную память
+				::OPENSSL_free(buffer);
+				// Выходим и сообщаем, что генерация куков не удалась
+				return 0;
 		}
 		// Буфер под генерацию cookie
 		uint8_t result[EVP_MAX_MD_SIZE];
@@ -1773,6 +1862,10 @@ namespace cookie {
 		if(!member->cookie.initialized)
 			// Выходим из функции
 			return 0;
+		// Если адрес однорангового узла не установлен
+		if(::cookie::requirePeer(ssl, member) != 1)
+			// Выходим из функции с неудачей
+			return 0;
 		// Получаем объект хоста IPv4-адреса
 		net::attr_net_t * address = awh_cast <net::attr_net_t *> (member->host.peer.get());
 		// Размер буфера и длина сгенерированных cookie
@@ -1831,7 +1924,11 @@ namespace cookie {
 				::memcpy(buffer + 2, &awh_cast <net::addr_net_ipv6_t *> (address->ip.get())->address[0], 16);
 			break;
 			// Если производится работа с другими протоколами, выходим
-			default: return 0;
+			default:
+				// Очищаем ранее выделенную память
+				::OPENSSL_free(buffer);
+				// Выходим из функции с неудачей
+				return 0;
 		}
 		// Буфер под генерацию cookie
 		uint8_t result[EVP_MAX_MD_SIZE];
@@ -4163,6 +4260,8 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
+						// Освобождаем объект сертификата
+						::X509_free(x509);
 						// Печатаем предупреждение о недействительном сертификате
 						return false;
 					}
@@ -4198,6 +4297,8 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
+						// Освобождаем объект сертификата
+						::X509_free(x509);
 						// Возвращаем отрицательный результат
 						return false;
 					}
@@ -4231,6 +4332,8 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
+						// Освобождаем объект сертификата
+						::X509_free(x509);
 						// Возвращаем отрицательный результат
 						return false;
 					}
@@ -4266,6 +4369,8 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 						}
 						// Выполняем очистку контекста
 						::X509_STORE_CTX_free(ctx);
+						// Освобождаем объект сертификата
+						::X509_free(x509);
 						// Возвращаем отрицательный результат
 						return false;
 					}
@@ -6677,14 +6782,68 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 					::local::guard_t guard(member);
 					// Если рукопожатие выполнено успешно
 					if(member->state & state::HANDSHAKE_MODE){
-						// Выполняем запись данных в защищённый сокет
-						int32_t bytes = ::SSL_write(member->ssl, buffer, static_cast <int32_t> (size));
-						// Если данные не записаны
-						if(!(result = (bytes > 0))){
-							// Получаем код ошибки
-							const int32_t error = ::SSL_get_error(member->ssl, bytes);
-							// Если ошибка не связана с необходимостью повторного чтения или записи
-							if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
+						// Смещение в буфере записанных данных
+						size_t offset = 0;
+						// Указатель на буфер данных для шифрования
+						const auto * data = reinterpret_cast <const uint8_t *> (buffer);
+						/**
+						 * Записываем все данные в защищённый сокет и отправляем ciphertext из BIO
+						 */
+						while(offset < size){
+							// Выполняем запись данных в защищённый сокет
+							int32_t bytes = ::SSL_write(member->ssl, data + offset, static_cast <int32_t> (size - offset));
+							// Если данные записаны
+							if(bytes > 0){
+								// Увеличиваем смещение в буфере записанных данных
+								offset += static_cast <size_t> (bytes);
+								// Если функция обратного вызова записи данных установлена
+								if(member->callback.write != nullptr)
+									// Вызываем функцию обратного вызова записи данных
+									member->callback.write(id, event_t::ENCRYPTION, static_cast <size_t> (bytes));
+							// Если данные не записаны
+							} else {
+								// Получаем код ошибки
+								const int32_t error = ::SSL_get_error(member->ssl, bytes);
+								// Если ошибка не связана с необходимостью повторного чтения или записи
+								if((error != SSL_ERROR_WANT_READ) && (error != SSL_ERROR_WANT_WRITE)){
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова состояния
+										member->callback.state(id, state_t::FAILED);
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Write is failed");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::WRITE_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Записываем ошибку в лог
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+									// Если функция обратного вызова состояния установлена
+									if(member->callback.state != nullptr)
+										// Вызываем функцию обратного вызова на уничтожение контекста TLS
+										member->callback.state(id, state_t::DESTROYED);
+									// Устанавливаем режим удаления участника обмена защищёнными данными
+									member->state |= ::state::GARBAGE_MODE;
+									// Выходим из цикла
+									break;
+								}
+							}
+							// Если данные из BIO буфера записи не отправлены
+							if(!(result = ::ssl::emitWriteBio(member, id))){
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -6717,68 +6876,20 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 									member->callback.state(id, state_t::DESTROYED);
 								// Устанавливаем режим удаления участника обмена защищёнными данными
 								member->state |= ::state::GARBAGE_MODE;
+								// Выходим из цикла
+								break;
 							}
-						// Если данные записаны удачно
-						} else {
-							// Если функция обратного вызова записи данных установлена
-							if(member->callback.write != nullptr)
-								// Вызываем функцию обратного вызова записи данных
-								member->callback.write(id, event_t::ENCRYPTION, static_cast <size_t> (bytes));
-							// Количество ожидающих данных для чтения
-							size_t pending = 0;
-							/**
-							 * Читаем все ожидающие данные из BIO буфера записи
-							 */
-							while((pending = ::BIO_ctrl_pending(member->bio.write)) > 0){
-								// Читаем данные из BIO буфера записи
-								bytes = ::BIO_read(member->bio.write, ::local::buffer, static_cast <size_t> (::min(pending, static_cast <size_t> (AWH_MAX_SSL_BUFFER_SIZE))));
-								// Если данные не прочитаны
-								if(bytes <= 0){
-									// Получаем код ошибки
-									const int32_t error = ::SSL_get_error(member->ssl, bytes);
-									// Если ошибка не связана с необходимостью повторного чтения или записи
-									if(!(result = ((error == SSL_ERROR_WANT_READ) || (error == SSL_ERROR_WANT_WRITE) || (error == SSL_ERROR_ZERO_RETURN)))){
-										// Если функция обратного вызова состояния установлена
-										if(member->callback.state != nullptr)
-											// Вызываем функцию обратного вызова состояния
-											member->callback.state(id, state_t::FAILED);
-										// Получаем текст ошибки
-										const string error = ::ssl::error(id, "Write is failed");
-										// Если функция обратного вызова ошибки установлена
-										if(member->callback.error != nullptr)
-											// Вызываем функцию обратного вызова ошибки
-											member->callback.error(id, error_t::WRITE_FAILED, error);
-										// Если функция обратного вызова ошибки не установлена
-										else {
-											/**
-											 * Если включён режим отладки
-											 */
-											#if DEBUG_MODE
-												// Записываем ошибку в лог
-												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
-											/**
-											 * Если режим отладки не включён
-											 */
-											#else
-												// Записываем ошибку в лог
-												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-											#endif
-										}
-										// Если функция обратного вызова состояния установлена
-										if(member->callback.state != nullptr)
-											// Вызываем функцию обратного вызова на уничтожение контекста TLS
-											member->callback.state(id, state_t::DESTROYED);
-										// Устанавливаем режим удаления участника обмена защищёнными данными
-										member->state |= ::state::GARBAGE_MODE;
-									}
-									// Выходим из цикла
-									break;
-								// Если функция обратного вызова чтения данных установлена
-								} else if(member->callback.read != nullptr)
-									// Вызываем функцию обратного вызова чтения данных
-									member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
-							}
+							// Если все данные записаны
+							if(offset >= size)
+								// Выходим из цикла
+								break;
+							// Если запись приостановлена и в BIO нет данных для отправки
+							if((bytes <= 0) && (::BIO_ctrl_pending(member->bio.write) == 0))
+								// Выходим из цикла
+								break;
 						}
+						// Если все данные записаны и отправлены
+						result = (offset >= size);
 					// Если рукопожатие не выполнено
 					} else {
 						// Если функция обратного вызова состояния установлена
