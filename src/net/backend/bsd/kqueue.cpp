@@ -1685,9 +1685,10 @@ namespace {
 	 *
 	 */
 	Guard_Transport_Layer_Node::~Guard_Transport_Layer_Node() noexcept {
-		// Уменьшаем счётчик ссылок узла и проверяем, что это была последняя активная ссылка
-		if((this->_node->state.status == event::status_t::GARBAGE) &&
-		   (this->_node->refs.fetch_sub(1, std::memory_order_acq_rel) == 0)){
+		// Уменьшаем счётчик ссылок, полученный в конструкторе
+		const uint16_t prev = this->_node->refs.fetch_sub(1, std::memory_order_acq_rel);
+		// Если узел помечен как мусор и это была последняя активная ссылка
+		if((this->_node->state.status == event::status_t::GARBAGE) && (prev == 1)){
 			// Выполняем поиск узла в глобальном списке узлов событий
 			auto i = ::__awh_nodes__.find(this->_node->id);
 			// Если узел найден
