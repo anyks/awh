@@ -74,13 +74,13 @@ void awh::unit::Server::unlinkClient(const event::id_t cid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(cid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -127,13 +127,13 @@ void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -171,13 +171,13 @@ void awh::unit::Server::linkClient(const event::id_t sid, const event::id_t cid)
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sid, cid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -632,7 +632,7 @@ bool awh::unit::Server::clearBlacklist(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем очистку чёрного списка события
 		return this->_io->blacklist.clear(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -646,7 +646,7 @@ bool awh::unit::Server::clearWhitelist(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем очистку белого списка события
 		return this->_io->whitelist.clear(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -661,7 +661,7 @@ bool awh::unit::Server::addToBlacklist(const event::id_t eid, string_view value)
 	if(this->isActual(eid))
 		// Выполняем добавление адреса в чёрный список события
 		return this->_io->blacklist.add(eid, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -676,7 +676,7 @@ bool awh::unit::Server::addToWhitelist(const event::id_t eid, string_view value)
 	if(this->isActual(eid))
 		// Выполняем добавление адреса в белый список события
 		return this->_io->whitelist.add(eid, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -691,7 +691,7 @@ bool awh::unit::Server::removeFromBlacklist(const event::id_t eid, string_view v
 	if(this->isActual(eid))
 		// Выполняем удаление адреса из чёрного списка события
 		return this->_io->blacklist.remove(eid, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -706,7 +706,7 @@ bool awh::unit::Server::removeFromWhitelist(const event::id_t eid, string_view v
 	if(this->isActual(eid))
 		// Выполняем удаление адреса из белого списка события
 		return this->_io->whitelist.remove(eid, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -716,13 +716,13 @@ bool awh::unit::Server::removeFromWhitelist(const event::id_t eid, string_view v
  * @return    чёрный список события
  */
 const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromBlacklist(const event::id_t eid) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	static const std::unordered_map <string, awh::event::address_t> result;
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Возвращаем чёрный список события
 		return this->_io->blacklist.get(eid);
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -732,13 +732,13 @@ const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::ge
  * @return    белый список события
  */
 const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromWhitelist(const event::id_t eid) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	static const std::unordered_map <string, awh::event::address_t> result;
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Возвращаем белый список события
 		return this->_io->whitelist.get(eid);
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -748,7 +748,7 @@ const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::ge
  * @return    результат выполнения фиксации
  */
 bool awh::unit::Server::commit(const event::id_t eid) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -784,13 +784,13 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Failed to commit server", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to commit server", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -804,17 +804,17 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -824,7 +824,7 @@ bool awh::unit::Server::commit(const event::id_t eid) noexcept {
  * @return    результат выполнения запуска
  */
 bool awh::unit::Server::launch(const event::id_t eid) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -840,13 +840,13 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -860,17 +860,17 @@ bool awh::unit::Server::launch(const event::id_t eid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -884,7 +884,7 @@ bool awh::unit::Server::pause(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем приостановку работы сервера
 		return this->_io->pause(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -898,7 +898,7 @@ bool awh::unit::Server::resume(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем возобновление работы сервера
 		return this->_io->resume(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -909,7 +909,7 @@ bool awh::unit::Server::resume(const event::id_t eid) noexcept {
  * @return    результат выполнения перевода в режим прослушивания
  */
 bool awh::unit::Server::listen(const event::id_t eid, const uint16_t max) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -933,13 +933,13 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint16_t max) noexce
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Failed to launch server", __PRETTY_FUNCTION__, make_tuple(eid, max), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to launch server", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -953,17 +953,17 @@ bool awh::unit::Server::listen(const event::id_t eid, const uint16_t max) noexce
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, max), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -977,7 +977,7 @@ bool awh::unit::Server::recv(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение данных от клиента
 		return this->_io->recv(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -993,7 +993,7 @@ size_t awh::unit::Server::send(const event::id_t eid, const void * buffer, const
 	if(this->isActual(eid))
 		// Выполняем отправку данных клиенту
 		return this->_io->send(eid, buffer, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1008,7 +1008,7 @@ bool awh::unit::Server::splice(const event::id_t eid, const event::id_t dest) no
 	if(this->isActual(eid) || this->isActual(dest))
 		// Выполняем объединение данных между событием сервера и другим событием
 		return this->_io->splice(eid, dest);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1022,7 +1022,7 @@ uint16_t awh::unit::Server::getOptions(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение опций для события сервера
 		return this->_io->getOptions(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1037,7 +1037,7 @@ bool awh::unit::Server::setOptions(const event::id_t eid, const uint16_t options
 	if(this->isActual(eid))
 		// Выполняем установку опций для события сервера
 		return this->_io->setOptions(eid, options);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1053,7 +1053,7 @@ bool awh::unit::Server::setOption(const event::id_t eid, const uint16_t option, 
 	if(this->isActual(eid))
 		// Выполняем установку опции для события сервера
 		return this->_io->setOption(eid, option, mode);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1067,7 +1067,7 @@ awh::net::dgram_info_t awh::unit::Server::getTrafficInfo(const event::id_t eid) 
 	if(this->isActual(eid))
 		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события сервера
 		return this->_io->getTrafficInfo(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
 /**
@@ -1081,7 +1081,7 @@ uint8_t awh::unit::Server::getCountHops(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение количества хопов последнего принятого пакета для события сервера
 		return this->_io->getCountHops(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1096,7 +1096,7 @@ bool awh::unit::Server::setCountHops(const event::id_t eid, const uint8_t hops) 
 	if(this->isActual(eid))
 		// Выполняем установку количества хопов последнего принятого пакета для события сервера
 		return this->_io->setCountHops(eid, hops);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1110,7 +1110,7 @@ awh::event::hops_t awh::unit::Server::getHops(const event::id_t eid) const noexc
 	if(this->isActual(eid))
 		// Выполняем получение максимального количества хопов для события сервера
 		return this->_io->getHops(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return awh::event::hops_t::LOOPBACK;
 }
 /**
@@ -1125,7 +1125,7 @@ bool awh::unit::Server::setHops(const event::id_t eid, const event::hops_t hops)
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события сервера
 		return this->_io->setHops(eid, hops);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1139,7 +1139,7 @@ string awh::unit::Server::getIface(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение сетевого интерфейса для события сервера
 		return this->_io->getIface(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -1154,7 +1154,7 @@ bool awh::unit::Server::setIface(const event::id_t eid, string_view name) noexce
 	if(this->isActual(eid))
 		// Выполняем установку сетевого интерфейса для события сервера
 		return this->_io->setIface(eid, name);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1168,7 +1168,7 @@ uint16_t awh::unit::Server::getPort(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение порта сервера для события сервера
 		return this->_io->getSourcePort(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1183,7 +1183,7 @@ bool awh::unit::Server::setPort(const event::id_t eid, const uint16_t port) noex
 	if(this->isActual(eid))
 		// Выполняем установку порта сервера для события сервера
 		return this->_io->setSourcePort(eid, port);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1198,7 +1198,7 @@ string awh::unit::Server::getAddress(const event::id_t eid, const event::address
 	if(this->isActual(eid))
 		// Выполняем получение адреса сервера для события сервера
 		return this->_io->getAddress(eid, address);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -1214,7 +1214,7 @@ bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t
 	if(this->isActual(eid))
 		// Выполняем установку адреса сервера для события сервера
 		return this->_io->setAddress(eid, address, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1230,7 +1230,7 @@ bool awh::unit::Server::setAddress(const event::id_t eid, const event::address_t
 	if(this->isActual(eid))
 		// Выполняем установку адреса сервера для события сервера
 		return this->_io->setAddress(eid, address, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1246,7 +1246,7 @@ bool awh::unit::Server::getAddress(const event::id_t eid, const event::address_t
 	if(this->isActual(eid))
 		// Выполняем получение адреса сервера для события сервера
 		return this->_io->getAddress(eid, address, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1260,7 +1260,7 @@ uint16_t awh::unit::Server::getMaximumTransmissionUnit(const event::id_t eid) co
 	if(this->isActual(eid))
 		// Выполняем получение MTU сетевого интерфейса для события сервера
 		return this->_io->getMaximumTransmissionUnit(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1275,7 +1275,7 @@ bool awh::unit::Server::setMaximumTransmissionUnit(const event::id_t eid, const 
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события сервера
 		return this->_io->setMaximumTransmissionUnit(eid, mtu);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1289,7 +1289,7 @@ awh::event::delivery_mode_t awh::unit::Server::getDelivery(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем получение режима трансляции пакетов сервера для события сервера
 		return this->_io->getDelivery(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
 /**
@@ -1304,7 +1304,7 @@ bool awh::unit::Server::setDelivery(const event::id_t eid, const event::delivery
 	if(this->isActual(eid))
 		// Выполняем установку режима трансляции пакетов сервера для события сервера
 		return this->_io->setDelivery(eid, delivery);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1319,7 +1319,7 @@ size_t awh::unit::Server::getBufferSize(const event::id_t eid, const event::acti
 	if(this->isActual(eid))
 		// Выполняем получение размера буфера сервера для события сервера
 		return this->_io->getBufferSize(eid, action);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1335,7 +1335,7 @@ bool awh::unit::Server::setBufferSize(const event::id_t eid, const event::action
 	if(this->isActual(eid))
 		// Выполняем установку размера буфера сервера для события сервера
 		return this->_io->setBufferSize(eid, action, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1349,7 +1349,7 @@ awh::event::usage_t awh::unit::Server::getUsageReadTimeout(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем получение режима использования таймаута на чтение события для события сервера
 		return this->_io->getUsageReadTimeout(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
 /**
@@ -1376,7 +1376,7 @@ uint32_t awh::unit::Server::getTimeout(const event::id_t eid, const event::actio
 	if(this->isActual(eid))
 		// Выполняем получение параметров таймаута для сервера
 		return this->_io->getTimeout(eid, action);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1405,7 +1405,7 @@ bool awh::unit::Server::bandwidth(const event::id_t eid, const event::limiting_t
 	if(this->isActual(eid))
 		// Выполняем установку параметров пропускной способности для сервера
 		return this->_io->bandwidth(eid, limiting, bandwidth);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1422,7 +1422,7 @@ bool awh::unit::Server::keepAlive(const event::id_t eid, const int32_t cnt, cons
 	if(this->isActual(eid))
 		// Выполняем установку параметров keep-alive для сервера
 		return this->_io->keepAlive(eid, cnt, idle, intvl);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1436,7 +1436,7 @@ awh::event::dscp_t awh::unit::Server::getDifferentiatedServicesCodePoint(const e
 	if(this->isActual(eid))
 		// Выполняем получение значения поля Differentiated Services Code Point (DSCP) для сервера
 		return this->_io->getDifferentiatedServicesCodePoint(eid, this->_io->family(eid));
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
 /**
@@ -1451,7 +1451,7 @@ bool awh::unit::Server::setDifferentiatedServicesCodePoint(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем установку значения поля Differentiated Services Code Point (DSCP) для сервера
 		return this->_io->setDifferentiatedServicesCodePoint(eid, this->_io->family(eid), dscp);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1465,7 +1465,7 @@ awh::event::mtu_discover_t awh::unit::Server::getMaximumTransmissionUnitDiscover
 	if(this->isActual(eid))
 		// Выполняем получение обнаружения максимального размера пакета (MTU) для сервера
 		return this->_io->getMaximumTransmissionUnitDiscover(eid, this->_io->family(eid));
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
 /**
@@ -1480,7 +1480,7 @@ bool awh::unit::Server::setMaximumTransmissionUnitDiscover(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем установку обнаружения максимального размера пакета (MTU) для сервера
 		return this->_io->setMaximumTransmissionUnitDiscover(eid, this->_io->family(eid), mode);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1498,7 +1498,7 @@ bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mo
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст группы для сервера
 		return this->_io->membership(eid, mode, group, source, port);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1516,7 +1516,7 @@ bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mo
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст группы для сервера
 		return this->_io->membership(eid, mode, group, source, port);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1586,13 +1586,13 @@ void awh::unit::Server::stop() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->print("This operating system is not supported", log_t::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
@@ -1693,13 +1693,13 @@ void awh::unit::Server::start() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->debug("This operating system is not supported", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->print("This operating system is not supported", log_t::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
@@ -1789,7 +1789,7 @@ void awh::unit::Server::destroy(const event::id_t eid) noexcept {
  * @return         идентификатор созданного серверного события
  */
 awh::event::id_t awh::unit::Server::issue(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	event::id_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -1824,17 +1824,17 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1878,7 +1878,7 @@ awh::unit::cluster_t::family_t awh::unit::Server::clusterFamily() const noexcept
 		// Если текущий процесс кластера является дочерним
 		return cluster_t::family_t::CHILDREN;
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return cluster_t::family_t::NONE;
 }
 /**
@@ -1907,9 +1907,9 @@ void awh::unit::Server::clusterMode(const event::mode_t mode) noexcept {
 uint16_t awh::unit::Server::clusterCount() const noexcept {
 	// Если кластер инициализирован
 	if(this->_cluster != nullptr)
-		// Выводим максимальное количество процессов кластера
+		// Возвращаем максимальное количество процессов кластера
 		return this->_cluster->count();
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1945,13 +1945,13 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(count), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -1964,9 +1964,9 @@ void awh::unit::Server::clusterCount(const uint16_t count) noexcept {
 unordered_set <pid_t> awh::unit::Server::clusterWorkers() const noexcept {
 	// Если кластер инициализирован
 	if(this->_cluster != nullptr)
-		// Выводим количество активных воркеров кластера
+		// Возвращаем количество активных воркеров кластера
 		return this->_cluster->workers();
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return {};
 }
 /**
@@ -1981,7 +1981,7 @@ size_t awh::unit::Server::clusterSend(const void * buffer, const size_t size) no
 	if(this->_cluster != nullptr)
 		// Выполняем отправку сообщения родительскому процессу
 		return this->_cluster->send(buffer, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1997,7 +1997,7 @@ size_t awh::unit::Server::clusterSend(const pid_t pid, const void * buffer, cons
 	if(this->_cluster != nullptr)
 		// Выполняем отправку сообщения дочернему процессу
 		return this->_cluster->send(pid, buffer, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -2012,7 +2012,7 @@ size_t awh::unit::Server::clusterBroadcast(const void * buffer, const size_t siz
 	if(this->_cluster != nullptr)
 		// Выполняем отправку сообщения всем дочерним процессам
 		return this->_cluster->broadcast(buffer, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -2027,7 +2027,7 @@ size_t awh::unit::Server::clusterGetBufferSize(const pid_t pid, const event::act
 	if(this->_cluster != nullptr)
 		// Выполняем получение размера буфера кластера для события кластера
 		return this->_cluster->getBufferSize(pid, action);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -2043,7 +2043,7 @@ bool awh::unit::Server::clusterSetBufferSize(const pid_t pid, const event::actio
 	if(this->_cluster != nullptr)
 		// Выполняем установку размера буфера кластера для события кластера
 		return this->_cluster->setBufferSize(pid, action, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**

@@ -57,7 +57,7 @@ using namespace std;
 using namespace placeholders;
 
 /**
- * @brief Оператор [=] перемещения параметров полезной нагрузки
+ * @brief Оператор перемещающего присваивания параметров полезной нагрузки
  *
  * @param payload объект полезной нагрузки для перемещения
  * @return        текущий объект полезной нагрузки
@@ -67,11 +67,11 @@ awh::Logging::Payload & awh::Logging::Payload::operator = (payload_t && payload)
 	this->flag = payload.flag;
 	// Выполняем перемещение текста
 	this->text = ::move(payload.text);
-	// Выводим текущий объект
+	// Возвращаем текущий объект
 	return (* this);
 }
 /**
- * @brief Оператор [=] присваивания параметров полезной нагрузки
+ * @brief Оператор присваивания присваивания параметров полезной нагрузки
  *
  * @param payload объект полезной нагрузки для копирования
  * @return        текущий объект полезной нагрузки
@@ -81,7 +81,7 @@ awh::Logging::Payload & awh::Logging::Payload::operator = (const payload_t & pay
 	this->flag = payload.flag;
 	// Выполняем копирование текста
 	this->text = payload.text;
-	// Выводим текущий объект
+	// Возвращаем текущий объект
 	return (* this);
 }
 /**
@@ -135,7 +135,7 @@ void awh::Logging::rotate() const noexcept {
 	#if _WIN32 || _WIN64
 		// Размер файла лога
 		uintmax_t size = 0;
-		// Получаем адрес файла для записи
+		// Получаем путь к файлу для записи
 		const wstring & filename = this->_fmk->convert(this->_filename);
 		// Создаём объект работы с файлом
 		HANDLE file = ::CreateFileW(filename.c_str(), GENERIC_READ, 0, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, 0);
@@ -151,7 +151,7 @@ void awh::Logging::rotate() const noexcept {
 		struct stat info;
 		// Если тип определён
 		if(::stat(this->_filename.c_str(), &info) == 0){
-			// Выводим размер файла
+			// Возвращаем размер файла
 			const uintmax_t size = static_cast <uintmax_t> (info.st_size);
 	#endif
 			// Если размер файла лога, превышает максимально-установленный
@@ -184,7 +184,7 @@ void awh::Logging::rotate() const noexcept {
 							wchar_t message[0xFF] = {0};
 							// Выполняем формирование текста ошибки
 							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 0xFF, 0);
-							// Выводим текст полученной ошибки
+							// Возвращаем текст полученной ошибки
 							::fprintf(stderr, "ERROR! Logging rotate: %s\n\n", this->_fmk->convert(message).c_str());
 						}
 					}
@@ -269,7 +269,7 @@ string & awh::Logging::cleaner(string & text) const noexcept {
 			}
 		}
 	}
-	// Выводим полученный результат
+	// Возвращаем результат
 	return text;
 }
 /**
@@ -290,7 +290,7 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 	const locker_t <> lock(this->_mtx);
 	// Если функция подписки на логи установлена, выводим результат
 	if((this->_callback != nullptr) && (this->_mode.find(mode_t::DEFERRED) != this->_mode.end()))
-		// Выводим сообщение лога всем подписавшимся
+		// Рассылаем сообщение лога подписчикам
 		this->_callback(payload.flag, payload.text);
 	// Если вывод сообщения в консоль разрешён
 	if(this->_mode.find(mode_t::CONSOLE) != this->_mode.end()){
@@ -304,12 +304,12 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 				case static_cast <uint8_t> (separator_t::SMART): {
 					// Если размер текста соответствует размеру лога
 					if(payload.text.length() >= this->_sepSize)
-						// Выводим обозначение начала вывода лога
+						// Возвращаем обозначение начала вывода лога
 						cout << "*************** START ***************" << endl << endl;
 				} break;
 				// Если разделитель нужно отобразить всегда
 				case static_cast <uint8_t> (separator_t::ALWAYS):
-					// Выводим обозначение начала вывода лога
+					// Возвращаем обозначение начала вывода лога
 					cout << "*************** START ***************" << endl << endl;
 				break;
 			}
@@ -318,22 +318,22 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 		 * Определяем тип сообщения
 		 */
 		switch(static_cast <uint8_t> (payload.flag)){
-			// Выводим сообщение так-как оно есть
+			// Записываем в лог сообщение так-как оно есть
 			case static_cast <uint8_t> (flag_t::NONE):
 				// Формируем текстовый вид лога
 				cout << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 			break;
-			// Выводим информационное сообщение
+			// Печатаем информационное сообщение
 			case static_cast <uint8_t> (flag_t::INFO):
 				// Формируем текстовый вид лога
 				cout << this->_fmk->format("\x1B[32m\x1B[1mInfo\x1B[0m \x1B[32m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 			break;
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			case static_cast <uint8_t> (flag_t::CRITICAL):
 				// Формируем текстовый вид лога
 				cout << this->_fmk->format("\x1B[31m\x1B[1mError\x1B[0m \x1B[31m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 			break;
-			// Выводим сообщение предупреждения
+			// Записываем в лог сообщение предупреждения
 			case static_cast <uint8_t> (flag_t::WARNING):
 				// Формируем текстовый вид лога
 				cout << this->_fmk->format("\x1B[33m\x1B[1mWarning\x1B[0m \x1B[33m%s %s :\x1B[0m %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
@@ -349,12 +349,12 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 				case static_cast <uint8_t> (separator_t::SMART): {
 					// Если размер текста соответствует размеру лога
 					if(payload.text.length() >= this->_sepSize)
-						// Выводим обозначение конца вывода лога
+						// Возвращаем обозначение конца вывода лога
 						cout << "---------------- END ----------------" << endl << endl;
 				} break;
 				// Если разделитель нужно отобразить всегда
 				case static_cast <uint8_t> (separator_t::ALWAYS):
-					// Выводим обозначение конца вывода лога
+					// Возвращаем обозначение конца вывода лога
 					cout << "---------------- END ----------------" << endl << endl;
 				break;
 			}
@@ -384,22 +384,22 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 				 * Определяем тип сообщения
 				 */
 				switch(static_cast <uint8_t> (payload.flag)){
-					// Выводим сообщение так-как оно есть
+					// Записываем в лог сообщение так-как оно есть
 					case static_cast <uint8_t> (flag_t::NONE):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
-					// Выводим информационное сообщение
+					// Печатаем информационное сообщение
 					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("Info %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("Error %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
-					// Выводим сообщение предупреждения
+					// Записываем в лог сообщение предупреждения
 					case static_cast <uint8_t> (flag_t::WARNING):
 						// Формируем текстовый вид лога
 						logData = this->_fmk->format("Warning %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
@@ -424,22 +424,22 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
 				 * Определяем тип сообщения
 				 */
 				switch(static_cast <uint8_t> (payload.flag)){
-					// Выводим сообщение так-как оно есть
+					// Записываем в лог сообщение так-как оно есть
 					case static_cast <uint8_t> (flag_t::NONE):
 						// Формируем текстовый вид лога
 						file << this->_fmk->format("%s%s", payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
-					// Выводим информационное сообщение
+					// Печатаем информационное сообщение
 					case static_cast <uint8_t> (flag_t::INFO):
 						// Формируем текстовый вид лога
 						file << this->_fmk->format("Info %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					case static_cast <uint8_t> (flag_t::CRITICAL):
 						// Формируем текстовый вид лога
 						file << this->_fmk->format("Error %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
 					break;
-					// Выводим сообщение предупреждения
+					// Записываем в лог сообщение предупреждения
 					case static_cast <uint8_t> (flag_t::WARNING):
 						// Формируем текстовый вид лога
 						file << this->_fmk->format("Warning %s %s : %s%s", date.c_str(), this->_name.c_str(), payload.text.c_str(), (!isEnd ? AWH_STRING_BREAKS : ""));
@@ -460,7 +460,7 @@ void awh::Logging::receiving(const payload_t & payload) const noexcept {
  * @return         параметры компонента (адрес, название файла без расширения)
  */
 std::pair <string, string> awh::Logging::components(string_view filename) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	std::pair <string, string> result;
 	// Если адрес передан
 	if(!filename.empty()){
@@ -470,7 +470,7 @@ std::pair <string, string> awh::Logging::components(string_view filename) const 
 		if((pos1 = filename.rfind(AWH_FS_SEPARATOR, filename.length() - 1)) != string::npos){
 			// Ищем расширение файла
 			if((pos2 = filename.find('.', pos1 + 1)) != string::npos){
-				// Устанавливаем адрес файла где хранится файл
+				// Устанавливаем путь к файлу где хранится файл
 				result.first = filename.substr(0, pos1 + 1);
 				// Устанавливаем название файла без расширения
 				result.second = filename.substr(pos1 + 1, pos2 - (pos1 + 1));
@@ -483,7 +483,7 @@ std::pair <string, string> awh::Logging::components(string_view filename) const 
 				 * Для операционной системы не являющейся MS Windows
 				 */
 				#if !_WIN32 && !_WIN64
-					// Устанавливаем адрес файла где хранится файл
+					// Устанавливаем путь к файлу где хранится файл
 					result.first.append("./");
 				#endif
 				// Устанавливаем название файла без расширения
@@ -491,7 +491,7 @@ std::pair <string, string> awh::Logging::components(string_view filename) const 
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -533,22 +533,22 @@ void awh::Logging::print(string_view format, flag_t flag, ...) const noexcept {
 					 * Определяем тип сообщения
 					 */
 					switch(static_cast <uint8_t> (flag)){
-						// Выводим сообщение так-как оно есть
+						// Записываем в лог сообщение так-как оно есть
 						case static_cast <uint8_t> (flag_t::NONE):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_NOTICE, text.c_str(), args);
 						break;
-						// Выводим информационное сообщение
+						// Печатаем информационное сообщение
 						case static_cast <uint8_t> (flag_t::INFO):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_INFO, text.c_str(), args);
 						break;
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						case static_cast <uint8_t> (flag_t::CRITICAL):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_ERR, text.c_str(), args);
 						break;
-						// Выводим сообщение предупреждения
+						// Записываем в лог сообщение предупреждения
 						case static_cast <uint8_t> (flag_t::WARNING):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_WARNING, text.c_str(), args);
@@ -582,11 +582,11 @@ void awh::Logging::print(string_view format, flag_t flag, ...) const noexcept {
 						va_end(args);
 						// Завершаем список локальных аргументов
 						va_end(args2);
-						// Если результат не получен
+						// Если идентификатор обнулился после переполнения счётчика
 						if(res == 0)
 							// Выполняем сброс результата
 							buffer.clear();
-						// Выводим результат
+						// Возвращаем результат
 						else buffer.assign(buffer.begin(), buffer.begin() + res);
 						// Выходим из цикла
 						break;
@@ -684,22 +684,22 @@ void awh::Logging::print(wstring_view format, flag_t flag, ...) const noexcept {
 					 * Определяем тип сообщения
 					 */
 					switch(static_cast <uint8_t> (flag)){
-						// Выводим сообщение так-как оно есть
+						// Записываем в лог сообщение так-как оно есть
 						case static_cast <uint8_t> (flag_t::NONE):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_NOTICE, this->_fmk->convert(format).c_str(), args);
 						break;
-						// Выводим информационное сообщение
+						// Печатаем информационное сообщение
 						case static_cast <uint8_t> (flag_t::INFO):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_INFO, this->_fmk->convert(format).c_str(), args);
 						break;
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						case static_cast <uint8_t> (flag_t::CRITICAL):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_ERR, this->_fmk->convert(format).c_str(), args);
 						break;
-						// Выводим сообщение предупреждения
+						// Записываем в лог сообщение предупреждения
 						case static_cast <uint8_t> (flag_t::WARNING):
 							// Выполняем отправку сообщения
 							::vsyslog(LOG_WARNING, this->_fmk->convert(format).c_str(), args);
@@ -737,11 +737,11 @@ void awh::Logging::print(wstring_view format, flag_t flag, ...) const noexcept {
 						va_end(args);
 						// Завершаем список локальных аргументов
 						va_end(args2);
-						// Если результат не получен
+						// Если идентификатор обнулился после переполнения счётчика
 						if(res == 0)
 							// Выполняем сброс результата
 							buffer.clear();
-						// Выводим результат
+						// Возвращаем результат
 						else buffer.assign(buffer.begin(), buffer.begin() + res);
 						// Выходим из цикла
 						break;
@@ -836,22 +836,22 @@ void awh::Logging::print(string_view format, flag_t flag, const vector <string> 
 					 * Определяем тип сообщения
 					 */
 					switch(static_cast <uint8_t> (flag)){
-						// Выводим сообщение так-как оно есть
+						// Записываем в лог сообщение так-как оно есть
 						case static_cast <uint8_t> (flag_t::NONE):
 							// Выполняем отправку сообщения
 							::syslog(LOG_NOTICE, "%s", this->_fmk->format(format, args).c_str());
 						break;
-						// Выводим информационное сообщение
+						// Печатаем информационное сообщение
 						case static_cast <uint8_t> (flag_t::INFO):
 							// Выполняем отправку сообщения
 							::syslog(LOG_INFO, "%s", this->_fmk->format(format, args).c_str());
 						break;
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						case static_cast <uint8_t> (flag_t::CRITICAL):
 							// Выполняем отправку сообщения
 							::syslog(LOG_ERR, "%s", this->_fmk->format(format, args).c_str());
 						break;
-						// Выводим сообщение предупреждения
+						// Записываем в лог сообщение предупреждения
 						case static_cast <uint8_t> (flag_t::WARNING):
 							// Выполняем отправку сообщения
 							::syslog(LOG_WARNING, "%s", this->_fmk->format(format, args).c_str());
@@ -933,22 +933,22 @@ void awh::Logging::print(wstring_view format, flag_t flag, const vector <wstring
 					 * Определяем тип сообщения
 					 */
 					switch(static_cast <uint8_t> (flag)){
-						// Выводим сообщение так-как оно есть
+						// Записываем в лог сообщение так-как оно есть
 						case static_cast <uint8_t> (flag_t::NONE):
 							// Выполняем отправку сообщения
 							::syslog(LOG_NOTICE, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
 						break;
-						// Выводим информационное сообщение
+						// Печатаем информационное сообщение
 						case static_cast <uint8_t> (flag_t::INFO):
 							// Выполняем отправку сообщения
 							::syslog(LOG_INFO, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
 						break;
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						case static_cast <uint8_t> (flag_t::CRITICAL):
 							// Выполняем отправку сообщения
 							::syslog(LOG_ERR, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
 						break;
-						// Выводим сообщение предупреждения
+						// Записываем в лог сообщение предупреждения
 						case static_cast <uint8_t> (flag_t::WARNING):
 							// Выполняем отправку сообщения
 							::syslog(LOG_WARNING, "%s", this->_fmk->convert(this->_fmk->format(format, args)).c_str());
@@ -1004,7 +1004,7 @@ void awh::Logging::print(wstring_view format, flag_t flag, const vector <wstring
  * @return список режимов вывода логов
  */
 const std::unordered_set <awh::Logging::mode_t> & awh::Logging::mode() const noexcept {
-	// Выводим список режимов вывода логов
+	// Возвращаем список режимов вывода логов
 	return this->_mode;
 }
 /**
@@ -1022,7 +1022,7 @@ void awh::Logging::mode(const std::unordered_set <mode_t> & mode) noexcept {
  * @return формат лога для извлечения
  */
 const string & awh::Logging::format() const noexcept {
-	// Выводим установленный формат
+	// Возвращаем установленный формат
 	return this->_format;
 }
 /**
@@ -1100,10 +1100,10 @@ void awh::Logging::separator(const separator_t sep) noexcept {
 /**
  * @brief Метод установки файла для сохранения логов
  *
- * @param filename адрес файла для сохранения логов
+ * @param filename путь к файлу для сохранения логов
  */
 void awh::Logging::filename(string_view filename) noexcept {
-	// Устанавливаем адрес файла для сохранения логов
+	// Устанавливаем путь к файлу для сохранения логов
 	this->_filename = filename;
 }
 /**
@@ -1119,7 +1119,7 @@ void awh::Logging::subscribe(function <void (const flag_t, string_view)> callbac
  * @brief Конструктор
  *
  * @param fmk      объект фреймворка
- * @param filename адрес файла для сохранения логов
+ * @param filename путь к файлу для сохранения логов
  */
 awh::Logging::Logging(const fmk_t * fmk, string_view filename) noexcept :
  _pid(0), _async(false), _maxSize(MAX_SIZE_LOGFILE), _sepSize(0x400),

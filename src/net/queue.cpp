@@ -58,13 +58,13 @@ void awh::Network_Queue::compact() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -100,17 +100,17 @@ size_t awh::Network_Queue::recordSize(const size_t pos) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию (0) в случае ошибки
+	// Возвращаем значение по умолчанию (0) в случае ошибки
 	return 0;
 }
 /**
@@ -134,13 +134,13 @@ void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcep
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, make_tuple(pos, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("It is not possible to set the size of an individual record for TCP payload", log_t::flag_t::WARNING);
 				#endif
 			} break;
@@ -158,13 +158,13 @@ void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcep
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -192,13 +192,13 @@ void awh::Network_Queue::clear() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -235,7 +235,7 @@ size_t awh::Network_Queue::size() const noexcept {
  * @return количество записей в очереди
  */
 size_t awh::Network_Queue::count() const noexcept {
-	// Выводим количество записей в очереди
+	// Возвращаем количество записей в очереди
 	return this->_count;
 }
 /**
@@ -258,7 +258,7 @@ size_t awh::Network_Queue::available() const noexcept {
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если очередь для потоков данных (например, TCP)
 			case static_cast <uint8_t> (type_t::TCP):
-				// Выводим размер доступного пространства для новых данных в очереди (без учёта метаданных)
+				// Возвращаем размер доступного пространства для новых данных в очереди (без учёта метаданных)
 				return space;
 			// Если очередь для потоков данных (например, UDP)
 			case static_cast <uint8_t> (type_t::UDP):
@@ -273,17 +273,17 @@ size_t awh::Network_Queue::available() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию (0) в случае ошибки
+	// Возвращаем значение по умолчанию (0) в случае ошибки
 	return 0;
 }
 /**
@@ -308,7 +308,7 @@ bool awh::Network_Queue::pop(const size_t size) noexcept {
 	try {
 		// Если очередь пуста, нет данных для удаления
 		if(this->empty())
-			// Выводим результат по умолчанию (false) при попытке удалить из пустой очереди
+			// Возвращаем значение по умолчанию (false) при попытке удалить из пустой очереди
 			return false;
 		/**
 		 * Определяем размер записи в зависимости от типа очереди и удаляем её, обновляя позиции и кэшированный размер данных
@@ -364,7 +364,7 @@ bool awh::Network_Queue::pop(const size_t size) noexcept {
 				}
 			} break;
 		}
-		// Выводим результат (true при успешном удалении записи из очереди)
+		// Возвращаем результат (true при успешном удалении записи из очереди)
 		return true;
 	/**
 	 * Если возникает ошибка
@@ -374,17 +374,17 @@ bool awh::Network_Queue::pop(const size_t size) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию (false) в случае ошибки
+	// Возвращаем значение по умолчанию (false) в случае ошибки
 	return false;
 }
 /**
@@ -395,7 +395,7 @@ bool awh::Network_Queue::pop(const size_t size) noexcept {
  * @return     количество данных, успешно добавленных в очередь (0 при неудаче, когда недостаточно места)
  */
 size_t awh::Network_Queue::push(const void * data, const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	size_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -465,17 +465,17 @@ size_t awh::Network_Queue::push(const void * data, const size_t size) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат работы функции
+	// Возвращаем результат работы функции
 	return result;
 }
 /**
@@ -492,7 +492,7 @@ bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept
 	try {
 		// Если очередь пуста, нет данных для удаления
 		if(this->empty())
-			// Выводим результат по умолчанию (false) при попытке удалить из пустой очереди
+			// Возвращаем значение по умолчанию (false) при попытке удалить из пустой очереди
 			return false;
 		/**
 		 * Определяем тип очереди для получения данных
@@ -513,7 +513,7 @@ bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept
 				* data = (this->_buffer + (this->_read + sizeof(size_t)));
 			} break;
 		}
-		// Выводим результат (true при успешном получении данных из очереди)
+		// Возвращаем результат (true при успешном получении данных из очереди)
 		return true;
 	/**
 	 * Если возникает ошибка
@@ -523,17 +523,17 @@ bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию (false) в случае ошибки
+	// Возвращаем значение по умолчанию (false) в случае ошибки
 	return false;
 }
 /**

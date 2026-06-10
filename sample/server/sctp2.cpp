@@ -50,7 +50,7 @@ class Executor {
 		 * @param size размер данных для записи
 		 */
 		void write(const event::id_t eid, const size_t size) noexcept {
-			// Выводим информацию о событии записи данных клиентом
+			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
 		}
 		/**
@@ -64,13 +64,13 @@ class Executor {
 		void read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, server_t * server) noexcept {
 			// Если данные получены
 			if(size > 0)
-				// Выводим данные в лог
+				// Записываем данные в лог
 				this->_log->print("%s", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
 			else this->_log->print("No data received", log_t::flag_t::WARNING);
 			// Отправляем данные обратно клиенту
 			if(server->send(eid, data, size) == 0)
-				// Выводим сообщение об ошибке отправки данных клиентом на сервер
+				// Записываем ошибку в лог отправки данных клиентом на сервер
 				this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
 		}
 		/**
@@ -100,14 +100,14 @@ class Executor {
 					sctp->initMessages(eid, initmsg);
 					// Выполняем прослушивание сервера на порту
 					if(!server->listen(100))
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to listen on port %d", log_t::flag_t::WARNING, server->getPort());
 					// Если подключение выполнено, то выводим сообщение об успешном прослушивании порта
 					else this->_log->print("Successfully listening on port %d", log_t::flag_t::INFO, server->getPort());
 				} break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события сервера
+					// Записываем в лог сообщение об остановке события сервера
 					this->_log->print("Server destroyed", log_t::flag_t::INFO);
 				break;
 			}
@@ -123,13 +123,13 @@ class Executor {
 		 * @param sctp   объект SCTP протокола
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls, engine::sctp_t * sctp) noexcept {
-			// Выводим сообщение об успешной установке опций события
+			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 			// Устананавливаем опции события
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE)){
 				// Получаем информацию о сообщении SCTP-сокета
 				const net::sctp::minfo_t & minfo = sctp->messageInfo(cid);
-				// Выводим информацию о сообщении SCTP-сокета
+				// Записываем в лог информацию о сообщении SCTP-сокета
 				cout << " SCTP Message Info1: " << endl;
 				cout << "  - Stream Number: " << minfo.num << endl;
 				cout << "  - Payload Protocol ID: " << (u_short) minfo.ppid << endl;
@@ -138,7 +138,7 @@ class Executor {
 				cout << "  - Flags: " << minfo.flags.size() << endl;
 				// Получаем статус SCTP-сокета
 				const net::sctp::status_t & status = sctp->status(cid);
-				// Выводим статус SCTP-сокета
+				// Возвращаем статус SCTP-сокета
 				cout << " SCTP Status: " << endl;
 				cout << "  - ID: " << status.id << endl;
 				cout << "  - State: " << (u_short) status.state << endl;
@@ -148,7 +148,7 @@ class Executor {
 				cout << "  - Rate Window: " << status.ratewind << endl;
 				cout << "  - Unpack Data: " << status.unackdata << endl;
 				cout << "  - Pending Data: " << status.penddata << endl;
-				// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
+				// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 				cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls->info(tid) << endl;
 				cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls->alpn(tid) << endl;
 				cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls->serverNameIndication(tid) << endl << endl;
@@ -158,7 +158,7 @@ class Executor {
 				cout << "Certificate: " << tls->certificateInfo(tid) << endl << endl;
 				cout << "CRL Info: " << tls->certificateRevocationListInfo(tid) << endl << endl;
 				cout << "Certificate Validation: " << (tls->validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
-				// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
+				// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 				this->_log->print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log_t::flag_t::INFO, tid, tls->alpn(tid));
 				// Выполняем подписку на SCTP события
 				sctp->eventsSubscribe(cid, {
@@ -181,7 +181,7 @@ class Executor {
 		 * @param server  объект сервера
 		 */
 		void launch(const string & address, const uint16_t port, server_t * server) noexcept {
-			// Выводим сообщение о запуске сервера
+			// Записываем в лог сообщение о запуске сервера
 			this->_log->print("Server is launching to %s:%d", log_t::flag_t::INFO, address.c_str(), port);
 		}
 		/**
@@ -192,7 +192,7 @@ class Executor {
 		 * @param sctp  объект SCTP
 		 */
 		void sctp([[maybe_unused]] const event::id_t eid, net::sctp_event_t event, engine::sctp_t * sctp) noexcept {
-			// Выводим сообщение с идентификатором событий SCTP
+			// Записываем в лог сообщение с идентификатором событий SCTP
 			cout << " SCTP EVENT ID: " << event->id << endl;
 			/**
 			 * Определяем тип события SCTP
@@ -200,63 +200,63 @@ class Executor {
 			switch(static_cast <uint8_t> (event->type)){
 				// Если требуется уведомление о каждом входящем DATA-пакете
 				case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
-					// Выводим сообщение о событии DATA IO
+					// Записываем в лог сообщение о событии DATA IO
 					cout << "  - DATA IO EVENT " << endl;
 				break;
 				// Если ошибка удалённого узла
 				case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
-					// Выводим сообщение о событии REMOTE ERROR
+					// Записываем в лог сообщение о событии REMOTE ERROR
 					cout << "  - REMOTE ERROR EVENT " << endl;
 				break;
 				// Если изменение ассоциации
 				case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
-					// Выводим сообщение о событии ASSOC CHANGE
+					// Записываем в лог сообщение о событии ASSOC CHANGE
 					cout << "  - ASSOC CHANGE EVENT " << endl;
 				break;
 				// Если событие завершения работы
 				case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
-					// Выводим сообщение о событии SHUTDOWN EVENT
+					// Записываем в лог сообщение о событии SHUTDOWN EVENT
 					cout << "  - SHUTDOWN EVENT " << endl;
 				break;
 				// Если событие "отправитель сухой"
 				case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
-					// Выводим сообщение о событии SENDER DRY EVENT
+					// Записываем в лог сообщение о событии SENDER DRY EVENT
 					cout << "  - SENDER DRY EVENT " << endl;
 				break;
 				// Если изменение адреса однорангового узла
 				case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
-					// Выводим сообщение о событии PEER ADDR CHANGE
+					// Записываем в лог сообщение о событии PEER ADDR CHANGE
 					cout << "  - PEER ADDR CHANGE EVENT " << endl;
 				break;
 				// Если событие ошибки отправки
 				case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
-					// Выводим сообщение о событии SEND FAILED EVENT
+					// Записываем в лог сообщение о событии SEND FAILED EVENT
 					cout << "  - SEND FAILED EVENT " << endl;
 				break;
 				// Если событие сброса потока
 				case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
-					// Выводим сообщение о событии STREAM RESET EVENT
+					// Записываем в лог сообщение о событии STREAM RESET EVENT
 					cout << "  - STREAM RESET EVENT " << endl;
 				break;
 				// Если событие аутентификации
 				case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
-					// Выводим сообщение о событии AUTHENTICATION EVENT
+					// Записываем в лог сообщение о событии AUTHENTICATION EVENT
 					cout << "  - AUTHENTICATION EVENT " << endl;
 				break;
 				// Если событие адаптационное указание
 				case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
-					// Выводим сообщение о событии ADAPTATION INDICATION
+					// Записываем в лог сообщение о событии ADAPTATION INDICATION
 					cout << "  - ADAPTATION INDICATION EVENT " << endl;
 				break;
 				// Если событие частичной доставки
 				case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
-					// Выводим сообщение о событии PARTIAL DELIVERY EVENT
+					// Записываем в лог сообщение о событии PARTIAL DELIVERY EVENT
 					cout << "  - PARTIAL DELIVERY EVENT " << endl;
 				break;
 			}
 			// Получаем статус SCTP-сокета
 			const net::sctp::status_t & status = sctp->status(eid);
-			// Выводим статус SCTP-сокета
+			// Возвращаем статус SCTP-сокета
 			cout << " SCTP Status: " << endl;
 			cout << "  - ID: " << status.id << endl;
 			cout << "  - State: " << (u_short) status.state << endl;
@@ -274,7 +274,7 @@ class Executor {
 		 * @param minfo  информация о сообщении SCTP-сокета
 		 */
 		void minfo(const event::id_t eid, const net::sctp::minfo_t & minfo) noexcept {
-			// Выводим информацию о сообщении SCTP-сокета
+			// Записываем в лог информацию о сообщении SCTP-сокета
 			this->_log->print(
 				"CTP Message Info: %d\n  - Stream Number: %d\n  - Payload Protocol ID: %d\n  - Context: %d\n  - Time to Live: %d\n  - Flags: %zu",
 				log_t::flag_t::INFO, eid, minfo.num, minfo.ppid, minfo.ctx, minfo.ttl, minfo.flags.size()
@@ -289,7 +289,7 @@ class Executor {
 		 * @param ip     IP-адрес сервера
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
-			// Выводим сообщение о готовности сервера к работе
+			// Записываем в лог сообщение о готовности сервера к работе
 			this->_log->print("Server is ready to accept connections: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
@@ -300,7 +300,7 @@ class Executor {
 		 * @param message сообщение об ошибке
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Server error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
 		/**
@@ -311,7 +311,7 @@ class Executor {
 		 * @param message сообщение об ошибке TLS
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке TLS
+			// Записываем ошибку в лог TLS
 			this->_log->print("TLS error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
 		/**
@@ -323,7 +323,7 @@ class Executor {
 		 * @param fgp     объект отпечатка браузера
 		 */
 		void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
-			// Выводим информацию о браузере клиента, который подключился к серверу
+			// Записываем в лог информацию о браузере клиента, который подключился к серверу
 			this->_log->print("TLS fingerprint: ID=%" PRIu64 ", Event ID=%u, Browser=%s", log_t::flag_t::INFO, id, eid, fgp->print(browser).c_str());
 		}
 	public:
@@ -362,9 +362,9 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::SEQPACKET, event::protocol_t::SCTP);
 	// Устананавливаем опции события
 	if(server.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
+		// Записываем в лог сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
-	// Выводим сообщение об ошибке установки опций события
+	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Выполняем подписку на SCTP события
 	sctp.eventsSubscribe(eid, {
@@ -439,6 +439,6 @@ int32_t main(int32_t argc, char * argv[]){
 		// Запускаем событие сервера
 		server.start();
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

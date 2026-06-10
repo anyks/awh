@@ -127,9 +127,9 @@ namespace {
 	struct Entry {
 		// Размер IP-адреса
 		uint8_t size;
-		// Время завершения жизни
+		// Метка времени истечения записи (в миллисекундах)
 		uint64_t life;
-		// IP-адрес доменного имени
+		// Двоичное представление IP-адреса
 		uint8_t ip[0x10];
 		// Доменное имя записи
 		uint8_t domain[0xFF];
@@ -149,9 +149,9 @@ namespace {
 	struct EntryIP {
 		// Флаг локального IP-адреса
 		bool local;
-		// Время завершения жизни
+		// Метка времени истечения записи (в миллисекундах)
 		uint64_t life;
-		// IP-адрес доменного имени
+		// Двоичное представление IP-адреса
 		unique_ptr <net::addr_t> ip;
 		/**
 		 * @brief Конструктор
@@ -167,7 +167,7 @@ namespace {
 	struct EntryDomain {
 		// Флаг локального доменного имени
 		bool local;
-		// Время завершения жизни
+		// Метка времени истечения записи (в миллисекундах)
 		uint64_t life;
 		// Доменное имя записи
 		string domain;
@@ -197,10 +197,10 @@ namespace {
 			for(uint8_t byte : key){
 				// Смешиваем текущий байт с накопленным значением
 				result ^= static_cast <uint64_t> (byte);
-				// Умножаем на простое число FNV
+				// Умножаем на константу FNV prime
 				result *= 1099511628211ULL; // FNV prime
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 	};
@@ -214,7 +214,7 @@ namespace {
 		/**
 		 * @brief Оператор генерации числового хэша доменного имени
 		 *
-		 * @param domain доменное имя для которого необходима генерация
+		 * @param domain доменное имя, для которого вычисляется хэш
 		 * @return       сгенерированный хэш доменного имени
 		 */
 		uint64_t operator()(string_view domain) const noexcept {
@@ -226,10 +226,10 @@ namespace {
 				char lower = static_cast <char> (::tolower(static_cast<uint8_t>(c)));
 				// Смешиваем текущий символ с накопленным значением
 				result ^= static_cast <uint64_t> (lower);
-				// Умножаем на простое число FNV
+				// Умножаем на константу FNV prime
 				result *= 1099511628211ULL; // FNV prime
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 	};
@@ -510,18 +510,18 @@ namespace dns {
 	 */
 	typedef struct Header {
 		uint16_t id;        // Идентификатор операции
-		uint8_t rd : 1;     // Флаг выполнения желаемой рекурсии
-		uint8_t tc : 1;     // Флаг усечения сообщения если оно слишком большое
-		uint8_t aa : 1;     // Флаг авторитетного ответа сервера
-		uint8_t opcode : 4; // Опкод операции
-		uint8_t qr : 1;     // Тип запроса или ответа
-		uint8_t rcode : 4;  // Код выполнения операции
-		uint8_t z : 3;      // Зарезервировано для использования в будущем
-		uint8_t ra : 1;     // Флаг активации рекурсивных запросов на сервере
-		uint16_t qdcount;   // Количество записей в разделе запроса
-		uint16_t ancount;   // Количество записей в разделе ответа
-		uint16_t nscount;   // Количество записей ресурсов в разделе Authority (серверы имён)
-		uint16_t arcount;   // Количество записей ресурсов в разделе дополнительных записей
+		uint8_t rd : 1;     // Флаг рекурсивного разрешения (Recursion Desired)
+		uint8_t tc : 1;     // Флаг усечения сообщения (Truncated)
+		uint8_t aa : 1;     // Флаг авторитетного ответа (Authoritative Answer)
+		uint8_t opcode : 4; // Код операции (Opcode)
+		uint8_t qr : 1;     // Признак запроса (0) или ответа (1)
+		uint8_t rcode : 4;  // Код ответа (Response Code)
+		uint8_t z : 3;      // Зарезервировано (должно быть 0)
+		uint8_t ra : 1;     // Флаг поддержки рекурсии на сервере (Recursion Available)
+		uint16_t qdcount;   // Число записей в секции Question
+		uint16_t ancount;   // Число записей в секции Answer
+		uint16_t nscount;   // Число записей в секции Authority
+		uint16_t arcount;   // Число записей в секции Additional
 		/**
 		 * @brief Конструктор
 		 *
@@ -532,12 +532,12 @@ namespace dns {
 	} head_t;
 
 	/**
-	 * @brief Структура флагов DNS запросов
+	 * @brief Структура полей Question (QTYPE и QCLASS)
 	 *
 	 */
 	typedef struct Q_Flags {
-		uint16_t type; // Тип записи
-		uint16_t cls;  // Класс записи
+		uint16_t type; // Тип запрашиваемой записи (QTYPE)
+		uint16_t cls;  // Класс запроса (QCLASS, обычно IN = 1)
 		/**
 		 * @brief Конструктор
 		 *
@@ -562,17 +562,17 @@ namespace dns {
 	 * @return уникальный идентификатор
 	 */
 	static unit::dns_t::id_t identifier() noexcept {
-		// Результат работы функции
+		// Переменная результата
 		unit::dns_t::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint16_t id{1};
-		// Выводим новое значение идентификатора
+		// Получаем следующий идентификатор
 		result = id.fetch_add(1, memory_order_relaxed);
-		// Если результат не получен
+		// Если идентификатор обнулился после переполнения счётчика
 		if(result == 0)
-			// Генерируем результат заново
+			// Получаем следующий идентификатор рекурсивно
 			return identifier();
-		// Выводим полученный результат
+		// Возвращаем результат
 		return result;
 	}
 
@@ -608,7 +608,7 @@ namespace dns {
 	 * @return       бинарный буфер в DNS-формате
 	 */
 	static vector <uint8_t> encodeDomainName(string_view domain) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		vector <uint8_t> result;
 		// Резервируем память (примерно длина домена + запас на лейблы + null)
 		result.reserve(domain.size() + 10);
@@ -650,7 +650,7 @@ namespace dns {
 			// Переходим к следующему лейблу
 			start = (end + 1);
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 
@@ -663,7 +663,7 @@ namespace dns {
 	 * @return       доменное имя или пустая строка при ошибке
 	 */
 	static string decodeDomainName(const uint8_t * buffer, const size_t size, size_t & offset) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		string result = "";
 		// Текущая позиция в буфере данных
 		size_t pos = 0;
@@ -683,10 +683,10 @@ namespace dns {
 				break;
 			}
 			// Проверка на сжатие (pointer) — первые 2 бита = 11
-			if((length & 0xC0) == 0xC0)
-				// Это pointer (сжатие), для простоты не обрабатываем
-				// В полном парсере нужно следовать по указателю
+			if((length & 0xC0) == 0xC0){
+				// Указатель сжатия имени — в этой функции не поддерживается
 				break;
+			}
 			// Проверка: лейбл не больше 63 байт
 			if(length > 63)
 				// Ошибка: слишком длинный лейбл
@@ -706,7 +706,7 @@ namespace dns {
 		}
 		// Устанавливаем количество прочитанных байт
 		offset = pos;
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 
@@ -756,7 +756,7 @@ namespace dns {
 					return false;
 				// Извлекаем смещение из двух байт (убирая флаги сжатия)
 				ptr = (((labelSize & 0x3F) << 8) | packet[offset + 1]);
-				// Если смещение выходит за пределы буфера данных, то это ошибка
+				// Если превышено допустимое число переходов по указателям
 				if(maxJumps-- == 0)
 					// Ошибка: слишком много прыжков по указателям, возможно повреждённые данные
 					return false;
@@ -797,7 +797,7 @@ namespace dns {
 		if(jumped)
 			// Устанавливаем смещение на позицию после указателя, если мы прыгали по указателю
 			offset = originalOffset;
-		// Выводим результат
+		// Возвращаем результат
 		return true;
 	}
 	/**
@@ -1082,21 +1082,21 @@ namespace dns {
 			// Переходим к следующей записи
 			offset += rdlength;
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return true;
 	}
 
 	/**
 	 * @brief Формирование DNS-запроса для указанной записи
 	 *
-	 * @param id     идентификатор DNS-резолвера
+	 * @param id     идентификатор DNS-запроса
 	 * @param record тип DNS-записи для запроса (A, AAAA, NS, CNAME, MX, TXT, SOA, PTR)
 	 * @param domain доменное имя
 	 * @param log    объект для работы с логами
 	 * @return       размер сформированного DNS-запроса или 0 при ошибке
 	 */
 	static size_t request(const unit::dns_t::id_t id, const unit::dns_t::record_t record, string_view domain, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -1106,12 +1106,12 @@ namespace dns {
 			if((id > 0) && !domain.empty()){
 				// Зануляем буфер полезной нагрузки
 				::memset(::dns::buffer, 0, sizeof(::dns::buffer));
-				// Получаем объект заголовка запроса
+				// Получаем указатель на заголовок DNS
 				::dns::head_t * header = reinterpret_cast <::dns::head_t *> (::dns::buffer);
 				// Устанавливаем идентификатор заголовка
 				header->id = htons(id);
 				/**
-				 * Заполняем оставшуюся структуру пакетов
+				 * Заполняем оставшиеся поля заголовка DNS
 				 */
 				header->z = 0;
 				header->qr = 0;
@@ -1150,23 +1150,23 @@ namespace dns {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
 
 /**
- * @brief Оператор [=] перемещения параметров пакета
+ * @brief Оператор перемещающего присваивания параметров пакета
  *
  * @param packet объект параметров пакета
  * @return       текущие параметры пакета
@@ -1188,11 +1188,11 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (Packet && packet) n
 	packet.payload.size = 0;
 	// Зануляем буфер полезной нагрузки в объекте параметров пакета, чтобы избежать двойного освобождения памяти
 	packet.payload.buffer = nullptr;
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
- * @brief Оператор [=] копирующего присваивания параметров пакета
+ * @brief Оператор копирующего присваивания параметров пакета
  *
  * @param packet объект параметров пакета
  * @return        текущие параметры пакета
@@ -1208,7 +1208,7 @@ awh::unit::DNS::Packet & awh::unit::DNS::Packet::operator = (const Packet & pack
 	this->payload.buffer = make_unique <uint8_t []> (packet.payload.size);
 	// Копируем данные полезной нагрузки из объекта параметров пакета в новый буфер
 	::memcpy(this->payload.buffer.get(), packet.payload.buffer.get(), packet.payload.size);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -1271,7 +1271,7 @@ void awh::unit::DNS::SimpleQueue::clear() noexcept {
  * @return размер очереди идентификаторов событий
  */
 size_t awh::unit::DNS::SimpleQueue::size() const noexcept {
-	// Выводим размер очереди идентификаторов событий
+	// Возвращаем размер очереди идентификаторов событий
 	return this->_ids.size();
 }
 /**
@@ -1298,7 +1298,7 @@ bool awh::unit::DNS::SimpleQueue::pop(event::id_t & eid) noexcept {
 	eid = this->_ids.front();
 	// Удаляем извлечённый идентификатор события из очереди
 	this->_ids.pop();
-	// Выводим результат
+	// Возвращаем результат
 	return true;
 }
 /**
@@ -1499,9 +1499,9 @@ awh::unit::DNS::Servers::Servers() noexcept :
  _initializedIPv4(false), _initializedIPv6(false) {}
 
 /**
- * @brief Метод обработки событий дампинга DNS-кэша
+ * @brief Метод сохранения дампа DNS-кэша в файл
  *
- * @param        идентификатор таймера DNS-резолвера
+ * @param tid    идентификатор таймера DNS-резолвера
  * @param status статус события таймера DNS-резолвера
  */
 void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::status_t status) noexcept {
@@ -1590,22 +1590,22 @@ void awh::unit::DNS::dumping([[maybe_unused]] const event::id_t, const event::st
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 }
 /**
- * @brief Метод обработки событий коллектора DNS-кэша
+ * @brief Метод очистки устаревших записей DNS-кэша
  *
- * @param        идентификатор таймера DNS-резолвера
+ * @param tid    идентификатор таймера DNS-резолвера
  * @param status статус события таймера DNS-резолвера
  */
 void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::status_t status) noexcept {
@@ -1694,13 +1694,13 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -2025,13 +2025,13 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(str), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -2098,20 +2098,20 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(data, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
 }
 /**
- * @brief Обработка ответов DNS-сервера
+ * @brief Метод обработки ответов DNS-сервера
  *
  * @param eid  идентификатор события чтения из DNS-резолвера
  * @param data данные события чтения из DNS-резолвера
@@ -2124,9 +2124,9 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 	try {
 		// Если данные события чтения из DNS-резолвера не пустые
 		if((data != nullptr) && (size > 0)){
-			// Получаем объект заголовка запроса
+			// Получаем указатель на заголовок DNS
 			const ::dns::head_t * header = reinterpret_cast <const ::dns::head_t *> (data);
-			// Получаем идентификатор запроса из заголовка запроса
+			// Извлекаем идентификатор DNS-запроса из заголовка
 			const uint16_t id = ntohs(header->id);
 			// Доменное имя для логирования
 			string domain = "unknown";
@@ -2155,9 +2155,9 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим начальный разделитель
+							// Печатаем разделитель в отладочный вывод
 							cout << "------------------------------------------------------------" << endl << endl << flush;
-							// Выводим заголовок
+							// Печатаем заголовок ответа
 							cout << "DNS RESPONSE:" << endl << endl << flush;
 							// Если мы получили A-записи в ответе
 							if(!result.a.empty()){
@@ -2165,13 +2165,13 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								 * Перебираем все A-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.a){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
 									// Устанавливаем IPv4-адрес в объекте адреса
 									this->_addr.v4(answer.ip);
-									// Выводим IPv4-адрес
+									// Печатаем IPv4-адрес
 									::printf("IPv4: %s\n", static_cast <string> (this->_addr).c_str());
 								}
 							}
@@ -2181,13 +2181,13 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								 * Перебираем все AAAA-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.aaaa){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
 									// Устанавливаем IPv6-адрес в объекте адреса
 									this->_addr.v6(answer.ip);
-									// Выводим IPv6-адрес
+									// Печатаем IPv6-адрес
 									::printf("IPv6: %s\n", static_cast <string> (this->_addr).c_str());
 								}
 							}
@@ -2197,11 +2197,11 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								 * Перебираем все NS-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.ns){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
-									// Выводим сервер имён
+									// Печатаем NS-сервер
 									::printf("NS: %s\n", answer.server.c_str());
 								}
 							}
@@ -2211,11 +2211,11 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								 * Перебираем все CNAME-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.cname){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
-									// Выводим каноническое имя
+									// Печатаем каноническое имя
 									::printf("CNAME: %s\n", answer.canonical.c_str());
 								}
 							}
@@ -2225,31 +2225,31 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								 * Перебираем все MX-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.mx){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
-									// Выводим сервер почты
+									// Печатаем почтовый сервер
 									::printf("MX: %s\n", answer.server.c_str());
-									// Выводим приоритет MX-записи
+									// Печатаем приоритет MX-записи
 									::printf("PREFERENCE: %u\n", answer.preference);
 								}
 							}
-							// Если мы получили TEXT-записи в ответе
+							// Если мы получили TXT-записи в ответе
 							if(!result.txt.empty()){
 								/**
-								 * Перебираем все TEXT-записи в ответе от DNS-сервера
+								 * Перебираем все TXT-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.txt){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
 									/**
 									 * Вывод текстовых данных из TXT-записи
 									 */
 									for(auto & text : answer.texts)
-										// Выводим текст записи
+										// Печатаем текст TXT-записи
 										::printf("TXT: %s\n", text.c_str());
 								}
 							}
@@ -2259,11 +2259,11 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								 * Перебираем все PTR-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.ptr){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
-									// Выводим PTR-запись
+									// Печатаем PTR-запись
 									::printf("PTR: %s\n", answer.domain.c_str());
 								}
 							}
@@ -2273,25 +2273,25 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								 * Перебираем все SOA-записи в ответе от DNS-сервера
 								 */
 								for(auto & answer : result.soa){
-									// Выводим название записи
+									// Печатаем имя записи
 									::printf("\nNAME: %s\n", answer.name.c_str());
-									// Выводим TTL записи
+									// Печатаем TTL записи
 									::printf("TTL: %u\n", answer.ttl);
-									// Выводим SOA-запись
+									// Печатаем MNAME SOA-записи
 									::printf("SOA: %s\n", answer.mname.c_str());
-									// Выводим административный контакт
+									// Печатаем RNAME SOA-записи
 									::printf("RNAME: %s\n", answer.rname.c_str());
-									// Выводим серийный номер зоны
+									// Печатаем серийный номер зоны
 									::printf("SERIAL: %u\n", answer.serial);
-									// Выводим время обновления зоны
+									// Печатаем интервал refresh
 									::printf("REFRESH: %u\n", answer.refresh);
-									// Выводим время повторной попытки обновления зоны
+									// Печатаем интервал retry
 									::printf("RETRY: %u\n", answer.retry);
-									// Выводим время истечения срока действия зоны
+									// Печатаем интервал expire
 									::printf("EXPIRE: %u\n", answer.expire);
 								}
 							}
-							// Выводим начальный разделитель
+							// Печатаем разделитель в отладочный вывод
 							cout << endl << "------------------------------------------------------------" << endl << endl << flush;
 						#endif
 						// Если мы получили A-записи в ответе
@@ -2399,14 +2399,14 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const id_t, const unordered_multimap <string, std::pair <string, uint16_t>> &)> ("mx", id, mx);
 						}
-						// Если мы получили TEXT-записи в ответе
+						// Если мы получили TXT-записи в ответе
 						if(!result.txt.empty()){
 							/**
 							 * Создаём контейнер для хранения текстовых записей
 							 */
 							unordered_multimap <string, string> texts;
 							/**
-							 * Перебираем все TEXT-записи в ответе от DNS-сервера
+							 * Перебираем все TXT-записи в ответе от DNS-сервера
 							 */
 							for(auto & answer : result.txt){
 								/**
@@ -2487,139 +2487,139 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 				} break;
 				// Если сервер DNS не смог интерпретировать запрос
 				case 1: {
-					// Формируем текст выводимой ошибки DNS-резолвера
+					// Формируем текст сообщения об ошибке DNS-резолвера
 					const string error = this->_fmk->format("DNS query format error to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::UNKNOWN, error);
-					// Если функция вывода ошибки не установлена
+					// Если callback ошибки не установлен
 					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 				} break;
 				// Если проблемы возникли на DNS-сервере
 				case 2: {
-					// Формируем текст выводимой ошибки DNS-резолвера
+					// Формируем текст сообщения об ошибке DNS-резолвера
 					const string error = this->_fmk->format("DNS server failure %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
-					// Если функция вывода ошибки не установлена
+					// Если callback ошибки не установлен
 					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 				} break;
 				// Если доменное имя, указанное в запросе, не существует
 				case 3: {
-					// Формируем текст выводимой ошибки DNS-резолвера
+					// Формируем текст сообщения об ошибке DNS-резолвера
 					const string error = this->_fmk->format("Domain name %s referenced in the query for nameserver %s does not exist", domain.c_str(), this->_io->getTarget(eid).c_str());
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
-					// Если функция вывода ошибки не установлена
+					// Если callback ошибки не установлен
 					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 				} break;
 				// Если DNS-сервер не поддерживает подобный тип запросов
 				case 4: {
-					// Формируем текст выводимой ошибки DNS-резолвера
+					// Формируем текст сообщения об ошибке DNS-резолвера
 					const string error = this->_fmk->format("DNS server is not implemented at %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::INVALID_ADDRESS, error);
-					// Если функция вывода ошибки не установлена
+					// Если callback ошибки не установлен
 					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 				} break;
 				// Если DNS-сервер отказался выполнять наш запрос (например, по политическим причинам)
 				case 5: {
-					// Формируем текст выводимой ошибки DNS-резолвера
+					// Формируем текст сообщения об ошибке DNS-резолвера
 					const string error = this->_fmk->format("DNS request is refused to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error"))
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::ACCESS_DENIED, error);
-					// Если функция вывода ошибки не установлена
+					// Если callback ошибки не установлен
 					else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
 				} break;
 			}
-			// Выполняем поиск DNS-резолвера в контейнере прикрепленных DNS-резолверов
+			// Ищем идентификатор запроса, привязанный к сокету
 			auto j = this->_transfer.attached.find(eid);
-			// Если DNS-резолвер найден в контейнере прикрепленных DNS-резолверов
+			// Если привязка сокета к запросу найдена
 			if(j != this->_transfer.attached.end()){
 				// Если в очереди на отправку есть пакеты
 				if(!this->_transfer.packets.empty()){
 					// Если время жизни пакета ещё не истекло
 					if(this->_transfer.packets.front().alive > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
-						// Получаем объект заголовка запроса
+						// Получаем указатель на заголовок DNS
 						::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 						// Добавляем пакет в контейнер активных пакетов
 						auto ret = this->_transfer.waiting.emplace(ntohs(header->id), ::move(this->_transfer.packets.front()));
@@ -2634,9 +2634,9 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 					// Удаляем пакет из очереди на отправку
 					} else this->_transfer.packets.pop();
 				}
-				// Возвращаем резолвер в очередь доступных DNS-резолверов
+				// Возвращаем сокет в очередь свободных резолверов
 				this->_resolver.queue.push(eid);
-				// Удаляем прикрепленный DNS-резолвер к DNS-запросу из контейнера прикрепленных DNS-резолверов
+				// Удаляем привязку сокета к DNS-запросу
 				this->_transfer.attached.erase(j);
 			}
 		}
@@ -2648,24 +2648,24 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
 }
 /**
- * @brief Метод обработки событий истечения таймаута резолвера доменного имени
+ * @brief Метод обработки истечения таймаута DNS-запроса
  *
- * @param eid    идентификатор резолвера
+ * @param eid    идентификатор события DNS-резолвера
  * @param action тип действия для истекшего таймаута
- * @param delay  задержка таймаута в миллисекундах
- * @return       нужно ли завершить резолвер после истечения таймаута
+ * @param delay  длительность таймаута в миллисекундах
+ * @return       нужно ли завершить обработчик после истечения таймаута
  */
 bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action, [[maybe_unused]] const uint32_t delay) noexcept {
 	/**
@@ -2682,9 +2682,9 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 			uint8_t attempt = 0;
 			// Тип DNS-записи
 			record_t record = record_t::NONE;
-			// Выполняем поиск DNS-резолвера в контейнере прикрепленных DNS-резолверов
+			// Ищем идентификатор запроса, привязанный к сокету
 			auto i = this->_transfer.attached.find(eid);
-			// Если DNS-резолвер найден в контейнере прикрепленных DNS-резолверов
+			// Если привязка сокета к запросу найдена
 			if(i != this->_transfer.attached.end()){
 				// Выполняем поиск пакета в контейнере активных пакетов
 				auto j = this->_transfer.waiting.find(i->second);
@@ -2696,7 +2696,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						j->second.attempt++;
 						// Повторно отправляем DNS-запрос
 						this->_io->send(eid, j->second.payload.buffer.get(), j->second.payload.size);
-						// Запрещаем завершение резолвера после истечения таймаута
+						// Продолжаем ожидание ответа
 						return false;
 					}
 					// Получаем идентификатор DNS-запроса
@@ -2717,7 +2717,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 					if(!this->_transfer.packets.empty()){
 						// Если время жизни пакета ещё не истекло
 						if(this->_transfer.packets.front().alive > this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS)){
-							// Получаем объект заголовка запроса
+							// Получаем указатель на заголовок DNS
 							::dns::head_t * header = reinterpret_cast <::dns::head_t *> (this->_transfer.packets.front().payload.buffer.get());
 							// Добавляем пакет в контейнер активных пакетов
 							auto ret = this->_transfer.waiting.emplace(ntohs(header->id), ::move(this->_transfer.packets.front()));
@@ -2727,19 +2727,19 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 							this->_transfer.packets.pop();
 							// Отправляем DNS-запрос
 							this->_io->send(eid, ret.first->second.payload.buffer.get(), ret.first->second.payload.size);
-							// Завершаем работу резолвера
+							// Переходим к завершению обработки таймаута
 							goto End;
 						// Удаляем пакет из очереди на отправку
 						} else this->_transfer.packets.pop();
 					}
-					// Возвращаем резолвер в очередь доступных DNS-резолверов
+					// Возвращаем сокет в очередь свободных резолверов
 					this->_resolver.queue.push(eid);
-					// Удаляем прикрепленный DNS-резолвер к DNS-запросу из контейнера прикрепленных DNS-резолверов
+					// Удаляем привязку сокета к DNS-запросу
 					this->_transfer.attached.erase(i);
 				}
 			}
 			/**
-			 * Метка завершения работы резолвера
+			 * Метка завершения обработки таймаута
 			 */
 			End:
 			// Если декодирование доменного имени прошло успешно
@@ -2754,7 +2754,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"DNS resolver timeout for domain '%s' (attempts: %u)",
 							__PRETTY_FUNCTION__,
@@ -2766,7 +2766,7 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, domain.c_str(), attempt);
 					#endif
 				}
@@ -2784,17 +2784,17 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (action), delay), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Запрещаем завершение резолвера после истечения таймаута
+	// Продолжаем ожидание ответа
 	return false;
 }
 /**
@@ -2862,7 +2862,7 @@ void awh::unit::DNS::setMaxPackets(const uint16_t count) noexcept {
  * @return       результат работы кодирования
  */
 string awh::unit::DNS::encode(string_view domain) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -2886,13 +2886,13 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				// Получаем результат кодирования
@@ -2911,13 +2911,13 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
 					#endif
 				// Получаем результат кодирования
@@ -2936,17 +2936,17 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2956,7 +2956,7 @@ string awh::unit::DNS::encode(string_view domain) const noexcept {
  * @return       результат работы декодирования
  */
 string awh::unit::DNS::decode(string_view domain) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -2980,13 +2980,13 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				// Получаем результат кодирования
@@ -3005,13 +3005,13 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::idn2_strerror(rc));
 					#endif
 				// Получаем результат декодирования
@@ -3030,17 +3030,17 @@ string awh::unit::DNS::decode(string_view domain) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3107,13 +3107,13 @@ void awh::unit::DNS::shuffle(const event::family_t family, string_view domain) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -3143,13 +3143,13 @@ void awh::unit::DNS::clearBlacklist() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -3191,13 +3191,13 @@ void awh::unit::DNS::clearBlacklist(const event::family_t family) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -3250,13 +3250,13 @@ void awh::unit::DNS::removeAddressInBlacklist(string_view ip) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -3305,13 +3305,13 @@ void awh::unit::DNS::removeAddressInBlacklist(const net::addr_t * ip) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -3371,13 +3371,13 @@ void awh::unit::DNS::removeAddressInBlacklist(const event::family_t family, stri
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -3423,13 +3423,13 @@ void awh::unit::DNS::pushAddressToBlacklist(string_view ip) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -3470,13 +3470,13 @@ void awh::unit::DNS::pushAddressToBlacklist(const net::addr_t * ip) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -3528,13 +3528,13 @@ void awh::unit::DNS::pushAddressToBlacklist(const event::family_t family, string
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -3579,18 +3579,18 @@ bool awh::unit::DNS::checkAddressInBlacklist(string_view ip) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -3627,18 +3627,18 @@ bool awh::unit::DNS::checkAddressInBlacklist(const net::addr_t * ip) const noexc
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -3688,18 +3688,18 @@ bool awh::unit::DNS::checkAddressInBlacklist(const event::family_t family, strin
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), ip), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -3894,13 +3894,13 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -3908,7 +3908,7 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 /**
  * @brief Метод очистки кэша для указанного доменного имени
  *
- * @param domain доменное имя для которого выполняется очистка кэша
+ * @param domain доменное имя, для которого выполняется очистка кэша
  */
 void awh::unit::DNS::clearCache(string_view domain) noexcept {
 	// Если доменное имя передано
@@ -3989,13 +3989,13 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -4005,7 +4005,7 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
  * @brief Метод очистки кэша для указанного доменного имени
  *
  * @param family семейство IP-адресов IPv4/IPv6
- * @param domain доменное имя для которого выполняется очистка кэша
+ * @param domain доменное имя, для которого выполняется очистка кэша
  */
 void awh::unit::DNS::clearCache(const event::family_t family, string_view domain) noexcept {
 	// Если доменное имя передано
@@ -4118,13 +4118,13 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -4168,7 +4168,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 							if(j->ip->size == 4){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(j->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат
+								// Возвращаем результат
 								return static_cast <string> (this->_addr);
 							}
 						} break;
@@ -4178,7 +4178,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 							if(j->ip->size == 16){
 								// Устанавливаем полученный IP-адрес
 								this->_addr.source(j->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат
+								// Возвращаем результат
 								return static_cast <string> (this->_addr);
 							}
 						} break;
@@ -4193,18 +4193,18 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -4216,7 +4216,7 @@ string awh::unit::DNS::extractAddressFromCache(const event::family_t family, str
  * @return       результат выполнения операции
  */
 bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, string_view domain, unique_ptr <net::addr_t> & value) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если доменное имя передано
 	if(!domain.empty()){
@@ -4252,7 +4252,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 									value = make_unique <net::addr_net_ipv4_t> ();
 								// Устанавливаем IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (value.get())->address = awh_cast <net::addr_net_ipv4_t *> (j->ip.get())->address;
-								// Выводим результат
+								// Возвращаем результат
 								return result;
 							}
 						} break;
@@ -4266,7 +4266,7 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 									value = make_unique <net::addr_net_ipv6_t> ();
 								// Устанавливаем IP-адрес
 								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (j->ip.get())->address[0], 16);
-								// Выводим результат
+								// Возвращаем результат
 								return result;
 							}
 						} break;
@@ -4281,18 +4281,18 @@ bool awh::unit::DNS::extractAddressFromCache(const event::family_t family, strin
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), domain), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -4503,13 +4503,13 @@ void awh::unit::DNS::pushAddressToCache(string_view domain, const net::addr_t * 
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(domain, ttl), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -4569,14 +4569,14 @@ void awh::unit::DNS::setPrefixEnvironment(string_view prefix) noexcept {
 /**
  * @brief Метод установки адреса файла локальных хостов
  *
- * @param filename адрес файла для установки
+ * @param filename путь к файлу
  */
 void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если адрес файла дампа кэша передан
+		// Если путь к файлу дампа кэша указан
 		if(!filename.empty()){
 			// Добавляем новое событие файла для мониторинга изменений в файле локальных хостов
 			::__awh_cache__.fid = this->_io->event(event::node_t::FILE, event::family_t::FSYS);
@@ -4596,13 +4596,13 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Failed to set options for hosts file event", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Failed to set options for hosts file event", log_t::flag_t::CRITICAL);
 							#endif
 						}
@@ -4620,13 +4620,13 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("[%s] host address cannot be established", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, filename);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("[%s] host address cannot be established", log_t::flag_t::CRITICAL, filename);
 				#endif
 			}
@@ -4641,13 +4641,13 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4655,7 +4655,7 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 /**
  * @brief Метод установки адреса файлового дампа кэша
  *
- * @param filename адрес файла для установки
+ * @param filename путь к файлу
  * @param interval интервал сохранения дампа кэша в миллисекундах
  */
 void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interval) noexcept {
@@ -4663,7 +4663,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если адрес файла дампа кэша передан
+		// Если путь к файлу дампа кэша указан
 		if(!filename.empty()){
 			// Очищаем бинарный контейнер для хранения кэша доменных имён
 			this->_binbox.clear();
@@ -4732,7 +4732,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 				}
 				// Устанавливаем интервал сохранения дампа кэша
 				::__awh_cache__.interval = interval;
-				// Устанавливаем адрес файла дампа кэша
+				// Устанавливаем путь к файлу дампа кэша
 				::__awh_cache__.filename = filename;
 				// Добавляем новое событие интервала
 				::__awh_cache__.tid = this->_io->event(event::node_t::INTERVAL, event::family_t::TIMER);
@@ -4750,7 +4750,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 					::__awh_cache__.tid = 0;
 					// Сбрасываем интервал сохранения дампа кэша
 					::__awh_cache__.interval = 0;
-					// Сбрасываем адрес файла дампа кэша
+					// Сбрасываем путь к файлу дампа кэша
 					::__awh_cache__.filename = "";
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error")){
@@ -4758,19 +4758,19 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Failed to start cache dump interval", __PRETTY_FUNCTION__, make_tuple(filename, interval), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Failed to start cache dump interval", log_t::flag_t::CRITICAL);
 						#endif
 					}
 				}
 			}
-		// Если адрес файла дампа кэша не передан, но интервал сохранения дампа кэша установлен, то удаляем старый интервал
+		// Если путь к файлу дампа не указан, но интервал сохранения задан, снимаем прежний таймер
 		} else if(interval > 0) {
 			// Удаляем событие интервала
 			this->_io->destroy(::__awh_cache__.tid);
@@ -4778,7 +4778,7 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 			::__awh_cache__.tid = 0;
 			// Сбрасываем интервал сохранения дампа кэша
 			::__awh_cache__.interval = 0;
-			// Сбрасываем адрес файла дампа кэша
+			// Сбрасываем путь к файлу дампа кэша
 			::__awh_cache__.filename = "";
 		}
 	/**
@@ -4789,13 +4789,13 @@ void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interva
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, interval), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4815,7 +4815,7 @@ void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 		// Если DNS-резолверы IPv4 уже инициализированы
 		if(!this->_resolver.idv4.empty()){
 			/**
-			 * Выполняем перебор всех событий DNS-резолвера для семейство IPv4
+			 * Выполняем перебор всех событий DNS-резолвера для семейства IPv4
 			 */
 			for(auto & eid : this->_resolver.idv4)
 				// Устанавливаем время ожидания ответа от DNS-сервера
@@ -4824,7 +4824,7 @@ void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 		// Если DNS-резолверы IPv6 уже инициализированы
 		if(!this->_resolver.idv6.empty()){
 			/**
-			 * Выполняем перебор всех событий DNS-резолвера для семейство IPv6
+			 * Выполняем перебор всех событий DNS-резолвера для семейства IPv6
 			 */
 			for(auto & eid : this->_resolver.idv6)
 				// Устанавливаем время ожидания ответа от DNS-сервера
@@ -4838,13 +4838,13 @@ void awh::unit::DNS::setTimeout(const uint32_t delay) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4866,11 +4866,11 @@ uint16_t awh::unit::DNS::resolvers(const event::family_t family) const noexcept 
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4):
-				// Выводим количество DNS-резолверов для семейство IPv4
+				// Возвращаем количество DNS-резолверов для семейства IPv4
 				return static_cast <uint16_t> (this->_resolver.idv4.size());
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6):
-				// Выводим количество DNS-резолверов для семейство IPv6
+				// Возвращаем количество DNS-резолверов для семейства IPv6
 				return static_cast <uint16_t> (this->_resolver.idv6.size());
 		}
 	/**
@@ -4881,17 +4881,17 @@ uint16_t awh::unit::DNS::resolvers(const event::family_t family) const noexcept 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -4902,7 +4902,7 @@ uint16_t awh::unit::DNS::resolvers(const event::family_t family) const noexcept 
  * @return       результат выполнения операции
  */
 bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -4930,10 +4930,10 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 				}
 				// Если количество DNS-резолверов установлено
 				if(count > 0){
-					// Ресайзим список идентификаторов событий DNS-резолвера для семейство IPv4
+					// Ресайзим список идентификаторов событий DNS-резолвера для семейства IPv4
 					this->_resolver.idv4.resize(count, 0);
 					/**
-					 * Выполняем перебор всех создаваемых DNS-резолверов для семейство IPv4
+					 * Выполняем перебор всех создаваемых DNS-резолверов для семейства IPv4
 					 */
 					for(uint16_t i = 0; i < count; i++){
 						// Добавляем новое событие клиента UDP
@@ -4963,7 +4963,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								if(result){
 									// Если адрес сети для выполнения запроса установлен
 									if((this->_resolver.sourceIPv4 != nullptr) && (this->_resolver.sourceIPv4->size == 4))
-										// Устанавливаем IP-адрес события
+										// Добавляем DNS-сервер в список
 										this->_io->setAddress(this->_resolver.idv4[i], event::address_t::IPV4, this->_resolver.sourceIPv4.get());
 									// Устанавливаем функцию обратного вызова на событие получения ошибок
 									this->_io->on(this->_resolver.idv4[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
@@ -4986,13 +4986,13 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), count), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Failed to set options for DNS resolver event", log_t::flag_t::CRITICAL);
 								#endif
 							}
@@ -5019,10 +5019,10 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 				}
 				// Если количество DNS-резолверов установлено
 				if(count > 0){
-					// Ресайзим список идентификаторов событий DNS-резолвера для семейство IPv6
+					// Ресайзим список идентификаторов событий DNS-резолвера для семейства IPv6
 					this->_resolver.idv6.resize(count, 0);
 					/**
-					 * Выполняем перебор всех создаваемых DNS-резолверов для семейство IPv6
+					 * Выполняем перебор всех создаваемых DNS-резолверов для семейства IPv6
 					 */
 					for(uint16_t i = 0; i < count; i++){
 						// Добавляем новое событие клиента UDP
@@ -5052,7 +5052,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								if(result){
 									// Если адрес сети для выполнения запроса установлен
 									if((this->_resolver.sourceIPv6 != nullptr) && (this->_resolver.sourceIPv6->size == 16))
-										// Устанавливаем IP-адрес события
+										// Добавляем DNS-сервер в список
 										this->_io->setAddress(this->_resolver.idv6[i], event::address_t::IPV6, this->_resolver.sourceIPv6.get());
 									// Устанавливаем функцию обратного вызова на событие получения ошибок
 									this->_io->on(this->_resolver.idv6[i], static_cast <engine::callback::error_t> (std::bind(&dns_t::error, this, _1, _2, _3)));
@@ -5075,13 +5075,13 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Failed to set options for DNS resolver event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), count), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Failed to set options for DNS resolver event", log_t::flag_t::CRITICAL);
 								#endif
 							}
@@ -5101,17 +5101,17 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), count), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5154,16 +5154,16 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-						// Очищаем список IP-адресов события для семейство IPv4
+						// Сбрасываем список DNS-серверов для семейства IPv4
 						this->_resolver.nameServers.reset(event::family_t::IPV4);
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-						// Очищаем список IP-адресов события для семейство IPv6
+						// Сбрасываем список DNS-серверов для семейства IPv6
 						this->_resolver.nameServers.reset(event::family_t::IPV6);
 					break;
 				}
-				// Устанавливаем IP-адрес события
+				// Добавляем DNS-сервер в список
 				this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 				/**
 				 * Определяем тип IP-адреса
@@ -5171,25 +5171,25 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-						// Инициализируем события DNS-резолвера для семейство IPv4
+						// Переинициализируем DNS-резолвер для семейства IPv4
 						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-						// Инициализируем события DNS-резолвера для семейство IPv6
+						// Переинициализируем DNS-резолвер для семейства IPv6
 						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 					break;
 				}
 			}
 		// Если адрес DNS-сервера не передан
 		} else {
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Сбрасываем список DNS-серверов для семейства IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
-			// Инициализируем события DNS-резолвера для семейство IPv4
+			// Переинициализируем DNS-резолвер для семейства IPv4
 			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
-			// Инициализируем события DNS-резолвера для семейство IPv6
+			// Переинициализируем DNS-резолвер для семейства IPv6
 			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
@@ -5200,13 +5200,13 @@ void awh::unit::DNS::setServer(string_view server) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5229,32 +5229,32 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 			switch(server->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
-					// Устанавливаем IP-адрес события
+					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
-					// Инициализируем события DNS-резолвера для семейство IPv4
+					// Переинициализируем DNS-резолвер для семейства IPv4
 					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
-					// Устанавливаем IP-адрес события
+					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
-					// Инициализируем события DNS-резолвера для семейство IPv6
+					// Переинициализируем DNS-резолвер для семейства IPv6
 					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
 		// Если адрес DNS-сервера не передан
 		} else {
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Сбрасываем список DNS-серверов для семейства IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
-			// Инициализируем события DNS-резолвера для семейство IPv4
+			// Переинициализируем DNS-резолвер для семейства IPv4
 			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
-			// Инициализируем события DNS-резолвера для семейство IPv6
+			// Переинициализируем DNS-резолвер для семейства IPv6
 			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
@@ -5265,13 +5265,13 @@ void awh::unit::DNS::setServer(const net::addr_t * server) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5297,11 +5297,11 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
-						// Очищаем список IP-адресов события для семейство IPv4
+						// Сбрасываем список DNS-серверов для семейства IPv4
 						this->_resolver.nameServers.reset(event::family_t::IPV4);
-						// Устанавливаем IP-адрес события
+						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-						// Инициализируем события DNS-резолвера для семейство IPv4
+						// Переинициализируем DNS-резолвер для семейства IPv4
 						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 					}
 				} break;
@@ -5309,11 +5309,11 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
-						// Очищаем список IP-адресов события для семейство IPv6
+						// Сбрасываем список DNS-серверов для семейства IPv6
 						this->_resolver.nameServers.reset(event::family_t::IPV6);
-						// Устанавливаем IP-адрес события
+						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-						// Инициализируем события DNS-резолвера для семейство IPv6
+						// Переинициализируем DNS-резолвер для семейства IPv6
 						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 					}
 				} break;
@@ -5326,16 +5326,16 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
-					// Инициализируем события DNS-резолвера для семейство IPv4
+					// Переинициализируем DNS-резолвер для семейства IPv4
 					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
-					// Инициализируем события DNS-резолвера для семейство IPv6
+					// Переинициализируем DNS-резолвер для семейства IPv6
 					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
@@ -5348,13 +5348,13 @@ void awh::unit::DNS::setServer(const event::family_t family, string_view server)
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5373,7 +5373,7 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 		if(!server.empty()){
 			// Выполняем парсинг IP-адреса
 			if(this->_addr.parse(server)){
-				// Устанавливаем IP-адрес события
+				// Добавляем DNS-сервер в список
 				this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 				/**
 				 * Определяем тип IP-адреса
@@ -5381,12 +5381,12 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 				switch(static_cast <uint8_t> (this->_addr.type())){
 					// Если адрес является IPv4
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-						// Инициализируем события DNS-резолвера для семейство IPv4
+						// Переинициализируем DNS-резолвер для семейства IPv4
 						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 					break;
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-						// Инициализируем события DNS-резолвера для семейство IPv6
+						// Переинициализируем DNS-резолвер для семейства IPv6
 						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 					break;
 				}
@@ -5400,13 +5400,13 @@ void awh::unit::DNS::addServer(string_view server) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5429,16 +5429,16 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 			switch(server->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Устанавливаем IP-адрес события
+					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
-					// Инициализируем события DNS-резолвера для семейство IPv4
+					// Переинициализируем DNS-резолвер для семейства IPv4
 					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Устанавливаем IP-адрес события
+					// Добавляем DNS-сервер в список
 					this->_resolver.nameServers.push(server);
-					// Инициализируем события DNS-резолвера для семейство IPv6
+					// Переинициализируем DNS-резолвер для семейства IPv6
 					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
@@ -5451,13 +5451,13 @@ void awh::unit::DNS::addServer(const net::addr_t * server) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5483,9 +5483,9 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 				case static_cast <uint8_t> (event::family_t::IPV4): {
 					// Выполняем парсинг IPv4-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV4)){
-						// Устанавливаем IP-адрес события
+						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-						// Инициализируем события DNS-резолвера для семейство IPv4
+						// Переинициализируем DNS-резолвер для семейства IPv4
 						this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 					}
 				} break;
@@ -5493,9 +5493,9 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 				case static_cast <uint8_t> (event::family_t::IPV6): {
 					// Выполняем парсинг IPv6-адреса
 					if(this->_addr.parse(server, net_addr_t::type_t::IPV6)){
-						// Устанавливаем IP-адрес события
+						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
-						// Инициализируем события DNS-резолвера для семейство IPv6
+						// Переинициализируем DNS-резолвер для семейства IPv6
 						this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 					}
 				} break;
@@ -5509,13 +5509,13 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), server), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5523,7 +5523,7 @@ void awh::unit::DNS::addServer(const event::family_t family, string_view server)
 /**
  * @brief Метод установки списка адресов DNS-серверов
  *
- * @param server адреса DNS-серверов для установки
+ * @param servers адреса DNS-серверов для установки
  */
 void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 	/**
@@ -5534,9 +5534,9 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 		if(!servers.empty()){
 			// Результат выполнения парсинга IP-адреса
 			bool result = false;
-			// Флаг сброса списка IP-адресов события для семейства IPv4
+			// Флаг необходимости сброса списка DNS-серверов для семейства IPv4
 			bool resetIPv4 = false;
-			// Флаг сброса списка IP-адресов события для семейства IPv6
+			// Флаг необходимости сброса списка DNS-серверов для семейства IPv6
 			bool resetIPv6 = false;
 			/**
 			 * Проходим по каждому адресу DNS-сервера для установки
@@ -5550,12 +5550,12 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 					switch(static_cast <uint8_t> (this->_addr.type())){
 						// Если адрес является IPv4
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
-							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv4
+							// Отмечаем необходимость сброса списка DNS-серверов для семейства IPv4
 							resetIPv4 = true;
 						break;
 						// Если адрес является IPv6
 						case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
-							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv6
+							// Отмечаем необходимость сброса списка DNS-серверов для семейства IPv6
 							resetIPv6 = true;
 						break;
 					}
@@ -5566,11 +5566,11 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 			if(result){
 				// Если необходимо сбросить список IPv4
 				if(resetIPv4)
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
 				// Если необходимо сбросить список IPv6
 				if(resetIPv6)
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
 				/**
 				 * Проходим по каждому адресу DNS-сервера для установки
@@ -5578,27 +5578,27 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 				for(const auto & server : servers){
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(server))
-						// Устанавливаем IP-адрес события
+						// Добавляем DNS-сервер в список
 						this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 				}
 				// Если необходимо сбросить список IPv4
 				if(resetIPv4)
-					// Инициализируем события DNS-резолвера для семейство IPv4
+					// Переинициализируем DNS-резолвер для семейства IPv4
 					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				// Если необходимо сбросить список IPv6
 				if(resetIPv6)
-					// Инициализируем события DNS-резолвера для семейство IPv6
+					// Переинициализируем DNS-резолвер для семейства IPv6
 					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 			}
 		// Если адреса DNS-серверов не переданы
 		} else {
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Сбрасываем список DNS-серверов для семейства IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
-			// Инициализируем события DNS-резолвера для семейство IPv4
+			// Переинициализируем DNS-резолвер для семейства IPv4
 			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
-			// Инициализируем события DNS-резолвера для семейство IPv6
+			// Переинициализируем DNS-резолвер для семейства IPv6
 			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
@@ -5609,13 +5609,13 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5623,7 +5623,7 @@ void awh::unit::DNS::setServers(const vector <string> & servers) noexcept {
 /**
  * @brief Метод установки списка адресов DNS-серверов
  *
- * @param server адреса DNS-серверов для установки
+ * @param servers адреса DNS-серверов для установки
  */
 void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) noexcept {
 	/**
@@ -5632,9 +5632,9 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 	try {
 		// Если адреса DNS-серверов переданы
 		if(!servers.empty()){
-			// Флаг сброса списка IP-адресов события для семейства IPv4
+			// Флаг необходимости сброса списка DNS-серверов для семейства IPv4
 			bool resetIPv4 = false;
-			// Флаг сброса списка IP-адресов события для семейства IPv6
+			// Флаг необходимости сброса списка DNS-серверов для семейства IPv6
 			bool resetIPv6 = false;
 			/**
 			 * Проходим по каждому адресу DNS-сервера для установки
@@ -5648,12 +5648,12 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 					switch(server->size){
 						// Если адрес является IPv4
 						case 4:
-							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv4
+							// Отмечаем необходимость сброса списка DNS-серверов для семейства IPv4
 							resetIPv4 = true;
 						break;
 						// Если адрес является IPv6
 						case 16:
-							// Устанавливаем флаг сброса списка IP-адресов события для семейства IPv6
+							// Отмечаем необходимость сброса списка DNS-серверов для семейства IPv6
 							resetIPv6 = true;
 						break;
 					}
@@ -5663,11 +5663,11 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 			if(resetIPv4 || resetIPv6){
 				// Если необходимо сбросить список IPv4
 				if(resetIPv4)
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
 				// Если необходимо сбросить список IPv6
 				if(resetIPv6)
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
 				/**
 				 * Проходим по каждому адресу DNS-сервера для установки
@@ -5681,12 +5681,12 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 						switch(server->size){
 							// Если адрес является IPv4
 							case 4:
-								// Устанавливаем IP-адрес события
+								// Добавляем DNS-сервер в список
 								this->_resolver.nameServers.push(server);
 							break;
 							// Если адрес является IPv6
 							case 16:
-								// Устанавливаем IP-адрес события
+								// Добавляем DNS-сервер в список
 								this->_resolver.nameServers.push(server);
 							break;
 						}
@@ -5695,21 +5695,21 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 			}
 			// Если необходимо сбросить список IPv4
 			if(resetIPv4)
-				// Инициализируем события DNS-резолвера для семейство IPv4
+				// Переинициализируем DNS-резолвер для семейства IPv4
 				this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 			// Если необходимо сбросить список IPv6
 			if(resetIPv6)
-				// Инициализируем события DNS-резолвера для семейство IPv6
+				// Переинициализируем DNS-резолвер для семейства IPv6
 				this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		// Если адрес DNS-сервера не передан
 		} else {
-			// Очищаем список IP-адресов события для семейство IPv4
+			// Сбрасываем список DNS-серверов для семейства IPv4
 			this->_resolver.nameServers.reset(event::family_t::IPV4);
-			// Очищаем список IP-адресов события для семейство IPv6
+			// Сбрасываем список DNS-серверов для семейства IPv6
 			this->_resolver.nameServers.reset(event::family_t::IPV6);
-			// Инициализируем события DNS-резолвера для семейство IPv4
+			// Переинициализируем DNS-резолвер для семейства IPv4
 			this->init(event::family_t::IPV4, this->_resolver.idv4.size());
-			// Инициализируем события DNS-резолвера для семейство IPv6
+			// Переинициализируем DNS-резолвер для семейства IPv6
 			this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 		}
 	/**
@@ -5720,13 +5720,13 @@ void awh::unit::DNS::setServers(const vector <const net::addr_t *> & servers) no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5750,7 +5750,7 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(event::family_t::IPV4);
 					/**
 					 * Проходим по каждому адресу DNS-сервера для установки
@@ -5758,17 +5758,17 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 					for(const auto & server : servers){
 						// Выполняем парсинг IPv4-адреса
 						if(this->_addr.parse(server, net_addr_t::type_t::IPV4))
-							// Устанавливаем IP-адрес события
+							// Добавляем DNS-сервер в список
 							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 						// Выходим из цикла
 						else break;
 					}
-					// Инициализируем события DNS-резолвера для семейство IPv4
+					// Переинициализируем DNS-резолвер для семейства IPv4
 					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(event::family_t::IPV6);
 					/**
 					 * Проходим по каждому адресу DNS-сервера для установки
@@ -5776,12 +5776,12 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 					for(const auto & server : servers){
 						// Выполняем парсинг IPv6-адреса
 						if(this->_addr.parse(server, net_addr_t::type_t::IPV6))
-							// Устанавливаем IP-адрес события
+							// Добавляем DNS-сервер в список
 							this->_resolver.nameServers.push(this->_addr.source(net_addr_t::endian_t::LITTLE).get());
 						// Выходим из цикла
 						else break;
 					}
-					// Инициализируем события DNS-резолвера для семейство IPv6
+					// Переинициализируем DNS-резолвер для семейства IPv6
 					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
@@ -5793,16 +5793,16 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 			switch(static_cast <uint8_t> (family)){
 				// Для семейства IPv4
 				case static_cast <uint8_t> (event::family_t::IPV4): {
-					// Очищаем список IP-адресов события для семейство IPv4
+					// Сбрасываем список DNS-серверов для семейства IPv4
 					this->_resolver.nameServers.reset(family);
-					// Инициализируем события DNS-резолвера для семейство IPv4
+					// Переинициализируем DNS-резолвер для семейства IPv4
 					this->init(event::family_t::IPV4, this->_resolver.idv4.size());
 				} break;
 				// Для семейства IPv6
 				case static_cast <uint8_t> (event::family_t::IPV6): {
-					// Очищаем список IP-адресов события для семейство IPv6
+					// Сбрасываем список DNS-серверов для семейства IPv6
 					this->_resolver.nameServers.reset(family);
-					// Инициализируем события DNS-резолвера для семейство IPv6
+					// Переинициализируем DNS-резолвер для семейства IPv6
 					this->init(event::family_t::IPV6, this->_resolver.idv6.size());
 				} break;
 			}
@@ -5815,13 +5815,13 @@ void awh::unit::DNS::setServers(const event::family_t family, const vector <stri
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), servers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5871,13 +5871,13 @@ void awh::unit::DNS::setSource(string_view source) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5928,13 +5928,13 @@ void awh::unit::DNS::setSource(const net::addr_t * source) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5986,13 +5986,13 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -6007,12 +6007,12 @@ awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
 	return ::dns::identifier();
 }
 /**
- * @brief Метод поиска доменного имени по IP-адресу
+ * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
  *
  * @param id    идентификатор DNS-запроса
  * @param ip    адрес для поиска доменного имени
- * @param alive время жизни запроса (в миллисекундах)
- * @return      результат выполнения запроса
+ * @param alive срок ожидания ответа (в миллисекундах)
+ * @return      результат постановки запроса в очередь
  */
 bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t alive) noexcept {
 	// Если список резолверов для семейства IPv6 не пустой
@@ -6023,16 +6023,16 @@ bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t alive)
 	if(!this->_resolver.idv4.empty())
 		// Выполняем обратный DNS-запрос для IPv4
 		return this->search(id, event::family_t::IPV4, ip, alive);
-	// Выводим отрицательный результат
+	// Возвращаем false
 	return false;
 }
 /**
- * @brief Метод поиска доменного имени по IP-адресу
+ * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
  *
  * @param id    идентификатор DNS-запроса
  * @param ip    адрес для поиска доменного имени
- * @param alive время жизни запроса (в миллисекундах)
- * @return      результат выполнения запроса
+ * @param alive срок ожидания ответа (в миллисекундах)
+ * @return      результат постановки запроса в очередь
  */
 bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_t alive) noexcept {
 	/**
@@ -6121,7 +6121,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 			if(cacheHit){
 				// Выполняем функцию обратного вызова для найденной записи в кэше
 				this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, cacheFamily, cacheDomain, ip);
-				// Выводим положительный результат
+				// Возвращаем true
 				return true;
 			}
 			// Если доменное имя получено
@@ -6136,7 +6136,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 				if(this->_resolver.queue.size() == 0){
 					// Если очередь ожидания выполнения запроса переполнена
 					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
-						// Формируем текст выводимой ошибки DNS-резолвера
+						// Формируем текст сообщения об ошибке DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error")){
@@ -6152,19 +6152,19 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 								eid = this->_resolver.idv6.front();
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
-						// Если функция вывода ошибки не установлена
+						// Если callback ошибки не установлен
 						} else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alive), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -6172,7 +6172,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 						if(this->_callback.is("failure"))
 							// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
 							this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::PTR, domain);
-						// Выводим отрицательный результат
+						// Возвращаем false
 						return false;
 					// Если очередь ещё может вместить в себя новый пакет
 					} else {
@@ -6239,27 +6239,27 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
- * @brief Метод поиска доменного имени по IP-адресу
+ * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
  *
  * @param id     идентификатор DNS-запроса
- * @param family тип интернет-протокола IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param ip     адрес для поиска доменного имени
- * @param alive  время жизни запроса (в миллисекундах)
- * @return       результат выполнения запроса
+ * @param alive  срок ожидания ответа (в миллисекундах)
+ * @return       результат постановки запроса в очередь
  */
 bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_view ip, const uint32_t alive) noexcept {
 	/**
@@ -6322,7 +6322,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					if(cacheHit){
 						// Выполняем функцию обратного вызова для найденной записи в кэше
 						this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, cachedDomain, addr.get());
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -6374,7 +6374,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 					if(cacheHit){
 						// Выполняем функцию обратного вызова для найденной записи в кэше
 						this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, cachedDomain, addr.get());
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -6391,7 +6391,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 				if(this->_resolver.queue.size() == 0){
 					// Если очередь ожидания выполнения запроса переполнена
 					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
-						// Формируем текст выводимой ошибки DNS-резолвера
+						// Формируем текст сообщения об ошибке DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", domain.c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error")){
@@ -6407,19 +6407,19 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 								eid = this->_resolver.idv6.front();
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
-						// Если функция вывода ошибки не установлена
+						// Если callback ошибки не установлен
 						} else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, alive), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -6427,7 +6427,7 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 						if(this->_callback.is("failure"))
 							// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
 							this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::PTR, string{ip});
-						// Выводим отрицательный результат
+						// Возвращаем false
 						return false;
 					// Если очередь ещё может вместить в себя новый пакет
 					} else {
@@ -6494,17 +6494,17 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), ip, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -6513,8 +6513,8 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
  * @param id     идентификатор DNS-запроса
  * @param record тип DNS-записи, которую необходимо получить
  * @param domain доменное имя
- * @param alive  время жизни запроса (в миллисекундах)
- * @return       результат выполнения запроса
+ * @param alive  срок ожидания ответа (в миллисекундах)
+ * @return       результат постановки запроса в очередь
  */
 bool awh::unit::DNS::request(const id_t id, const record_t record, string_view domain, const uint32_t alive) noexcept {
 	/**
@@ -6533,7 +6533,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 			if(this->_resolver.queue.size() == 0){
 				// Если очередь ожидания выполнения запроса переполнена
 				if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
-					// Формируем текст выводимой ошибки DNS-резолвера
+					// Формируем текст сообщения об ошибке DNS-резолвера
 					const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("error")){
@@ -6549,19 +6549,19 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 							eid = this->_resolver.idv6.front();
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
-					// Если функция вывода ошибки не установлена
+					// Если callback ошибки не установлен
 					} else {
 						/**
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, alive), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
@@ -6569,7 +6569,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 					if(this->_callback.is("failure"))
 						// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
 						this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record, string{domain});
-					// Выводим отрицательный результат
+					// Возвращаем false
 					return false;
 				// Если очередь ещё может вместить в себя новый пакет
 				} else {
@@ -6635,17 +6635,17 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (record), domain, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -6653,8 +6653,8 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
  *
  * @param id     идентификатор DNS-запроса
  * @param domain доменное имя
- * @param alive  время жизни запроса (в миллисекундах)
- * @return       результат выполнения запроса
+ * @param alive  срок ожидания ответа (в миллисекундах)
+ * @return       результат постановки запроса в очередь
  */
 bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t alive) noexcept {
 	// Если список резолверов для семейства IPv6 не пустой
@@ -6665,17 +6665,17 @@ bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t a
 	if(!this->_resolver.idv4.empty())
 		// Выполняем разрешение доменного имени
 		return this->resolve(id, event::family_t::IPV4, domain, alive);
-	// Выводим отрицательный результат
+	// Возвращаем false
 	return false;
 }
 /**
  * @brief Метод разрешения доменного имени
  *
  * @param id     идентификатор DNS-запроса
- * @param family тип интернет-протокола IPv4/IPv6
+ * @param family семейство IP-адресов IPv4/IPv6
  * @param domain доменное имя
- * @param alive  время жизни запроса (в миллисекундах)
- * @return       результат выполнения запроса
+ * @param alive  срок ожидания ответа (в миллисекундах)
+ * @return       результат постановки запроса в очередь
  */
 bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t alive) noexcept {
 	/**
@@ -6747,7 +6747,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 			if(cacheHit){
 				// Выполняем функцию обратного вызова для найденной записи в кэше
 				this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, cacheFamily, string{domain}, cacheAddress.get());
-				// Выводим положительный результат
+				// Возвращаем true
 				return true;
 			}
 			// Если доменное имя получено
@@ -6770,7 +6770,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 					break;
 					// Если семейство события не определено
 					default: {
-						// Формируем текст выводимой ошибки DNS-резолвера
+						// Формируем текст сообщения об ошибке DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver family is undefined for domain %s", string(domain).c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error")){
@@ -6786,19 +6786,19 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								eid = this->_resolver.idv6.front();
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
-						// Если функция вывода ошибки не установлена
+						// Если callback ошибки не установлен
 						} else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, alive), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -6806,7 +6806,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 						if(this->_callback.is("failure"))
 							// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
 							this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::NONE, string{domain});
-						// Выводим отрицательный результат
+						// Возвращаем false
 						return false;
 					}
 				}
@@ -6818,7 +6818,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 				if(this->_resolver.queue.size() == 0){
 					// Если очередь ожидания выполнения запроса переполнена
 					if(this->_transfer.packets.size() >= this->_transfer.maxPackets){
-						// Формируем текст выводимой ошибки DNS-резолвера
+						// Формируем текст сообщения об ошибке DNS-резолвера
 						const string error = this->_fmk->format("DNS resolver queue is full for domain %s", string(domain).c_str());
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error")){
@@ -6834,19 +6834,19 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								eid = this->_resolver.idv6.front();
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::ACCESS_DENIED, error);
-						// Если функция вывода ошибки не установлена
+						// Если callback ошибки не установлен
 						} else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, alive), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -6868,7 +6868,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								break;
 							}
 						}
-						// Выводим отрицательный результат
+						// Возвращаем false
 						return false;
 					// Если очередь ещё может вместить в себя новый пакет
 					} else {
@@ -6935,17 +6935,17 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (family), domain, alive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**

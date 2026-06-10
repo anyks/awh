@@ -54,7 +54,7 @@ using namespace std;
  * @return версия в виде числа
  */
 uint32_t awh::Version::num() const noexcept {
-	// Выводим версию в виде числа
+	// Возвращаем версию в виде числа
 	return ntohl(this->_version);
 }
 /**
@@ -64,7 +64,7 @@ uint32_t awh::Version::num() const noexcept {
  * @return       версия в виде строки
  */
 string awh::Version::str(const uint8_t octets) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем отлов ошибок
@@ -99,13 +99,13 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(octets), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -114,18 +114,18 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -184,13 +184,13 @@ void awh::Version::set(const string & version) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(version), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -199,13 +199,13 @@ void awh::Version::set(const string & version) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
@@ -227,7 +227,7 @@ void awh::Version::setLogger(const log_t * log) noexcept {
  * @return версия в качестве числа
  */
 awh::Version::operator uint32_t() const noexcept {
-	// Выводим данные версии в виде числа
+	// Возвращаем данные версии в виде числа
 	return this->num();
 }
 /**
@@ -236,7 +236,7 @@ awh::Version::operator uint32_t() const noexcept {
  * @return версия в качестве строки
  */
 awh::Version::operator string() const noexcept {
-	// Выводим данные версии в виде строки
+	// Возвращаем данные версии в виде строки
 	return this->str();
 }
 /**
@@ -246,7 +246,7 @@ awh::Version::operator string() const noexcept {
  * @return        результат сравнения
  */
 bool awh::Version::operator < (const version_t & version) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_version < version._version);
 }
 /**
@@ -256,7 +256,7 @@ bool awh::Version::operator < (const version_t & version) const noexcept {
  * @return        результат сравнения
  */
 bool awh::Version::operator > (const version_t & version) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_version > version._version);
 }
 /**
@@ -266,7 +266,7 @@ bool awh::Version::operator > (const version_t & version) const noexcept {
  * @return        результат сравнения
  */
 bool awh::Version::operator <= (const version_t & version) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_version <= version._version);
 }
 /**
@@ -276,7 +276,7 @@ bool awh::Version::operator <= (const version_t & version) const noexcept {
  * @return        результат сравнения
  */
 bool awh::Version::operator >= (const version_t & version) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_version >= version._version);
 }
 /**
@@ -286,7 +286,7 @@ bool awh::Version::operator >= (const version_t & version) const noexcept {
  * @return        результат сравнения
  */
 bool awh::Version::operator != (const version_t & version) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_version != version._version);
 }
 /**
@@ -296,11 +296,11 @@ bool awh::Version::operator != (const version_t & version) const noexcept {
  * @return        результат сравнения
  */
 bool awh::Version::operator == (const version_t & version) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_version == version._version);
 }
 /**
- * @brief Оператор [=] присвоения версии
+ * @brief Оператор присваивания присвоения версии
  *
  * @param version версия для присвоения
  * @return        текущий объект
@@ -308,11 +308,11 @@ bool awh::Version::operator == (const version_t & version) const noexcept {
 awh::Version & awh::Version::operator = (const char * version) noexcept {
 	// Устанавливаем версию
 	this->set(version);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
- * @brief Оператор [=] присвоения версии
+ * @brief Оператор присваивания присвоения версии
  *
  * @param version версия для присвоения
  * @return        текущий объект
@@ -320,11 +320,11 @@ awh::Version & awh::Version::operator = (const char * version) noexcept {
 awh::Version & awh::Version::operator = (const string & version) noexcept {
 	// Устанавливаем версию
 	this->set(version);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
- * @brief Оператор [=] присвоения версии
+ * @brief Оператор присваивания присвоения версии
  *
  * @param version версия для присвоения
  * @return        текущий объект
@@ -332,11 +332,11 @@ awh::Version & awh::Version::operator = (const string & version) noexcept {
 awh::Version & awh::Version::operator = (const uint32_t version) noexcept {
 	// Устанавливаем версию
 	this->set(version);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
- * @brief Оператор [=] присвоения версии
+ * @brief Оператор присваивания присвоения версии
  *
  * @param version версия для присвоения
  * @return        текущий объект
@@ -344,7 +344,7 @@ awh::Version & awh::Version::operator = (const uint32_t version) noexcept {
 awh::Version & awh::Version::operator = (const Version & version) noexcept {
 	// Устанавливаем версию
 	this->_version = version._version;
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -399,7 +399,7 @@ istream & awh::operator >> (istream & is, version_t & version) noexcept {
 	if(!result.empty())
 		// Устанавливаем версию
 		version = result;
-	// Выводим результат
+	// Возвращаем результат
 	return is;
 }
 /**
@@ -411,6 +411,6 @@ istream & awh::operator >> (istream & is, version_t & version) noexcept {
 ostream & awh::operator << (ostream & os, const version_t & version) noexcept {
 	// Записываем в поток версию
 	os << version.str();
-	// Выводим результат
+	// Возвращаем результат
 	return os;
 }

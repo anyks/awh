@@ -573,42 +573,42 @@ namespace awh {
 			bool operator == (const Network_Address & addr) const noexcept;
 		public:
 			/**
-			 * @brief Оператор [=] присвоения IP-адреса
+			 * @brief Оператор присваивания присвоения IP-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Network_Address & operator = (const Network_Address & addr) noexcept;
 			/**
-			 * @brief Оператор [=] присвоения IP-адреса
+			 * @brief Оператор присваивания присвоения IP-адреса
 			 *
 			 * @param ip адрес для присвоения
 			 * @return   текущий объект
 			 */
 			Network_Address & operator = (string_view ip) noexcept;
 			/**
-			 * @brief Оператор [=] установки типа IP-адреса
+			 * @brief Оператор присваивания установки типа IP-адреса
 			 *
 			 * @param type тип IP-адреса для установки
 			 * @return     текущий объект
 			 */
 			Network_Address & operator = (const type_t type) noexcept;
 			/**
-			 * @brief Оператор [=] присвоения IP-адреса
+			 * @brief Оператор присваивания присвоения IP-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Network_Address & operator = (const uint32_t addr) noexcept;
 			/**
-			 * @brief Оператор [=] присвоения MAC-адреса
+			 * @brief Оператор присваивания присвоения MAC-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
 			Network_Address & operator = (const std::array <uint8_t, 6> & addr) noexcept;
 			/**
-			 * @brief Оператор [=] присвоения IP-адреса
+			 * @brief Оператор присваивания присвоения IP-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект

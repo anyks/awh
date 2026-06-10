@@ -78,7 +78,7 @@ namespace awh {
 			bool access(const std::unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
 				// Определяем есть ли фиксированные статусы
 				this->_flag.store(this->_status.empty(), std::memory_order_release);
-				// Если результат не получен
+				// Если идентификатор обнулился после переполнения счётчика
 				if(!this->_flag.load(std::memory_order_acquire) && !comp.empty())
 					// Получаем результат сравнения
 					this->_flag.store((equal ? (comp.count(this->_status.top()) > 0) : (comp.count(this->_status.top()) < 1)), std::memory_order_release);
@@ -89,7 +89,7 @@ namespace awh {
 					// Выполняем установку холда
 					this->_status.push(hold);
 				}
-				// Выводим результат
+				// Возвращаем результат
 				return this->_flag.load(std::memory_order_acquire);
 			}
 		public:

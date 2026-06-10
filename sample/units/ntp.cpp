@@ -51,14 +51,14 @@ int32_t main(int32_t argc, char * argv[]){
 	if(ntp.init(event::family_t::IPV4)){
 		// Устанавливаем функцию обратного вызова на событие получения времени от NTP-сервера
 		ntp.on <void (const uint64_t)> ("timestamp", [&chrono, &log](const uint64_t timestamp) noexcept -> void {
-			// Выводим информацию о полученном времени
+			// Записываем в лог информацию о полученном времени
 			log.print("Получено дата от NTP-сервера: %s", log_t::flag_t::INFO, chrono.format(timestamp, "%H:%M:%S %d.%m.%Y").c_str());
 		}, placeholders::_1);
 		// Устанавливаем функцию обратного вызова на событие количества попыток запроса времени к NTP-серверу
 		ntp.on <void (const uint8_t)> ("attempts", [&ntp, &log](const uint8_t attempts) noexcept -> void {
 			// Переинициализируем клиента
 			ntp.init(event::family_t::IPV4);
-			// Выводим количество попыток запроса времени к NTP-серверу
+			// Возвращаем количество попыток запроса времени к NTP-серверу
 			log.print("Количество попыток запроса времени к NTP-серверу attempts=%d", log_t::flag_t::WARNING, attempts);
 		}, placeholders::_1);
 		// Устанавливаем функцию обратного вызова на событие NTP-клиента
@@ -69,29 +69,29 @@ int32_t main(int32_t argc, char * argv[]){
 			switch(static_cast <uint8_t> (status)){
 				// Если событие NTP-клиента запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-					// Выводим сообщение о запуске события NTP-клиента
+					// Записываем в лог сообщение о запуске события NTP-клиента
 					log.print("Событие NTP-клиента было запущено", log_t::flag_t::INFO);
 					// Выполняем синхронизацию времени с NTP-сервером
 					if(!ntp.sync(unit::ntp_t::version_t::V4))
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log.print("Не удалось выполнить синхронизацию времени с NTP-сервером", log_t::flag_t::CRITICAL);
 				} break;
 				// Если событие NTP-клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события NTP-клиента
+					// Записываем в лог сообщение об остановке события NTP-клиента
 					log.print("Событие NTP-клиента было остановлено", log_t::flag_t::INFO);
 				break;
 			}
 		}, placeholders::_1);
 		// Устанавливаем функцию обратного вызова на событие получения ошибок NTP-клиента
 		ntp.on <void (const event::id_t, const event::error_t, const string &)> ("error", [&log](const event::id_t, const event::error_t error, const string & description) noexcept -> void {
-			// Выводим информацию об ошибке
+			// Записываем в лог информацию об ошибке
 			log.print("NTP error: %s (code: %d)", log_t::flag_t::CRITICAL, description.c_str(), static_cast <uint16_t> (error));
 		}, placeholders::_1, placeholders::_2, placeholders::_3);
 		// Запускаем NTP-клиент
 		ntp.start();
-	// Выводим сообщение об ошибке
+	// Записываем ошибку в лог
 	} else log.print("Не удалось запустить событие NTP-клиента", log_t::flag_t::CRITICAL);
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

@@ -108,13 +108,13 @@ void awh::Watch::trigger() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			* Если режим отладки не включён
 			*/
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -169,7 +169,7 @@ void awh::Watch::receiving() noexcept {
  * @return результат работы функции
  */
 bool awh::Watch::stop() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если работа модуля уже запущена
 	if((result = this->_working)){
@@ -178,7 +178,7 @@ bool awh::Watch::stop() noexcept {
 		// Отправляем сообщение, что данные записаны
 		this->_cv.notify_all();
 	}
-	// Выводим полученный результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -187,7 +187,7 @@ bool awh::Watch::stop() noexcept {
  * @return результат работы функции
  */
 bool awh::Watch::start() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -210,17 +210,17 @@ bool awh::Watch::start() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим полученный результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -274,13 +274,13 @@ void awh::Watch::away(const uint32_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -312,13 +312,13 @@ void awh::Watch::wait(const uint32_t id, const uint32_t delay) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, delay), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}

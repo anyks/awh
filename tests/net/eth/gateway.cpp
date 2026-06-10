@@ -35,19 +35,19 @@ TEST_F(EthFixture, GatewayGetTest){
 	route.destination = std::make_unique <awh::net::addr_net_ipv4_t> ();
 	// Если получаем маршрут для указанного адреса
 	ASSERT_TRUE(this->_eth->gateway.get(route));
-	// Выводим информацию о найденном маршруте
+	// Записываем в лог информацию о найденном маршруте
 	std::cout << "Gateway found:" << std::endl;
-	// Выводим информацию о маршруте
+	// Записываем в лог информацию о маршруте
 	std::cout << " Interface: " << route.ifname << std::endl;
 	// Устанавливаем полученный IP-адрес
 	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
 	// Получаем IP-адрес текущего шлюза по умолчанию
 	const std::string gateway = static_cast <std::string> (* this->_addr.get());
-	// Выводим адрес шлюза по умолчанию
+	// Возвращаем адрес шлюза по умолчанию
 	std::cout << "Default Gateway: " << gateway << std::endl;
 	// Устанавливаем полученный IP-адрес
 	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.destination.get())->address, awh::net_addr_t::endian_t::LITTLE);
-	// Выводим адрес назначения
+	// Возвращаем адрес назначения
 	std::cout << "Destination: " << static_cast <std::string> (* this->_addr.get()) << "/" << static_cast <uint32_t> (route.prefix) << std::endl;
 	// Если пользователь является привилигированным
 	if(::getuid() == 0)
@@ -75,11 +75,11 @@ TEST_F(EthFixture, GatewayGetTest){
 	if(::getuid() == 0)
 		// Если получаем маршрут для указанного адреса
 		ASSERT_TRUE(this->_eth->gateway.get(route));
-	// Выводим информацию о маршруте
+	// Записываем в лог информацию о маршруте
 	std::cout << " Interface: " << route.ifname << std::endl;
 	// Устанавливаем полученный IP-адрес
 	this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (route.gateway.get())->address, awh::net_addr_t::endian_t::LITTLE);
-	// Выводим адрес шлюза по умолчанию
+	// Возвращаем адрес шлюза по умолчанию
 	std::cout << "Default Gateway: " << static_cast <std::string> (* this->_addr.get()) << std::endl;
 	// Если пользователь является привилигированным
 	if(::getuid() == 0)

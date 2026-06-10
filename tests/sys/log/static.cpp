@@ -115,7 +115,7 @@ TEST_F(LogFixture, OtherLogTest){
 	this->_log->sepSize(1024);
 	// Устанавливаем уровень логирования
 	this->_log->level(awh::log_t::level_t::ALL);
-	// Устанавливаем адрес файла для сохранения логов
+	// Устанавливаем путь к файлу для сохранения логов
 	this->_log->filename("/tmp/test.log");
 	// Устанавливаем разделитель сообщений логирования
 	this->_log->separator(awh::log_t::separator_t::ALWAYS);

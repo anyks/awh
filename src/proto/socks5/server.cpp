@@ -196,7 +196,7 @@ namespace {
 		const size_t size = sizeof(data);
 		// Устанавливаем первый октет
 		::memcpy(::__awh_buffer__ + ::__awh_size__, &data, size);
-		// Выводим размер смещения
+		// Возвращаем размер смещения
 		::__awh_size__ += size;
 	}
 	/**
@@ -207,7 +207,7 @@ namespace {
 	void addPayload(const string & data) noexcept {
 		// Устанавливаем первый октет
 		::memcpy(::__awh_buffer__ + ::__awh_size__, data.c_str(), data.length());
-		// Выводим размер смещения
+		// Возвращаем размер смещения
 		::__awh_size__ += data.length();
 	}
 };
@@ -221,7 +221,7 @@ namespace {
  * @return       результат парсинга входящих данных
  */
 bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ctx_t & ctx) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем отлов ошибок
@@ -500,17 +500,17 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -522,7 +522,7 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
  * @return       результат парсинга входящих данных
  */
 bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, udp_head_t & udp) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем отлов ошибок
@@ -633,17 +633,17 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -655,7 +655,7 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ud
  * @return 	     результат извлечения данных в буфер
  */
 bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t & ctx) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем отлов ошибок
@@ -786,17 +786,17 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -808,7 +808,7 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, ctx_t &
  * @return 	     результат извлечения данных в буфер
  */
 bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, const udp_head_t & udp) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем отлов ошибок
@@ -874,17 +874,17 @@ bool awh::proto::Server_Socks5::buffer(uint8_t ** buffer, size_t & size, const u
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

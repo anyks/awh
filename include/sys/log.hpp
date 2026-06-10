@@ -122,14 +122,14 @@ namespace awh {
 					string text;
 				public:
 					/**
-					 * @brief Оператор [=] перемещения параметров полезной нагрузки
+					 * @brief Оператор перемещающего присваивания параметров полезной нагрузки
 					 *
 					 * @param payload объект полезной нагрузки для перемещения
 					 * @return        текущий объект полезной нагрузки
 					 */
 					Payload & operator = (Payload && payload) noexcept;
 					/**
-					 * @brief Оператор [=] присваивания параметров полезной нагрузки
+					 * @brief Оператор присваивания присваивания параметров полезной нагрузки
 					 *
 					 * @param payload объект полезной нагрузки для копирования
 					 * @return        текущий объект полезной нагрузки
@@ -233,7 +233,7 @@ namespace awh {
 			 * @return     количество найденных аргументов
 			 */
 			size_t count(TupType) const noexcept {
-				// Выводим количество переданных аргументов
+				// Возвращаем количество переданных аргументов
 				return tuple_size_v <TupType>;
 			}
 		private:
@@ -259,7 +259,7 @@ namespace awh {
 				(..., (ss << (I == 0 ? "" : ", ") << get <I> (args)));
 				// Выполняем добавление закрывающую скобку
 				ss << ")";
-				// Выводим полученный результат
+				// Возвращаем результат
 				return ss.str();
 			}
 			/**
@@ -348,9 +348,9 @@ namespace awh {
 						}
 						// Добавляем формат сообщения
 						debug.append(format);
-						// Выводим полученный нами лог
+						// Пишем полученный лог
 						this->print(debug, flag, args...);
-					// Выводим лог в том виде как он пришёл
+					// Пишем лог без изменений
 					} else this->print(format, flag, args...);
 				}
 			}
@@ -394,9 +394,9 @@ namespace awh {
 						}
 						// Добавляем формат сообщения
 						debug.append(this->_fmk->convert(format));
-						// Выводим полученный нами лог
+						// Пишем полученный лог
 						this->print(debug, flag, args...);
-					// Выводим лог в том виде как он пришёл
+					// Пишем лог без изменений
 					} else this->print(format, flag, args...);
 				}
 			}
@@ -440,9 +440,9 @@ namespace awh {
 						}
 						// Добавляем формат сообщения
 						debug.append(format);
-						// Выводим полученный нами лог
+						// Пишем полученный лог
 						this->print(debug, flag, args);
-					// Выводим лог в том виде как он пришёл
+					// Пишем лог без изменений
 					} else this->print(format, flag, args);
 				}
 			}
@@ -485,9 +485,9 @@ namespace awh {
 						}
 						// Добавляем формат сообщения
 						debug.append(this->_fmk->convert(format));
-						// Выводим полученный нами лог
+						// Пишем полученный лог
 						this->print(debug, flag, args);
-					// Выводим лог в том виде как он пришёл
+					// Пишем лог без изменений
 					} else this->print(format, flag, args);
 				}
 			}
@@ -595,7 +595,7 @@ namespace awh {
 			/**
 			 * @brief Метод установки файла для сохранения логов
 			 *
-			 * @param filename адрес файла для сохранения логов
+			 * @param filename путь к файлу для сохранения логов
 			 */
 			void filename(string_view filename) noexcept;
 		public:
@@ -610,7 +610,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 * @param fmk      объект фреймворка
-			 * @param filename адрес файла для сохранения логов
+			 * @param filename путь к файлу для сохранения логов
 			 */
 			explicit Logging(const fmk_t * fmk, string_view filename = "") noexcept;
 			/**

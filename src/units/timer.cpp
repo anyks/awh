@@ -121,13 +121,13 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->print("Timer event could not be launched", log_t::flag_t::WARNING);
 			#endif
 		// Добавляем идентификатор таймера в список активных таймеров
@@ -142,17 +142,17 @@ awh::event::id_t awh::unit::Timer::timeout(const uint32_t delay) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке создания события
+			// Записываем ошибку в лог создания события
 			this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке создания события
+			// Записываем ошибку в лог создания события
 			this->_log->print("Timer event could not be created", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -180,13 +180,13 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->debug("Timer event could not be launched", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке запуска события
+				// Записываем ошибку в лог запуска события
 				this->_log->print("Timer event could not be launched", log_t::flag_t::WARNING);
 			#endif
 		// Добавляем идентификатор таймера в список активных таймеров
@@ -201,17 +201,17 @@ awh::event::id_t awh::unit::Timer::interval(const uint32_t delay) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке создания события
+			// Записываем ошибку в лог создания события
 			this->_log->debug("Timer event could not be created", __PRETTY_FUNCTION__, make_tuple(delay), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке создания события
+			// Записываем ошибку в лог создания события
 			this->_log->print("Timer event could not be created", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

@@ -58,7 +58,7 @@ int32_t main(int32_t argc, char * argv[]){
 	timer.on <void (const event::id_t)> (eid1, [&ts, &log](const event::id_t eid) noexcept -> void {
 		// Замеряем время начала работы для интервала времени
 		auto shift = chrono::system_clock::now();
-		// Выводим сообщение о срабатывании таймера
+		// Записываем в лог сообщение о срабатывании таймера
 		log.print("Таймер сработал: ID=%u, %u seconds", log_t::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
 	}, placeholders::_1);
 	// Количество срабатываний интервала
@@ -67,7 +67,7 @@ int32_t main(int32_t argc, char * argv[]){
 	timer.on <void (const event::id_t)> (eid2, [&count, &is, &timer, &log](const event::id_t eid) noexcept -> void {
 		// Замеряем время начала работы для интервала времени
 		auto shift = chrono::system_clock::now();
-		// Выводим сообщение о срабатывании интервала
+		// Записываем в лог сообщение о срабатывании интервала
 		log.print("Интервал сработал: ID=%u, %u seconds", log_t::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
 		// Замеряем время начала работы для интервала времени
 		is = ::move(shift);
@@ -78,6 +78,6 @@ int32_t main(int32_t argc, char * argv[]){
 	}, placeholders::_1);
 	// Запускаем таймер
 	timer.start();
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

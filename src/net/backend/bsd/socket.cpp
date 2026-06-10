@@ -73,7 +73,7 @@ using namespace std;
  * @return     код ошибки на сокете если присутствует
  */
 int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	int32_t result = -1;
 	// Размер кода ошибки
 	socklen_t size = sizeof(result);
@@ -83,7 +83,7 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(sock),
@@ -94,11 +94,11 @@ int32_t awh::eth::Socket::getError(const net::socket_t sock) const noexcept {
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -125,7 +125,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -138,7 +138,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
@@ -151,7 +151,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -164,13 +164,13 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
 	}
-	// Выводим итоговый результат в миллисекундах
+	// Возвращаем итоговый результат в миллисекундах
 	return (
 		(static_cast <uint32_t> (timeout.tv_sec) * 1000U) +
 		(static_cast <uint32_t> (timeout.tv_usec) / 1000U)
@@ -185,7 +185,7 @@ uint32_t awh::eth::Socket::getTimeout(const net::socket_t sock, const net::socke
  * @return      результат установки таймаута
  */
 bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_event_t event, const uint32_t msec) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Создаём объект таймаута
 	struct timeval timeout{0};
@@ -205,7 +205,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -219,7 +219,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
@@ -232,7 +232,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -246,7 +246,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
@@ -263,7 +263,7 @@ bool awh::eth::Socket::setTimeout(const net::socket_t sock, const net::socket_ev
  * @return      размер буфера сокета
  */
 int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::socket_event_t event) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	int32_t result = 0;
 	/**
 	 * Определяем флаг блокировки
@@ -279,7 +279,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -292,7 +292,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
@@ -307,7 +307,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -320,13 +320,13 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -338,7 +338,7 @@ int32_t awh::eth::Socket::getBufferSize(const net::socket_t sock, const net::soc
  * @return      установленный размер буфера сокета
  */
 int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::socket_event_t event, const int32_t size) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	int32_t result = -1;
 	/**
 	 * Определяем флаг блокировки
@@ -352,7 +352,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -366,10 +366,10 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 			// Получаем размер установленного размера буфера
@@ -380,7 +380,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -394,7 +394,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
@@ -407,7 +407,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -421,10 +421,10 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 			// Получаем размер установленного размера буфера
@@ -435,7 +435,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"%s", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -449,13 +449,13 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		} break;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -467,7 +467,7 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
  * @return       результат работы функции
  */
 bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::family_t family, string_view ifname) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если название сетевого интерфейса не пустое
 	if(!ifname.empty()){
@@ -485,7 +485,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"Unable to get list of network interfaces",
 							__PRETTY_FUNCTION__,
@@ -499,10 +499,10 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
 					#endif
-					// Выводим пустой результат
+					// Возвращаем пустой результат
 					return result;
 				}
 				// Перебираем все сетевые интерфейсы
@@ -529,7 +529,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -543,7 +543,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -564,7 +564,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -578,7 +578,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -590,7 +590,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"Interface name is empty",
 				__PRETTY_FUNCTION__,
@@ -604,11 +604,11 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Interface name is empty", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -621,7 +621,7 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
  * @return      результат работы функции
  */
 bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если максимальное количество попыток передано неправильно
 	if(cnt < 0)
@@ -643,7 +643,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -656,7 +656,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
@@ -668,7 +668,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -681,7 +681,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 		// Выходим из функции
@@ -697,7 +697,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
 					make_tuple(
@@ -710,7 +710,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Выходим из функции
@@ -726,7 +726,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug(
 					"%s", __PRETTY_FUNCTION__,
 					make_tuple(
@@ -739,7 +739,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			#endif
 			// Выходим из функции
@@ -752,7 +752,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -765,11 +765,11 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -780,7 +780,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt,
  * @return       значение DSCP
  */
 awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	event::dscp_t result = event::dscp_t::CS0;
 	// Если сокет корректен
 	if(sock != net::invalid_socket_t){
@@ -800,7 +800,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -813,7 +813,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -826,7 +826,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -839,7 +839,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -848,7 +848,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
 		// Маскируем значение поля Traffic Class (TC) для получения только DSCP
 		result = static_cast <event::dscp_t> (tclass & 0xFC);
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -860,7 +860,7 @@ awh::event::dscp_t awh::eth::Socket::getDifferentiatedServicesCodePoint(const ne
  * @return       результат работы функции
  */
 bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
 	if(sock != net::invalid_socket_t){
@@ -878,7 +878,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -892,7 +892,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -905,7 +905,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -919,14 +919,14 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			} break;
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -938,7 +938,7 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
  * @return       результат работы функции
  */
 bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
 	if(sock != net::invalid_socket_t){
@@ -973,7 +973,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -987,7 +987,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -999,7 +999,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1013,7 +1013,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -1025,7 +1025,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1039,7 +1039,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -1057,7 +1057,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1071,7 +1071,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -1085,7 +1085,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1099,7 +1099,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -1109,7 +1109,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1123,7 +1123,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -1133,7 +1133,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1147,7 +1147,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -1157,7 +1157,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 			} break;
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1170,7 +1170,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
  * @return       результат работы функции
  */
 bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::family_t family, const net::socket_mode_t mode, const uint16_t option) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если сокет корректен
 	if(sock != net::invalid_socket_t){
@@ -1209,7 +1209,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -1224,7 +1224,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -1261,7 +1261,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1276,7 +1276,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -1322,7 +1322,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug(
 											"%s", __PRETTY_FUNCTION__,
 											make_tuple(
@@ -1337,7 +1337,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -1350,7 +1350,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug(
 											"%s", __PRETTY_FUNCTION__,
 											make_tuple(
@@ -1365,7 +1365,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -1377,7 +1377,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1392,7 +1392,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -1406,7 +1406,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1421,7 +1421,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -1452,7 +1452,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1467,7 +1467,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -1492,7 +1492,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -1507,7 +1507,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -1522,7 +1522,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -1537,7 +1537,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -1569,7 +1569,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1584,7 +1584,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -1614,7 +1614,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1629,7 +1629,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -1646,7 +1646,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1661,7 +1661,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Выходим из функции
@@ -1681,7 +1681,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -1696,7 +1696,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -1712,7 +1712,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -1727,7 +1727,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -1760,7 +1760,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1775,7 +1775,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -1815,7 +1815,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -1830,7 +1830,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -1845,7 +1845,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -1860,7 +1860,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -1875,7 +1875,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1890,7 +1890,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -1906,7 +1906,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1921,7 +1921,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 					// Выходим из функции
@@ -1941,7 +1941,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -1956,7 +1956,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -1972,7 +1972,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -1987,7 +1987,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -2026,7 +2026,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -2041,7 +2041,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -2054,7 +2054,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -2069,7 +2069,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -2078,7 +2078,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			} break;
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2089,7 +2089,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
  * @return       режим обнаружения максимального размера пакета (MTU)
  */
 awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	event::mtu_discover_t result = event::mtu_discover_t::NONE;
 	// Буфер для получения значения опции
 	int32_t value = 0;
@@ -2124,7 +2124,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
 			#endif
 		} break;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2136,7 +2136,7 @@ awh::event::mtu_discover_t awh::eth::Socket::getMaximumTransmissionUnitDiscover(
  * @return       результат работы функции
  */
 bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t sock, const event::family_t family, const event::mtu_discover_t mode) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Значение опции
 	int32_t value = 0;
@@ -2197,7 +2197,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -2211,7 +2211,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -2229,7 +2229,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -2243,14 +2243,14 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
 			#endif
 		} break;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2262,7 +2262,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
  * @return         максимальное количество хопов
  */
 uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint8_t result = 0;
 	/**
 	 * Определяем семейство события
@@ -2288,7 +2288,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2302,7 +2302,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
@@ -2319,7 +2319,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2333,7 +2333,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
@@ -2360,7 +2360,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2374,7 +2374,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
@@ -2393,7 +2393,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2407,7 +2407,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
@@ -2417,7 +2417,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
 			}
 		} break;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2430,7 +2430,7 @@ uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_
  * @return         результат работы функции
  */
 bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Определяем семейство события
@@ -2454,7 +2454,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2467,7 +2467,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -2480,7 +2480,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2493,7 +2493,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -2518,7 +2518,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2531,7 +2531,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -2546,7 +2546,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -2559,7 +2559,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -2567,7 +2567,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 			}
 		} break;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2580,7 +2580,7 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
  * @return       результат работы функции
  */
 bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -2612,7 +2612,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -2625,7 +2625,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -2667,7 +2667,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -2680,7 +2680,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -2707,7 +2707,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -2720,7 +2720,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -2762,7 +2762,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -2775,7 +2775,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -2789,7 +2789,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug(
 					"It is impossible to work with a multicast group because the IP address types are different",
 					__PRETTY_FUNCTION__,
@@ -2802,7 +2802,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("It is impossible to work with a multicast group because the IP address types are different", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -2814,7 +2814,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -2827,11 +2827,11 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2859,11 +2859,11 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 				switch(static_cast <uint8_t> (type)){
 					// Если сокет принадлежит к типу STREAM
 					case static_cast <uint8_t> (event::type_t::STREAM):
-						// Выводим созданный сокет
+						// Печатаем дескриптор созданного сокета
 						return ::socket(AF_UNIX, SOCK_STREAM, 0);
 					// Если сокет принадлежит к типу DATAGRAM
 					case static_cast <uint8_t> (event::type_t::DATAGRAM):
-						// Выводим созданный сокет
+						// Печатаем дескриптор созданного сокета
 						return ::socket(AF_UNIX, SOCK_DGRAM, 0);
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
@@ -2871,13 +2871,13 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 * Для операционной системы MacOS X, NetBSD, OpenBSD
 						 */
 						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-							// Выводим созданный сокет
+							// Печатаем дескриптор созданного сокета
 							return ::socket(AF_UNIX, SOCK_DGRAM, 0);
 						/**
 						 * Для операционной системы FreeBSD
 						 */
 						#elif __FreeBSD__
-							// Выводим созданный сокет
+							// Печатаем дескриптор созданного сокета
 							return ::socket(AF_UNIX, SOCK_SEQPACKET, 0);
 						#endif
 					} break;
@@ -2887,7 +2887,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"A socket for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
@@ -2901,7 +2901,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("A socket for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -2931,27 +2931,27 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								switch(static_cast <uint8_t> (proto)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW, 0);
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::RAW):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW, IPPROTO_RAW);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW, IPPROTO_TCP);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW, IPPROTO_UDP);
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW, IPPROTO_IGMP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_RAW, IPPROTO_ICMP);
 									// Если установлен другой протокол
 									default: ok = false;
@@ -2965,19 +2965,19 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								switch(static_cast <uint8_t> (proto)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_RAW, 0);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_RAW, IPPROTO_TCP);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_RAW, IPPROTO_UDP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_RAW, IPPROTO_ICMPV6);
 									// Если установлен другой протокол
 									default: ok = false;
@@ -2990,7 +2990,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
@@ -3004,7 +3004,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("RAW socket type only supports UDP or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -3023,15 +3023,15 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								switch(static_cast <uint8_t> (proto)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_STREAM, 0);
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_STREAM, IPPROTO_SCTP);
 									// Если установлен другой протокол
 									default: ok = false;
@@ -3045,15 +3045,15 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								switch(static_cast <uint8_t> (proto)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_STREAM, 0);
 									// Если протокол определён как TCP
 									case static_cast <uint8_t> (event::protocol_t::TCP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_STREAM, IPPROTO_TCP);
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_STREAM, IPPROTO_SCTP);
 									// Если установлен другой протокол
 									default: ok = false;
@@ -3066,7 +3066,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
@@ -3080,7 +3080,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("STREAM socket type only supports TCP or SCTP protocols or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -3099,19 +3099,19 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								switch(static_cast <uint8_t> (proto)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_DGRAM, 0);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_DGRAM, IPPROTO_UDP);
 									// Если протокол определён как IGMP
 									case static_cast <uint8_t> (event::protocol_t::IGMP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IGMP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET, SOCK_DGRAM, IPPROTO_ICMP);
 									// Если установлен другой протокол
 									default: ok = false;
@@ -3125,15 +3125,15 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								switch(static_cast <uint8_t> (proto)){
 									// Если протокол не определён
 									case static_cast <uint8_t> (event::protocol_t::NONE):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_DGRAM, 0);
 									// Если протокол определён как UDP
 									case static_cast <uint8_t> (event::protocol_t::UDP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_UDP);
 									// Если протокол определён как ICMP
 									case static_cast <uint8_t> (event::protocol_t::ICMP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_ICMPV6);
 									// Если установлен другой протокол
 									default: ok = false;
@@ -3146,7 +3146,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
@@ -3160,7 +3160,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("DGRAM socket type only supports UDP, DTLS or ICMP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -3183,13 +3183,13 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 										 * Для операционной системы MacOS X, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
-											// Выводим созданный сокет
+											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET, SOCK_DGRAM, 0);
 										/**
 										 *Для операционной системы FreeBSD
 										 */
 										#elif __FreeBSD__
-											// Выводим созданный сокет
+											// Печатаем дескриптор созданного сокета
 											return ::socket(AF_INET, SOCK_SEQPACKET, IPPROTO_SCTP);
 										#endif
 									} break;
@@ -3205,7 +3205,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 								switch(static_cast <uint8_t> (proto)){
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP):
-										// Выводим созданный сокет
+										// Печатаем дескриптор созданного сокета
 										return ::socket(AF_INET6, SOCK_SEQPACKET, IPPROTO_SCTP);
 									// Если установлен другой протокол
 									default: ok = false;
@@ -3218,7 +3218,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol",
 									__PRETTY_FUNCTION__,
@@ -3232,7 +3232,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("SEQPACKET socket type only supports SCTP protocol or Unix family socket with empty protocol", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -3243,7 +3243,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"A socket for an IP event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
@@ -3257,7 +3257,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("A socket for an IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -3269,7 +3269,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"A socket cannot be created, because family it belongs to is not defined",
 						__PRETTY_FUNCTION__,
@@ -3283,7 +3283,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("A socket cannot be created, because family it belongs to is not defined", log_t::flag_t::WARNING);
 				#endif
 			}
@@ -3296,7 +3296,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -3309,11 +3309,11 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return net::invalid_socket_t;
 }
 /**
@@ -3325,7 +3325,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
  * @return       созданный сокет
  */
 array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family, const event::type_t type, const event::protocol_t proto) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	array <net::socket_t, 2> result = {
 		net::invalid_socket_t,
 		net::invalid_socket_t
@@ -3346,7 +3346,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -3360,7 +3360,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -3379,7 +3379,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -3393,7 +3393,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
@@ -3406,7 +3406,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"%s", __PRETTY_FUNCTION__,
 									make_tuple(
@@ -3420,7 +3420,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
@@ -3437,7 +3437,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -3451,7 +3451,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 							}
@@ -3465,7 +3465,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"%s", __PRETTY_FUNCTION__,
 										make_tuple(
@@ -3479,7 +3479,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								#endif
 							}
@@ -3491,7 +3491,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"An event for a Unix event cannot be created because it has an invalid initialization type",
 								__PRETTY_FUNCTION__,
@@ -3505,7 +3505,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -3529,7 +3529,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -3542,11 +3542,11 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

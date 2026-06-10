@@ -120,17 +120,17 @@ namespace {
 	 * @return уникальный идентификатор
 	 */
 	static unit::icmp_t::id_t identifier() noexcept {
-		// Результат работы функции
+		// Переменная результата
 		unit::icmp_t::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint16_t id{1};
-		// Выводим новое значение идентификатора
+		// Получаем следующий идентификатор
 		result = id.fetch_add(1, memory_order_relaxed);
-		// Если результат не получен
+		// Если идентификатор обнулился после переполнения счётчика
 		if(result == 0)
-			// Генерируем результат заново
+			// Получаем следующий идентификатор рекурсивно
 			return identifier();
-		// Выводим полученный результат
+		// Возвращаем результат
 		return result;
 	}
 
@@ -142,7 +142,7 @@ namespace {
 	 * @return       подсчитанная контрольная сумма
 	 */
 	static uint16_t checksum(const void * buffer, const size_t size) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		uint16_t result = 0;
 		// Если данные переданы верные
 		if((buffer != nullptr) && (size > 0)){
@@ -172,7 +172,7 @@ namespace {
 			// Выполняем получение результата контрольной суммы
 			result = static_cast <uint16_t> (~sum);
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
@@ -246,7 +246,7 @@ namespace dns {
 		mt19937 generator(::__awh_randev__());
 		// Перемешиваем список полученных IP-адресов
 		::shuffle(ips.begin(), ips.end(), generator);
-		// Выводим полученные IP-адреса
+		// Возвращаем полученные IP-адреса
 		return ips;
 	}
 };
@@ -285,7 +285,7 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"ICMP-client timeout (delay: %u)",
 				__PRETTY_FUNCTION__,
@@ -296,7 +296,7 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("ICMP-client timeout (delay: %u)", log_t::flag_t::WARNING, delay);
 		#endif
 	}
@@ -310,13 +310,13 @@ bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const even
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("ICMP-client waiting time expired", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (action), delay), log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("ICMP-client waiting time expired", log_t::flag_t::CRITICAL);
 		#endif
 	}
@@ -597,13 +597,13 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (mode), data, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -615,7 +615,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
  * @return       результат инициализации события ICMP-клиента
  */
 bool awh::unit::ICMP::init(const event::family_t family) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -656,13 +656,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -703,13 +703,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Failed to launch ICMP-client", log_t::flag_t::CRITICAL);
 						#endif
 					}
@@ -727,13 +727,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ICMP-client target address is not set", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ICMP-client target address is not set", log_t::flag_t::CRITICAL);
 				#endif
 			}
@@ -746,13 +746,13 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -826,7 +826,7 @@ awh::event::status_t awh::unit::ICMP::status() const noexcept {
  * @return       результат выполнения установки
  */
 bool awh::unit::ICMP::setTarget(string_view target) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -844,7 +844,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV4))){
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим полученный результат
+						// Возвращаем результат
 						return result;
 					}
 				} break;
@@ -854,7 +854,7 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV6))){
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим полученный результат
+						// Возвращаем результат
 						return result;
 					}
 				} break;
@@ -872,14 +872,14 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 							case 4: {
 								// Устанавливаем адрес сервера назначения
 								this->_client.target = ::move(ip);
-								// Выводим полученный результат
+								// Возвращаем результат
 								return true;
 							}
 							// Для семейства IPv6
 							case 16: {
 								// Устанавливаем адрес сервера назначения
 								this->_client.target = ::move(ip);
-								// Выводим полученный результат
+								// Возвращаем результат
 								return true;
 							}
 						}
@@ -895,17 +895,17 @@ bool awh::unit::ICMP::setTarget(string_view target) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(target), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -931,7 +931,7 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 					this->_client.target = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
 					awh_cast <net::addr_net_ipv4_t *> (this->_client.target.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-					// Выводим положительный результат
+					// Возвращаем true
 					return true;
 				}
 				// Если адрес является IPv6
@@ -940,7 +940,7 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 					this->_client.target = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
 					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (this->_client.target.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (target)->address[0], 16);
-					// Выводим положительный результат
+					// Возвращаем true
 					return true;
 				}
 			}
@@ -953,17 +953,17 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -974,7 +974,7 @@ bool awh::unit::ICMP::setTarget(const net::addr_t * target) noexcept {
  * @return       результат выполнения установки
  */
 bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -992,7 +992,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV4))){
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим полученный результат
+						// Возвращаем результат
 						return result;
 					}
 				} break;
@@ -1002,7 +1002,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 					if((result = this->_addr.parse(target, net_addr_t::type_t::IPV6))){
 						// Устанавливаем адрес сервера назначения
 						this->_client.target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим полученный результат
+						// Возвращаем результат
 						return result;
 					}
 				} break;
@@ -1016,17 +1016,17 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), target), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1036,7 +1036,7 @@ bool awh::unit::ICMP::setTarget(const event::family_t family, string_view target
  * @return       результат выполнения установки
  */
 bool awh::unit::ICMP::setSource(string_view source) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -1054,14 +1054,14 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV4): {
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Если адрес является IPv6
 					case static_cast <uint8_t> (net_addr_t::type_t::IPV6): {
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 				}
@@ -1076,17 +1076,17 @@ bool awh::unit::ICMP::setSource(string_view source) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1112,7 +1112,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 					this->_client.source = make_unique <net::addr_net_ipv4_t> ();
 					// Устанавливаем IP-адрес
 					awh_cast <net::addr_net_ipv4_t *> (this->_client.source.get())->address = awh_cast <const net::addr_net_ipv4_t *> (source)->address;
-					// Выводим положительный результат
+					// Возвращаем true
 					return true;
 				}
 				// Если адрес является IPv6
@@ -1121,7 +1121,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 					this->_client.source = make_unique <net::addr_net_ipv6_t> ();
 					// Устанавливаем IP-адрес
 					::memcpy(&awh_cast <net::addr_net_ipv6_t *> (this->_client.source.get())->address[0], &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], 16);
-					// Выводим положительный результат
+					// Возвращаем true
 					return true;
 				}
 			}
@@ -1129,7 +1129,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 		} else {
 			// Сбрасываем IP-адрес события
 			this->_client.source.reset(nullptr);
-			// Выводим положительный результат
+			// Возвращаем true
 			return true;
 		}
 	/**
@@ -1140,17 +1140,17 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1161,7 +1161,7 @@ bool awh::unit::ICMP::setSource(const net::addr_t * source) noexcept {
  * @return       результат выполнения установки
  */
 bool awh::unit::ICMP::setSource(const event::family_t family, string_view source) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -1179,7 +1179,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 					if((result = this->_addr.parse(source, net_addr_t::type_t::IPV4))){
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 				} break;
@@ -1189,7 +1189,7 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 					if((result = this->_addr.parse(source, net_addr_t::type_t::IPV6))){
 						// Получаем IP-адрес в исходном виде
 						this->_client.source = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 				} break;
@@ -1204,17 +1204,17 @@ bool awh::unit::ICMP::setSource(const event::family_t family, string_view source
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1235,7 +1235,7 @@ awh::unit::ICMP::id_t awh::unit::ICMP::issue() const noexcept {
  * @return      результат выполнения запроса
  */
 bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mode) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -1243,7 +1243,7 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 	try {
 		// Если количество выполняемых запросов равно нулю
 		if(count == 0)
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		/**
 		 * Определяем режим выполнения пинга удалённого сервера
@@ -1307,13 +1307,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Failed to set options for ICMP-client event", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Failed to set options for ICMP-client event", log_t::flag_t::CRITICAL);
 							#endif
 						}
@@ -1360,13 +1360,13 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Failed to launch ICMP-client", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Failed to launch ICMP-client", log_t::flag_t::CRITICAL);
 								#endif
 							}
@@ -1424,25 +1424,25 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 						}
 					// Если адрес назначения сервера не установлен
 					} else {
-						// Формируем текст выводимой ошибки ICMP-клиента
+						// Формируем текст сообщения об ошибке ICMP-клиента
 						const string error = "ICMP-client target address is not set";
 						// Если функция обратного вызова установлена
 						if(this->_callback.is("error"))
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_client.eid, event::error_t::INVALID, error);
-						// Если функция вывода ошибки не установлена
+						// Если callback ошибки не установлен
 						else {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -1511,17 +1511,17 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, count, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

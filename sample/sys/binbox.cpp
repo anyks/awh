@@ -52,14 +52,14 @@ int32_t main(int32_t argc, char * argv[]){
 	binbox.add("Boolean", true);
 	// Проверяем все записи в контейнере
 	for(auto & record : binbox){
-		// Выводим размер данных
+		// Возвращаем размер данных
 		cout << "Size: " << record.size << endl;
 		// Если это текстовые данные
 		if(record.size == 14)
-			// Выводим данные в виде строки
+			// Возвращаем данные в виде строки
 			cout << "Data: " << string(reinterpret_cast <const char *> (record.buffer.get()), record.size) << endl;
 	}
-	// Выводим разделитель
+	// Печатаем разделитель
 	cout << "-----------------------------" << endl;
 	// Сохраняем контейнер в файл
 	binbox.save("binbox.dat");
@@ -67,14 +67,14 @@ int32_t main(int32_t argc, char * argv[]){
 	binbox.load("binbox.dat");
 	// Проверяем все записи в контейнере
 	for(auto & record : binbox){
-		// Выводим размер данных
+		// Возвращаем размер данных
 		cout << "Size: " << record.size << endl;
 		// Если это текстовые данные
 		if(record.size == 14)
-			// Выводим данные в виде строки
+			// Возвращаем данные в виде строки
 			cout << "Data: " << string(reinterpret_cast <const char *> (record.buffer.get()), record.size) << endl;
 	}
-	// Выводим разделитель
+	// Печатаем разделитель
 	cout << "-----------------------------" << endl;
 	// Размер буфера данных
 	size_t size = 0;
@@ -82,15 +82,15 @@ int32_t main(int32_t argc, char * argv[]){
 	uint8_t * buffer = nullptr;
 	// Извлекаем бинарные данные из контейнера
 	binbox.get("Buffer", &buffer, &size);
-	// Выводим буфер данных в виде строки
+	// Возвращаем буфер данных в виде строки
 	cout << " Buffer: " << string(reinterpret_cast <const char *> (buffer), size) << endl;
-	// Выводим текст из контейнера
+	// Возвращаем текст из контейнера
 	cout << " Text: " << binbox.get <string>("Text") << endl;
-	// Выводим простые типы данных из контейнера
+	// Возвращаем простые типы данных из контейнера
 	cout << " Int: " << binbox.get <int> ("Int") << endl;
 	cout << " Float: " << binbox.get <float> ("Float") << endl;
 	cout << " Double: " << binbox.get <double> ("Double") << endl;
 	cout << " Boolean: " << binbox.get <bool> ("Boolean") << endl;
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

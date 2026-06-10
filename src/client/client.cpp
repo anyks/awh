@@ -54,13 +54,13 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("This client ID=%u cannot be started", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, this->_id.eid);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_id.eid);
 						#endif
 					}
@@ -118,13 +118,13 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (index), static_cast <uint16_t> (status)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						// Выполняем функцию обратного вызова
@@ -161,13 +161,13 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("TLS handshake is failed", __PRETTY_FUNCTION__, make_tuple(eid, ok), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("TLS handshake is failed", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -282,13 +282,13 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("TLS decryption data is failed", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("TLS decryption data is failed", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -470,13 +470,13 @@ void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::erro
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, message.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, message.c_str());
 			#endif
 		// Выполняем функцию обратного вызова
@@ -507,13 +507,13 @@ void awh::Client::processTLS(const tls::coder_t::id_t, const tls::coder_t::event
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Data cannot be sent to the server", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -550,13 +550,13 @@ void awh::Client::stop() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
@@ -599,13 +599,13 @@ void awh::Client::start() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
@@ -629,18 +629,18 @@ bool awh::Client::pause() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -661,18 +661,18 @@ bool awh::Client::resume() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -692,13 +692,13 @@ void awh::Client::destroy() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
@@ -710,7 +710,7 @@ void awh::Client::destroy() noexcept {
  * @return результат проверки
  */
 bool awh::Client::isAlive() const noexcept {
-	// Выводим результат проверки, жив ли клиент, на основе наличия идентификатора клиента
+	// Возвращаем результат проверки активности клиента
 	return (this->_id.eid > 0);
 }
 /**
@@ -731,18 +731,18 @@ bool awh::Client::connect() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -763,18 +763,18 @@ bool awh::Client::disconnect() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -836,18 +836,18 @@ bool awh::Client::recv() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -868,7 +868,7 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 				if(this->_coder->encrypt(this->_id.sid, buffer, size))
 					// Возвращаем размер отправленных данных
 					return size;
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			// Выполняем отправку данных серверу
@@ -879,18 +879,18 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -922,17 +922,17 @@ bool awh::Client::splice(const event::id_t eid, const event::direct_t direct) no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (direct)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -951,17 +951,17 @@ uint16_t awh::Client::getOptions() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -981,17 +981,17 @@ bool awh::Client::setOptions(const uint16_t options) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(options), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1012,17 +1012,17 @@ bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(option, mode), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1041,17 +1041,17 @@ awh::net::dgram_info_t awh::Client::getTrafficInfo() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
 /**
@@ -1070,17 +1070,17 @@ uint8_t awh::Client::getCountHops() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1100,17 +1100,17 @@ bool awh::Client::setCountHops(const uint8_t hops) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hops)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1129,17 +1129,17 @@ awh::event::hops_t awh::Client::getHops() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::hops_t::LOOPBACK;
 }
 /**
@@ -1161,18 +1161,18 @@ bool awh::Client::setHops(const event::hops_t hops) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hops)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1191,17 +1191,17 @@ string awh::Client::getIface() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -1223,18 +1223,18 @@ bool awh::Client::setIface(string_view name) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1253,17 +1253,17 @@ uint16_t awh::Client::getSourcePort() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1285,18 +1285,18 @@ bool awh::Client::setSourcePort(const uint16_t port) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1315,17 +1315,17 @@ uint16_t awh::Client::getDestinationPort() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1347,18 +1347,18 @@ bool awh::Client::setDestinationPort(const uint16_t port) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1381,17 +1381,17 @@ string awh::Client::getTarget() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -1401,7 +1401,7 @@ string awh::Client::getTarget() const noexcept {
  * @return       результат выполнения установки
  */
 bool awh::Client::setTarget(string_view target) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
 	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
@@ -1429,13 +1429,13 @@ bool awh::Client::setTarget(string_view target) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(target), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -1449,7 +1449,7 @@ bool awh::Client::setTarget(string_view target) noexcept {
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1477,18 +1477,18 @@ bool awh::Client::setTarget(const net::addr_t * target) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1508,17 +1508,17 @@ bool awh::Client::getTarget(unique_ptr <net::addr_t> & target) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1538,17 +1538,17 @@ string awh::Client::getAddress(const event::address_t address) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -1571,18 +1571,18 @@ bool awh::Client::setAddress(const event::address_t address, string_view value) 
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address), value), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1605,18 +1605,18 @@ bool awh::Client::setAddress(const event::address_t address, const net::addr_t *
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1637,17 +1637,17 @@ bool awh::Client::getAddress(const event::address_t address, unique_ptr <net::ad
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1666,17 +1666,17 @@ awh::event::delivery_mode_t awh::Client::getDelivery() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
 /**
@@ -1698,18 +1698,18 @@ bool awh::Client::setDelivery(const event::delivery_mode_t delivery) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (delivery)), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1729,17 +1729,17 @@ size_t awh::Client::getBufferSize(const event::action_t action) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1760,17 +1760,17 @@ bool awh::Client::setBufferSize(const event::action_t action, const size_t size)
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1789,17 +1789,17 @@ uint32_t awh::Client::getAliveDNS() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1827,17 +1827,17 @@ awh::event::usage_t awh::Client::getUsageReadTimeout() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
 /**
@@ -1856,13 +1856,13 @@ void awh::Client::setUsageReadTimeout(const event::usage_t usage) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (usage)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
@@ -1884,17 +1884,17 @@ uint32_t awh::Client::getTimeout(const event::action_t action) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1914,13 +1914,13 @@ void awh::Client::setTimeout(const event::action_t action, const uint32_t timeou
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
@@ -1943,17 +1943,17 @@ bool awh::Client::bandwidth(const event::limiting_t limiting, string_view bandwi
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1975,17 +1975,17 @@ bool awh::Client::keepAlive(const int32_t cnt, const int32_t idle, const int32_t
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(cnt, idle, intvl), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -2004,17 +2004,17 @@ awh::event::dscp_t awh::Client::getDifferentiatedServicesCodePoint() const noexc
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
 /**
@@ -2034,17 +2034,17 @@ bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (dscp)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -2063,17 +2063,17 @@ awh::event::mtu_discover_t awh::Client::getMaximumTransmissionUnitDiscover() con
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
 /**
@@ -2093,17 +2093,17 @@ bool awh::Client::setMaximumTransmissionUnitDiscover(const event::mtu_discover_t
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -2128,18 +2128,18 @@ bool awh::Client::membership(const event::mode_t mode, string_view group, string
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -2164,18 +2164,18 @@ bool awh::Client::membership(const event::mode_t mode, const net::addr_t * group
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode), group, source, port), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -2201,17 +2201,17 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("This client has already been initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("This client has already been initialized", log_t::flag_t::WARNING);
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return this->_id.eid;
 }
 /**
@@ -2283,13 +2283,13 @@ awh::Client::Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("TLS object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
@@ -2373,13 +2373,13 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("DNS resolver object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
@@ -2402,13 +2402,13 @@ awh::Client::Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, co
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("TLS object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения
@@ -2458,13 +2458,13 @@ awh::Client::Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, co
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("DNS resolver object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("DNS resolver object is not set", log_t::flag_t::CRITICAL);
 		#endif
 		// Выходим из приложения

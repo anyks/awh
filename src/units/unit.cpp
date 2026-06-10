@@ -230,34 +230,34 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 		switch(sig){
 			// Если возникает сигнал ручной остановкой процесса
 			case SIGINT:
-				// Выводим сообщение об завершении работы процесса
+				// Записываем в лог сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] has been terminated, goodbye!", log_t::flag_t::INFO, ::getpid());
 				// Выходим из приложения
 				::exit(0);
 			break;
 			// Если возникает сигнал ошибки выполнения арифметической операции
 			case SIGFPE:
-				// Выводим сообщение об завершении работы процесса
+				// Записываем в лог сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGFPE");
 			break;
 			// Если возникает сигнал выполнения неверной инструкции
 			case SIGILL:
-				// Выводим сообщение об завершении работы процесса
+				// Записываем в лог сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGILL");
 			break;
 			// Если возникает сигнал запроса принудительного завершения процесса
 			case SIGTERM:
-				// Выводим сообщение об завершении работы процесса
+				// Записываем в лог сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGTERM");
 			break;
 			// Если возникает сигнал сегментации памяти (обращение к несуществующему адресу памяти)
 			case SIGSEGV:
-				// Выводим сообщение об завершении работы процесса
+				// Записываем в лог сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGSEGV");
 			break;
 			// Если возникает сигнал запроса принудительное закрытие приложения из кода программы
 			case SIGABRT:
-				// Выводим сообщение об завершении работы процесса
+				// Записываем в лог сообщение об завершении работы процесса
 				this->_log->print("Child process [%u] was terminated by [%s] signal", log_t::flag_t::WARNING, ::getpid(), "SIGABRT");
 			break;
 		}
@@ -288,7 +288,7 @@ bool awh::unit::Unit::kick() noexcept {
  * @return результат проверки
  */
 bool awh::unit::Unit::master() const noexcept {
-	// Выводим результат проверки
+	// Возвращаем результат проверки
 	return (this->_pid == ::getpid());
 }
 /**
@@ -319,13 +319,13 @@ void awh::unit::Unit::reinit() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Event database reinitialization failed: %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Event database reinitialization failed: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
@@ -336,7 +336,7 @@ void awh::unit::Unit::reinit() noexcept {
  * @return количество событий
  */
 size_t awh::unit::Unit::events() const noexcept {
-	// Выводим количество событий в базе событий
+	// Возвращаем количество событий в базе событий
 	return ::__awh_event_base__->eventsCount();
 }
 /**
@@ -374,13 +374,13 @@ void awh::unit::Unit::stop() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -445,13 +445,13 @@ void awh::unit::Unit::start() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -463,7 +463,7 @@ void awh::unit::Unit::start() noexcept {
  * @return    тип события
  */
 awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
-	// Выводим тип события
+	// Возвращаем тип события
 	return ::__awh_event_base__->type(eid);
 }
 /**
@@ -473,7 +473,7 @@ awh::event::type_t awh::unit::Unit::type(const event::id_t eid) const noexcept {
  * @return    тип узла события
  */
 awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
-	// Выводим тип узла события
+	// Возвращаем тип узла события
 	return ::__awh_event_base__->node(eid);
 }
 /**
@@ -483,7 +483,7 @@ awh::event::node_t awh::unit::Unit::node(const event::id_t eid) const noexcept {
  * @return    семейство адресов
  */
 awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexcept {
-	// Выводим семейство адресов
+	// Возвращаем семейство адресов
 	return ::__awh_event_base__->family(eid);
 }
 /**
@@ -493,7 +493,7 @@ awh::event::family_t awh::unit::Unit::family(const event::id_t eid) const noexce
  * @return    статус события
  */
 awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexcept {
-	// Выводим статус события
+	// Возвращаем статус события
 	return ::__awh_event_base__->status(eid);
 }
 /**
@@ -503,7 +503,7 @@ awh::event::status_t awh::unit::Unit::status(const event::id_t eid) const noexce
  * @return   протокол события
  */
 awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noexcept {
-	// Выводим протокол события
+	// Возвращаем протокол события
 	return ::__awh_event_base__->protocol(id);
 }
 /**
@@ -512,7 +512,7 @@ awh::event::protocol_t awh::unit::Unit::protocol(const event::id_t id) const noe
  * @return тип таймера для событий сетевого движка
  */
 awh::event::timer_t awh::unit::Unit::getInternalTimer() const noexcept {
-	// Выводим тип таймера для событий сетевого движка
+	// Возвращаем тип таймера для событий сетевого движка
 	return ::__awh_event_base__->getInternalTimer();
 }
 /**
@@ -606,13 +606,13 @@ awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("Event database could not be initialized: %s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("Event database could not be initialized: %s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения

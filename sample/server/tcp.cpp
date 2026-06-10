@@ -45,7 +45,7 @@ class Executor {
 		 * @param size размер данных для записи
 		 */
 		void write(const event::id_t eid, const size_t size) noexcept {
-			// Выводим информацию о событии записи данных клиентом
+			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
 		}
 		/**
@@ -59,13 +59,13 @@ class Executor {
 		void read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, server_t * server) noexcept {
 			// Если данные получены
 			if(size > 0)
-				// Выводим данные в лог
+				// Записываем данные в лог
 				this->_log->print("%s", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
 			else this->_log->print("No data received", log_t::flag_t::WARNING);
 			// Отправляем данные обратно клиенту
 			if(server->send(eid, data, size) == 0)
-				// Выводим сообщение об ошибке отправки данных клиентом на сервер
+				// Записываем ошибку в лог отправки данных клиентом на сервер
 				this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
 		}
 		/**
@@ -83,14 +83,14 @@ class Executor {
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
 					// Выполняем прослушивание сервера на порту
 					if(!server->listen(100))
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to listen on port %d", log_t::flag_t::WARNING, server->getPort());
 					// Если подключение выполнено, то выводим сообщение об успешном прослушивании порта
 					else this->_log->print("Successfully listening on port %d", log_t::flag_t::INFO, server->getPort());
 				} break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события сервера
+					// Записываем в лог сообщение об остановке события сервера
 					this->_log->print("Server destroyed", log_t::flag_t::INFO);
 				break;
 			}
@@ -106,7 +106,7 @@ class Executor {
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server) noexcept {
 			// Устананавливаем опции события
 			if(server->setOptions(cid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY | event::options::KEEPALIVE))
-				// Выводим сообщение об успешной установке опций события
+				// Записываем в лог сообщение об успешной установке опций события
 				cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
 		}
 		/**
@@ -118,7 +118,7 @@ class Executor {
 		 * @param ip     IP-адрес сервера
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
-			// Выводим сообщение о готовности сервера к работе
+			// Записываем в лог сообщение о готовности сервера к работе
 			this->_log->print("Server is ready to accept connections: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
@@ -129,7 +129,7 @@ class Executor {
 		 * @param message сообщение об ошибке
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Server error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
 	public:
@@ -162,9 +162,9 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
 	if(server.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
+		// Записываем в лог сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
-	// Выводим сообщение об ошибке установки опций события
+	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем порт и хост сервера
 	if(server.setPort(2222) && server.setHost("127.0.0.1")){
@@ -185,6 +185,6 @@ int32_t main(int32_t argc, char * argv[]){
 		// Запускаем событие сервера
 		server.start();
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

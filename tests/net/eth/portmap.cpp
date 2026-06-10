@@ -64,24 +64,24 @@ TEST_F(EthFixture, PortMapMappingTest){
 	// Выполняем проброс порта на маршрутизаторе
 	ASSERT_TRUE(this->_eth->portmap.mapping(fwd, awh::event::mode_t::ENABLED));
 	/**
-	 * Выводим информацию о проброшенных портах на маршрутизаторе
+	 * Записываем в лог информацию о проброшенных портах на маршрутизаторе
 	 */
 	for(auto & fwd : this->_eth->portmap.mappings()){
 		// Если внутренний адрес является IPv4
 		if(fwd.internalAddress->size == 4){
 			// Устанавливаем полученный внутренний IPv4-адрес
 			this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (fwd.internalAddress.get())->address, awh::net_addr_t::endian_t::LITTLE);
-			// Выводим адрес внутреннего IPv4-адреса
+			// Возвращаем адрес внутреннего IPv4-адреса
 			std::cout << "Internal IP: " << static_cast <std::string> (* this->_addr.get()) << ":" << fwd.internalPort << std::endl;
 		}
 		// Если внешний адрес является IPv4
 		if(fwd.externalAddress->size == 4){
 			// Устанавливаем полученный внешний IPv4-адрес
 			this->_addr->v4(awh_cast <awh::net::addr_net_ipv4_t *> (fwd.externalAddress.get())->address, awh::net_addr_t::endian_t::LITTLE);
-			// Выводим адрес внешнего IPv4-адреса
+			// Возвращаем адрес внешнего IPv4-адреса
 			std::cout << "External IP: " << static_cast <std::string> (* this->_addr.get()) << ":" << fwd.externalPort << std::endl;
 		}
-		// Выводим информацию о проброшенных портах
+		// Записываем в лог информацию о проброшенных портах
 		std::cout << " Protocol: " << static_cast <uint16_t> (fwd.proto) << " Type: " << static_cast <uint16_t> (fwd.type)
 			<< " Description: " << fwd.description << ", TTL: " << fwd.lifeTime << " seconds" << std::endl;
 	}

@@ -119,7 +119,7 @@ void awh::unit::Filesystem::destroy(const event::id_t eid) noexcept {
  * @return     идентификатор события файловой системы
  */
 awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	event::id_t result = 0;
 	/**
 	 * Определяем тип файловой системы для создания
@@ -148,7 +148,7 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 	this->_io->on(result, static_cast <engine::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
 	// Добавляем идентификатор события файловой системы в список событий файловой системы
 	this->_events.emplace(result);
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -171,7 +171,7 @@ awh::unit::Filesystem::type_t awh::unit::Filesystem::type(const event::id_t eid)
 			// Устанавливаем результат типа ноды файловой системы как файл
 			return type_t::FILE;
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return type_t::NONE;
 }
 /**
@@ -209,7 +209,7 @@ string awh::unit::Filesystem::getAddress(const event::id_t eid) const noexcept {
  * @return      результат выполнения установки
  */
 bool awh::unit::Filesystem::setAddress(const event::id_t eid, const string & value) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = this->_io->setAddress(eid, event::address_t::FS, value);
 	// Если результат выполнения установки адреса события является успешным
 	if(result)

@@ -80,7 +80,7 @@ class awh::Regular_Expressions::Expression {
  * @return результат проверки
  */
 awh::Regular_Expressions::Expression::operator bool() const noexcept {
-	// Выводим результ проверки инициализации
+	// Возвращаем результат проверки инициализации
 	return this->_mode;
 }
 /**
@@ -92,7 +92,7 @@ awh::Regular_Expressions::Expression::operator bool() const noexcept {
 awh::Regular_Expressions::Expression & awh::Regular_Expressions::Expression::operator = (const bool mode) noexcept {
 	// Выполняем установку флага инициализации
 	this->_mode = mode;
-	// Выводим текущее значение объекта
+	// Возвращаем текущее значение объекта
 	return (* this);
 }
 /**
@@ -146,7 +146,7 @@ bool awh::Regular_Expressions::test(string_view text, const exp_t & exp) const n
 	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем проверку регулярного выражения
 		return this->test(text.data(), text.size(), exp);
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -158,7 +158,7 @@ bool awh::Regular_Expressions::test(string_view text, const exp_t & exp) const n
  * @return     результат проверки регулярного выражения
  */
 bool awh::Regular_Expressions::test(const char * text, const size_t size, const exp_t & exp) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx.match);
@@ -196,13 +196,13 @@ bool awh::Regular_Expressions::test(const char * text, const size_t size, const 
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -211,19 +211,19 @@ bool awh::Regular_Expressions::test(const char * text, const size_t size, const 
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -238,7 +238,7 @@ vector <string> awh::Regular_Expressions::exec(string_view text, const exp_t & e
 	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем запуск регулярного выражения
 		return this->exec(text.data(), text.size(), exp);
-	// Выводим результат
+	// Возвращаем результат
 	return vector <string> ();
 }
 /**
@@ -250,7 +250,7 @@ vector <string> awh::Regular_Expressions::exec(string_view text, const exp_t & e
  * @return     результат обработки регулярного выражения
  */
 vector <string> awh::Regular_Expressions::exec(const char * text, const size_t size, const exp_t & exp) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <string> result;
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx.match);
@@ -298,13 +298,13 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
 				#endif
 			// Если объект логирования не установлен
@@ -313,13 +313,13 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
 				#endif
 			}
@@ -335,13 +335,13 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -350,19 +350,19 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -377,7 +377,7 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(string_view 
 	if(!text.empty() && static_cast <bool> (exp))
 		// Выполняем выполнение регулярного выражения
 		return this->match(text.data(), text.size(), exp);
-	// Выводим результат
+	// Возвращаем результат
 	return vector <std::pair <size_t, size_t>> ();
 }
 /**
@@ -389,7 +389,7 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(string_view 
  * @return     результат обработки регулярного выражения
  */
 vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char * text, const size_t size, const exp_t & exp) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <std::pair <size_t, size_t>> result;
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx.match);
@@ -439,13 +439,13 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
 				#endif
 			// Если объект логирования не установлен
@@ -454,13 +454,13 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
 				#endif
 			}
@@ -476,13 +476,13 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text, size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -491,19 +491,19 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -514,7 +514,7 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
  * @return        результат собранного регулярного выражения
  */
 awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view pattern, const vector <option_t> & options) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	exp_t result = nullptr;
 	// Если регулярное выражение передано
 	if(!pattern.empty()){
@@ -628,13 +628,13 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
 				#endif
 			// Если объект логирования не установлен
@@ -643,13 +643,13 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n", __PRETTY_FUNCTION__, "Memory allocation error");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n", "Memory allocation error");
 				#endif
 			}
@@ -665,13 +665,13 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pattern, options.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -680,19 +680,19 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

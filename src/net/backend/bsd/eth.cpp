@@ -78,19 +78,19 @@ namespace options {
 				limit.rlim_cur = RLIM_INFINITY;
 				// Устанавливаем максимальный лимит равный бесконечности
 				limit.rlim_max = RLIM_INFINITY;
-				// Выводим результат установки лимита дампов ядра
+				// Возвращаем результат установки лимита дампов ядра
 				if(::setrlimit(RLIMIT_CORE, &limit) != 0){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -103,7 +103,7 @@ namespace options {
 				const auto & limits = fds.limit();
 				// Если текущий лимит меньше желаемого
 				if(limits.first < AWH_MAX_COUNT_FDS)
-					// Выводим сообщение подсказки
+					// Записываем в лог сообщение подсказки
 					fds.help(limits.first, AWH_MAX_COUNT_FDS);
 			}
 			/**
@@ -141,13 +141,13 @@ namespace options {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("Root privileges are required to apply network optimizations", awh::log_t::flag_t::WARNING);
 						#endif
 					}
@@ -208,13 +208,13 @@ namespace options {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("Root privileges are required to apply network optimizations", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("Root privileges are required to apply network optimizations", awh::log_t::flag_t::WARNING);
 						#endif
 					}
@@ -228,13 +228,13 @@ namespace options {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", awh::log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}

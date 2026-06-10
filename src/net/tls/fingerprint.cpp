@@ -114,7 +114,7 @@ namespace local {
 	 * @return      MD5 hex lowercase
 	 */
 	static string md5(const string & input) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		char result[33] = {'\0'};
 		// Буфер для хранения MD5 хеша
 		uint8_t digest[MD5_DIGEST_LENGTH];
@@ -138,7 +138,7 @@ namespace local {
 	 * @return       hex-строка
 	 */
 	static string tohex(const uint8_t * buffer, const size_t size) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		string result(2 * size, '0');
 		/**
 		 * Преобразуем каждый байт бинарного буфера в 2 символа hex
@@ -3342,39 +3342,39 @@ namespace http2 {
 bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const noexcept {
 	// Если флаги поддержки GREASE не совпадают, объекты не равны
 	if(this->grease != browser.grease)
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если объекты записи TLS рукопожатия не совпадают побайтно, объекты не равны
 	else if(::memcmp(&this->record, &browser.record, sizeof(this->record)) != 0)
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если объекты рукопожатия TLS не совпадают побайтно, объекты не равны
 	else if(::memcmp(&this->handshake, &browser.handshake, sizeof(this->handshake)) != 0)
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если объекты ClientHello TLS не совпадают побайтно, объекты не равны
 	else if(::memcmp(&this->clientHello, &browser.clientHello, sizeof(this->clientHello)) != 0)
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если размеры cookie рукопожатия DTLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 	else if((this->cookie.size() != browser.cookie.size()) || (!this->cookie.empty() && (::memcmp(&this->cookie[0], &browser.cookie[0], this->cookie.size()) != 0)))
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если размеры идентификатора сессии TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 	else if((this->session.size() != browser.session.size()) || (!this->session.empty() && (::memcmp(&this->session[0], &browser.session[0], this->session.size()) != 0)))
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если размеры списка поддерживаемых шифров не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 	else if((this->ciphers.size() != browser.ciphers.size()) || (!this->ciphers.empty() && (::memcmp(&this->ciphers[0], &browser.ciphers[0], this->ciphers.size()) != 0)))
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если размеры списка поддерживаемых методов сжатия TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 	else if((this->compressors.size() != browser.compressors.size()) || (!this->compressors.empty() && (::memcmp(&this->compressors[0], &browser.compressors[0], this->compressors.size()) != 0)))
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если размеры списка поддерживаемых расширений TLS не совпадают, объекты не равны
 	else if(this->extensions.size() != browser.extensions.size())
-		// Выводим результат сравнения: объекты не равны
+		// Возвращаем результат сравнения: объекты не равны
 		return false;
 	// Если объекты расширений совпадают по размерам и не пустые
 	else if(!this->extensions.empty() && !browser.extensions.empty()) {
@@ -3382,7 +3382,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 		for(size_t i = 0; i < this->extensions.size(); ++i){
 			// Если типы расширений не совпадают, объекты не равны
 			if(this->extensions[i]->type != browser.extensions[i]->type)
-				// Выводим результат сравнения: объекты не равны
+				// Возвращаем результат сравнения: объекты не равны
 				return false;
 			// Если типы расширений совпадают, сравниваем их содержимое в зависимости от типа
 			else {
@@ -3394,7 +3394,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 					case static_cast <uint8_t> (awh::tls::extension_type_t::SERVER_NAME): {
 						// Если размеры списков имён в расширении server_name не совпадают, объекты не равны
 						if(awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.size() != awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если объекты расширений совпадают по размерам и не пустые
 						else if(!awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.empty() && !awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names.empty()) {
@@ -3402,7 +3402,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							for(size_t j = 0; j < awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.size(); ++j){
 								// Если имена в расширении server_name не совпадают, объекты не равны
 								if(awh_cast <extension_server_name_t *> (this->extensions[i].get())->names[j] != awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names[j])
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3411,22 +3411,22 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 					case static_cast <uint8_t> (awh::tls::extension_type_t::MAX_FRAGMENT_LENGTH): {
 						// Если значение длины максимального фрагмента не совпадает, объекты не равны
 						if(awh_cast <extension_max_fragment_length_t *> (this->extensions[i].get())->length != awh_cast <extension_max_fragment_length_t *> (browser.extensions[i].get())->length)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует status_request
 					case static_cast <uint8_t> (awh::tls::extension_type_t::STATUS_REQUEST): {
 						// Если типы запрашиваемого статуса в расширении status_request не совпадают, объекты не равны
 						if(awh_cast <extension_status_request_t *> (this->extensions[i].get())->certificateStatusType != awh_cast <extension_status_request_t *> (browser.extensions[i].get())->certificateStatusType)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если длины списков идентификаторов респондентов в расширении status_request не совпадают, объекты не равны
 						else if(awh_cast <extension_status_request_t *> (this->extensions[i].get())->responderIdListLength != awh_cast <extension_status_request_t *> (browser.extensions[i].get())->responderIdListLength)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если длины расширений запроса статуса сертификата не совпадают, объекты не равны
 						else if(awh_cast <extension_status_request_t *> (this->extensions[i].get())->requestExtensionsLength != awh_cast <extension_status_request_t *> (browser.extensions[i].get())->requestExtensionsLength)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует supported_groups
@@ -3434,7 +3434,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков поддерживаемых групп не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups.size() != awh_cast <extension_supported_groups_t *> (browser.extensions[i].get())->supportedGroups.size()) ||
 						  (!awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups.empty() && (::memcmp(&awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups[0], &awh_cast <extension_supported_groups_t *> (browser.extensions[i].get())->supportedGroups[0], awh_cast <extension_supported_groups_t *> (this->extensions[i].get())->supportedGroups.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует ec_point_formats
@@ -3442,7 +3442,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков форматов точек в расширении ec_point_formats не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats.size() != awh_cast <extension_ec_point_t *> (browser.extensions[i].get())->formats.size()) ||
 						  (!awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats.empty() && (::memcmp(&awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats[0], &awh_cast <extension_ec_point_t *> (browser.extensions[i].get())->formats[0], awh_cast <extension_ec_point_t *> (this->extensions[i].get())->formats.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует signature_algorithms
@@ -3450,26 +3450,26 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков алгоритмов подписи в расширении signature_algorithms не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_signature_t *> (browser.extensions[i].get())->algorithms.size()) ||
 						  (!awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(&awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms[0], &awh_cast <extension_signature_t *> (browser.extensions[i].get())->algorithms[0], awh_cast <extension_signature_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует use_srtp
 					case static_cast <uint8_t> (awh::tls::extension_type_t::USE_SRTP): {
 						// Если значения длины MKI в расширении use_srtp не совпадают, объекты не равны
 						if(awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->mkiLength != awh_cast <extension_use_srtp_t *> (browser.extensions[i].get())->mkiLength)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если размеры списков профилей SRTP в расширении use_srtp не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						else if((awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles.size() != awh_cast <extension_use_srtp_t *> (browser.extensions[i].get())->profiles.size()) ||
 							   (!awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles.empty() && (::memcmp(&awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles[0], &awh_cast <extension_use_srtp_t *> (browser.extensions[i].get())->profiles[0], awh_cast <extension_use_srtp_t *> (this->extensions[i].get())->profiles.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует heartbeat
 					case static_cast <uint8_t> (awh::tls::extension_type_t::HEARTBEAT): {
 						// Если значения режима heartbeat в расширении heartbeat не совпадают, объекты не равны
 						if(awh_cast <extension_heartbeat_t *> (this->extensions[i].get())->mode != awh_cast <extension_heartbeat_t *> (browser.extensions[i].get())->mode)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует alpn
@@ -3479,7 +3479,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						const auto & rhsProtos = awh_cast <extension_alpn_t *> (browser.extensions[i].get())->protocols;
 						// Если размеры списков протоколов в расширении alpn не совпадают, объекты не равны
 						if(lhsProtos.size() != rhsProtos.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если списки протоколов ALPN не пустые, сравниваем их поэлементно
 						else if(!lhsProtos.empty()) {
@@ -3487,7 +3487,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							for(size_t j = 0; j < lhsProtos.size(); ++j){
 								// Если протоколы ALPN не совпадают, объекты не равны
 								if(lhsProtos[j] != rhsProtos[j])
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3496,18 +3496,18 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 					case static_cast <uint8_t> (awh::tls::extension_type_t::PADDING): {
 						// Если значения размера паддинга в расширении padding не совпадают, объекты не равны
 						if(awh_cast <extension_padding_t *> (this->extensions[i].get())->size != awh_cast <extension_padding_t *> (browser.extensions[i].get())->size)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует extended_master_secret
 					case static_cast <uint8_t> (awh::tls::extension_type_t::EXTENDED_MASTER_SECRET): {
 						// Если данные master_secret в расширении extended_master_secret не совпадают, объекты не равны
 						if(awh_cast <extension_extended_master_secret_t *> (this->extensions[i].get())->masterSecretData != awh_cast <extension_extended_master_secret_t *> (browser.extensions[i].get())->masterSecretData)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если данные extended_master_secret в расширении extended_master_secret не совпадают, объекты не равны
 						else if(awh_cast <extension_extended_master_secret_t *> (this->extensions[i].get())->extendedMasterSecretData != awh_cast <extension_extended_master_secret_t *> (browser.extensions[i].get())->extendedMasterSecretData)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует compress_certificate
@@ -3515,14 +3515,14 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков алгоритмов сжатия сертификата в расширении compress_certificate не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_compress_certificate_t *> (browser.extensions[i].get())->algorithms.size()) ||
 						  (!awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(&awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms[0], &awh_cast <extension_compress_certificate_t *> (browser.extensions[i].get())->algorithms[0], awh_cast <extension_compress_certificate_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует record_size_limit
 					case static_cast <uint8_t> (awh::tls::extension_type_t::RECORD_SIZE_LIMIT): {
 						// Если значения record_size_limit в расширении record_size_limit не совпадают, объекты не равны
 						if(awh_cast <extension_record_size_limit_t *> (this->extensions[i].get())->data != awh_cast <extension_record_size_limit_t *> (browser.extensions[i].get())->data)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует delegated_credential
@@ -3530,7 +3530,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков алгоритмов делегированных учётных данных в расширении delegated_credential не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_delegated_credential_t *> (browser.extensions[i].get())->algorithms.size()) ||
 						  (!awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(&awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms[0], &awh_cast <extension_delegated_credential_t *> (browser.extensions[i].get())->algorithms[0], awh_cast <extension_delegated_credential_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует session_ticket
@@ -3538,7 +3538,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры данных session_ticket в расширении session_ticket не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_session_ticket_t *> (browser.extensions[i].get())->data.size()) ||
 						  (!awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data.empty() && (::memcmp(&awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data[0], &awh_cast <extension_session_ticket_t *> (browser.extensions[i].get())->data[0], awh_cast <extension_session_ticket_t *> (this->extensions[i].get())->data.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует pre_shared_key
@@ -3548,7 +3548,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						const auto & rhsIds = awh_cast <extension_pre_shared_key_t *> (browser.extensions[i].get())->identities;
 						// Если размеры списков идентификаторов PSK в расширении pre_shared_key не совпадают, объекты не равны
 						if(lhsIds.size() != rhsIds.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если списки идентификаторов PSK не пустые, сравниваем их поэлементно
 						else if(!lhsIds.empty()) {
@@ -3556,12 +3556,12 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							for(size_t j = 0; j < lhsIds.size(); ++j){
 								// Если значения ticket_age не совпадают, объекты не равны
 								if(lhsIds[j].ticketAge != rhsIds[j].ticketAge)
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 								// Если размеры данных идентификатора PSK не совпадают или если они не пустые и не совпадают побайтно, объекты не равны
 								else if((lhsIds[j].data.size() != rhsIds[j].data.size()) ||
 								       (!lhsIds[j].data.empty() && (::memcmp(lhsIds[j].data.data(), rhsIds[j].data.data(), lhsIds[j].data.size()) != 0)))
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3570,7 +3570,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 					case static_cast <uint8_t> (awh::tls::extension_type_t::EARLY_DATA): {
 						// Если значения max_early_data_size в расширении early_data не совпадают, объекты не равны
 						if(awh_cast <extension_early_data_t *> (this->extensions[i].get())->maxSize != awh_cast <extension_early_data_t *> (browser.extensions[i].get())->maxSize)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует supported_versions
@@ -3578,7 +3578,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков поддерживаемых версий TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.size() != awh_cast <extension_supported_versions_t *> (browser.extensions[i].get())->versions.size()) ||
 						  (!awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.empty() && (::memcmp(awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.data(), awh_cast <extension_supported_versions_t *> (browser.extensions[i].get())->versions.data(), awh_cast <extension_supported_versions_t *> (this->extensions[i].get())->versions.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует cookie
@@ -3586,7 +3586,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры данных расширения cookie не совпадают или если данные не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_cookie_t *> (browser.extensions[i].get())->data.size()) ||
 						  (!awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.empty() && (::memcmp(awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.data(), awh_cast <extension_cookie_t *> (browser.extensions[i].get())->data.data(), awh_cast <extension_cookie_t *> (this->extensions[i].get())->data.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует psk_key_exchange_modes
@@ -3594,7 +3594,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков режимов обмена ключами PSK не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.size() != awh_cast <extension_psk_key_exchange_t *> (browser.extensions[i].get())->modes.size()) ||
 						  (!awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.empty() && (::memcmp(awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.data(), awh_cast <extension_psk_key_exchange_t *> (browser.extensions[i].get())->modes.data(), awh_cast <extension_psk_key_exchange_t *> (this->extensions[i].get())->modes.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует certificate_authorities
@@ -3604,7 +3604,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						const auto & rhsAuths = awh_cast <extension_certificate_authorities_t *> (browser.extensions[i].get())->authorities;
 						// Если размеры списков авторитетов сертификатов не совпадают, объекты не равны
 						if(lhsAuths.size() != rhsAuths.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если списки авторитетов сертификатов не пустые, сравниваем их поэлементно
 						else if(!lhsAuths.empty()) {
@@ -3613,7 +3613,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 								// Если размеры данных авторитета сертификата не совпадают или если они не пустые и не совпадают побайтно, объекты не равны
 								if((lhsAuths[j].size() != rhsAuths[j].size()) ||
 								   (!lhsAuths[j].empty() && (::memcmp(lhsAuths[j].data(), rhsAuths[j].data(), lhsAuths[j].size()) != 0)))
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3623,7 +3623,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков алгоритмов подписи сертификатов не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.size() != awh_cast <extension_signature_algorithms_cert_t *> (browser.extensions[i].get())->algorithms.size()) ||
 						  (!awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.empty() && (::memcmp(awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.data(), awh_cast <extension_signature_algorithms_cert_t *> (browser.extensions[i].get())->algorithms.data(), awh_cast <extension_signature_algorithms_cert_t *> (this->extensions[i].get())->algorithms.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует key_share
@@ -3633,7 +3633,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						const auto & rhsShares = awh_cast <extension_key_share_t *> (browser.extensions[i].get())->shares;
 						// Если размеры списков ключей для обмена не совпадают, объекты не равны
 						if(lhsShares.size() != rhsShares.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если списки ключей для обмена не пустые, сравниваем их поэлементно
 						else if(!lhsShares.empty()) {
@@ -3641,12 +3641,12 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							for(size_t j = 0; j < lhsShares.size(); ++j){
 								// Если группы ключа для обмена не совпадают, объекты не равны
 								if(lhsShares[j].first != rhsShares[j].first)
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 								// Если размеры данных ключа для обмена не совпадают или если они не пустые и не совпадают побайтно, объекты не равны
 								else if((lhsShares[j].second.size() != rhsShares[j].second.size()) ||
 								        (!lhsShares[j].second.empty() && (::memcmp(lhsShares[j].second.data(), rhsShares[j].second.data(), lhsShares[j].second.size()) != 0)))
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3655,7 +3655,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 					case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
 						// Если параметры транспортного уровня QUIC не совпадают, объекты не равны
 						if(awh_cast <extension_quic_transport_params_t *> (this->extensions[i].get())->params != awh_cast <extension_quic_transport_params_t *> (browser.extensions[i].get())->params)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует tls_flags
@@ -3663,7 +3663,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков флагов TLS не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.size() != awh_cast <extension_tls_flags_t *> (browser.extensions[i].get())->flags.size()) ||
 						  (!awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.empty() && (::memcmp(awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.data(), awh_cast <extension_tls_flags_t *> (browser.extensions[i].get())->flags.data(), awh_cast <extension_tls_flags_t *> (this->extensions[i].get())->flags.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует next_protocol_negotiation
@@ -3673,7 +3673,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						const auto & rhsNPN = awh_cast <extension_next_proto_neg_t *> (browser.extensions[i].get())->protocols;
 						// Если размеры списков протоколов NPN не совпадают, объекты не равны
 						if(lhsNPN.size() != rhsNPN.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если списки протоколов NPN не пустые, сравниваем их поэлементно
 						else if(!lhsNPN.empty()) {
@@ -3681,7 +3681,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							for(size_t j = 0; j < lhsNPN.size(); ++j){
 								// Если протоколы NPN не совпадают, объекты не равны
 								if(lhsNPN[j] != rhsNPN[j])
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3693,7 +3693,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						const auto & rhsASO = awh_cast <extension_application_settings_old_t *> (browser.extensions[i].get())->protocols;
 						// Если размеры списков протоколов в расширении application_settings_old не совпадают, объекты не равны
 						if(lhsASO.size() != rhsASO.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если списки протоколов не пустые, сравниваем их поэлементно
 						else if(!lhsASO.empty()) {
@@ -3701,7 +3701,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							for(size_t j = 0; j < lhsASO.size(); ++j){
 								// Если протоколы не совпадают, объекты не равны
 								if(lhsASO[j] != rhsASO[j])
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3713,7 +3713,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						const auto & rhsAS = awh_cast <extension_application_settings_t *> (browser.extensions[i].get())->protocols;
 						// Если размеры списков протоколов в расширении application_settings не совпадают, объекты не равны
 						if(lhsAS.size() != rhsAS.size())
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 						// Если списки протоколов не пустые, сравниваем их поэлементно
 						else if(!lhsAS.empty()) {
@@ -3721,7 +3721,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							for(size_t j = 0; j < lhsAS.size(); ++j){
 								// Если протоколы не совпадают, объекты не равны
 								if(lhsAS[j] != rhsAS[j])
-									// Выводим результат сравнения: объекты не равны
+									// Возвращаем результат сравнения: объекты не равны
 									return false;
 							}
 						}
@@ -3731,7 +3731,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры списков расширений в расширении ech_outer_extensions не совпадают или если объекты не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.size() != awh_cast <extension_ech_outer_extensions_t *> (browser.extensions[i].get())->extensions.size()) ||
 						  (!awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.empty() && (::memcmp(awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.data(), awh_cast <extension_ech_outer_extensions_t *> (browser.extensions[i].get())->extensions.data(), awh_cast <extension_ech_outer_extensions_t *> (this->extensions[i].get())->extensions.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует encrypted_client_hello
@@ -3739,7 +3739,7 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры данных расширения encrypted_client_hello не совпадают или если данные не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_encryption_client_hello_t *> (browser.extensions[i].get())->data.size()) ||
 						  (!awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.empty() && (::memcmp(awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.data(), awh_cast <extension_encryption_client_hello_t *> (browser.extensions[i].get())->data.data(), awh_cast <extension_encryption_client_hello_t *> (this->extensions[i].get())->data.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует renegotiation_info
@@ -3747,14 +3747,14 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 						// Если размеры данных расширения renegotiation_info не совпадают или если данные не пустые и не совпадают побайтно, объекты не равны
 						if((awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.size() != awh_cast <extension_renegotiation_info_t *> (browser.extensions[i].get())->data.size()) ||
 						  (!awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.empty() && (::memcmp(awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.data(), awh_cast <extension_renegotiation_info_t *> (browser.extensions[i].get())->data.data(), awh_cast <extension_renegotiation_info_t *> (this->extensions[i].get())->data.size()) != 0)))
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 					// Если тип расширения соответствует quic_transport_parameters_legacy
 					case static_cast <uint8_t> (awh::tls::extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
 						// Если параметры транспортного уровня QUIC (устаревшее расширение) не совпадают, объекты не равны
 						if(awh_cast <extension_quic_transport_params_legacy_t *> (this->extensions[i].get())->params != awh_cast <extension_quic_transport_params_legacy_t *> (browser.extensions[i].get())->params)
-							// Выводим результат сравнения: объекты не равны
+							// Возвращаем результат сравнения: объекты не равны
 							return false;
 					} break;
 				}
@@ -3791,7 +3791,7 @@ awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (Bro
 	this->compressors = ::move(browser.compressors);
 	// Перемещаем список поддерживаемых расширений TLS
 	this->extensions = ::move(browser.extensions);
-	// Выводим текущий объект после перемещения
+	// Возвращаем текущий объект после перемещения
 	return (* this);
 }
 /**
@@ -4111,7 +4111,7 @@ awh::tls::Fingerprint::Browser & awh::tls::Fingerprint::Browser::operator = (con
 			} break;
 		}
 	}
-	// Выводим текущий объект после перемещения
+	// Возвращаем текущий объект после перемещения
 	return (* this);
 }
 /**
@@ -4465,7 +4465,7 @@ awh::tls::Fingerprint::Browser::Browser(const browser_t & browser) noexcept {
  * @return iterator итератор для преобразования
  */
 awh::tls::Fingerprint::Iterator::operator awh::tls::Fingerprint::Iterator::iterator() noexcept {
-	// Выводим текущее значение итератора
+	// Возвращаем текущее значение итератора
 	return this->_it;
 }
 /**
@@ -4474,7 +4474,7 @@ awh::tls::Fingerprint::Iterator::operator awh::tls::Fingerprint::Iterator::itera
  * @return указатель заголовка
  */
 awh::tls::Fingerprint::Iterator::pointer awh::tls::Fingerprint::Iterator::operator -> () noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return &this->_it->second;
 }
 /**
@@ -4483,7 +4483,7 @@ awh::tls::Fingerprint::Iterator::pointer awh::tls::Fingerprint::Iterator::operat
  * @return значение заголовка
  */
 awh::tls::Fingerprint::Iterator::reference awh::tls::Fingerprint::Iterator::operator * () const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return this->_it->second;
 }
 /**
@@ -4506,17 +4506,17 @@ awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ (
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -4526,7 +4526,7 @@ awh::tls::Fingerprint::Iterator & awh::tls::Fingerprint::Iterator::operator ++ (
  * @return      результат сравнения
  */
 bool awh::tls::Fingerprint::Iterator::operator == (const Iterator & other) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_it == other._it);
 }
 /**
@@ -4536,7 +4536,7 @@ bool awh::tls::Fingerprint::Iterator::operator == (const Iterator & other) const
  * @return      результат сравнения
  */
 bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_it != other._it);
 }
 
@@ -4566,11 +4566,11 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 * @return    строка вида "0x%04X"
 		 */
 		const auto hex16 = [](const uint16_t num) -> string {
-			// Результат работы функции
+			// Переменная результата
 			char result[8];
 			// Форматируем число в виде "0x%04X"
 			::snprintf(result, sizeof(result), "0x%04X", num);
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		};
 		/**
@@ -4580,11 +4580,11 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 * @return    строка вида "0x%02X"
 		 */
 		const auto hex8 = [](const uint8_t num) -> string {
-			// Результат работы функции
+			// Переменная результата
 			char result[6];
 			// Форматируем число в виде "0x%02X"
 			::snprintf(result, sizeof(result), "0x%02X", num);
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		};
 		/**
@@ -4593,7 +4593,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 * @param title название секции
 		 */
 		const auto section = [&out](const string & title) -> void {
-			// Выводим заголовок секции с отступами и линиями-разделителями
+			// Печатаем заголовок в отладочный вывод секции с отступами и линиями-разделителями
 			out << endl << "  [ " << title << " ]" << endl;
 		};
 		// ================================================================
@@ -4612,15 +4612,15 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		{
 			// Получаем wire-код версии record layer
 			const uint16_t wire = ::local::versionWire(browser.record.version);
-			// Выводим версию и её wire-код
+			// Возвращаем версию и её wire-код
 			out << "    Version  : " << ::local::tlsVersionName(wire) << "  (" << hex16(wire) << ")" << endl;
-			// Выводим длину записи Record Layer
+			// Возвращаем длину записи Record Layer
 			out << "    Length   : " << browser.record.length << endl;
 			// Поля DTLS выводим только если они ненулевые
 			if((browser.record.epoch != 0) || (browser.record.sequence != 0)){
-				// Выводим поле эпохи для DTLS
+				// Возвращаем поле эпохи для DTLS
 				out << "    Epoch    : " << browser.record.epoch    << "  [DTLS]" << endl;
-				// Выводим поле последовательности для DTLS, выводим как десятичное (можно было бы и hex, но десятичный формат привычнее для DTLS)
+				// Возвращаем поле последовательности для DTLS, выводим как десятичное (можно было бы и hex, но десятичный формат привычнее для DTLS)
 				out << "    Sequence : " << browser.record.sequence << "  [DTLS]" << endl;
 			}
 		}
@@ -4631,13 +4631,13 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 * Формируем секцию Handshake Header
 		 */
 		section("Handshake Header");
-		// Выводим длину Handshake, которая может отличаться от длины Record Layer при фрагментации (обычно в DTLS)
+		// Возвращаем длину Handshake, которая может отличаться от длины Record Layer при фрагментации (обычно в DTLS)
 		out << "    Length       : " << browser.handshake.length << endl;
-		// Выводим последовательность Handshake, которая может отличаться от 0 при фрагментации (обычно в DTLS)
+		// Возвращаем последовательность Handshake, которая может отличаться от 0 при фрагментации (обычно в DTLS)
 		out << "    Sequence     : " << browser.handshake.sequence << endl;
-		// Выводим смещение фрагмента Handshake, которое может отличаться от 0 при фрагментации (обычно в DTLS)
+		// Возвращаем смещение фрагмента Handshake, которое может отличаться от 0 при фрагментации (обычно в DTLS)
 		out << "    Frag. Offset : " << browser.handshake.fragment.offset << endl;
-		// Выводим длину фрагмента Handshake, которая может отличаться от общей длины Handshake при фрагментации (обычно в DTLS)
+		// Возвращаем длину фрагмента Handshake, которая может отличаться от общей длины Handshake при фрагментации (обычно в DTLS)
 		out << "    Frag. Length : " << browser.handshake.fragment.length << endl;
 		// ================================================================
 		// ClientHello
@@ -4649,21 +4649,21 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		{
 			// Получаем wire-код версии legacy_version из ClientHello
 			const uint16_t wire = ::local::versionWire(browser.clientHello.version);
-			// Выводим legacy_version и его wire-код
+			// Возвращаем legacy_version и его wire-код
 			out << "    Legacy Version : " << ::local::tlsVersionName(wire) << "  (" << hex16(wire) << ")" << endl;
-			// Выводим произвольные байты в 16-ричном формате
+			// Возвращаем произвольные байты в 16-ричном формате
 			out << "    Random         : " << ::local::tohex(browser.clientHello.random.data(), browser.clientHello.random.size()) << endl;
 			// Session ID: выводим hex или пометку "(empty)" если отсутствует
 			if(!browser.session.empty())
-				// Выводим Session ID в 16-ричном формате
+				// Возвращаем Session ID в 16-ричном формате
 				out << "    Session ID     : " << ::local::tohex(browser.session.data(), browser.session.size()) << endl;
 			// Если Session ID отсутствует, выводим пометку "(empty)"
 			else out << "    Session ID     : (empty)" << endl;
 			// Cookie DTLS: выводим только если присутствует
 			if(!browser.cookie.empty())
-				// Выводим DTLS Cookie в 16-ричном формате
+				// Возвращаем DTLS Cookie в 16-ричном формате
 				out << "    DTLS Cookie    : " << ::local::tohex(browser.cookie.data(), browser.cookie.size()) << endl;
-			// Выводим наличие GREASE в ClientHello (по наличию GREASE-значений в версиях, шифрах, группах и расширениях)
+			// Возвращаем наличие GREASE в ClientHello (по наличию GREASE-значений в версиях, шифрах, группах и расширениях)
 			out << "    GREASE Used    : " << (browser.grease ? "yes" : "no") << endl;
 		}
 		// ================================================================
@@ -4691,19 +4691,19 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			char index[8];
 			// Формируем индекс шифра в виде "[ i ]"
 			::snprintf(index, sizeof(index), "[%2zu]", i);
-			// Выводим индекс, имя шифра с выравниванием и его wire-код в виде "0x%04X"
+			// Печатаем индекс, имя шифра с выравниванием и его wire-код в виде "0x%04X"
 			out << "    " << index << "  ";
-			// Выводим имя шифра с выравниванием по столбцу 40
+			// Печатаем имя шифра с выравниванием по столбцу 40
 			out << name;
 			// Вычисляем количество пробелов для выравнивания по столбцу 40
 			const int32_t pad = (36 - static_cast <int32_t> (::strlen(name)));
 			/**
-			 * Выводим пробелы для выравнивания
+			 * Печатаем пробелы для выравнивания
 			 */
 			for(int32_t j = 0; j < pad; ++j)
-				// Выводим пробел для выравнивания
+				// Печатаем пробел для выравнивания
 				out << ' ';
-			// Выводим wire-код шифра в виде "0x%04X"
+			// Печатаем wire-код шифра в виде "0x%04X"
 			out << "(" << hex16(wire) << ")" << endl;
 		}
 		// ================================================================
@@ -4729,7 +4729,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			char index[8];
 			// Формируем индекс метода сжатия в виде "[ i ]"
 			::snprintf(index, sizeof(index), "[%2zu]", i);
-			// Выводим индекс, имя метода сжатия и его wire-код в виде "0x%02X"
+			// Печатаем индекс, имя метода сжатия и его wire-код в виде "0x%02X"
 			out << "    " << index << "  " << ::local::compressALGName(wire) << "  (" << hex8(wire) << ")" << endl;
 		}
 		// ================================================================
@@ -4759,26 +4759,26 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			::snprintf(index, sizeof(index), "[%2zu]", i);
 			// GREASE расширение: выводим специальный маркер и переходим к следующему
 			if(ext->type == extension_type_t::GREASE){
-				// Выводим индекс расширения и пометку "[GREASE]"
+				// Печатаем индекс расширения и пометку "[GREASE]"
 				out << "    " << index << "  [GREASE]" << endl;
 				// Переходим к следующему расширению без добавления деталей
 				continue;
 			}
 			// Имя расширения с выравниванием по столбцу 50
 			const char * ename = ::local::extensionName(wire);
-			// Выводим индекс расширения
+			// Печатаем индекс расширения
 			out << "    " << index << "  ";
-			// Выводим имя расширения с выравниванием по столбцу 50
+			// Печатаем имя расширения с выравниванием по столбцу 50
 			out << ename;
 			// Вычисляем количество пробелов для выравнивания по столбцу 50
 			const int32_t pad = (46 - static_cast <int32_t> (::strlen(ename)));
 			/**
-			 * Выводим пробелы для выравнивания
+			 * Печатаем пробелы для выравнивания
 			 */
 			for(int32_t j = 0; j < pad; ++j)
-				// Выводим пробел для выравнивания
+				// Печатаем пробел для выравнивания
 				out << ' ';
-			// Выводим wire-код расширения в виде "0x%04X"
+			// Печатаем wire-код расширения в виде "0x%04X"
 			out << "(" << hex16(wire) << ")";
 			/**
 			 * Детали расширения в зависимости от его типа
@@ -4790,13 +4790,13 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					const auto * p = awh_cast <const extension_server_name_t *> (ext.get());
 					// Если список имён серверов не пустой, выводим их
 					if(!p->names.empty()){
-						// Выводим первый сервер с маркером "->"
+						// Возвращаем первый сервер с маркером "->"
 						out << "  ->  \"" << p->names[0] << '"';
 						/**
 						 * Перебираем оставшиеся имена серверов (если есть)
 						 */
 						for(size_t j = 1; j < p->names.size(); ++j)
-							// Выводим последующие серверы, разделяя запятой
+							// Возвращаем последующие серверы, разделяя запятой
 							out << ", \"" << p->names[j] << '"';
 					}
 				} break;
@@ -4804,7 +4804,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::SUPPORTED_VERSIONS): {
 					// Получаем объект расширения supported_versions
 					const auto * p = awh_cast <const extension_supported_versions_t *> (ext.get());
-					// Выводим маркер "->" перед списком версий
+					// Печатаем маркер "->" перед списком версий
 					out << "  ->  ";
 					/**
 					 * Перебираем версии и выводим их, разделяя запятой
@@ -4812,13 +4812,13 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->versions.size(); ++j){
 						// Если это не первая версия
 						if(j > 0)
-							// Выводим запятую для разделения версий
+							// Печатаем запятую для разделения версий
 							out << ", ";
 						// Если версия представляет из себя GREASE
 						if(p->versions[j] == version_t::GREASE)
-							// Выводим специальный маркер для GREASE-версии
+							// Печатаем специальный маркер для GREASE-версии
 							out << "[GREASE]";
-						// Выводим имя версии по её wire-коду
+						// Печатаем имя версии по её wire-коду
 						else out << ::local::tlsVersionName(::local::versionWire(p->versions[j]));
 					}
 				} break;
@@ -4826,7 +4826,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::SUPPORTED_GROUPS): {
 					// Получаем объект расширения supported_groups
 					const auto * p = awh_cast <const extension_supported_groups_t *> (ext.get());
-					// Выводим маркер "->" перед списком групп
+					// Печатаем маркер "->" перед списком групп
 					out << "  ->  ";
 					/**
 					 * Перебираем группы и выводим их, разделяя запятой
@@ -4834,13 +4834,13 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->supportedGroups.size(); ++j){
 						// Если это не первая группа
 						if(j > 0)
-							// Выводим запятую для разделения групп
+							// Печатаем запятую для разделения групп
 							out << ", ";
 						// Если группа представляет из себя GREASE
 						if(p->supportedGroups[j] == group_t::GREASE)
-							// Выводим специальный маркер для GREASE-группы
+							// Печатаем специальный маркер для GREASE-группы
 							out << "[GREASE]";
-						// Выводим имя группы по её wire-коду
+						// Печатаем имя группы по её wire-коду
 						else out << ::local::groupName(::local::groupWire(p->supportedGroups[j]));
 					}
 				} break;
@@ -4848,7 +4848,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::EC_POINT_FORMATS): {
 					// Получаем объект расширения ec_point_formats
 					const auto * p = awh_cast <const extension_ec_point_t *> (ext.get());
-					// Выводим маркер "->" перед списком форматов точек
+					// Печатаем маркер "->" перед списком форматов точек
 					out << "  ->  ";
 					/**
 					 * Перебираем форматы точек и выводим их, разделяя запятой
@@ -4856,25 +4856,25 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->formats.size(); ++j){
 						// Если это не первый формат точки
 						if(j > 0)
-							// Выводим запятую для разделения форматов точек
+							// Печатаем запятую для разделения форматов точек
 							out << ", ";
 						// Получаем wire-код формата точки
 						const uint8_t fw = ::local::ecPointWire(p->formats[j]);
 						// Если формат точки представляет из себя GREASE
 						if(p->formats[j] == ec_point_format_t::GREASE)
-							// Выводим специальный маркер для GREASE-формата точки
+							// Печатаем специальный маркер для GREASE-формата точки
 							out << "[GREASE]";
 						// Если формат точки — uncompressed (0x00), выводим его имя
 						else if(fw == 0x00)
-							// Выводим имя формата точки "uncompressed" для wire-кода 0x00
+							// Печатаем имя формата точки "uncompressed" для wire-кода 0x00
 							out << "uncompressed";
 						// Если формат точки — ansiX962_compressed_prime (0x01), выводим его имя
 						else if(fw == 0x01)
-							// Выводим имя формата точки "ansiX962_compressed_prime" для wire-кода 0x01
+							// Печатаем имя формата точки "ansiX962_compressed_prime" для wire-кода 0x01
 							out << "ansiX962_compressed_prime";
 						// Если формат точки — ansiX962_compressed_char2 (0x02), выводим его имя
 						else if(fw == 0x02)
-							// Выводим имя формата точки "ansiX962_compressed_char2" для wire-кода 0x02
+							// Печатаем имя формата точки "ansiX962_compressed_char2" для wire-кода 0x02
 							out << "ansiX962_compressed_char2";
 						// Для остальных форматов точек выводим их wire-коды в виде "0x%02X"
 						else out << hex8(fw);
@@ -4884,7 +4884,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::SIGNATURE_ALGORITHMS): {
 					// Получаем объект расширения signature_algorithms
 					const auto * p = awh_cast <const extension_signature_t *> (ext.get());
-					// Выводим перенос строки
+					// Печатаем перевод строки
 					out << endl;
 					/**
 					 * Перебираем алгоритмы и выводим их на отдельных строках с отступами
@@ -4892,15 +4892,15 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(const auto sig : p->algorithms){
 						// Получаем wire-код алгоритма подписи
 						const uint16_t sw = ::local::signatureWire(sig);
-						// Выводим отступы для алгоритмов подписи
+						// Печатаем отступы для алгоритмов подписи
 						out << "              ";
 						// Если алгоритм подписи представляет из себя GREASE
 						if(sig == signature_t::GREASE)
-							// Выводим специальный маркер для GREASE-алгоритма подписи
+							// Печатаем специальный маркер для GREASE-алгоритма подписи
 							out << "[GREASE]";
-						// Выводим имя алгоритма подписи по его wire-коду
+						// Печатаем имя алгоритма подписи по его wire-коду
 						else out << ::local::signatureName(sw) << "  (" << hex16(sw) << ")";
-						// Выводим перенос строки после каждого алгоритма подписи
+						// Печатаем перевод строки после каждого алгоритма подписи
 						out << endl;
 					}
 					// Переходим к следующему расширению без добавления финального переноса строки
@@ -4910,7 +4910,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::ALPN): {
 					// Получаем объект расширения alpn
 					const auto * p = awh_cast <const extension_alpn_t *> (ext.get());
-					// Выводим маркер "->" перед списком протоколов
+					// Печатаем маркер "->" перед списком протоколов
 					out << "  ->  ";
 					/**
 					 * Перебираем протоколы и выводим их, разделяя запятой
@@ -4918,9 +4918,9 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->protocols.size(); ++j){
 						// Если это не первый протокол
 						if(j > 0)
-							// Выводим запятую для разделения протоколов
+							// Печатаем запятую для разделения протоколов
 							out << ", ";
-						// Выводим имя протокола в кавычках
+						// Печатаем имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
 				} break;
@@ -4928,7 +4928,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::NEXT_PROTO_NEG): {
 					// Получаем объект расширения next_proto_neg
 					const auto * p = awh_cast <const extension_next_proto_neg_t *> (ext.get());
-					// Выводим маркер "->" перед списком протоколов
+					// Печатаем маркер "->" перед списком протоколов
 					out << "  ->  ";
 					/**
 					 * Перебираем протоколы и выводим их, разделяя запятой
@@ -4936,9 +4936,9 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->protocols.size(); ++j){
 						// Если это не первый протокол
 						if(j > 0)
-							// Выводим запятую для разделения протоколов
+							// Печатаем запятую для разделения протоколов
 							out << ", ";
-						// Выводим имя протокола в кавычках
+						// Печатаем имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
 				} break;
@@ -4946,7 +4946,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::APPLICATION_SETTINGS): {
 					// Получаем объект расширения application_settings
 					const auto * p = awh_cast <const extension_application_settings_t *> (ext.get());
-					// Выводим маркер "->" перед списком протоколов
+					// Печатаем маркер "->" перед списком протоколов
 					out << "  ->  ";
 					/**
 					 * Перебираем протоколы и выводим их, разделяя запятой
@@ -4954,9 +4954,9 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->protocols.size(); ++j){
 						// Если это не первый протокол
 						if(j > 0)
-							// Выводим запятую для разделения протоколов
+							// Печатаем запятую для разделения протоколов
 							out << ", ";
-						// Выводим имя протокола в кавычках
+						// Печатаем имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
 				} break;
@@ -4964,7 +4964,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::APPLICATION_SETTINGS_OLD): {
 					// Получаем объект расширения application_settings_old
 					const auto * p = awh_cast <const extension_application_settings_old_t *> (ext.get());
-					// Выводим маркер "->" перед списком протоколов
+					// Печатаем маркер "->" перед списком протоколов
 					out << "  ->  ";
 					/**
 					 * Перебираем протоколы и выводим их, разделяя запятой
@@ -4972,9 +4972,9 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->protocols.size(); ++j){
 						// Если это не первый протокол
 						if(j > 0)
-							// Выводим запятую для разделения протоколов
+							// Печатаем запятую для разделения протоколов
 							out << ", ";
-						// Выводим имя протокола в кавычках
+						// Печатаем имя протокола в кавычках
 						out << '"' << p->protocols[j] << '"';
 					}
 				} break;
@@ -4982,7 +4982,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::KEY_SHARE): {
 					// Получаем объект расширения key_share
 					const auto * p = awh_cast <const extension_key_share_t *> (ext.get());
-					// Выводим маркер "->" перед списком групп и размеров ключей
+					// Печатаем маркер "->" перед списком групп и размеров ключей
 					out << "  ->  ";
 					// Флаг для определения первой пары группа→размер ключа (для правильного разделения запятой)
 					bool first = true;
@@ -4992,15 +4992,15 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(const auto & [grp, data] : p->shares){
 						// Если это не первая пара группа→размер ключа
 						if(!first)
-							// Выводим запятую для разделения пар группа→размер ключа
+							// Печатаем запятую для разделения пар группа→размер ключа
 							out << ", ";
 						// Убираем флаг первой пары группа→размер ключа после обработки первой пары
 						first = false;
 						// Если группа представляет из себя GREASE
 						if(grp == group_t::GREASE)
-							// Выводим специальный маркер для GREASE-группы и размер данных в скобках
+							// Печатаем специальный маркер для GREASE-группы и размер данных в скобках
 							out << "[GREASE](" << data.size() << "B)";
-						// Выводим имя группы по её wire-коду и размер данных в скобках
+						// Печатаем имя группы по её wire-коду и размер данных в скобках
 						else out << ::local::groupName(::local::groupWire(grp)) << "(" << data.size() << "B)";
 					}
 				} break;
@@ -5008,7 +5008,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::PSK_KEY_EXCHANGE_MODES): {
 					// Получаем объект расширения psk_key_exchange_modes
 					const auto * p = awh_cast <const extension_psk_key_exchange_t *> (ext.get());
-					// Выводим маркер "->" перед списком режимов обмена ключами PSK
+					// Печатаем маркер "->" перед списком режимов обмена ключами PSK
 					out << "  ->  ";
 					/**
 					 * Перебираем режимы обмена ключами PSK и выводим их, разделяя запятой
@@ -5016,25 +5016,25 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->modes.size(); ++j){
 						// Если это не первый режим обмена ключами PSK
 						if(j > 0)
-							// Выводим запятую для разделения режимов обмена ключами PSK
+							// Печатаем запятую для разделения режимов обмена ключами PSK
 							out << ", ";
 						/**
-						 * Выводим имя режима обмена ключами PSK по его типу
+						 * Печатаем имя режима обмена ключами PSK по его типу
 						 */
 						switch(p->modes[j]){
 							// Если режим обмена ключами PSK — psk_ke (0x00)
 							case psk_key_t::PSK_ONLY:
-								// Выводим имя режима обмена ключами PSK "psk_ke" для типа 0x00
+								// Печатаем имя режима обмена ключами PSK "psk_ke" для типа 0x00
 								out << "psk_ke(0x00)";
 							break;
 							// Если режим обмена ключами PSK — psk_dhe_ke (0x01)
 							case psk_key_t::PSK_DHE:
-								// Выводим имя режима обмена ключами PSK "psk_dhe_ke" для типа 0x01
+								// Печатаем имя режима обмена ключами PSK "psk_dhe_ke" для типа 0x01
 								out << "psk_dhe_ke(0x01)";
 							break;
 							// Для остальных режимов обмена ключами
 							default:
-								// Выводим неизвестный режим обмена ключами
+								// Возвращаем неизвестный режим обмена ключами
 								out << "UNKNOWN";
 						}
 					}
@@ -5043,7 +5043,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::PRE_SHARED_KEY): {
 					// Получаем объект расширения pre_shared_key
 					const auto * p = awh_cast <const extension_pre_shared_key_t *> (ext.get());
-					// Выводим маркер "->" перед количеством идентификаторов PSK и правильное склонение слова "identity"
+					// Печатаем маркер "->" перед количеством идентификаторов PSK и правильное склонение слова "identity"
 					out << "  ->  " << p->identities.size()
 					    << (p->identities.size() == 1 ? " identity" : " identities");
 				} break;
@@ -5053,7 +5053,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					const auto * p = awh_cast <const extension_session_ticket_t *> (ext.get());
 					// Если данные для session_ticket отсутствуют
 					if(p->data.empty())
-						// Выводим пометку о том, что данные отсутствуют и это может быть запросом на новый билет
+						// Возвращаем пометку о том, что данные отсутствуют и это может быть запросом на новый билет
 						out << "  ->  (empty / request for new ticket)";
 					// Если данные для session_ticket присутствуют, выводим их размер в байтах
 					else out << "  ->  " << p->data.size() << " bytes";
@@ -5064,21 +5064,21 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					const auto * p = awh_cast <const extension_status_request_t *> (ext.get());
 					// Если тип статуса для status_request не пустой, выводим его
 					if(!p->certificateStatusType.empty())
-						// Выводим тип статуса для status_request
+						// Возвращаем тип статуса для status_request
 						out << "  ->  type=" << p->certificateStatusType;
 				} break;
 				// padding: выводим размер блока заполнения
 				case static_cast <uint8_t> (extension_type_t::PADDING): {
 					// Получаем объект расширения padding
 					const auto * p = awh_cast <const extension_padding_t *> (ext.get());
-					// Выводим маркер "->" перед размером блока заполнения в байтах
+					// Печатаем маркер "->" перед размером блока заполнения в байтах
 					out << "  ->  " << p->size << " bytes";
 				} break;
 				// record_size_limit: выводим максимальный размер записи
 				case static_cast <uint8_t> (extension_type_t::RECORD_SIZE_LIMIT): {
 					// Получаем объект расширения record_size_limit
 					const auto * p = awh_cast <const extension_record_size_limit_t *> (ext.get());
-					// Выводим маркер "->" перед максимальным размером записи в байтах
+					// Печатаем маркер "->" перед максимальным размером записи в байтах
 					out << "  ->  " << p->data << " bytes";
 				} break;
 				// early_data: выводим максимальный размер ранних данных
@@ -5087,14 +5087,14 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					const auto * p = awh_cast <const extension_early_data_t *> (ext.get());
 					// Если максимальный размер ранних данных больше 0
 					if(p->maxSize > 0)
-						// Выводим маркер "->" перед максимальным размером ранних данных в байтах
+						// Печатаем маркер "->" перед максимальным размером ранних данных в байтах
 						out << "  ->  max=" << p->maxSize << " bytes";
 				} break;
 				// compress_certificate: выводим поддерживаемые алгоритмы сжатия сертификатов
 				case static_cast <uint8_t> (extension_type_t::COMPRESS_CERTIFICATE): {
 					// Получаем объект расширения compress_certificate
 					const auto * p = awh_cast <const extension_compress_certificate_t *> (ext.get());
-					// Выводим маркер "->" перед списком поддерживаемых алгоритмов сжатия сертификатов
+					// Печатаем маркер "->" перед списком поддерживаемых алгоритмов сжатия сертификатов
 					out << "  ->  ";
 					/**
 					 * Перебираем поддерживаемые алгоритмы сжатия сертификатов и выводим их, разделяя запятой
@@ -5102,9 +5102,9 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					for(size_t j = 0; j < p->algorithms.size(); ++j){
 						// Если это не первый алгоритм сжатия сертификатов
 						if(j > 0)
-							// Выводим запятую для разделения алгоритмов сжатия сертификатов
+							// Печатаем запятую для разделения алгоритмов сжатия сертификатов
 							out << ", ";
-						// Выводим имя алгоритма сжатия сертификатов по его wire-коду
+						// Печатаем имя алгоритма сжатия сертификатов по его wire-коду
 						out << ::local::compressALGName(::local::compressorWire(p->algorithms[j]));
 					}
 				} break;
@@ -5113,17 +5113,17 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 					// Получаем объект расширения heartbeat
 					const auto * p = awh_cast <const extension_heartbeat_t *> (ext.get());
 					/**
-					 * Выводим маркер "->" перед режимом heartbeat и его текстовым представлением
+					 * Печатаем маркер "->" перед режимом heartbeat
 					 */
 					switch(static_cast <uint8_t> (p->mode)){
 						// Если режим heartbeat — peer_allowed_to_send
 						case static_cast <uint8_t> (heartbeat_t::PEER_ALLOWED_TO_SEND):
-							// Выводим имя режима heartbeat "peer_allowed_to_send"
+							// Печатаем имя режима heartbeat "peer_allowed_to_send"
 							out << "  ->  peer_allowed_to_send";
 						break;
 						// Если режим heartbeat — peer_not_allowed_to_send
 						case static_cast <uint8_t> (heartbeat_t::PEER_NOT_ALLOWED_TO_SEND):
-							// Выводим имя режима heartbeat "peer_not_allowed_to_send"
+							// Печатаем имя режима heartbeat "peer_not_allowed_to_send"
 							out << "  ->  peer_not_allowed_to_send";
 						break;
 					}
@@ -5132,60 +5132,60 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 				case static_cast <uint8_t> (extension_type_t::RENEGOTIATION_INFO): {
 					// Получаем объект расширения renegotiation_info
 					const auto * p = awh_cast <const extension_renegotiation_info_t *> (ext.get());
-					// Выводим маркер "->" перед размером данных переговоров в байтах
+					// Печатаем маркер "->" перед размером данных переговоров в байтах
 					out << "  ->  " << p->data.size() << " bytes";
 				} break;
 				// encrypted_client_hello (ECH): выводим размер зашифрованных данных
 				case static_cast <uint8_t> (extension_type_t::ENCRYPTED_CLIENT_HELLO): {
 					// Получаем объект расширения encrypted_client_hello
 					const auto * p = awh_cast <const extension_encryption_client_hello_t *> (ext.get());
-					// Выводим маркер "->" перед размером зашифрованных данных в байтах
+					// Печатаем маркер "->" перед размером зашифрованных данных в байтах
 					out << "  ->  " << p->data.size() << " bytes";
 				} break;
 				// ech_outer_extensions: выводим количество вложенных расширений
 				case static_cast <uint8_t> (extension_type_t::ECH_OUTER_EXTENSIONS): {
 					// Получаем объект расширения ech_outer_extensions
 					const auto * p = awh_cast <const extension_ech_outer_extensions_t *> (ext.get());
-					// Выводим маркер "->" перед количеством вложенных расширений
+					// Печатаем маркер "->" перед количеством вложенных расширений
 					out << "  ->  " << p->extensions.size() << " extension(s)";
 				} break;
 				// certificate_authorities: выводим количество доверенных CA
 				case static_cast <uint8_t> (extension_type_t::CERTIFICATE_AUTHORITIES): {
 					// Получаем объект расширения certificate_authorities
 					const auto * p = awh_cast <const extension_certificate_authorities_t *> (ext.get());
-					// Выводим маркер "->" перед количеством доверенных CA
+					// Печатаем маркер "->" перед количеством доверенных CA
 					out << "  ->  " << p->authorities.size() << " CA(s)";
 				} break;
 				// max_fragment_length: выводим максимальную длину фрагмента
 				case static_cast <uint8_t> (extension_type_t::MAX_FRAGMENT_LENGTH): {
 					// Получаем объект расширения max_fragment_length
 					const auto * p = awh_cast <const extension_max_fragment_length_t *> (ext.get());
-					// Выводим маркер "->" перед максимальной длиной фрагмента в байтах
+					// Печатаем маркер "->" перед максимальной длиной фрагмента в байтах
 					out << "  ->  " << p->length;
 				} break;
 				// tls_flags: выводим количество флагов
 				case static_cast <uint8_t> (extension_type_t::TLS_FLAGS): {
 					// Получаем объект расширения tls_flags
 					const auto * p = awh_cast <const extension_tls_flags_t *> (ext.get());
-					// Выводим маркер "->" перед количеством флагов
+					// Печатаем маркер "->" перед количеством флагов
 					out << "  ->  " << p->flags.size() << " flag(s)";
 				} break;
 				// quic_transport_parameters: выводим количество параметров QUIC
 				case static_cast <uint8_t> (extension_type_t::QUIC_TRANSPORT_PARAMETERS): {
 					// Получаем объект расширения quic_transport_parameters
 					const auto * p = awh_cast <const extension_quic_transport_params_t *> (ext.get());
-					// Выводим маркер "->" перед количеством параметров QUIC
+					// Печатаем маркер "->" перед количеством параметров QUIC
 					out << "  ->  " << p->params.size() << " param(s)";
 				} break;
 				// quic_transport_parameters_legacy: выводим количество параметров QUIC (устаревший)
 				case static_cast <uint8_t> (extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY): {
 					// Получаем объект расширения quic_transport_parameters_legacy
 					const auto * p = awh_cast <const extension_quic_transport_params_legacy_t *> (ext.get());
-					// Выводим маркер "->" перед количеством параметров QUIC (устаревший)
+					// Печатаем маркер "->" перед количеством параметров QUIC (устаревший)
 					out << "  ->  " << p->params.size() << " param(s)";
 				} break;
 			}
-			// Выводим перенос строки после каждого расширения
+			// Печатаем перевод строки после каждого расширения
 			out << endl;
 		}
 		// ================================================================
@@ -5197,7 +5197,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		imprint_t imp{};
 		// Вычисляем отпечатки из переданного browser_t
 		const bool hasImp = this->imprint(browser, imp);
-		// Выводим перенос строки перед секцией вычисленных отпечатков
+		// Печатаем перевод строки перед секцией вычисленных отпечатков
 		out << endl;
 		// Если вычисление отпечатков не удалось (например, из-за отсутствия данных для JA3), выводим сообщение об ошибке в секции отпечатков
 		if(!hasImp)
@@ -5205,7 +5205,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			out << "  [ Computed Fingerprints  (ERROR - computation failed) ]" << endl;
 		// Если вычисление отпечатков прошло успешно, выводим их в секции Computed Fingerprints
 		else {
-			// Выводим заголовок секции Computed Fingerprints
+			// Печатаем заголовок в отладочный вывод секции Computed Fingerprints
 			out << "  [ Computed Fingerprints ]" << endl;
 			// Wire-коды версий для получения их текстовых названий
 			const uint16_t recV = static_cast <uint16_t> (::stoul(imp.tls.record));
@@ -5228,7 +5228,7 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 			out << endl;
 			out << "    PeetPrint  : " << imp.peetprint << endl;
 			out << "    PeetHash   : " << imp.peetprintHash << endl;
-			// Выводим перенос строки после секции отпечатков
+			// Печатаем перевод строки после секции отпечатков
 			out << endl;
 			// Итоговый вывод: похож ли отпечаток на реальный браузер
 			out << "    Browser?   : " << (this->looksLikeBrowser(imp) ? "YES (looks like a real browser)" : "NO  (does not look like a real browser)") << endl;
@@ -5245,13 +5245,13 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5292,9 +5292,9 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 			for(const auto & s : h2.settings){
 				// Если это не первая пара id:value
 				if(!first)
-					// Выводим ';' для разделения пар id:value
+					// Печатаем ';' для разделения пар id:value
 					out << ';';
-				// Выводим пару id:value в формате "{id}:{value}"
+				// Возвращаем пару id:value в формате "{id}:{value}"
 				out << s.id << ':' << s.value;
 				// Убираем флаг первой пары id:value после обработки первой пары
 				first = false;
@@ -5319,9 +5319,9 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 			for(const auto & p : h2.priorities){
 				// Если это не первая PRIORITY-запись
 				if(!first)
-					// Выводим ',' для разделения PRIORITY-записей
+					// Печатаем ',' для разделения PRIORITY-записей
 					out << ',';
-				// Выводим строку streamId:exclusive:dependency:weight для текущего PRIORITY-фрейма
+				// Возвращаем строку streamId:exclusive:dependency:weight для текущего PRIORITY-фрейма
 				out << p.streamId << ':'
 				    << (p.exclusive ? 1 : 0) << ':'
 				    << p.dependency << ':'
@@ -5343,9 +5343,9 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 			for(const auto & ph : h2.pseudoHeaders){
 				// Если это не первый pseudo-header
 				if(!first)
-					// Выводим ',' для разделения pseudo-headers
+					// Печатаем ',' для разделения pseudo-headers
 					out << ',';
-				// Выводим pseudo-header (m/p/s/a)
+				// Возвращаем pseudo-header (m/p/s/a)
 				out << ph;
 				// Убираем флаг первого pseudo-header после обработки первого pseudo-header
 				first = false;
@@ -5361,13 +5361,13 @@ string awh::tls::Fingerprint::akamai(const h2_browser_t & h2) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5767,7 +5767,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			 * @return  строка hex формата "xxxx,xxxx,..."
 			 */
 			const auto makeHexList = [](const vector <uint16_t> & v) -> string {
-				// Результат работы функции
+				// Переменная результата
 				string result = "";
 				// Буфер для конвертации одного uint16 в 4-символьный hex
 				char buffer[5] = {0}; // 4 символа + null-терминатор
@@ -5970,7 +5970,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 			result.peetprintHash = ::local::md5(peet);
 			// Устанавливаем сформированный peetprint
 			result.peetprint = ::move(peet);
-			// Выводим результат парсинга PeetPrint
+			// Возвращаем результат парсинга PeetPrint
 			return !result.peetprintHash.empty();
 		}
 	/**
@@ -5981,17 +5981,17 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -6003,7 +6003,7 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
  * @return        результат парсинга данных цифрового отпечатка
  */
 bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, browser_t & browser) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -6017,16 +6017,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Fingerprint buffer too short: %zu bytes (need >= 11)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, size);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Fingerprint buffer too short: %zu bytes (need >= 11)", log_t::flag_t::WARNING, size);
 			#endif
-			// Выводим результат по умолчанию
+			// Возвращаем значение по умолчанию
 			return result;
 		}
 		// Проверяем, что первый байт — это 0x16 (handshake record)
@@ -6080,16 +6080,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Unsupported record version: 0x%04X", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + 1));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("Unsupported record version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + 1));
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Определяем, является ли это DTLS (версии 0xFEFF для DTLS 1.0 и 0xFEFD для DTLS 1.2)
@@ -6111,16 +6111,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Fingerprint buffer too short for %s headers: %zu bytes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("Fingerprint buffer too short for %s headers: %zu bytes", log_t::flag_t::WARNING, (isDTLS ? "DTLS" : "TLS"), size);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Длина полезной нагрузки record: в TLS — offset 3, в DTLS — offset 11
@@ -6151,17 +6151,17 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Handshake entry does not match the ClientHello", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Handshake entry does not match the ClientHello", log_t::flag_t::WARNING);
 					#endif
 				}
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			/**
@@ -6213,16 +6213,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Unsupported handshake version: 0x%04X", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("Unsupported handshake version: 0x%04X", log_t::flag_t::WARNING, ::local::u16(buffer + (recordSize + handshakeSize)));
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Устанавливаем размер записи рукопожатия
@@ -6268,16 +6268,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello truncated at session_id_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello truncated at session_id_len", log_t::flag_t::WARNING);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Получаем длину session_id
@@ -6288,16 +6288,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello session_id_len > 32 (%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, length);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello session_id_len > 32 (%zu)", log_t::flag_t::WARNING, length);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Если размер данных меньше смещения + длины session_id, то это означает, что данные обрезаны
@@ -6306,16 +6306,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, offset, length, size);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello truncated at session_id (offset=%zu, length=%zu, size=%zu)", log_t::flag_t::WARNING, offset, length, size);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Если длина session_id больше 0, то извлекаем session_id
@@ -6335,16 +6335,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("ClientHello truncated at cookie_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("ClientHello truncated at cookie_len", log_t::flag_t::WARNING);
 					#endif
-					// Выводим результат по умолчанию
+					// Возвращаем значение по умолчанию
 					return result;
 				}
 				// Получаем длину cookie
@@ -6355,16 +6355,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, offset, length, size);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("ClientHello truncated at cookie data (offset=%zu, length=%zu, size=%zu)", log_t::flag_t::WARNING, offset, length, size);
 					#endif
-					// Выводим результат по умолчанию
+					// Возвращаем значение по умолчанию
 					return result;
 				}
 				// Если длина cookie больше 0, то извлекаем cookie
@@ -6383,16 +6383,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello truncated at cipher_suites_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello truncated at cipher_suites_len", log_t::flag_t::WARNING);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Получаем длину списка cipher_suites
@@ -6405,16 +6405,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello invalid cipher_suites length (%zu)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, length);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello invalid cipher_suites length (%zu)", log_t::flag_t::WARNING, length);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Значение шифра из ClientHello
@@ -6570,16 +6570,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello truncated at compression_methods_len", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello truncated at compression_methods_len", log_t::flag_t::WARNING);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Получаем длину списка compression_methods
@@ -6590,16 +6590,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello truncated at compression_methods", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello truncated at compression_methods", log_t::flag_t::WARNING);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Если длина compression_methods не равна 1 или если первый байт compression_methods не равен 0x00 (null), то это не соответствует стандарту TLS
@@ -6608,13 +6608,13 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, length, buffer[offset]);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello non-standard compression_methods (length=%zu, value=0x%02X)", log_t::flag_t::WARNING, length, buffer[offset]);
 				#endif
 			}
@@ -6651,16 +6651,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello truncated at extensions_length", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello truncated at extensions_length", log_t::flag_t::WARNING);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Получаем длину списка расширений
@@ -6673,16 +6673,16 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("ClientHello truncated inside extensions", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("ClientHello truncated inside extensions", log_t::flag_t::WARNING);
 				#endif
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return result;
 			}
 			// Определяем конечное смещение для расширений, чтобы не выходить за пределы данных
@@ -6938,7 +6938,7 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 				// Увеличиваем смещение на размер данных расширения, чтобы перейти к следующему расширению
 				offset += static_cast <size_t> (size);
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return !browser.extensions.empty();
 		}
 	/**
@@ -6949,17 +6949,17 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -7273,13 +7273,13 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -7295,7 +7295,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
  * @return        буфер с данными ClientHello, модифицированными в соответствии с цифровым отпечатком
  */
 vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size_t size, const browser_t & browser) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <uint8_t> result;
 	/**
 	 * Выполняем перехват ошибок
@@ -7760,31 +7760,31 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 						switch(static_cast <uint8_t> (profile)){
 							// Если профиль SRTP соответствует AES128_CM_HMAC_SHA1_80 (RFC 5764)
 							case static_cast <uint8_t> (srtp_t::AES128_CM_HMAC_SHA1_80):
-								// Выводим wire-код профиля SRTP для AES128_CM_HMAC_SHA1_80
+								// Печатаем wire-код профиля SRTP для AES128_CM_HMAC_SHA1_80
 								return 0x0001u;
 							// Если профиль SRTP соответствует AES128_CM_HMAC_SHA1_32 (RFC 5764)
 							case static_cast <uint8_t> (srtp_t::AES128_CM_HMAC_SHA1_32):
-								// Выводим wire-код профиля SRTP для AES128_CM_HMAC_SHA1_32
+								// Печатаем wire-код профиля SRTP для AES128_CM_HMAC_SHA1_32
 								return 0x0002u;
 							// Если профиль SRTP соответствует AES128_F8_HMAC_SHA1_80 (RFC 5764)
 							case static_cast <uint8_t> (srtp_t::AES128_F8_HMAC_SHA1_80):
-								// Выводим wire-код профиля SRTP для AES128_F8_HMAC_SHA1_80
+								// Печатаем wire-код профиля SRTP для AES128_F8_HMAC_SHA1_80
 								return 0x0005u;
 							// Если профиль SRTP соответствует NULL_HMAC_SHA1_80 (RFC 5764)
 							case static_cast <uint8_t> (srtp_t::NULL_HMAC_SHA1_80):
-								// Выводим wire-код профиля SRTP для NULL_HMAC_SHA1_80
+								// Печатаем wire-код профиля SRTP для NULL_HMAC_SHA1_80
 								return 0x0007u;
 							// Если профиль SRTP соответствует NULL_HMAC_SHA1_32 (RFC 5764)
 							case static_cast <uint8_t> (srtp_t::NULL_HMAC_SHA1_32):
-								// Выводим wire-код профиля SRTP для NULL_HMAC_SHA1_32
+								// Печатаем wire-код профиля SRTP для NULL_HMAC_SHA1_32
 								return 0x0008u;
 							// Если профиль SRTP соответствует AEAD_AES_128_GCM (RFC 5764)
 							case static_cast <uint8_t> (srtp_t::AEAD_AES_128_GCM):
-								// Выводим wire-код профиля SRTP для AEAD_AES_128_GCM
+								// Печатаем wire-код профиля SRTP для AEAD_AES_128_GCM
 								return 0x0009u;
 							// Если профиль SRTP соответствует AEAD_AES_256_GCM (RFC 5764)
 							case static_cast <uint8_t> (srtp_t::AEAD_AES_256_GCM):
-								// Выводим wire-код профиля SRTP для AEAD_AES_256_GCM
+								// Печатаем wire-код профиля SRTP для AEAD_AES_256_GCM
 								return 0x000Au;
 							// Неизвестный профиль SRTP
 							default: return 0u;
@@ -8147,17 +8147,17 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8192,13 +8192,13 @@ size_t awh::tls::Fingerprint::size() const noexcept {
  * @return список идентификаторов цифровых отпечатков браузеров
  */
 vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <id_t> result;
 	// Выполняем перебор всех цифровых отпечатков браузеров в хранилище
 	for(const auto & [id, browser] : this->_browsers)
 		// Добавляем идентификатор цифрового отпечатка браузера в результат
 		result.push_back(id);
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8208,7 +8208,7 @@ vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcep
  * @return   результат выполнения удаления цифрового отпечатка
  */
 bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -8228,17 +8228,17 @@ bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8248,7 +8248,7 @@ bool awh::tls::Fingerprint::remove(const id_t id) noexcept {
  * @return   объект с цифровым отпечатком браузера, соответствующий указанному идентификатору
  */
 const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	const static browser_t result;
 	/**
 	 * Выполняем перехват ошибок
@@ -8258,7 +8258,7 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
 		auto i = this->_browsers.find(id);
 		// Если цифровой отпечаток браузера найден
 		if(i != this->_browsers.end())
-			// Выводим цифровой отпечаток браузера, соответствующий указанному идентификатору
+			// Возвращаем цифровой отпечаток браузера, соответствующий указанному идентификатору
 			return i->second;
 	/**
 	 * Если возникает ошибка
@@ -8268,17 +8268,17 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (id)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8288,7 +8288,7 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::get(const id_t i
  * @return        идентификатор добавленного цифрового отпечатка
  */
 awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	id_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -8296,11 +8296,11 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
 	try {
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint8_t id{1};
-		// Выводим новое значение идентификатора
+		// Получаем следующий идентификатор
 		result = id.fetch_add(1, memory_order_relaxed);
-		// Если результат не получен
+		// Если идентификатор обнулился после переполнения счётчика
 		if(result == 0)
-			// Генерируем результат заново
+			// Получаем следующий идентификатор рекурсивно
 			result = id.fetch_add(1, memory_order_relaxed);
 		// Добавляем цифровой отпечаток браузера в хранилище с новым идентификатором
 		this->_browsers.emplace(result, browser);
@@ -8312,17 +8312,17 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8333,7 +8333,7 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const browser_t & browser
  * @return       идентификатор добавленного цифрового отпечатка
  */
 awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	id_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -8353,17 +8353,17 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8372,7 +8372,7 @@ awh::tls::Fingerprint::id_t awh::tls::Fingerprint::add(const uint8_t * buffer, c
  * @return бинарный буфер, содержащий дамп всех цифровых отпечатков браузеров
  */
 vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <uint8_t> result;
 	/**
 	 * Выполняем перехват ошибок
@@ -8415,17 +8415,17 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8435,7 +8435,7 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
  * @return       результат загрузки бинарного дампа
  */
 bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -8496,17 +8496,17 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & buffer) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8523,7 +8523,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 	try {
 		// Если входной буфер пустой, возвращаем ошибку
 		if(input.empty())
-			// Выводим результат по умолчанию
+			// Возвращаем значение по умолчанию
 			return false;
 		// Текущая позиция чтения в буфере
 		size_t offset = 0;
@@ -9514,7 +9514,7 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 				default: return false;
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return true;
 	/**
 	 * Если возникает ошибка
@@ -9524,17 +9524,17 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -10119,7 +10119,7 @@ bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & o
 				} break;
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return !output.empty();
 	/**
 	 * Если возникает ошибка
@@ -10129,17 +10129,17 @@ bool awh::tls::Fingerprint::dump(const browser_t & browser, vector <uint8_t> & o
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -10157,7 +10157,7 @@ void awh::tls::Fingerprint::swap(Fingerprint & fgp) noexcept {
  * @return конечный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
 }
 /**
@@ -10166,7 +10166,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::end() noexcept {
  * @return начальный итератор
  */
 awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::begin() noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(this->_browsers.begin(), this->_fmk, this->_log);
 }
 /**
@@ -10192,18 +10192,18 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noe
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(this->_browsers.end(), this->_fmk, this->_log);
 }
 /**
@@ -10213,7 +10213,7 @@ awh::tls::Fingerprint::iterator_t awh::tls::Fingerprint::find(const id_t id) noe
  * @return   цифровой отпечаток браузера
  */
 const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const id_t id) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return this->get(id);
 }
 /**
@@ -10222,7 +10222,7 @@ const awh::tls::Fingerprint::browser_t & awh::tls::Fingerprint::operator[](const
  * @return результат проверки
  */
 awh::tls::Fingerprint::operator bool() const noexcept {
-	// Выводим результат выполенной проверки
+	// Возвращаем результат выполенной проверки
 	return !this->_browsers.empty();
 }
 /**
@@ -10231,7 +10231,7 @@ awh::tls::Fingerprint::operator bool() const noexcept {
  * @return количество цифровых отпечатков браузеров
  */
 awh::tls::Fingerprint::operator size_t() const noexcept {
-	// Выводим результат количество цифровых отпечатков браузеров, хранящихся в хранилище
+	// Возвращаем результат количество цифровых отпечатков браузеров, хранящихся в хранилище
 	return this->_browsers.size();
 }
 /**
@@ -10240,7 +10240,7 @@ awh::tls::Fingerprint::operator size_t() const noexcept {
  * @return бинарные данные буфера дампа всех цифровых отпечатков браузеров
  */
 awh::tls::Fingerprint::operator vector <uint8_t> () const noexcept {
-	// Выводим результат бинарных данных дампа всех цифровых отпечатков браузеров
+	// Возвращаем результат бинарных данных дампа всех цифровых отпечатков браузеров
 	return this->dump();
 }
 /**
@@ -10258,14 +10258,14 @@ bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept
 		auto i = fgp._browsers.find(id);
 		// Если отпечаток браузера с данным идентификатором не найден в другом контейнере отпечатков браузеров
 		if(i == fgp._browsers.end())
-			// Выводим результат сравнения
+			// Возвращаем результат сравнения
 			return false;
 		// Если отпечаток браузера не совпадает с отпечатком браузера с данным идентификатором в другом контейнере отпечатков браузеров
 		else if(!(browser == i->second))
-			// Выводим результат сравнения
+			// Возвращаем результат сравнения
 			return false;
 	}
-	// Выводим результат сравнения двух отпечатков браузеров
+	// Возвращаем результат сравнения двух отпечатков браузеров
 	return true;
 }
 /**
@@ -10277,7 +10277,7 @@ bool awh::tls::Fingerprint::operator == (const Fingerprint & fgp) const noexcept
 awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const vector <uint8_t> & buffer) noexcept {
 	// Загружаем данные цифровых отпечатков из бинарного буфера
 	this->dump(buffer);
-	// Выводим текущий контейнер отпечатков браузеров
+	// Возвращаем текущий контейнер отпечатков браузеров
 	return (* this);
 }
 /**
@@ -10291,7 +10291,7 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (Fingerprint && fgp) n
 	if(this != &fgp)
 		// Перемещаем данные из объекта для перемещения в текущий объект
 		this->_browsers = ::move(fgp._browsers);
-	// Выводим текущий контейнер отпечатков браузеров
+	// Возвращаем текущий контейнер отпечатков браузеров
 	return (* this);
 }
 /**
@@ -10305,7 +10305,7 @@ awh::tls::Fingerprint & awh::tls::Fingerprint::operator = (const Fingerprint & f
 	if(this != &fgp)
 		// Копируем данные из объекта для копирования в текущий объект
 		this->_browsers = fgp._browsers;
-	// Выводим текущий контейнер отпечатков браузеров
+	// Возвращаем текущий контейнер отпечатков браузеров
 	return (* this);
 }
 /**

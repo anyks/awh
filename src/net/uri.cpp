@@ -101,7 +101,7 @@ namespace uri {
 		scheme = userinfo = host = port = path = query = fragment = {};
 		// Если URI пустой
 		if(uri.empty())
-			// Выводим результат парсинга
+			// Возвращаем результат парсинга
 			return false;
 		// Итератор на начало строки
 		const char * begin = uri.data();
@@ -584,7 +584,7 @@ namespace uri {
 				fragment = string_view(tokenBegin, end - tokenBegin);
 			break;
 		}
-		// Выводим результат парсинга
+		// Возвращаем результат парсинга
 		return true;
 	}
 
@@ -676,7 +676,7 @@ namespace uri {
 					((letter >= '0') && (letter <= '9'))
 				);
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 
@@ -689,7 +689,7 @@ namespace uri {
 	 * @return     результат кодирования
 	 */
 	[[nodiscard]] static string encode(string_view text, const uri_t::item_t item, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		string result = "";
 		// Если строка передана
 		if(!text.empty()){
@@ -729,18 +729,18 @@ namespace uri {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::WARNING, error.what());
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 
@@ -752,7 +752,7 @@ namespace uri {
 	 * @return     результат декодирования
 	 */
 	[[nodiscard]] static string decode(string_view text, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		string result = "";
 		// Если строка передана
 		if(!text.empty()){
@@ -802,18 +802,18 @@ namespace uri {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::WARNING, error.what());
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
@@ -863,7 +863,7 @@ bool awh::Uniform_Resource_Identifier::empty() const noexcept {
  * @return тип URI
  */
 awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::type() const noexcept {
-	// Выводим тип URI
+	// Возвращаем тип URI
 	return this->_type;
 }
 /**
@@ -872,7 +872,7 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::type(
  * @return схема URI
  */
 const string & awh::Uniform_Resource_Identifier::scheme() const noexcept {
-	// Выводим схему URI
+	// Возвращаем схему URI
 	return this->_scheme;
 }
 /**
@@ -948,7 +948,7 @@ void awh::Uniform_Resource_Identifier::scheme(string_view scheme) noexcept {
  * @return параметры пользователя URI
  */
 const awh::Uniform_Resource_Identifier::user_t & awh::Uniform_Resource_Identifier::user() const noexcept {
-	// Выводим параметры пользователя URI
+	// Возвращаем параметры пользователя URI
 	return this->_user;
 }
 /**
@@ -978,7 +978,7 @@ void awh::Uniform_Resource_Identifier::user(string_view username, string_view pa
  * @return якорь URI
  */
 const string & awh::Uniform_Resource_Identifier::fragment() const noexcept {
-	// Выводим якорь URI
+	// Возвращаем якорь URI
 	return this->_fragment;
 }
 /**
@@ -996,7 +996,7 @@ void awh::Uniform_Resource_Identifier::fragment(string_view fragment) noexcept {
  * @return атрибуты URI
  */
 const awh::net::attr_t * awh::Uniform_Resource_Identifier::attr() const noexcept {
-	// Выводим атрибуты URI
+	// Возвращаем атрибуты URI
 	return this->_attr.get();
 }
 /**
@@ -1081,13 +1081,13 @@ void awh::Uniform_Resource_Identifier::attr(const net::attr_t * attr) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -1110,11 +1110,11 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
 			switch(static_cast <uint8_t> (this->_attr->type)){
 				// Если атрибуты URI адреса являются адресом файловой системы
 				case static_cast <uint8_t> (net::type_t::FS):
-					// Выводим путь к сокету из атрибутов URI адреса
+					// Возвращаем путь к сокету из атрибутов URI адреса
 					return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN):
-					// Выводим доменное имя хоста из атрибутов URI адреса
+					// Возвращаем доменное имя хоста из атрибутов URI адреса
 					return awh_cast <net::attr_fqdn_t *> (this->_attr.get())->domain;
 				// Если атрибуты URI адреса являются IPv4-адресом
 				case static_cast <uint8_t> (net::type_t::IPV4):
@@ -1122,7 +1122,7 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
 				case static_cast <uint8_t> (net::type_t::IPV6): {
 					// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 					this->_addr->source(awh_cast <net::attr_net_t *> (this->_attr.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-					// Выводим IP-адрес хоста в виде строки
+					// Возвращаем IP-адрес хоста в виде строки
 					return static_cast <string> (* this->_addr.get());
 				}
 			}
@@ -1135,17 +1135,17 @@ string awh::Uniform_Resource_Identifier::host() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -1248,13 +1248,13 @@ void awh::Uniform_Resource_Identifier::host(string_view host) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(host), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -1277,7 +1277,7 @@ uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
 			switch(static_cast <uint8_t> (this->_attr->type)){
 				// Если атрибуты URI адреса являются адресом файловой системы
 				case static_cast <uint8_t> (net::type_t::FS):
-					// Выводим порт хоста из атрибутов URI адреса (для файловой системы порт не используется, поэтому возвращаем 0)
+					// Возвращаем порт хоста из атрибутов URI адреса (для файловой системы порт не используется, поэтому возвращаем 0)
 					return 0;
 				// Если атрибуты URI адреса являются FQDN-адресом
 				case static_cast <uint8_t> (net::type_t::FQDN): {
@@ -1341,7 +1341,7 @@ uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
 							break;
 						}
 					}
-					// Выводим порт хоста из атрибутов URI адреса
+					// Возвращаем порт хоста из атрибутов URI адреса
 					return awh_cast <net::attr_fqdn_t *> (this->_attr.get())->port;
 				}
 				// Если атрибуты URI адреса являются IPv4-адресом
@@ -1408,7 +1408,7 @@ uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
 							break;
 						}
 					}
-					// Выводим порт хоста из атрибутов URI адреса
+					// Возвращаем порт хоста из атрибутов URI адреса
 					return awh_cast <net::attr_net_t *> (this->_attr.get())->port;
 				}
 			}
@@ -1421,17 +1421,17 @@ uint16_t awh::Uniform_Resource_Identifier::port() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1472,13 +1472,13 @@ void awh::Uniform_Resource_Identifier::port(const uint16_t port) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(port), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -1489,7 +1489,7 @@ void awh::Uniform_Resource_Identifier::port(const uint16_t port) noexcept {
  * @return путь URI
  */
 const vector <string> & awh::Uniform_Resource_Identifier::path() const noexcept {
-	// Выводим путь URI
+	// Возвращаем путь URI
 	return this->_path;
 }
 /**
@@ -1507,7 +1507,7 @@ void awh::Uniform_Resource_Identifier::path(const vector <string> & path) noexce
  * @return параметры URI
  */
 const unordered_map <string, string> & awh::Uniform_Resource_Identifier::query() const noexcept {
-	// Выводим параметры URI
+	// Возвращаем параметры URI
 	return this->_query;
 }
 /**
@@ -1849,17 +1849,17 @@ awh::Uniform_Resource_Identifier::type_t awh::Uniform_Resource_Identifier::parse
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uri), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return this->_type;
 }
 /**
@@ -1916,18 +1916,18 @@ string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t si
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::WARNING, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::WARNING, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию (пустой ETag)
+	// Возвращаем значение по умолчанию (пустой ETag)
 	return "";
 }
 /**
@@ -1938,7 +1938,7 @@ string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t si
  * @return       строка URI
  */
 string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t format) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем отлов ошибок
@@ -2006,14 +2006,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							switch(static_cast <uint8_t> (this->_attr->type)){
 								// Если атрибуты URI адреса являются адресом файловой системы
 								case static_cast <uint8_t> (net::type_t::FS):
-									// Выводим путь к сокету из атрибутов URI адреса
+									// Возвращаем путь к сокету из атрибутов URI адреса
 									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
 								break;
 								// Если атрибуты URI адреса являются FQDN-адресом
 								case static_cast <uint8_t> (net::type_t::FQDN): {
 									// Извлекаем атрибуты URI адреса как FQDN-адрес
 									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-									// Выводим доменное имя хоста из атрибутов URI адреса
+									// Возвращаем доменное имя хоста из атрибутов URI адреса
 									result.append(attr->domain);
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -2106,7 +2106,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(static_cast <string> (* this->_addr.get()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -2199,7 +2199,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -2296,14 +2296,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							switch(static_cast <uint8_t> (this->_attr->type)){
 								// Если атрибуты URI адреса являются адресом файловой системы
 								case static_cast <uint8_t> (net::type_t::FS):
-									// Выводим путь к сокету из атрибутов URI адреса
+									// Возвращаем путь к сокету из атрибутов URI адреса
 									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
 								break;
 								// Если атрибуты URI адреса являются FQDN-адресом
 								case static_cast <uint8_t> (net::type_t::FQDN): {
 									// Извлекаем атрибуты URI адреса как FQDN-адрес
 									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-									// Выводим доменное имя хоста из атрибутов URI адреса
+									// Возвращаем доменное имя хоста из атрибутов URI адреса
 									result.append(attr->domain);
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -2451,7 +2451,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(static_cast <string> (* this->_addr.get()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -2599,7 +2599,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -2942,14 +2942,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							switch(static_cast <uint8_t> (this->_attr->type)){
 								// Если атрибуты URI адреса являются адресом файловой системы
 								case static_cast <uint8_t> (net::type_t::FS):
-									// Выводим путь к сокету из атрибутов URI адреса
+									// Возвращаем путь к сокету из атрибутов URI адреса
 									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
 								break;
 								// Если атрибуты URI адреса являются FQDN-адресом
 								case static_cast <uint8_t> (net::type_t::FQDN): {
 									// Извлекаем атрибуты URI адреса как FQDN-адрес
 									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-									// Выводим доменное имя хоста из атрибутов URI адреса
+									// Возвращаем доменное имя хоста из атрибутов URI адреса
 									result.append(attr->domain);
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -3042,7 +3042,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(static_cast <string> (* this->_addr.get()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -3135,7 +3135,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -3232,14 +3232,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							switch(static_cast <uint8_t> (this->_attr->type)){
 								// Если атрибуты URI адреса являются адресом файловой системы
 								case static_cast <uint8_t> (net::type_t::FS):
-									// Выводим путь к сокету из атрибутов URI адреса
+									// Возвращаем путь к сокету из атрибутов URI адреса
 									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
 								break;
 								// Если атрибуты URI адреса являются FQDN-адресом
 								case static_cast <uint8_t> (net::type_t::FQDN): {
 									// Извлекаем атрибуты URI адреса как FQDN-адрес
 									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-									// Выводим доменное имя хоста из атрибутов URI адреса
+									// Возвращаем доменное имя хоста из атрибутов URI адреса
 									result.append(attr->domain);
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -3387,7 +3387,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(static_cast <string> (* this->_addr.get()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -3535,7 +3535,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -3873,14 +3873,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							switch(static_cast <uint8_t> (this->_attr->type)){
 								// Если атрибуты URI адреса являются адресом файловой системы
 								case static_cast <uint8_t> (net::type_t::FS):
-									// Выводим путь к сокету из атрибутов URI адреса
+									// Возвращаем путь к сокету из атрибутов URI адреса
 									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
 								break;
 								// Если атрибуты URI адреса являются FQDN-адресом
 								case static_cast <uint8_t> (net::type_t::FQDN): {
 									// Извлекаем атрибуты URI адреса как FQDN-адрес
 									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-									// Выводим доменное имя хоста из атрибутов URI адреса
+									// Возвращаем доменное имя хоста из атрибутов URI адреса
 									result.append(attr->domain);
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -3973,7 +3973,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(static_cast <string> (* this->_addr.get()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -4066,7 +4066,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0)
@@ -4163,14 +4163,14 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							switch(static_cast <uint8_t> (this->_attr->type)){
 								// Если атрибуты URI адреса являются адресом файловой системы
 								case static_cast <uint8_t> (net::type_t::FS):
-									// Выводим путь к сокету из атрибутов URI адреса
+									// Возвращаем путь к сокету из атрибутов URI адреса
 									result.append(awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (this->_attr.get())->path.get())->address);
 								break;
 								// Если атрибуты URI адреса являются FQDN-адресом
 								case static_cast <uint8_t> (net::type_t::FQDN): {
 									// Извлекаем атрибуты URI адреса как FQDN-адрес
 									net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-									// Выводим доменное имя хоста из атрибутов URI адреса
+									// Возвращаем доменное имя хоста из атрибутов URI адреса
 									result.append(attr->domain);
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -4318,7 +4318,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(static_cast <string> (* this->_addr.get()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -4466,7 +4466,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 									net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 									// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 									this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-									// Выводим IP-адрес хоста в виде строки
+									// Возвращаем IP-адрес хоста в виде строки
 									result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
 									// Если порт хоста в атрибутах URI адреса не равен 0, то добавляем его в результат
 									if(attr->port != 0){
@@ -4689,7 +4689,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 							case static_cast <uint8_t> (net::type_t::FQDN): {
 								// Извлекаем атрибуты URI адреса как FQDN-адрес
 								net::attr_fqdn_t * attr = awh_cast <net::attr_fqdn_t *> (this->_attr.get());
-								// Выводим доменное имя хоста из атрибутов URI адреса
+								// Возвращаем доменное имя хоста из атрибутов URI адреса
 								result.append(attr->domain);
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
 								if((attr->port != 0) && (attr->port != 25))
@@ -4706,7 +4706,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 								// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 								this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим IP-адрес хоста в виде строки
+								// Возвращаем IP-адрес хоста в виде строки
 								result.append(static_cast <string> (* this->_addr.get()));
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
 								if((attr->port != 0) && (attr->port != 25))
@@ -4723,7 +4723,7 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 								net::attr_net_t * attr = awh_cast <net::attr_net_t *> (this->_attr.get());
 								// Устанавливаем источник IP-адреса хоста в атрибутах URI адреса
 								this->_addr->source(attr->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим IP-адрес хоста в виде строки
+								// Возвращаем IP-адрес хоста в виде строки
 								result.append(this->_fmk->format("[%s]", static_cast <string> (* this->_addr.get()).c_str()));
 								// Если порт хоста в атрибутах URI адреса не равен 0 и не равен 25, то добавляем его в результат
 								if((attr->port != 0) && (attr->port != 25))
@@ -4763,17 +4763,17 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -4791,7 +4791,7 @@ void awh::Uniform_Resource_Identifier::callback(function <string (const Uniform_
  * @return результат проверки
  */
 awh::Uniform_Resource_Identifier::operator bool() const noexcept {
-	// Выводим результат проверки
+	// Возвращаем результат проверки
 	return !this->empty();
 }
 /**
@@ -4800,7 +4800,7 @@ awh::Uniform_Resource_Identifier::operator bool() const noexcept {
  * @return тип URI
  */
 awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::type_t() const noexcept {
-	// Выводим тип URI
+	// Возвращаем тип URI
 	return this->type();
 }
 /**
@@ -4809,7 +4809,7 @@ awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::typ
  * @return строка URI
  */
 awh::Uniform_Resource_Identifier::operator string() const noexcept {
-	// Выводим строку URI в кратком формате
+	// Возвращаем строку URI в кратком формате
 	return this->print();
 }
 /**
@@ -4818,7 +4818,7 @@ awh::Uniform_Resource_Identifier::operator string() const noexcept {
  * @return параметры пользователя URI
  */
 awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::user_t() const noexcept {
-	// Выводим параметры пользователя URI
+	// Возвращаем параметры пользователя URI
 	return this->user();
 }
 /**
@@ -4827,7 +4827,7 @@ awh::Uniform_Resource_Identifier::operator awh::Uniform_Resource_Identifier::use
  * @return атрибуты URI
  */
 awh::Uniform_Resource_Identifier::operator const awh::net::attr_t * () const noexcept {
-	// Выводим атрибуты URI
+	// Возвращаем атрибуты URI
 	return this->attr();
 }
 /**
@@ -4836,7 +4836,7 @@ awh::Uniform_Resource_Identifier::operator const awh::net::attr_t * () const noe
  * @return путь URI
  */
 awh::Uniform_Resource_Identifier::operator const vector <string> & () const noexcept {
-	// Выводим путь URI
+	// Возвращаем путь URI
 	return this->path();
 }
 /**
@@ -4845,7 +4845,7 @@ awh::Uniform_Resource_Identifier::operator const vector <string> & () const noex
  * @return параметры URI
  */
 awh::Uniform_Resource_Identifier::operator const unordered_map <string, string> & () const noexcept {
-	// Выводим параметры URI
+	// Возвращаем параметры URI
 	return this->query();
 }
 /**
@@ -4855,7 +4855,7 @@ awh::Uniform_Resource_Identifier::operator const unordered_map <string, string> 
  * @return    результат сравнения
  */
 bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Identifier & uri) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = true;
 	/**
 	 * Выполняем отлов ошибок
@@ -4990,17 +4990,17 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5010,7 +5010,7 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
  * @return    результат сравнения
  */
 bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Identifier & uri) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = true;
 	/**
 	 * Выполняем отлов ошибок
@@ -5145,17 +5145,17 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5167,7 +5167,7 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (string_view uri) noexcept {
 	// Парсим URI-запрос
 	this->parse(uri);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -5179,7 +5179,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const user_t & user) noexcept {
 	// Устанавливаем параметры пользователя URI
 	this->user(user);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -5191,7 +5191,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const net::attr_t * attr) noexcept {
 	// Устанавливаем атрибуты URI
 	this->attr(attr);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -5203,7 +5203,7 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const vector <string> & path) noexcept {
 	// Устанавливаем путь URI
 	this->path(path);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -5215,11 +5215,11 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = (const unordered_map <string, string> & query) noexcept {
 	// Устанавливаем параметры URI
 	this->query(query);
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
- * @brief Оператор [=] перемещения параметров URI
+ * @brief Оператор перемещающего присваивания параметров URI
  *
  * @param uri объект URI для получения параметров
  * @return    параметры URI
@@ -5253,21 +5253,21 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
- * @brief Оператор [=] присваивания параметров URI
+ * @brief Оператор присваивания присваивания параметров URI
  *
  * @param uri объект URI для получения параметров
  * @return    параметры URI
@@ -5371,17 +5371,17 @@ awh::Uniform_Resource_Identifier & awh::Uniform_Resource_Identifier::operator = 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -5426,13 +5426,13 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(Uniform_Resource_I
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5549,13 +5549,13 @@ awh::Uniform_Resource_Identifier::Uniform_Resource_Identifier(const Uniform_Reso
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -5592,7 +5592,7 @@ istream & awh::operator >> (istream & is, uri_t & uri) noexcept {
 	if(!addr.empty())
 		// Парсим URI-запрос
 		uri.parse(addr);
-	// Выводим результат
+	// Возвращаем результат
 	return is;
 }
 /**
@@ -5604,6 +5604,6 @@ istream & awh::operator >> (istream & is, uri_t & uri) noexcept {
 ostream & awh::operator << (ostream & os, const uri_t & uri) noexcept {
 	// Записываем в поток URI адрес в виде строки
 	os << uri.print();
-	// Выводим результат
+	// Возвращаем результат
 	return os;
 }

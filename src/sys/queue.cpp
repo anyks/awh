@@ -37,7 +37,7 @@ using namespace std;
  * @return     результат выполнения операции
  */
 bool awh::Queue::rss(const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если размер данных передан и буфер данных не достиг предела
 	if(size > 0){
@@ -78,13 +78,13 @@ bool awh::Queue::rss(const size_t size) noexcept {
 						if((result = ((this->_buffer.size() + (bytes - available)) < this->_max.memory)))
 							// Выделяем ещё памяти
 							this->_buffer.resize(this->_buffer.size() + (bytes - available), 0);
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						else if(this->_log != nullptr) {
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"You are trying to map %s of data into a %s data buffer, which is impossible",
 									__PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL,
@@ -95,7 +95,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print(
 									"You are trying to map %s of data into a %s data buffer, which is impossible",
 									log_t::flag_t::CRITICAL,
@@ -109,13 +109,13 @@ bool awh::Queue::rss(const size_t size) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "There is not enough memory in the reserved queue to add a new portion of data");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								::fprintf(stderr, "ERROR! %s\n\n", "There is not enough memory in the reserved queue to add a new portion of data");
 							#endif
 						}
@@ -125,13 +125,13 @@ bool awh::Queue::rss(const size_t size) noexcept {
 			} else if((result = (bytes <= this->_max.memory)))
 				// Увеличиваем размер вектора
 				this->_buffer.resize(bytes, 0);
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			else if(this->_log != nullptr) {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"You are trying to map %s of data into a %s data buffer, which is impossible",
 						__PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL,
@@ -142,7 +142,7 @@ bool awh::Queue::rss(const size_t size) noexcept {
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print(
 						"You are trying to map %s of data into a %s data buffer, which is impossible",
 						log_t::flag_t::CRITICAL, this->_fmk->bytes(static_cast <double> (bytes)).c_str(),
@@ -155,13 +155,13 @@ bool awh::Queue::rss(const size_t size) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "There is not enough memory in the reserved queue to add a new portion of data");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", "There is not enough memory in the reserved queue to add a new portion of data");
 				#endif
 			}
@@ -175,13 +175,13 @@ bool awh::Queue::rss(const size_t size) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -190,19 +190,19 @@ bool awh::Queue::rss(const size_t size) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -239,19 +239,19 @@ void awh::Queue::pop() noexcept {
 					// Выполняем зануление всего буфера данных
 					::memset(&this->_buffer[0], 0, this->_buffer.size());
 				}
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			} else if(this->_log != nullptr) {
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Queue data buffer is corrupted");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, "Queue data buffer is corrupted");
 				#endif
 			// Если объект логирования не установлен
@@ -260,13 +260,13 @@ void awh::Queue::pop() noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Queue data buffer is corrupted");
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", "Queue data buffer is corrupted");
 				#endif
 			}
@@ -280,13 +280,13 @@ void awh::Queue::pop() noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -295,13 +295,13 @@ void awh::Queue::pop() noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
@@ -339,13 +339,13 @@ void awh::Queue::clear() noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -354,13 +354,13 @@ void awh::Queue::clear() noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
@@ -386,7 +386,7 @@ void awh::Queue::reset() noexcept {
  * @return количество добавленных элементов
  */
 size_t awh::Queue::count() const noexcept {
-	// Выводим количество записей в очереди
+	// Возвращаем количество записей в очереди
 	return this->_range.count;
 }
 /**
@@ -395,7 +395,7 @@ size_t awh::Queue::count() const noexcept {
  * @return размер добавленных данных
  */
 size_t awh::Queue::size() const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	size_t result = 0;
 	// Если буфер данных не пустой и записи есть
 	if(!this->_buffer.empty() && (this->_range.count > 0)){
@@ -404,7 +404,7 @@ size_t awh::Queue::size() const noexcept {
 		// Вычитаем смещение чтения данных
 		result -= this->_offset;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -413,7 +413,7 @@ size_t awh::Queue::size() const noexcept {
  * @return количество памяти которую занимает очередь
  */
 size_t awh::Queue::capacity() const noexcept {
-	// Выводим размер занимаемой памяти
+	// Возвращаем размер занимаемой памяти
 	return this->_buffer.capacity();
 }
 /**
@@ -422,13 +422,13 @@ size_t awh::Queue::capacity() const noexcept {
  * @return указатель на элемент очереди
  */
 const void * awh::Queue::data() const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	const void * result = nullptr;
 	// Если буфер данных не пустой и записи есть
 	if(!this->_buffer.empty() && (this->_range.count > 0))
-		// Выводим данные записи в бинарном виде
+		// Возвращаем данные записи в бинарном виде
 		result = (&this->_buffer[0] + this->_range.begin + sizeof(size_t) + this->_offset);
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -487,13 +487,13 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -502,19 +502,19 @@ size_t awh::Queue::push(const void * buffer, const size_t size) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return this->_range.count;
 }
 /**
@@ -557,13 +557,13 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -572,19 +572,19 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return this->_range.count;
 }
 /**
@@ -659,13 +659,13 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -674,13 +674,13 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
@@ -701,7 +701,7 @@ void awh::Queue::setLogger(const log_t * log) noexcept {
  * @return размер данных в очереди
  */
 awh::Queue::operator size_t() const noexcept {
-	// Выводим размер очереди
+	// Возвращаем размер очереди
 	return this->size();
 }
 /**
@@ -710,7 +710,7 @@ awh::Queue::operator size_t() const noexcept {
  * @return бинарные данные очереди
  */
 awh::Queue::operator const char * () const noexcept {
-	// Выводим данные записи очереди
+	// Возвращаем данные записи очереди
 	return reinterpret_cast <const char *> (this->data());
 }
 /**
@@ -764,13 +764,13 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -779,18 +779,18 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
-	// Выводим текущий объект
+	// Возвращаем текущий объект
 	return (* this);
 }
 /**
@@ -836,13 +836,13 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -851,18 +851,18 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
-	// Выводим текущий объект
+	// Возвращаем текущий объект
 	return (* this);
 }
 /**
@@ -897,13 +897,13 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -912,18 +912,18 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -976,13 +976,13 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -991,13 +991,13 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
@@ -1045,13 +1045,13 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -1060,13 +1060,13 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}

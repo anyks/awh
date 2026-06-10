@@ -47,14 +47,14 @@ int32_t main(int32_t argc, char * argv[]){
 	event::id_t fid = fs.create(unit::fs_t::type_t::FILE);
 	// Устанавливаем функцию обратного вызова на запись в событие
 	fs.on <void (const event::id_t, const size_t)> ("write", [&log](const event::id_t eid, const size_t size) noexcept -> void {
-		// Выводим сообщение о записи в событие
+		// Записываем в лог сообщение о записи в событие
 		log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на чтение из события
 	fs.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
-		// Выводим сообщение о чтении из события
+		// Записываем в лог сообщение о чтении из события
 		log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие изменения состояния ноды файловой системы
@@ -65,49 +65,49 @@ int32_t main(int32_t argc, char * argv[]){
 		switch(static_cast <uint8_t> (status)){
 			// Если статус принятия
 			case static_cast <uint8_t> (event::status_t::ACCEPTED):
-				// Выводим сообщение о принятии события
+				// Записываем в лог сообщение о принятии события
 				log.print("Событие принято: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус уничтожения
 			case static_cast <uint8_t> (event::status_t::DESTROYED):
-				// Выводим сообщение об уничтожении события
+				// Записываем в лог сообщение об уничтожении события
 				log.print("Событие подлежит уничтожению: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус инициализации
 			case static_cast <uint8_t> (event::status_t::INITIAL):
-				// Выводим сообщение об инициализации события
+				// Записываем в лог сообщение об инициализации события
 				log.print("Событие инициализировано: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус запуска события
 			case static_cast <uint8_t> (event::status_t::LAUNCHED):
-				// Выводим сообщение о запуске события
+				// Записываем в лог сообщение о запуске события
 				log.print("Событие запущено: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус паузы события
 			case static_cast <uint8_t> (event::status_t::PAUSED):
-				// Выводим сообщение о паузе события
+				// Записываем в лог сообщение о паузе события
 				log.print("Событие на паузе: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус возобновления события
 			case static_cast <uint8_t> (event::status_t::RESUMED):
-				// Выводим сообщение о возобновлении события
+				// Записываем в лог сообщение о возобновлении события
 				log.print("Событие возобновлено: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус успешного выполнения события
 			case static_cast <uint8_t> (event::status_t::SUCCESS):
-				// Выводим сообщение о успешном выполнении события
+				// Записываем в лог сообщение о успешном выполнении события
 				log.print("Событие успешно выполнено: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус неудачного выполнения события
 			case static_cast <uint8_t> (event::status_t::FAILURE):
-				// Выводим сообщение о неудачном выполнении события
+				// Записываем в лог сообщение о неудачном выполнении события
 				log.print("Событие выполнено с ошибкой: ID=%u", log_t::flag_t::CRITICAL, eid);
 			break;
 			// Если статус выполнения события в ожидании
 			case static_cast <uint8_t> (event::status_t::PENDING): {
 				// Если тип узла события является файлом
 				if(fs.type(eid) == unit::fs_t::type_t::FILE){
-					// Выводим сообщение о выполнении события в ожидании
+					// Записываем в лог сообщение о выполнении события в ожидании
 					log.print("Событие в ожидании: ID=%u", log_t::flag_t::INFO, eid);
 					// Устанавливаем смещение в файле
 					// fs.setSeek(eid, event::seek_t::BEGIN, 1024);
@@ -117,22 +117,22 @@ int32_t main(int32_t argc, char * argv[]){
 			} break;
 			// Если статус подключения события
 			case static_cast <uint8_t> (event::status_t::CONNECTED):
-				// Выводим сообщение о подключении события
+				// Записываем в лог сообщение о подключении события
 				log.print("Событие подключено: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус отмены события
 			case static_cast <uint8_t> (event::status_t::CANCELLED):
-				// Выводим сообщение об отмене события
+				// Записываем в лог сообщение об отмене события
 				log.print("Событие отменено: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус переподключения события
 			case static_cast <uint8_t> (event::status_t::RECONNECTED):
-				// Выводим сообщение о переподключении события
+				// Записываем в лог сообщение о переподключении события
 				log.print("Событие переподключено: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 			// Если статус прослушивания события
 			case static_cast <uint8_t> (event::status_t::LISTENING):
-				// Выводим сообщение о прослушивании события
+				// Записываем в лог сообщение о прослушивании события
 				log.print("Событие прослушивается: ID=%u", log_t::flag_t::INFO, eid);
 			break;
 		}
@@ -145,7 +145,7 @@ int32_t main(int32_t argc, char * argv[]){
 		switch(static_cast <uint8_t> (vnode)){
 			// Если тип узла не определён
 			case static_cast <uint8_t> (event::vnode_t::NONE):
-				// Выводим сообщение о типе узла события
+				// Записываем в лог сообщение о типе узла события
 				log.print("Тип узла события: Не определён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 			break;
 			case static_cast <uint8_t> (event::vnode_t::CHR): {
@@ -155,12 +155,12 @@ int32_t main(int32_t argc, char * argv[]){
 				switch(static_cast <uint8_t> (action)){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение о изменении события
+						// Записываем в лог сообщение о изменении события
 						log.print("Тип узла события: Символьный узел устройства добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение об удалении события
+						// Записываем в лог сообщение об удалении события
 						log.print("Тип узла события: Символьный узел устройства удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 				}
@@ -172,12 +172,12 @@ int32_t main(int32_t argc, char * argv[]){
 				switch(static_cast <uint8_t> (action)){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение о изменении события
+						// Записываем в лог сообщение о изменении события
 						log.print("Тип узла события: Блочный узел устройства добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение об удалении события
+						// Записываем в лог сообщение об удалении события
 						log.print("Тип узла события: Блочный узел устройства удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 				}
@@ -190,12 +190,12 @@ int32_t main(int32_t argc, char * argv[]){
 				switch(static_cast <uint8_t> (action)){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение о изменении события
+						// Записываем в лог сообщение о изменении события
 						log.print("Тип узла события: Канал FIFO добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение об удалении события
+						// Записываем в лог сообщение об удалении события
 						log.print("Тип узла события: Канал FIFO удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 				}
@@ -208,12 +208,12 @@ int32_t main(int32_t argc, char * argv[]){
 				switch(static_cast <uint8_t> (action)){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение о изменении события
+						// Записываем в лог сообщение о изменении события
 						log.print("Тип узла события: Сокет добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение об удалении события
+						// Записываем в лог сообщение об удалении события
 						log.print("Тип узла события: Сокет удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 				}
@@ -226,32 +226,32 @@ int32_t main(int32_t argc, char * argv[]){
 				switch(static_cast <uint8_t> (action)){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение о изменении события
+						// Записываем в лог сообщение о изменении события
 						log.print("Тип узла события: Файл добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение об удалении события
+						// Записываем в лог сообщение об удалении события
 						log.print("Тип узла события: Файл удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является переименованием
 					case static_cast <uint8_t> (event::action_t::RENAME):
-						// Выводим сообщение о переименовании события
+						// Записываем в лог сообщение о переименовании события
 						log.print("Тип узла события: Файл переименован, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением атрибутов
 					case static_cast <uint8_t> (event::action_t::ATTRIB):
-						// Выводим сообщение об изменении атрибутов события
+						// Записываем в лог сообщение об изменении атрибутов события
 						log.print("Тип узла события: Файл атрибуты изменены, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является отзывом доступа
 					case static_cast <uint8_t> (event::action_t::REVOKE):
-						// Выводим сообщение об отзыве доступа к событию
+						// Записываем в лог сообщение об отзыве доступа к событию
 						log.print("Тип узла события: Файл доступ отозван, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением счётчика жёстких ссылок
 					case static_cast <uint8_t> (event::action_t::HDLINK):
-						// Выводим сообщение об изменении счётчика жёстких ссылок
+						// Записываем в лог сообщение об изменении счётчика жёстких ссылок
 						log.print("Тип узла события: Файл счётчик жёстких ссылок изменён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 				}
@@ -264,32 +264,32 @@ int32_t main(int32_t argc, char * argv[]){
 				switch(static_cast <uint8_t> (action)){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение о изменении события
+						// Записываем в лог сообщение о изменении события
 						log.print("Тип узла события: Каталог добавлен, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение о типе узла события
+						// Записываем в лог сообщение о типе узла события
 						log.print("Тип узла события: Каталог удалён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является переименованием
 					case static_cast <uint8_t> (event::action_t::RENAME):
-						// Выводим сообщение о переименовании события
+						// Записываем в лог сообщение о переименовании события
 						log.print("Тип узла события: Каталог переименован, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением атрибутов
 					case static_cast <uint8_t> (event::action_t::ATTRIB):
-						// Выводим сообщение об изменении атрибутов события
+						// Записываем в лог сообщение об изменении атрибутов события
 						log.print("Тип узла события: Каталог атрибуты изменены, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является отзывом доступа
 					case static_cast <uint8_t> (event::action_t::REVOKE):
-						// Выводим сообщение об отзыве доступа к событию
+						// Записываем в лог сообщение об отзыве доступа к событию
 						log.print("Тип узла события: Каталог доступ отозван, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является изменением счётчика жёстких ссылок
 					case static_cast <uint8_t> (event::action_t::HDLINK):
-						// Выводим сообщение об изменении счётчика жёстких ссылок
+						// Записываем в лог сообщение об изменении счётчика жёстких ссылок
 						log.print("Тип узла события: Каталог счётчик жёстких ссылок изменён, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 				}
@@ -302,12 +302,12 @@ int32_t main(int32_t argc, char * argv[]){
 				switch(static_cast <uint8_t> (action)){
 					// Если действие является изменением
 					case static_cast <uint8_t> (event::action_t::CHANGE):
-						// Выводим сообщение о изменении события
+						// Записываем в лог сообщение о изменении события
 						log.print("Тип узла события: Символическая ссылка добавлена, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 					// Если действие является удалением
 					case static_cast <uint8_t> (event::action_t::DELETE):
-						// Выводим сообщение о типе узла события
+						// Записываем в лог сообщение о типе узла события
 						log.print("Тип узла события: Символическая ссылка удалена, Путь=%s", log_t::flag_t::INFO, path.c_str());
 					break;
 				}
@@ -318,13 +318,13 @@ int32_t main(int32_t argc, char * argv[]){
 	if(fs.setAddress(did, "../tmp") && fs.setAddress(fid, "../README2.md")){
 		// Устананавливаем опции события
 		if(fs.setOptions(fid, event::options::KEEPALIVE))
-			// Выводим сообщение об успешной установке опций события
+			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Успешно установлены опции события!" << endl;
-		// Выводим сообщение об ошибке установки опций события
+		// Записываем ошибку в лог установки опций события
 		else cout << " Ошибка установки опций события!" << endl;
 		// Запускаем работу события уведомителя
 		fs.start();
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

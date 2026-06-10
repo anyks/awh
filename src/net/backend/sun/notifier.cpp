@@ -82,7 +82,7 @@ namespace {
 					wchar_t message[256] = {0};
 					// Выполняем формирование текста ошибки
 					::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::WSAGetLastError(), 0, message, 256, 0);
-					// Выводим в лог информацию
+					// Записываем в лог информацию
 					log->print(L"Cannot set NON_BLOCK option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, message);
 				#endif
 			}
@@ -110,7 +110,7 @@ namespace {
 			if(socks == 0){
 				// Выполняем формирование ошибки
 				::WSASetLastError(WSAEINVAL);
-				// Выводим ошибку
+				// Записываем ошибку в лог
 				return INVALID_SOCKET;
 			}
 			// Выполняем изначальную инициализацию структуры сокетов
@@ -119,7 +119,7 @@ namespace {
 			const SOCKET listener = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP);
 			// Если сокет слушателя не создан
 			if(listener == INVALID_SOCKET)
-				// Выводим ошибку
+				// Записываем ошибку в лог
 				return INVALID_SOCKET;
 			// Выполняем инициализацию всех сетевых интерфейсов
 			::memset(&a, 0, sizeof(a));
@@ -194,7 +194,7 @@ namespace {
 			::WSASetLastError(error);
 			// Выполняем сброс значения сокетов
 			socks[0] = socks[1] = INVALID_SOCKET;
-			// Выводим ошибку
+			// Записываем ошибку в лог
 			return INVALID_SOCKET;
 		}
 	/**
@@ -216,7 +216,7 @@ namespace {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим в лог информацию
+					// Записываем в лог информацию
 					log->print("Cannot get \"BLOCK\" option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, ::strerror(errno));
 				#endif
 				// Выходим из функции
@@ -230,7 +230,7 @@ namespace {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим в лог информацию
+						// Записываем в лог информацию
 						log->print("Cannot set \"NON_BLOCK\" option on SOCKET=%d [%s]", log_t::flag_t::WARNING, sock, ::strerror(errno));
 					#endif
 				}
@@ -321,13 +321,13 @@ void awh::Notifier::reset() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -338,7 +338,7 @@ void awh::Notifier::reset() noexcept {
  * @return содержимое сокета для извлечения
  */
 SOCKET awh::Notifier::init() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	SOCKET result = INVALID_SOCKET;
 	/**
 	 * Выполняем перехват ошибок
@@ -364,13 +364,13 @@ SOCKET awh::Notifier::init() noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(L"%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, message);
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
 					#endif
 				// Делаем сокет неблокирующим
@@ -392,13 +392,13 @@ SOCKET awh::Notifier::init() noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -421,13 +421,13 @@ SOCKET awh::Notifier::init() noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				// Делаем сокет неблокирующим
@@ -449,13 +449,13 @@ SOCKET awh::Notifier::init() noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				// Если сокет инициализирован удачно
@@ -476,13 +476,13 @@ SOCKET awh::Notifier::init() noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						* Если режим отладки не включён
 						*/
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
@@ -499,17 +499,17 @@ SOCKET awh::Notifier::init() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -518,7 +518,7 @@ SOCKET awh::Notifier::init() noexcept {
  * @return идентификатор события
  */
 uint32_t awh::Notifier::event() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint32_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -573,13 +573,13 @@ uint32_t awh::Notifier::event() noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -641,13 +641,13 @@ uint32_t awh::Notifier::event() noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -661,17 +661,17 @@ uint32_t awh::Notifier::event() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -700,13 +700,13 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, message);
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print(L"%s", log_t::flag_t::WARNING, message);
 					#endif
 				}
@@ -729,13 +729,13 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -752,13 +752,13 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -783,13 +783,13 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					* Если режим отладки не включён
 					*/
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -803,13 +803,13 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		* Если режим отладки не включён
 		*/
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}

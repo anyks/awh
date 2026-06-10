@@ -44,7 +44,7 @@ int32_t main(int32_t argc, char * argv[]){
 	crypto_t crypto(&fmk, &log);
 	// Строка для компрессии данных
 	const string data = "Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?";
-	// Выводим заголовок компрессии AES256
+	// Печатаем заголовок в отладочный вывод компрессии AES256
 	cout << " ======== AES256 ======== " << endl;
 	// Устанавливаем количество раундов шифрования
 	crypto.roundAES(10);
@@ -54,11 +54,11 @@ int32_t main(int32_t argc, char * argv[]){
 	crypto.password("anyks_password");
 	// Выполняем кодирование текста
 	string encoded = crypto.encrypt <string> (data, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded1 data AES256: " << encoded << ", SIZE=" << encoded.size() << endl << flush;
 	// Выполняем декомпрессию данных
 	string decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::SHA256, crypto_t::cipher_t::AES256);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Decoded1 data AES256: " << decoded << ", SIZE=" << decoded.size() << endl << flush;
 	// Инициализируем объект криптографии для другого типа хэша
 	crypto.initialize(crypto_t::event_t::ENCODE, crypto_t::hash_t::SHA224, crypto_t::cipher_t::AES192);
@@ -68,7 +68,7 @@ int32_t main(int32_t argc, char * argv[]){
 	encoded.append(crypto.encrypt <string> (data));
 	// Завершаем процесс шифрования
 	crypto.finalize(encoded);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded2 data AES192: " << encoded << ", SIZE=" << encoded.size() << endl << flush;
 	// Инициализируем объект криптографии для другого типа хэша
 	crypto.initialize(crypto_t::event_t::DECODE, crypto_t::hash_t::SHA224, crypto_t::cipher_t::AES192);
@@ -76,71 +76,71 @@ int32_t main(int32_t argc, char * argv[]){
 	decoded = crypto.decrypt <string> (encoded);
 	// Завершаем процесс дешифрования
 	crypto.finalize(decoded);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Decoded2 data AES192: " << decoded << ", SIZE=" << decoded.size() << endl << flush;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии BASE64
+	// Печатаем заголовок в отладочный вывод компрессии BASE64
 	cout << " ======== BASE64 ======== " << endl;
 	// Выполняем кодирование текста
 	encoded = crypto.encrypt <string> (data, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded data BASE64: " << encoded << ", SIZE=" << encoded.size() << endl;
 	// Выполняем декомпрессию данных
 	decoded = crypto.decrypt <string> (encoded, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Decoded data BASE64: " << decoded << ", SIZE=" << decoded.size() << endl;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии HASH SHA256
+	// Печатаем заголовок в отладочный вывод компрессии HASH SHA256
 	cout << " ======== HASH SHA256 ======== " << endl;
 	// Выполняем кодирование текста
 	encoded = crypto.hash <string> (data, crypto_t::hash_t::SHA256);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded data SHA256: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии HASH MD5
+	// Печатаем заголовок в отладочный вывод компрессии HASH MD5
 	cout << " ======== HASH MD5 ======== " << endl;
 	// Выполняем кодирование текста
 	encoded = crypto.hash <string> (data, crypto_t::hash_t::MD5);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded data MD5: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии HASH HMAC SHA256
+	// Печатаем заголовок в отладочный вывод компрессии HASH HMAC SHA256
 	cout << " ======== HASH HMAC SHA256 ======== " << endl;
 	// Выполняем кодирование текста
 	encoded = crypto.hmac <string> (string_view{"test"}, data, crypto_t::hash_t::SHA256);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded data SHA256: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии HASH HMAC MD5
+	// Печатаем заголовок в отладочный вывод компрессии HASH HMAC MD5
 	cout << " ======== HASH HMAC MD5 ======== " << endl;
 	// Выполняем кодирование текста
 	encoded = crypto.hmac <string> (string_view{"test"}, data, crypto_t::hash_t::MD5);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded data MD5: " << encoded << ", SIZE=" << encoded.size() << endl;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии HASH 32-BIT
+	// Печатаем заголовок в отладочный вывод компрессии HASH 32-BIT
 	cout << " ======== HASH 32-BIT ======== " << endl;
 	// Выполняем кодирование текста
 	uint32_t value1 = crypto.hash <uint32_t> (data);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded data 32-BIT: " << value1 << ", SIZE=" << sizeof(value1) << endl;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии HASH 64-BIT
+	// Печатаем заголовок в отладочный вывод компрессии HASH 64-BIT
 	cout << " ======== HASH 64-BIT ======== " << endl;
 	// Выполняем кодирование текста
 	uint64_t value2 = crypto.hash <uint64_t> (data);
-	// Выводим результат хэширования
+	// Возвращаем результат хэширования
 	cout << "Encoded data 64-BIT: " << value2 << ", SIZE=" << sizeof(value2) << endl;
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим заголовок компрессии ENCRYPTION
+	// Печатаем заголовок в отладочный вывод компрессии ENCRYPTION
 	cout << " ======== ENCRYPTION ======== " << endl;
 	// Генерируем пару ключей RSA
 	if(crypto.generatePrivateKeyRSA()){
@@ -158,7 +158,7 @@ int32_t main(int32_t argc, char * argv[]){
 					crypto.encryptWithPublicKey(buffer, signature);
 					// Формируем строку из зашифрованных данных
 					const_cast <string &> (data).assign(signature.begin(), signature.end());
-					// Выводим результат
+					// Возвращаем результат
 					cout << "Encrypted data RSA: " << data << ", SIZE=" << data.size() << endl;
 					// Загружаем приватный ключ из файла
 					if(crypto.loadPrivateKeyRSA("private_key.pem")){
@@ -166,25 +166,25 @@ int32_t main(int32_t argc, char * argv[]){
 						crypto.decryptWithPrivateKey(signature, buffer);
 						// Формируем строку из расшифрованных данных
 						const_cast <string &> (data).assign(buffer.begin(), buffer.end());
-						// Выводим результат
+						// Возвращаем результат
 						cout << "Decrypted data RSA: " << data << ", SIZE=" << data.size() << endl;
 						// Подписываем данные приватным ключом RSA
 						crypto.signWithPrivateKey(buffer, crypto_t::hash_t::MD5, signature);
 						// Выполняем верификацию данных публичным ключом RSA
 						if(crypto.verifyWithPublicKey(buffer, signature, crypto_t::hash_t::MD5))
-							// Выводим результат
+							// Возвращаем результат
 							cout << "Signature verified successfully!" << endl;
 						// Если верификация не удалась
 						else cout << "Signature verification failed!" << endl;
 						// Получаем приватный ключ RSA
 						const string prikey = crypto.getPrivateKeyRSA();
-						// Выводим приватный ключ RSA
+						// Возвращаем приватный ключ RSA
 						cout << "Private Key:" << endl << prikey << endl;
 						// Устанавливаем приватный ключ RSA
 						crypto.setPrivateKeyRSA(prikey);
 						// Получаем публичный ключ RSA
 						const string pubkey = crypto.getPublicKeyRSA();
-						// Выводим публичный ключ RSA
+						// Возвращаем публичный ключ RSA
 						cout << "Public Key:" << endl << pubkey << endl;
 						// Устанавливаем публичный ключ RSA
 						crypto.setPublicKeyRSA(pubkey);
@@ -193,8 +193,8 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		}
 	}
-	// Выводим пустую строку
+	// Возвращаем пустую строку
 	cout << endl;
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

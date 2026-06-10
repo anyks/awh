@@ -45,14 +45,14 @@ int32_t main(int32_t argc, char * argv[]){
 	event::id_t eid = notifier.create();
 	// Устанавливаем функцию обратного вызова на запись в событие
 	notifier.on <void (const event::id_t, const size_t)> ("trigger", [&log](const event::id_t eid, const size_t size) noexcept -> void {
-		// Выводим сообщение о записи данных в событие
+		// Записываем в лог сообщение о записи данных в событие
 		log.print("Записано: ID=%u, %zu байт", log_t::flag_t::INFO, eid, size);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на чтение из события
 	notifier.on <void (const event::id_t, const uint8_t *, const size_t)> ("notify", [&log](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
-		// Выводим сообщение о чтении из события
+		// Записываем в лог сообщение о чтении из события
 		log.print("Прочитано: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, size, message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Запускаем дочерний поток для уведомления события
@@ -70,6 +70,6 @@ int32_t main(int32_t argc, char * argv[]){
 	}, eid).detach();
 	// Запускаем работу события уведомителя
 	notifier.start();
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

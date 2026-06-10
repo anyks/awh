@@ -437,7 +437,7 @@ namespace {
 			bool operator == (const Origin_Identifier & other) const noexcept {
 				// Сравниваем семейство адресов
 				if(this->family != other.family)
-					// Выводим отрицательный результат
+					// Возвращаем false
 					return false;
 				/**
 				 * Сравниваем данные в зависимости от семейства адресов
@@ -1563,17 +1563,17 @@ namespace fs {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(input), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return AWH_FS_SEPARATOR;
 	}
 	/**
@@ -2033,17 +2033,17 @@ namespace local {
 	 * @return уникальный идентификатор
 	 */
 	static event::id_t identifier() noexcept {
-		// Результат работы функции
+		// Переменная результата
 		event::id_t result = 0;
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint32_t id{1};
-		// Выводим новое значение идентификатора
+		// Получаем следующий идентификатор
 		result = id.fetch_add(1, memory_order_relaxed);
-		// Если результат не получен
+		// Если идентификатор обнулился после переполнения счётчика
 		if(result == 0)
-			// Генерируем результат заново
+			// Получаем следующий идентификатор рекурсивно
 			return identifier();
-		// Выводим полученный результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2112,7 +2112,7 @@ namespace local {
 	 * @return    результат выполнения обработки
 	 */
 	static bool commit(const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -2132,13 +2132,13 @@ namespace local {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 						// Очищаем список изменений
@@ -2152,11 +2152,11 @@ namespace local {
 					::io::node_t * node = nullptr;
 					// Выполняем переход по всему объекту изменений
 					for(auto i = ::local::result.begin(); i != ::local::result.end();){
-						// Выводим начинающий перенос текста
+						// Возвращаем начинающий перенос текста
 						cout << endl;
-						// Выводим все данные события
+						// Возвращаем все данные события
 						cout << " CHANGE EVENT: " << i->ident << ", FLAGS: " << i->flags << ", DATA: " << i->data << ", FILTER: " << i->filter << ", FFLAGS: " << i->fflags << endl;
-						// Выводим заголовок фильтра
+						// Печатаем заголовок в отладочный вывод фильтра
 						cout << " FILTER:";
 						/**
 						 * Определяем активированные флаги
@@ -2164,47 +2164,47 @@ namespace local {
 						switch(i->filter){
 							// Если фильтр установлен на пользовательское событие
 							case EVFILT_USER:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_USER " << endl;
 							break;
 							// Если фильтр установлен на событие чтения
 							case EVFILT_READ:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_READ " << endl;
 							break;
 							// Если фильтр установлен на событие записи
 							case EVFILT_WRITE:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_WRITE " << endl;
 							break;
 							// Если фильтр установлен на событие асинхронного ввода/вывода
 							case EVFILT_AIO:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_AIO " << endl;
 							break;
 							// Если фильтр установлен на событие файловой системы
 							case EVFILT_VNODE:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_VNODE " << endl;
 							break;
 							// Если фильтр установлен на событие процессов
 							case EVFILT_PROC:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_PROC " << endl;
 							break;
 							// Если фильтр установлен на событие сигналов
 							case EVFILT_SIGNAL:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_SIGNAL " << endl;
 							break;
 							// Если фильтр установлен на событие файловой системы
 							case EVFILT_FS:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_FS " << endl;
 							break;
 							// Если фильтр установлен на событие таймера
 							case EVFILT_TIMER:
-								// Выводим название установленного фильтра
+								// Возвращаем название установленного фильтра
 								cout << " EVFILT_TIMER " << endl;
 							break;
 							/**
@@ -2213,65 +2213,65 @@ namespace local {
 							#if __APPLE__ || __MACH__
 								// Если фильтр установлен на событие виртуальной памяти
 								case EVFILT_VM:
-									// Выводим название установленного фильтра
+									// Возвращаем название установленного фильтра
 									cout << " EVFILT_VM " << endl;
 								break;
 								// Если фильтр установлен на событие исключения
 								case EVFILT_EXCEPT:
-									// Выводим название установленного фильтра
+									// Возвращаем название установленного фильтра
 									cout << " EVFILT_EXCEPT " << endl;
 								break;
 								// Если фильтр установлен на событие machport
 								case EVFILT_MACHPORT:
-									// Выводим название установленного фильтра
+									// Возвращаем название установленного фильтра
 									cout << " EVFILT_MACHPORT " << endl;
 								break;
 								// Если фильтр установлен на событие потока
 								case EVFILT_THREADMARKER:
-									// Выводим название установленного фильтра
+									// Возвращаем название установленного фильтра
 									cout << " EVFILT_THREADMARKER " << endl;
 								break;
 							#endif
 						}
-						// Выводим заголовок флагов события
+						// Печатаем заголовок в отладочный вывод флагов события
 						cout << endl << " FLAGS:" << endl;
 						// Если установлен флаг добавления события
 						if(i->flags & EV_ADD)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_ADD " << endl;
 						// Если установлен флаг активации события
 						if(i->flags & EV_ENABLE)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_ENABLE " << endl;
 						// Если установлен флаг деактивации события
 						if(i->flags & EV_DISABLE)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_DISABLE " << endl;
 						// Если установлен флаг удаления события
 						if(i->flags & EV_DELETE)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_DELETE " << endl;
 						// Если установлен флаг перехвата ошибки события
 						if(i->flags & EV_RECEIPT)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_RECEIPT " << endl;
 						// Если установлен флаг активации одноразового события
 						if(i->flags & EV_ONESHOT)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_ONESHOT " << endl;
 						// Если установлен флаг сброса события
 						if(i->flags & EV_CLEAR)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_CLEAR " << endl;
 						// Если установлен флаг завершения работы сокета события
 						if(i->flags & EV_EOF)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_EOF " << endl;
 						// Если установлен флаг полученной ошибки события
 						if(i->flags & EV_ERROR)
-							// Выводим название флага
+							// Возвращаем название флага
 							cout << " EV_ERROR " << endl;
-						// Выводим завершающий перенос текста
+						// Возвращаем завершающий перенос текста
 						cout << endl;
 						// Получаем текущее значение узла
 						node = reinterpret_cast <::io::node_t *> (i->udata);
@@ -2486,13 +2486,13 @@ namespace local {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -2508,17 +2508,17 @@ namespace local {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
@@ -2860,7 +2860,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 */
 	static bool read(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Если дескриптор сокета действительный
 		if(sock != net::invalid_socket_t){
@@ -2897,13 +2897,13 @@ namespace events {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -2939,18 +2939,18 @@ namespace events {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2964,7 +2964,7 @@ namespace events {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(const net::socket_t sock, ::io::node_t * node, const event::mode_t mode, const event::rate_t rate, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Если дескриптор сокета действительный
 		if(sock != net::invalid_socket_t){
@@ -3001,13 +3001,13 @@ namespace events {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -3043,18 +3043,18 @@ namespace events {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, node->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
@@ -3400,13 +3400,13 @@ namespace timer1 {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -3434,13 +3434,13 @@ namespace timer1 {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -3695,13 +3695,13 @@ namespace timer1 {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -4241,13 +4241,13 @@ namespace timer1 {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -4490,13 +4490,13 @@ namespace timer2 {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -4524,13 +4524,13 @@ namespace timer2 {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -4597,7 +4597,7 @@ namespace timer2 {
 	 * @return UINT64_MAX если куча пуста, иначе абсолютное время в мс
 	 */
 	static uint64_t deadline() noexcept {
-		// Выводим дедлайн ближайшего таймера, если куча пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
+		// Возвращаем дедлайн ближайшего таймера, если куча пуста, возвращаем UINT64_MAX для обозначения отсутствия таймеров
 		return (__awh_heap__.empty() ? UINT64_MAX : __awh_heap__[0].deadline);
 	}
 
@@ -4882,13 +4882,13 @@ namespace timer2 {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, tm.delay, static_cast <uint16_t> (flag), static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -5454,13 +5454,13 @@ namespace timer2 {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -5521,7 +5521,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 */
 	static bool read(::io::file_t * fs, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -5594,13 +5594,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 									#endif
 								}
@@ -5633,13 +5633,13 @@ namespace io {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 						}
@@ -5656,17 +5656,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs, fs->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -5679,7 +5679,7 @@ namespace io {
 	 * @return    результат выполнения обработки
 	 */
 	static bool read(::io::ipc_t * ipc, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -5735,13 +5735,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -5796,13 +5796,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -5820,7 +5820,7 @@ namespace io {
 											ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 									// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 									} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-									// Выводим результат
+									// Возвращаем результат
 									return result;
 								}
 								// Выполняем удаление узла
@@ -5845,13 +5845,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -5898,13 +5898,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -5959,13 +5959,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -5983,7 +5983,7 @@ namespace io {
 									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Выполняем удаление узла
@@ -6032,13 +6032,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -6093,13 +6093,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -6117,7 +6117,7 @@ namespace io {
 									ipc->callbacks.read(ipc->id, ::__awh_buffer__, static_cast <size_t> (bytes));
 							// Если идентификатор события для передачи данных установлен, отправляем данные в указанный объект
 							} else const_cast <engine::io_t *> (io)->send(ipc->transfer.dest, ::__awh_buffer__, static_cast <size_t> (bytes));
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Выполняем удаление узла
@@ -6133,17 +6133,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -6156,7 +6156,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool read(::io::peer_t * peer, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -6264,13 +6264,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -6458,13 +6458,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -6595,13 +6595,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -6720,13 +6720,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -6846,17 +6846,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -6871,7 +6871,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool read(::io::tun_t * tunnel, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -6927,13 +6927,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -7100,13 +7100,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -7129,13 +7129,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -7307,13 +7307,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -7336,13 +7336,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -7366,13 +7366,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -7418,13 +7418,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -7458,13 +7458,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 						#endif
 					}
@@ -7628,13 +7628,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -7657,13 +7657,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -7835,13 +7835,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -7864,13 +7864,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -7894,13 +7894,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -7946,13 +7946,13 @@ namespace io {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -7971,17 +7971,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -7994,7 +7994,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool read(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -8102,13 +8102,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -8296,13 +8296,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -8531,13 +8531,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -8741,13 +8741,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -8956,13 +8956,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -9179,13 +9179,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -9298,13 +9298,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -9441,13 +9441,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -9595,13 +9595,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -9751,13 +9751,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -9884,17 +9884,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -9909,7 +9909,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool read(::io::server_t * server, const engine::io_t * io, const eth_t * eth, const net_addr_t * addr, const fmk_t * fmk, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -10100,13 +10100,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -10191,13 +10191,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -10353,13 +10353,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -10411,13 +10411,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -10459,13 +10459,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
@@ -10479,17 +10479,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
@@ -10512,7 +10512,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(::io::ipc_t * ipc, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -10563,7 +10563,7 @@ namespace io {
 											ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 											// Если дескриптор сокета стал недействительным
 											if(ipc->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Если есть данные для отправки в сокет
@@ -10619,13 +10619,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -10670,13 +10670,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -10716,7 +10716,7 @@ namespace io {
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(ipc->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если есть данные для отправки в сокет
@@ -10772,13 +10772,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -10840,7 +10840,7 @@ namespace io {
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(ipc->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если есть данные для отправки в сокет
@@ -10905,13 +10905,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -10948,17 +10948,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc, ipc->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -10970,7 +10970,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(::io::peer_t * peer, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -10998,7 +10998,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -11038,7 +11038,7 @@ namespace io {
 									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -11110,13 +11110,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -11153,17 +11153,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -11225,7 +11225,7 @@ namespace io {
 											peer->callbacks.write(peer->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(peer->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -11326,7 +11326,7 @@ namespace io {
 										peer->callbacks.write(peer->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(peer->transfer.fd == net::invalid_socket_t)
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -11381,7 +11381,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
+									// Переменная результата
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -11408,7 +11408,7 @@ namespace io {
 										else bytes = ::send(peer->transfer.fd, reinterpret_cast <const uint8_t *> (buffer), size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
-											// Выводим количество байт данных, отправленных событием
+											// Возвращаем количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
 											// Если таймаут используется как одноразовый
 											if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -11489,13 +11489,13 @@ namespace io {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -11532,17 +11532,17 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -11572,7 +11572,7 @@ namespace io {
 												peer->callbacks.write(peer->id, bytes);
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -11673,7 +11673,7 @@ namespace io {
 											peer->callbacks.write(peer->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(peer->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Если есть данные для отправки в сокет
@@ -11717,17 +11717,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer, peer->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -11739,7 +11739,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::origin_t * origin, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -11778,7 +11778,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -11798,7 +11798,7 @@ namespace io {
 									);
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(origin->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -11885,13 +11885,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -11928,17 +11928,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -11968,7 +11968,7 @@ namespace io {
 											origin->callbacks.write(origin->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(origin->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -12064,7 +12064,7 @@ namespace io {
 										origin->callbacks.write(origin->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(origin->transfer.fd == net::invalid_socket_t)
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -12105,17 +12105,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -12127,7 +12127,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::tun_t * tunnel, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -12254,13 +12254,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -12280,17 +12280,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(tunnel, tunnel->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -12302,7 +12302,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::client_t * client, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -12330,7 +12330,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -12370,7 +12370,7 @@ namespace io {
 									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -12442,13 +12442,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -12485,17 +12485,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -12557,7 +12557,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -12658,7 +12658,7 @@ namespace io {
 										client->callbacks.write(client->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(client->transfer.fd == net::invalid_socket_t)
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -12711,7 +12711,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -12737,7 +12737,7 @@ namespace io {
 										);
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -12818,13 +12818,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -12861,17 +12861,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -12901,7 +12901,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -13002,7 +13002,7 @@ namespace io {
 										client->callbacks.write(client->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(client->transfer.fd == net::invalid_socket_t)
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -13053,7 +13053,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -13136,7 +13136,7 @@ namespace io {
 									}
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -13217,13 +13217,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -13260,17 +13260,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -13300,7 +13300,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -13401,7 +13401,7 @@ namespace io {
 										client->callbacks.write(client->id, bytes);
 										// Если дескриптор сокета стал недействительным
 										if(client->transfer.fd == net::invalid_socket_t)
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 									}
 									// Если есть данные для отправки в сокет
@@ -13444,17 +13444,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -13466,7 +13466,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool write(::io::server_t * server, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -13538,13 +13538,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin, origin->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -13705,13 +13705,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -13761,17 +13761,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
@@ -13796,7 +13796,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::file_t * fs, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -13834,13 +13834,13 @@ namespace io {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -13880,17 +13880,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат работы функции
+		// Возвращаем результат работы функции
 		return result;
 	}
 	/**
@@ -13904,7 +13904,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::ipc_t * ipc, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -13948,7 +13948,7 @@ namespace io {
 									ipc->callbacks.write(ipc->id, static_cast <size_t> (bytes));
 									// Если дескриптор сокета стал недействительным
 									if(ipc->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return static_cast <size_t> (bytes);
 								}
 								// Если данные отправлены не полностью
@@ -14031,13 +14031,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -14060,7 +14060,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14121,13 +14121,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -14156,7 +14156,7 @@ namespace io {
 											ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем удаление узла
 										::io::destroy(ipc, eth, log);
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 									}
 								}
@@ -14171,7 +14171,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14228,13 +14228,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -14327,13 +14327,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -14356,7 +14356,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14445,13 +14445,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -14463,7 +14463,7 @@ namespace io {
 												ipc->callbacks.spool(ipc->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем удаление узла
 											::io::destroy(ipc, eth, log);
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 										}
 									}
@@ -14479,7 +14479,7 @@ namespace io {
 								ipc->callbacks.write(ipc->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(ipc->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -14551,13 +14551,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -14583,17 +14583,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат работы функции
+		// Возвращаем результат работы функции
 		return result;
 	}
 	/**
@@ -14607,7 +14607,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::peer_t * peer, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -14635,7 +14635,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -14674,7 +14674,7 @@ namespace io {
 									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -14738,13 +14738,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -14767,17 +14767,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Количество байт данных, отправленных событием
@@ -14862,7 +14862,7 @@ namespace io {
 											break;
 										}
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен, выполняем отправку данных в сокет
@@ -14877,7 +14877,7 @@ namespace io {
 									peer->callbacks.write(peer->id, bytes);
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return bytes;
 								}
 								// Если данные отправлены не полностью
@@ -15004,7 +15004,7 @@ namespace io {
 								peer->callbacks.write(peer->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(peer->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -15039,7 +15039,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -15078,7 +15078,7 @@ namespace io {
 									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -15118,13 +15118,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -15136,7 +15136,7 @@ namespace io {
 												peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем удаление узла
 											::io::destroy(peer, eth, log);
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 										}
 									}
@@ -15150,17 +15150,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -15198,7 +15198,7 @@ namespace io {
 											peer->callbacks.write(peer->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(peer->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return bytes;
 										}
 										// Если данные отправлены не полностью
@@ -15474,13 +15474,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -15514,7 +15514,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
+									// Переменная результата
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -15542,7 +15542,7 @@ namespace io {
 										else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
-											// Выводим количество байт данных, отправленных событием
+											// Возвращаем количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
 											// Если таймаут используется как одноразовый
 											if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -15604,13 +15604,13 @@ namespace io {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -15633,17 +15633,17 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -15666,7 +15666,7 @@ namespace io {
 												peer->callbacks.write(peer->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(peer->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -15822,7 +15822,7 @@ namespace io {
 									peer->callbacks.write(peer->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -15855,7 +15855,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Результат работы функции
+										// Переменная результата
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -15883,7 +15883,7 @@ namespace io {
 											else bytes = ::send(peer->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
-												// Выводим количество байт данных, отправленных событием
+												// Возвращаем количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
 												// Если таймаут используется как одноразовый
 												if(peer->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -15948,13 +15948,13 @@ namespace io {
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
@@ -15966,7 +15966,7 @@ namespace io {
 															peer->callbacks.spool(peer->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(peer, eth, log);
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 													}
 												}
@@ -15981,17 +15981,17 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -16014,7 +16014,7 @@ namespace io {
 													peer->callbacks.write(peer->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(peer->transfer.fd == net::invalid_socket_t)
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -16173,7 +16173,7 @@ namespace io {
 									peer->callbacks.write(peer->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(peer->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -16267,13 +16267,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -16300,17 +16300,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат работы функции
+		// Возвращаем результат работы функции
 		return result;
 	}
 	/**
@@ -16324,7 +16324,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::origin_t * origin, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -16357,7 +16357,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -16371,7 +16371,7 @@ namespace io {
 									const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(origin->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -16474,13 +16474,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -16503,17 +16503,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -16536,7 +16536,7 @@ namespace io {
 											origin->callbacks.write(origin->id, result);
 											// Если дескриптор сокета стал недействительным
 											if(origin->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 										}
 										// Уменьшаем количество используемых токенов
@@ -16622,7 +16622,7 @@ namespace io {
 								origin->callbacks.write(origin->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(origin->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -16655,7 +16655,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
+									// Переменная результата
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -16669,7 +16669,7 @@ namespace io {
 										const ssize_t bytes = ::sendto(origin->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (origin->endpoint.client), origin->endpoint.size);
 										// Если данные отправлены успешно
 										if(bytes > 0){
-											// Выводим количество байт данных, отправленных событием
+											// Возвращаем количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
 											// Если таймаут используется как одноразовый
 											if(origin->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -16772,13 +16772,13 @@ namespace io {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -16790,7 +16790,7 @@ namespace io {
 														origin->callbacks.spool(origin->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 													// Выполняем удаление узла
 													::io::destroy(origin, eth, log);
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 												}
 											}
@@ -16805,17 +16805,17 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -16838,7 +16838,7 @@ namespace io {
 												origin->callbacks.write(origin->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(origin->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -16927,7 +16927,7 @@ namespace io {
 								origin->callbacks.write(origin->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(origin->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -17011,13 +17011,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -17052,13 +17052,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -17072,17 +17072,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат работы функции
+		// Возвращаем результат работы функции
 		return result;
 	}
 	/**
@@ -17096,7 +17096,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::tun_t * tunnel, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -17204,13 +17204,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -17533,13 +17533,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -17547,7 +17547,7 @@ namespace io {
 							if(error == event::error_t::INVALID_SOCKET){
 								// Выполняем удаление узла
 								::io::destroy(tunnel, eth, log);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							}
 						}
@@ -17852,13 +17852,13 @@ namespace io {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 							#endif
 						}
@@ -18123,17 +18123,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат работы функции
+		// Возвращаем результат работы функции
 		return result;
 	}
 	/**
@@ -18147,7 +18147,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::client_t * client, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -18175,7 +18175,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -18214,7 +18214,7 @@ namespace io {
 									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -18278,13 +18278,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 												#endif
 											}
@@ -18307,17 +18307,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Количество байт данных, отправленных событием
@@ -18402,7 +18402,7 @@ namespace io {
 											break;
 										}
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								}
 							// Если ограничитель пропускной способности на запись данных не установлен, выполняем отправку данных в сокет
@@ -18417,7 +18417,7 @@ namespace io {
 									client->callbacks.write(client->id, bytes);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return bytes;
 								}
 								// Если данные отправлены не полностью
@@ -18544,7 +18544,7 @@ namespace io {
 								client->callbacks.write(client->id, 0);
 								// Если дескриптор сокета стал недействительным
 								if(client->transfer.fd == net::invalid_socket_t)
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 							}
 							// Если данные не добавлены в очередь событий
@@ -18579,7 +18579,7 @@ namespace io {
 							 * @return       количество отправленных байт
 							 */
 							auto send = [&](const void * buffer, const size_t size) -> size_t {
-								// Результат работы функции
+								// Переменная результата
 								size_t result = 0;
 								/**
 								 * Выполняем перехват ошибок
@@ -18618,7 +18618,7 @@ namespace io {
 									#endif
 									// Если данные отправлены успешно
 									if(bytes > 0){
-										// Выводим количество байт данных, отправленных событием
+										// Возвращаем количество байт данных, отправленных событием
 										result = static_cast <size_t> (bytes);
 										// Если таймаут используется как одноразовый
 										if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -18658,13 +18658,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -18676,7 +18676,7 @@ namespace io {
 												client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 											// Выполняем удаление узла
 											::io::destroy(client, eth, log);
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return result;
 										}
 									}
@@ -18690,17 +18690,17 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.what());
 									#endif
 								}
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return result;
 							};
 							// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -18738,7 +18738,7 @@ namespace io {
 											client->callbacks.write(client->id, bytes);
 											// Если дескриптор сокета стал недействительным
 											if(client->transfer.fd == net::invalid_socket_t)
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return bytes;
 										}
 										// Если данные отправлены не полностью
@@ -19014,13 +19014,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 							}
@@ -19054,7 +19054,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
+									// Переменная результата
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -19068,7 +19068,7 @@ namespace io {
 										const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 										// Если данные отправлены успешно
 										if(bytes > 0){
-											// Выводим количество байт данных, отправленных событием
+											// Возвращаем количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
 											// Если таймаут используется как одноразовый
 											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -19130,13 +19130,13 @@ namespace io {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -19159,17 +19159,17 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -19192,7 +19192,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -19348,7 +19348,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -19381,7 +19381,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Результат работы функции
+										// Переменная результата
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -19395,7 +19395,7 @@ namespace io {
 											const ssize_t bytes = ::send(client->transfer.fd, buffer, size, MSG_NOSIGNAL);
 											// Если данные отправлены успешно
 											if(bytes > 0){
-												// Выводим количество байт данных, отправленных событием
+												// Возвращаем количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
 												// Если таймаут используется как одноразовый
 												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -19460,13 +19460,13 @@ namespace io {
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
@@ -19478,7 +19478,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 													}
 												}
@@ -19493,17 +19493,17 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -19526,7 +19526,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -19685,7 +19685,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -19765,13 +19765,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -19801,7 +19801,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
+									// Переменная результата
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -19815,7 +19815,7 @@ namespace io {
 										const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 										// Если данные отправлены успешно
 										if(bytes > 0){
-											// Выводим количество байт данных, отправленных событием
+											// Возвращаем количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
 											// Если таймаут используется как одноразовый
 											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -19877,13 +19877,13 @@ namespace io {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -19906,17 +19906,17 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -19939,7 +19939,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -20095,7 +20095,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -20128,7 +20128,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Результат работы функции
+										// Переменная результата
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -20142,7 +20142,7 @@ namespace io {
 											const ssize_t bytes = ::sendto(client->transfer.fd, buffer, size, MSG_NOSIGNAL, &::trust_cast <struct sockaddr> (client->endpoint.server), client->endpoint.size);
 											// Если данные отправлены успешно
 											if(bytes > 0){
-												// Выводим количество байт данных, отправленных событием
+												// Возвращаем количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
 												// Если таймаут используется как одноразовый
 												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -20207,13 +20207,13 @@ namespace io {
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
@@ -20225,7 +20225,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 													}
 												}
@@ -20240,17 +20240,17 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -20273,7 +20273,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -20432,7 +20432,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -20512,13 +20512,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -20552,13 +20552,13 @@ namespace io {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -20580,7 +20580,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
+									// Переменная результата
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -20621,7 +20621,7 @@ namespace io {
 										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
-											// Выводим количество байт данных, отправленных событием
+											// Возвращаем количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
 											// Если таймаут используется как одноразовый
 											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -20683,13 +20683,13 @@ namespace io {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -20712,17 +20712,17 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -20745,7 +20745,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -20901,7 +20901,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -20934,7 +20934,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Результат работы функции
+										// Переменная результата
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -20975,7 +20975,7 @@ namespace io {
 											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
-												// Выводим количество байт данных, отправленных событием
+												// Возвращаем количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
 												// Если таймаут используется как одноразовый
 												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -21040,13 +21040,13 @@ namespace io {
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
@@ -21058,7 +21058,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 													}
 												}
@@ -21073,17 +21073,17 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -21106,7 +21106,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -21265,7 +21265,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -21372,13 +21372,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -21408,7 +21408,7 @@ namespace io {
 								 * @return       количество отправленных байт
 								 */
 								auto send = [&](const void * buffer, const size_t size) -> size_t {
-									// Результат работы функции
+									// Переменная результата
 									size_t result = 0;
 									/**
 									 * Выполняем перехват ошибок
@@ -21449,7 +21449,7 @@ namespace io {
 										#endif
 										// Если данные отправлены успешно
 										if(bytes > 0){
-											// Выводим количество байт данных, отправленных событием
+											// Возвращаем количество байт данных, отправленных событием
 											result = static_cast <size_t> (bytes);
 											// Если таймаут используется как одноразовый
 											if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -21511,13 +21511,13 @@ namespace io {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -21540,17 +21540,17 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.what());
 										#endif
 									}
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return result;
 								};
 								// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -21573,7 +21573,7 @@ namespace io {
 												client->callbacks.write(client->id, result);
 												// Если дескриптор сокета стал недействительным
 												if(client->transfer.fd == net::invalid_socket_t)
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 											}
 											// Уменьшаем количество используемых токенов
@@ -21729,7 +21729,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -21762,7 +21762,7 @@ namespace io {
 									 * @return       количество отправленных байт
 									 */
 									auto send = [&](const void * buffer, const size_t size) -> size_t {
-										// Результат работы функции
+										// Переменная результата
 										size_t result = 0;
 										/**
 										 * Выполняем перехват ошибок
@@ -21803,7 +21803,7 @@ namespace io {
 											#endif
 											// Если данные отправлены успешно
 											if(bytes > 0){
-												// Выводим количество байт данных, отправленных событием
+												// Возвращаем количество байт данных, отправленных событием
 												result = static_cast <size_t> (bytes);
 												// Если таймаут используется как одноразовый
 												if(client->timeouts.read.usage == event::usage_t::DISPOSABLE){
@@ -21868,13 +21868,13 @@ namespace io {
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 														#endif
 													}
@@ -21886,7 +21886,7 @@ namespace io {
 															client->callbacks.spool(client->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 														// Выполняем удаление узла
 														::io::destroy(client, eth, log);
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 													}
 												}
@@ -21901,17 +21901,17 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.what());
 											#endif
 										}
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 									};
 									// Если установлено ограничение пропускной способности на запись данных в сокет
@@ -21934,7 +21934,7 @@ namespace io {
 													client->callbacks.write(client->id, result);
 													// Если дескриптор сокета стал недействительным
 													if(client->transfer.fd == net::invalid_socket_t)
-														// Выводим результат работы функции
+														// Возвращаем результат работы функции
 														return result;
 												}
 												// Уменьшаем количество используемых токенов
@@ -22093,7 +22093,7 @@ namespace io {
 									client->callbacks.write(client->id, 0);
 									// Если дескриптор сокета стал недействительным
 									if(client->transfer.fd == net::invalid_socket_t)
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 								}
 								// Если данные не добавлены в очередь событий
@@ -22200,13 +22200,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -22240,13 +22240,13 @@ namespace io {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -22261,17 +22261,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат работы функции
+		// Возвращаем результат работы функции
 		return result;
 	}
 	/**
@@ -22285,7 +22285,7 @@ namespace io {
 	 * @return       количество байт данных, отправленных событием
 	 */
 	static size_t send(::io::server_t * server, const void * buffer, const size_t size, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		size_t result = 0;
 		/**
 		 * Выполняем перехват ошибок
@@ -22375,13 +22375,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -22471,13 +22471,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 										#endif
 									}
@@ -22489,7 +22489,7 @@ namespace io {
 											server->callbacks.spool(server->id, event::send_error_t::IO_EVENT, reinterpret_cast <const uint8_t *> (buffer), size);
 										// Выполняем удаление узла
 										::io::destroy(server, eth, log);
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return result;
 									}
 								}
@@ -22566,13 +22566,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 									#endif
 								}
@@ -22607,13 +22607,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -22627,17 +22627,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат работы функции
+		// Возвращаем результат работы функции
 		return result;
 	}
 };
@@ -23046,7 +23046,7 @@ namespace io {
 												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
 											break;
 										}
-										// Выводим результат выполнения функции
+										// Возвращаем результат выполнения функции
 										return !guard.garbage();
 									}
 								}
@@ -23191,7 +23191,7 @@ namespace io {
 				EV_SET(&events[1], node->id, EVFILT_USER, 0, NOTE_TRIGGER, 0, node);
 				// Добавляем новое событие в список изменений
 				::events::add(::move(events[1]));
-				// Выводим результат выполнения функции
+				// Возвращаем результат выполнения функции
 				return true;
 			}
 		/**
@@ -23204,17 +23204,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -23226,7 +23226,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool user(::io::user_t * user, const engine::io_t * io, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -23277,18 +23277,18 @@ namespace io {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user, user->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -23328,7 +23328,7 @@ namespace io {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->debug(
 							"Socket creation is not possible for the specified node type",
 							__PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL
@@ -23337,7 +23337,7 @@ namespace io {
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->print("Socket creation is not possible for the specified node type", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -23350,17 +23350,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -23400,13 +23400,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23435,13 +23435,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23468,13 +23468,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23501,13 +23501,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23534,13 +23534,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23567,13 +23567,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23600,13 +23600,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23633,13 +23633,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23666,13 +23666,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23699,13 +23699,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23732,13 +23732,13 @@ namespace io {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, ::strerror(code));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, ::strerror(code));
 						#endif
 					}
@@ -23756,17 +23756,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, code, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -24496,17 +24496,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -24615,17 +24615,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dir, dir->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -24638,7 +24638,7 @@ namespace io {
 	 * @return       результат выполнения обработки
 	 */
 	static bool connected(::io::client_t * client, const engine::io_t * io, const eth_t * eth, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -24727,18 +24727,18 @@ namespace io {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client, client->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -24908,13 +24908,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, ::strerror(errno));
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 									#endif
 								}
@@ -24976,13 +24976,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -25040,13 +25040,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -25075,13 +25075,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -25115,13 +25115,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -25150,13 +25150,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -25226,13 +25226,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -25261,13 +25261,13 @@ namespace io {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -25301,13 +25301,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -25336,13 +25336,13 @@ namespace io {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -25461,7 +25461,7 @@ namespace io {
 									// Если событие является блокирующим
 									} else eth->socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								}
-								// Выводим положительный результат
+								// Возвращаем true
 								return !guard.garbage();
 							}
 						}
@@ -25488,18 +25488,18 @@ namespace io {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -25513,7 +25513,7 @@ namespace io {
 	 * @return     результат выполнения обработки
 	 */
 	static bool write(::io::node_t * node, const engine::io_t * io, const eth_t * eth, const fmk_t * fmk, const log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -25608,17 +25608,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -25753,13 +25753,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -25784,17 +25784,17 @@ namespace io {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(node, node->id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -26343,7 +26343,7 @@ namespace io {
 				}
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return true;
 	}
 	/**
@@ -26507,13 +26507,13 @@ namespace io {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -26567,13 +26567,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -26598,13 +26598,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -26634,13 +26634,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -26665,13 +26665,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -26728,13 +26728,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -26759,13 +26759,13 @@ namespace io {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -26795,13 +26795,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -26826,13 +26826,13 @@ namespace io {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server, server->id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -26924,7 +26924,7 @@ namespace io {
 							// Если событие является блокирующим установки таймаута на чтение данных
 							} else eth->socket.setTimeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
 						}
-						// Выводим положительный результат
+						// Возвращаем true
 						return !guard.garbage();
 					}
 				}
@@ -27028,7 +27028,7 @@ namespace sctp {
 		 * @return       количество обработанных байт
 		 */
 		static size_t events(::io::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept {
-			// Результат работы функции
+			// Переменная результата
 			size_t result = 0;
 			// Если буфер данных события корректен и его размер достаточен для обработки
 			if((buffer != nullptr) && (size >= sizeof(uint16_t))){
@@ -27169,7 +27169,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии изменения ассоциации SCTP
+							// Записываем в лог информацию о событии изменения ассоциации SCTP
 							log->print(
 								"SCTP_ASSOC_CHANGE: ID=%u, STATE=%d, ERROR=%d, OUT BOUND=%u, INPUT BOUND=%u",
 								log_t::flag_t::INFO,
@@ -27300,7 +27300,7 @@ namespace sctp {
 								case AF_INET: {
 									// Преобразуем IPv4 адрес в строковое представление
 									::inet_ntop(AF_INET, &(reinterpret_cast <const struct sockaddr_in *> (&spc->spc_aaddr))->sin_addr, ::__awh_buffer__, INET_ADDRSTRLEN);
-									// Выводим информацию о событии изменения адреса однорангового узла SCTP
+									// Записываем в лог информацию о событии изменения адреса однорангового узла SCTP
 									log->print(
 										"SCTP_PEER_ADDR_CHANGE: ID=%u, IP=%s, STATE=%d, ERROR=%d",
 										log_t::flag_t::INFO,
@@ -27314,7 +27314,7 @@ namespace sctp {
 								case AF_INET6: {
 									// Преобразуем IPv6 адрес в строковое представление
 									::inet_ntop(AF_INET6, &(reinterpret_cast <const struct sockaddr_in6 *> (&spc->spc_aaddr))->sin6_addr, ::__awh_buffer__, INET6_ADDRSTRLEN);
-									// Выводим информацию о событии изменения адреса однорангового узла SCTP
+									// Записываем в лог информацию о событии изменения адреса однорангового узла SCTP
 									log->print(
 										"SCTP_PEER_ADDR_CHANGE: ID=%u, IP=%s, STATE=%d, ERROR=%d",
 										log_t::flag_t::INFO,
@@ -27385,7 +27385,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии ошибки удалённого узла SCTP
+							// Записываем в лог информацию о событии ошибки удалённого узла SCTP
 							log->print(
 								"SCTP_REMOTE_ERROR: ID=%u, ERROR=0x%04x",
 								log_t::flag_t::CRITICAL,
@@ -27452,7 +27452,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии ошибки отправки SCTP
+							// Записываем в лог информацию о событии ошибки отправки SCTP
 							log->print(
 								"SCTP_SEND_FAILED: ID=%u, ERROR=0x%04x",
 								log_t::flag_t::CRITICAL,
@@ -27504,7 +27504,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии завершения SCTP
+							// Записываем в лог информацию о событии завершения SCTP
 							log->print(
 								"SCTP_SHUTDOWN_EVENT: ID=%u",
 								log_t::flag_t::WARNING,
@@ -27559,7 +27559,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии адаптационной индикации SCTP
+							// Записываем в лог информацию о событии адаптационной индикации SCTP
 							log->print(
 								"SCTP_ADAPTATION_INDICATION: ID=%u, INDICATION=0x%08x",
 								log_t::flag_t::INFO,
@@ -27621,7 +27621,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии частичной доставки SCTP
+							// Записываем в лог информацию о событии частичной доставки SCTP
 							log->print(
 								"SCTP_PARTIAL_DELIVERY_EVENT: ID=%u, INDICATION=0x%08x",
 								log_t::flag_t::INFO,
@@ -27697,7 +27697,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии аутентификационной индикации SCTP
+							// Записываем в лог информацию о событии аутентификационной индикации SCTP
 							log->print(
 								"SCTP_AUTHENTICATION_EVENT: ID=%u, KEY=%u",
 								log_t::flag_t::INFO,
@@ -27781,7 +27781,7 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим информацию о событии сброса потоков SCTP
+								// Записываем в лог информацию о событии сброса потоков SCTP
 								log->print(
 									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x, STREAMS=%zu",
 									log_t::flag_t::WARNING,
@@ -27823,7 +27823,7 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим информацию о событии сброса потоков SCTP
+								// Записываем в лог информацию о событии сброса потоков SCTP
 								log->print(
 									"SCTP_STREAM_RESET_EVENT: ID=%u, FLAGS=0x%08x",
 									log_t::flag_t::WARNING,
@@ -27876,7 +27876,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии исчерпания отправителя SCTP
+							// Записываем в лог информацию о событии исчерпания отправителя SCTP
 							log->print(
 								"SCTP_SENDER_DRY_EVENT: ID=%u",
 								log_t::flag_t::WARNING,
@@ -27892,7 +27892,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о остановке уведомлений SCTP
+							// Записываем в лог информацию о остановке уведомлений SCTP
 							log->print(
 								"SCTP notifications stopped event received",
 								log_t::flag_t::WARNING
@@ -27956,7 +27956,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии исчерпания отправителя SCTP
+							// Записываем в лог информацию о событии исчерпания отправителя SCTP
 							log->print(
 								"SCTP_ASSOC_RESET_EVENT: ID=%u, LOCAL TSN=%u, REMOTE TSN=%u, FLAGS=0x%08x",
 								log_t::flag_t::WARNING,
@@ -28024,7 +28024,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о событии исчерпания отправителя SCTP
+							// Записываем в лог информацию о событии исчерпания отправителя SCTP
 							log->print(
 								"SCTP_STREAM_CHANGE_EVENT: ID=%u, OUT=%u, INPUT=%u, FLAGS=0x%08x",
 								log_t::flag_t::INFO,
@@ -28107,7 +28107,7 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим информацию о событии ошибки отправки SCTP
+								// Записываем в лог информацию о событии ошибки отправки SCTP
 								log->print(
 									"SCTP_SEND_FAILED_EVENT: ID=%u, LENGTH=%zu, ERROR=%d",
 									log_t::flag_t::CRITICAL,
@@ -28149,7 +28149,7 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим информацию об отсутствии дополнительных данных в событии ошибки отправки SCTP
+								// Записываем в лог информацию об отсутствии дополнительных данных в событии ошибки отправки SCTP
 								log->print(
 									"SCTP_SEND_FAILED_EVENT: ID=%u, ERROR=%d",
 									log_t::flag_t::CRITICAL,
@@ -28167,7 +28167,7 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим информацию о неизвестном типе события SCTP
+							// Записываем в лог информацию о неизвестном типе события SCTP
 							log->print(
 								"SCTP notification type: %u",
 								log_t::flag_t::WARNING,
@@ -28179,7 +28179,7 @@ namespace sctp {
 					}
 				}
 			}
-			// Выводим результат работы функции
+			// Возвращаем результат работы функции
 			return result;
 		}
 	#endif
@@ -28228,13 +28228,13 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("SCTP settings can only be retrieved from peer, client, or server nodes", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("SCTP settings can only be retrieved from peer, client, or server nodes", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -28248,13 +28248,13 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -28374,13 +28374,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -28478,13 +28478,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -28496,13 +28496,13 @@ namespace sctp {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("SCTP settings can only be configured for peer nodes, clients, or servers", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("SCTP settings can only be configured for peer nodes, clients, or servers", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -28516,13 +28516,13 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -28534,7 +28534,7 @@ namespace sctp {
 	 * @return   параметры статуса инициализации SCTP
 	 */
 	awh::net::sctp::status_t awh::engine::Stream_Control_Transmission_Protocol::status(const event::id_t id) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		net::sctp::status_t result;
 		/**
 		 * Выполняем перехват ошибок
@@ -28587,13 +28587,13 @@ namespace sctp {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -28617,13 +28617,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -28666,13 +28666,13 @@ namespace sctp {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -28696,13 +28696,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -28718,13 +28718,13 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -28780,13 +28780,13 @@ namespace sctp {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -28809,13 +28809,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -28849,13 +28849,13 @@ namespace sctp {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -28878,13 +28878,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -28900,13 +28900,13 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -28918,7 +28918,7 @@ namespace sctp {
 	 * @return   список событий SCTP на которые выполнена подписка
 	 */
 	const awh::net::sctp::event_types_t & awh::engine::Stream_Control_Transmission_Protocol::eventsSubscribed(const event::id_t id) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		static net::sctp::event_types_t result;
 		/**
 		 * Выполняем перехват ошибок
@@ -28956,17 +28956,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return result;
 	}
 	/**
@@ -29016,13 +29016,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, events.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29054,13 +29054,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, events.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29076,13 +29076,13 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, events.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -29156,13 +29156,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29198,13 +29198,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29240,13 +29240,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29262,17 +29262,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return 0;
 	}
 	/**
@@ -29345,13 +29345,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29387,13 +29387,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29429,13 +29429,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29451,17 +29451,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (type), timeout), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -29513,13 +29513,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, num, key), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29551,13 +29551,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, num, key), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29573,17 +29573,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, num, key), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -29646,13 +29646,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29695,13 +29695,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29717,17 +29717,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), num), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	}
 	/**
@@ -29738,7 +29738,7 @@ namespace sctp {
 	 * @return       результат работы функции
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const vector <net::sctp::auth_chunk_t> & chunks) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -29780,13 +29780,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, chunks.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29818,13 +29818,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, chunks.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29840,17 +29840,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, chunks.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -29862,7 +29862,7 @@ namespace sctp {
 	 * @return       результат работы функции
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateChunks(const event::id_t id, const event::origin_t origin, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -29906,13 +29906,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29944,13 +29944,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -29982,13 +29982,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -30004,17 +30004,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (origin)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -30025,7 +30025,7 @@ namespace sctp {
 	 * @return      результат работы функции
 	 */
 	bool awh::engine::Stream_Control_Transmission_Protocol::authenticateSupportAlgorithms(const event::id_t id, const vector <net::sctp::auth_type_t> & types) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		/**
 		 * Выполняем перехват ошибок
@@ -30067,13 +30067,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -30105,13 +30105,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -30143,13 +30143,13 @@ namespace sctp {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -30165,17 +30165,17 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, types.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -30219,13 +30219,13 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("A SCTP info message callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("A SCTP info message callback cannot be set for this event type", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -30240,13 +30240,13 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -30292,13 +30292,13 @@ namespace sctp {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("A SCTP events callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("A SCTP events callback cannot be set for this event type", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -30313,13 +30313,13 @@ namespace sctp {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -30396,13 +30396,13 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Blacklist does not exist for this event type", log_t::flag_t::WARNING);
 							#endif
 						} break;
@@ -30412,13 +30412,13 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Whitelist does not exist for this event type", log_t::flag_t::WARNING);
 							#endif
 						} break;
@@ -30434,17 +30434,17 @@ bool awh::engine::IO::Control_List::clear(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -30509,13 +30509,13 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -30557,13 +30557,13 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -30602,13 +30602,13 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -30650,13 +30650,13 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -30679,13 +30679,13 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Blacklist does not exist for this event type", log_t::flag_t::WARNING);
 								#endif
 							} break;
@@ -30695,13 +30695,13 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Whitelist does not exist for this event type", log_t::flag_t::WARNING);
 								#endif
 							} break;
@@ -30717,18 +30717,18 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -30739,7 +30739,7 @@ bool awh::engine::IO::Control_List::add(const event::id_t id, string_view value)
  * @return      результат выполнения удаления
  */
 bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view value) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если адрес для удаления передан
 	if(!value.empty()){
@@ -30841,13 +30841,13 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Blacklist does not exist for this event type", log_t::flag_t::WARNING);
 								#endif
 							} break;
@@ -30857,13 +30857,13 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Whitelist does not exist for this event type", log_t::flag_t::WARNING);
 								#endif
 							} break;
@@ -30879,18 +30879,18 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, value), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат работы функции
+	// Возвращаем результат работы функции
 	return result;
 }
 /**
@@ -30900,7 +30900,7 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
  * @return   контрольный список события
  */
 const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_List::get(const event::id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	static const std::unordered_map <string, event::address_t> result;
 	/**
 	 * Выполняем перехват ошибок
@@ -30922,11 +30922,11 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 					switch(static_cast <uint8_t> (this->_type)){
 						// Если контрольный список относится к чёрному списку
 						case static_cast <uint8_t> (event::control_list_t::BLACK):
-							// Выводим полученный результат
+							// Возвращаем результат
 							return awh_cast <::io::server_t *> (i->second.get())->blacklist;
 						// Если контрольный список относится к белому списку
 						case static_cast <uint8_t> (event::control_list_t::WHITE):
-							// Выводим полученный результат
+							// Возвращаем результат
 							return awh_cast <::io::server_t *> (i->second.get())->whitelist;
 					}
 				} break;
@@ -30942,13 +30942,13 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Blacklist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Blacklist does not exist for this event type", log_t::flag_t::WARNING);
 							#endif
 						} break;
@@ -30958,13 +30958,13 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Whitelist does not exist for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Whitelist does not exist for this event type", log_t::flag_t::WARNING);
 							#endif
 						} break;
@@ -30980,17 +30980,17 @@ const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_L
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат работы функции
+	// Возвращаем результат работы функции
 	return result;
 }
 /**
@@ -31013,7 +31013,7 @@ awh::engine::IO::Control_List::~Control_List() noexcept {}
  * @return   результат выполнения фиксации
  */
 bool awh::engine::IO::commit(const event::id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -31132,13 +31132,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir->fd, path), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -31177,13 +31177,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -31208,13 +31208,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -31239,13 +31239,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -31261,7 +31261,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						fs->state.status = event::status_t::INITIAL;
 						// Если путь к файлу существует
 						if(fs->path != nullptr){
-							// Получаем адрес файла
+							// Получаем путь к файлу
 							const string & path = awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 							// Если путь к директории существует
 							if(!path.empty()){
@@ -31302,13 +31302,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -31333,13 +31333,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -31364,13 +31364,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -31431,13 +31431,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -31461,13 +31461,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -31580,13 +31580,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -31659,13 +31659,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -31755,13 +31755,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -31833,13 +31833,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -31975,13 +31975,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 * Если включён режим отладки
 																			 */
 																			#if DEBUG_MODE
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																			/**
 																			 * Если режим отладки не включён
 																			 */
 																			#else
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																			#endif
 																		}
@@ -32016,13 +32016,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				 * Если включён режим отладки
 																				 */
 																				#if DEBUG_MODE
-																					// Выводим сообщение об ошибке
+																					// Записываем ошибку в лог
 																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																				/**
 																				 * Если режим отладки не включён
 																				 */
 																				#else
-																					// Выводим сообщение об ошибке
+																					// Записываем ошибку в лог
 																					this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																				#endif
 																			}
@@ -32054,13 +32054,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 * Если включён режим отладки
 																			 */
 																			#if DEBUG_MODE
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, unixsocket, filename), log_t::flag_t::WARNING, ::strerror(errno));
 																			/**
 																			 * Если режим отладки не включён
 																			 */
 																			#else
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																			#endif
 																		}
@@ -32095,13 +32095,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * Если включён режим отладки
 																	 */
 																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
 																	#else
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																	#endif
 																}
@@ -32147,13 +32147,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -32179,13 +32179,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -32283,13 +32283,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
@@ -32375,13 +32375,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 * Если включён режим отладки
 																			 */
 																			#if DEBUG_MODE
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																			/**
 																			 * Если режим отладки не включён
 																			 */
 																			#else
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																			#endif
 																		}
@@ -32406,13 +32406,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * Если включён режим отладки
 																		 */
 																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																		#endif
 																	}
@@ -32513,13 +32513,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				#if DEBUG_MODE
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-																					// Выводим сообщение об ошибке
+																					// Записываем ошибку в лог
 																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
 																				#else
-																					// Выводим сообщение об ошибке
+																					// Записываем ошибку в лог
 																					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																				#endif
 																			}
@@ -32565,13 +32565,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * Если включён режим отладки
 																		 */
 																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																		#endif
 																	}
@@ -32636,13 +32636,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#if DEBUG_MODE
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.v4(::trust_cast <struct sockaddr_in> (client->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																		#endif
 																	}
@@ -32690,13 +32690,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * Если включён режим отладки
 																	 */
 																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
 																	#else
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																	#endif
 																}
@@ -32725,13 +32725,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -32755,13 +32755,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -32858,13 +32858,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
@@ -32950,13 +32950,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																			 * Если включён режим отладки
 																			 */
 																			#if DEBUG_MODE
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																			/**
 																			 * Если режим отладки не включён
 																			 */
 																			#else
-																				// Выводим сообщение об ошибке
+																				// Записываем ошибку в лог
 																				this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																			#endif
 																		}
@@ -32981,13 +32981,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * Если включён режим отладки
 																		 */
 																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																		#endif
 																	}
@@ -33086,13 +33086,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																				#if DEBUG_MODE
 																					// Устанавливаем полученный IP-адрес
 																					this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
-																					// Выводим сообщение об ошибке
+																					// Записываем ошибку в лог
 																					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																				/**
 																				 * Если режим отладки не включён
 																				 */
 																				#else
-																					// Выводим сообщение об ошибке
+																					// Записываем ошибку в лог
 																					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																				#endif
 																			}
@@ -33138,13 +33138,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * Если включён режим отладки
 																		 */
 																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																		#endif
 																	}
@@ -33204,13 +33204,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		#if DEBUG_MODE
 																			// Устанавливаем полученный IP-адрес
 																			this->_addr.source(target->ip.get(), net_addr_t::endian_t::LITTLE);
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																		#endif
 																	}
@@ -33258,13 +33258,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * Если включён режим отладки
 																	 */
 																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
 																	#else
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																	#endif
 																}
@@ -33293,13 +33293,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -33323,13 +33323,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -33357,13 +33357,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -33389,13 +33389,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -33477,13 +33477,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -33547,13 +33547,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -33641,13 +33641,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * Если включён режим отладки
 																		 */
 																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																		#endif
 																	}
@@ -33701,13 +33701,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																		 * Если включён режим отладки
 																		 */
 																		#if DEBUG_MODE
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, unixsocket, unixsocket), log_t::flag_t::CRITICAL, ::strerror(errno));
 																		/**
 																		 * Если режим отладки не включён
 																		 */
 																		#else
-																			// Выводим сообщение об ошибке
+																			// Записываем ошибку в лог
 																			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																		#endif
 																	}
@@ -33733,13 +33733,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																	 * Если включён режим отладки
 																	 */
 																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 																	/**
 																	 * Если режим отладки не включён
 																	 */
 																	#else
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																	#endif
 																}
@@ -33781,13 +33781,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -33813,13 +33813,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -33900,13 +33900,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.v4(::trust_cast  <struct sockaddr_in> (server->endpoint.server).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
@@ -33950,13 +33950,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -33980,13 +33980,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -34066,13 +34066,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																#if DEBUG_MODE
 																	// Устанавливаем полученный IP-адрес
 																	this->_addr.source(host->ip.get(), net_addr_t::endian_t::LITTLE);
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 																#endif
 															}
@@ -34116,13 +34116,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -34146,13 +34146,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -34180,13 +34180,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -34212,13 +34212,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -34253,13 +34253,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34284,13 +34284,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34315,13 +34315,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34348,13 +34348,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34379,13 +34379,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34410,13 +34410,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34441,13 +34441,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34472,13 +34472,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34503,13 +34503,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34534,13 +34534,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34565,13 +34565,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -34587,13 +34587,13 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -34721,13 +34721,13 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -34781,13 +34781,13 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -34805,17 +34805,17 @@ string awh::engine::IO::getIface(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -34898,13 +34898,13 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -34949,13 +34949,13 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -35007,13 +35007,13 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -35055,13 +35055,13 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -35079,13 +35079,13 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, name), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -35278,13 +35278,13 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Unable to obtain an internal port for this network node", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Unable to obtain an internal port for this network node", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -35296,13 +35296,13 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Internal port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Internal port cannot be retrieved for events that are not network related", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -35316,17 +35316,17 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -35440,13 +35440,13 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Failed to set the internal port for this network node", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Failed to set the internal port for this network node", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -35458,13 +35458,13 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Internal port cannot be set for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Internal port cannot be set for events that are not network related", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -35478,17 +35478,17 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -35548,13 +35548,13 @@ uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcep
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Port cannot be retrieved for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Port cannot be retrieved for events that are not network related", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -35568,17 +35568,17 @@ uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcep
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -35661,13 +35661,13 @@ bool awh::engine::IO::setDestinationPort(const event::id_t id, const uint16_t po
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Port cannot be set for events that are not network related", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Port cannot be set for events that are not network related", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -35681,17 +35681,17 @@ bool awh::engine::IO::setDestinationPort(const event::id_t id, const uint16_t po
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, port), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -35784,13 +35784,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -35824,13 +35824,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -35885,13 +35885,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -35925,13 +35925,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -35979,13 +35979,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36019,13 +36019,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36073,13 +36073,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36113,13 +36113,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36174,13 +36174,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36214,13 +36214,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36275,13 +36275,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36315,13 +36315,13 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36339,17 +36339,17 @@ string awh::engine::IO::getTarget(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -36394,7 +36394,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									fs->state.address = event::address_t::FS;
 								// Устанавливаем адрес файловой системы
 								awh_cast <net::addr_fs_t *> (fs->path.get())->address = string{target};
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
 							} else {
@@ -36414,13 +36414,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36445,13 +36445,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -36475,7 +36475,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									fs->state.address = event::address_t::FS;
 								// Устанавливаем адрес файловой системы
 								awh_cast <net::addr_fs_t *> (fs->path.get())->address = string{target};
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							// Если адрес не принадлежит к адресу файловой системы
 							} else {
@@ -36495,13 +36495,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -36526,13 +36526,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -36556,7 +36556,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										tunnel->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
 									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -36576,13 +36576,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36598,7 +36598,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										tunnel->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
 									tunnel->target = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -36618,13 +36618,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36650,7 +36650,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										mediator->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес в хост
 									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -36670,13 +36670,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36692,7 +36692,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										mediator->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес в хост
 									mediator->host = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -36712,13 +36712,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36751,7 +36751,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										client->state.address = event::address_t::UDS;
 									// Устанавливаем адрес uinix-доменного сокета
 									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = string{target};
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
 								} else {
@@ -36771,13 +36771,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36800,7 +36800,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										client->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -36820,13 +36820,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36849,7 +36849,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										client->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (client->target.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -36869,13 +36869,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36908,7 +36908,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										server->state.address = event::address_t::UDS;
 									// Устанавливаем адрес uinix-доменного сокета
 									awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = string{target};
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не принадлежит к адресу файловой системы
 								} else {
@@ -36928,13 +36928,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -36957,7 +36957,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										server->state.address = event::address_t::IPV4;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv4-адресу
 								} else {
@@ -36977,13 +36977,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -37006,7 +37006,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										server->state.address = event::address_t::IPV6;
 									// Устанавливаем полученный IP-адрес
 									awh_cast <net::attr_net_t *> (server->host.get())->ip = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
-									// Выводим результат работы функции
+									// Возвращаем результат работы функции
 									return true;
 								// Если адрес не соответствует IPv6-адресу
 								} else {
@@ -37026,13 +37026,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -37051,17 +37051,17 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, target), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -37072,7 +37072,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, string_view target) noexce
  * @return       результат выполнения извлечения адреса хоста целевой машины
  */
 bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> & target) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -37171,13 +37171,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37213,13 +37213,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37280,13 +37280,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37322,13 +37322,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37378,13 +37378,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37420,13 +37420,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37476,13 +37476,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37518,13 +37518,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37585,13 +37585,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37627,13 +37627,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37694,13 +37694,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37736,13 +37736,13 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -37760,17 +37760,17 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -37781,7 +37781,7 @@ bool awh::engine::IO::getTarget(const event::id_t id, unique_ptr <net::addr_t> &
  * @return       результат выполнения установки
  */
 bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -37789,7 +37789,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 	try {
 		// Если объект для установки адреса хоста целевой машины не инициализирован
 		if(target == nullptr)
-			// Выводим результат по умолчанию
+			// Возвращаем значение по умолчанию
 			return result;
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
@@ -37839,13 +37839,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -37887,13 +37887,13 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -37919,7 +37919,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									tunnel->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (tunnel->target.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 							// Для семейства IPv6
@@ -37934,7 +37934,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									tunnel->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 						}
@@ -37959,7 +37959,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									mediator->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес в хост
 								awh_cast <net::addr_net_ipv4_t *> (mediator->host.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 							// Для семейства IPv6
@@ -37974,7 +37974,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									mediator->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес в хост
 								awh_cast <net::addr_net_ipv6_t *> (mediator->host.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 						}
@@ -38002,7 +38002,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									client->state.address = event::address_t::UDS;
 								// Устанавливаем адрес uinix-доменного сокета
 								awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (target)->address;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 							// Для семейства IPv4
@@ -38022,7 +38022,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									client->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 							// Для семейства IPv6
@@ -38042,7 +38042,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									client->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (client->target.get())->ip.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 						}
@@ -38070,7 +38070,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									server->state.address = event::address_t::UDS;
 								// Устанавливаем адрес uinix-доменного сокета
 								awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address = awh_cast <const net::addr_fs_t *> (target)->address;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 							// Для семейства IPv4
@@ -38090,7 +38090,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									server->state.address = event::address_t::IPV4;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv4_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = awh_cast <const net::addr_net_ipv4_t *> (target)->address;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 							// Для семейства IPv6
@@ -38110,7 +38110,7 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 									server->state.address = event::address_t::IPV6;
 								// Устанавливаем полученный IP-адрес
 								awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (server->host.get())->ip.get())->address = ::move(awh_cast <const net::addr_net_ipv6_t *> (target)->address);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return true;
 							}
 						}
@@ -38126,17 +38126,17 @@ bool awh::engine::IO::setTarget(const event::id_t id, const net::addr_t * target
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -38177,7 +38177,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(fs->path == nullptr)
 									// Прерываем выполнение
 									break;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 							}
 							// Если узел является файловой системой
@@ -38188,7 +38188,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(fs->path == nullptr)
 									// Прерываем выполнение
 									break;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return awh_cast <net::addr_fs_t *> (fs->path.get())->address;
 							}
 						}
@@ -38228,7 +38228,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38248,13 +38248,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -38277,13 +38277,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -38305,7 +38305,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38325,13 +38325,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -38354,13 +38354,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -38384,13 +38384,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -38425,7 +38425,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38445,13 +38445,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -38474,13 +38474,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -38502,7 +38502,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38522,13 +38522,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -38551,13 +38551,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -38581,13 +38581,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -38600,7 +38600,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
-								// Выводим запрошенный адрес связанного события
+								// Возвращаем запрошенный адрес связанного события
 								return this->getAddress(mediator->dest, address);
 						} break;
 						// Если узел является клиентом
@@ -38629,7 +38629,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38649,13 +38649,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -38678,13 +38678,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -38704,7 +38704,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38724,13 +38724,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -38753,13 +38753,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -38783,13 +38783,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -38835,7 +38835,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
 													this->_addr.source(src.mac.get());
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
 												} else {
@@ -38855,13 +38855,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -38883,7 +38883,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -38903,13 +38903,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -38932,13 +38932,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -38971,7 +38971,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
 													this->_addr.source(src.mac.get());
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return static_cast <string> (this->_addr);
 												// Если MAC-адрес не получен
 												} else {
@@ -38991,13 +38991,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -39019,7 +39019,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
-											// Выводим результат работы функции
+											// Возвращаем результат работы функции
 											return static_cast <string> (this->_addr);
 										// Если MAC-адрес не получен
 										} else {
@@ -39039,13 +39039,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -39068,13 +39068,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -39098,13 +39098,13 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -39129,7 +39129,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(peer->remote == nullptr)
 									// Прерываем выполнение
 									break;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (peer->remote.get())->path.get())->address;
 							}
 							// Если узел является одноранговым узлом-источником
@@ -39140,7 +39140,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(origin->remote == nullptr)
 									// Прерываем выполнение
 									break;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (origin->remote.get())->path.get())->address;
 							}
 							// Если узел является клиентом
@@ -39151,7 +39151,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(client->target == nullptr)
 									// Прерываем выполнение
 									break;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (client->target.get())->path.get())->address;
 							}
 							// Если узел является сервером
@@ -39162,7 +39162,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 								if(server->host == nullptr)
 									// Прерываем выполнение
 									break;
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return awh_cast <net::addr_fs_t *> (awh_cast <net::attr_uds_t *> (server->host.get())->path.get())->address;
 							}
 						}
@@ -39186,7 +39186,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является одноранговым узлом-источником
@@ -39199,7 +39199,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является туннелем
@@ -39212,7 +39212,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(tunnel->source.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является посредником
@@ -39225,7 +39225,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес хоста
 								this->_addr.source(mediator->host.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является клиентом
@@ -39238,7 +39238,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv4-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является сервером
@@ -39272,14 +39272,14 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 													// Устанавливаем полученный IPv4-адрес
 													this->_addr.v4(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return static_cast <string> (this->_addr);
 												}
 											} break;
 										}
 										// Устанавливаем полученный IPv4-адрес
 										this->_addr.source(awh_cast <net::attr_net_t *> (server->host.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return static_cast <string> (this->_addr);
 									}
 								}
@@ -39305,7 +39305,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (peer->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является одноранговым узлом-источником
@@ -39318,7 +39318,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (origin->remote.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является туннелем
@@ -39331,7 +39331,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(tunnel->source.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является посредником
@@ -39344,7 +39344,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес хоста
 								this->_addr.source(mediator->host.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является клиентом
@@ -39357,7 +39357,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									break;
 								// Устанавливаем полученный IPv6-адрес
 								this->_addr.source(awh_cast <net::attr_net_t *> (client->source.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-								// Выводим результат работы функции
+								// Возвращаем результат работы функции
 								return static_cast <string> (this->_addr);
 							}
 							// Если узел является сервером
@@ -39395,14 +39395,14 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 													::memcpy(&buffer[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
 													// Устанавливаем полученный IPv6-адрес
 													this->_addr.v6(buffer, net_addr_t::endian_t::LITTLE);
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return static_cast <string> (this->_addr);
 												}
 											} break;
 										}
 										// Устанавливаем полученный IPv6-адрес
 										this->_addr.source(awh_cast <net::attr_net_t *> (server->host.get())->ip.get(), net_addr_t::endian_t::LITTLE);
-										// Выводим результат работы функции
+										// Возвращаем результат работы функции
 										return static_cast <string> (this->_addr);
 									}
 								}
@@ -39420,17 +39420,17 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -39442,7 +39442,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
  * @return        результат выполнения установки
  */
 bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, string_view value) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -39513,13 +39513,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -39566,13 +39566,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -39595,13 +39595,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -39643,13 +39643,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -39672,13 +39672,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -39690,13 +39690,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Address \"%s\" can only be set for node", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Address \"%s\" can only be set for node", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
@@ -39785,13 +39785,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -39845,13 +39845,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -39876,13 +39876,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -39941,13 +39941,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -39996,13 +39996,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
@@ -40027,13 +40027,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -40047,13 +40047,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("MAC-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("MAC-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
@@ -40114,13 +40114,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -40165,13 +40165,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -40185,13 +40185,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("Unix socket address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("Unix socket address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 									#endif
 								}
@@ -40202,13 +40202,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("You cannot set address \"%s\" because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("You cannot set address \"%s\" because event family does not belong to unix domain socket", log_t::flag_t::WARNING, value.data());
 							#endif
 						}
@@ -40249,13 +40249,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -40278,13 +40278,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -40320,13 +40320,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -40349,13 +40349,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -40445,13 +40445,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -40474,13 +40474,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -40503,13 +40503,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -40584,13 +40584,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -40614,13 +40614,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -40643,13 +40643,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -40661,13 +40661,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("IP-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
@@ -40709,13 +40709,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -40738,13 +40738,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -40780,13 +40780,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -40809,13 +40809,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -40905,13 +40905,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -40934,13 +40934,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -40963,13 +40963,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -41044,13 +41044,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -41074,13 +41074,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -41103,13 +41103,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -41121,13 +41121,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("IP-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("IP-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
@@ -41261,13 +41261,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -41290,13 +41290,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -41368,13 +41368,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -41397,13 +41397,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -41503,13 +41503,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -41532,13 +41532,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -41605,13 +41605,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 													#endif
 												}
@@ -41634,13 +41634,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -41654,13 +41654,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Network-address \"%s\" can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Network-address \"%s\" can only be set for client or server nodes", log_t::flag_t::WARNING, value.data());
 								#endif
 							}
@@ -41672,13 +41672,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Unsupported address \"%s\" type cannot be set", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::WARNING, value.data());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Unsupported address \"%s\" type cannot be set", log_t::flag_t::WARNING, value.data());
 						#endif
 					}
@@ -41693,13 +41693,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address), value), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -41715,7 +41715,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
  * @return        результат выполнения извлечения адреса события
  */
 bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t address, unique_ptr <net::addr_t> & value) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -41828,13 +41828,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -41857,13 +41857,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -41903,13 +41903,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -41932,13 +41932,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -41962,13 +41962,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -42025,13 +42025,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -42054,13 +42054,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -42100,13 +42100,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -42129,13 +42129,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -42159,13 +42159,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -42178,7 +42178,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 							::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
-								// Выводим запрошенный адрес связанного события
+								// Возвращаем запрошенный адрес связанного события
 								return this->getAddress(mediator->dest, address, value);
 						} break;
 						// Если узел является клиентом
@@ -42229,13 +42229,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -42258,13 +42258,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -42302,13 +42302,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -42331,13 +42331,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -42361,13 +42361,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -42435,13 +42435,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -42481,13 +42481,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -42510,13 +42510,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -42567,13 +42567,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -42613,13 +42613,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -42642,13 +42642,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -42672,13 +42672,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -42876,7 +42876,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												if(::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_port > 0){
 													// Устанавливаем полученный IPv4-адрес
 													awh_cast <net::addr_net_ipv4_t *> (value.get())->address = ::trust_cast <struct sockaddr_in> (server->endpoint.client).sin_addr.s_addr;
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 												}
 											} break;
@@ -43007,7 +43007,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												if(::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_port > 0){
 													// Копируем полученный IPv6-адрес во временный буфер
 													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (value.get())->address[0], ::trust_cast <struct sockaddr_in6> (server->endpoint.client).sin6_addr.s6_addr, 16);
-													// Выводим результат работы функции
+													// Возвращаем результат работы функции
 													return result;
 												}
 											} break;
@@ -43030,13 +43030,13 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -43052,7 +43052,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
  * @return        результат выполнения установки
  */
 bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t address, const net::addr_t * value) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -43060,7 +43060,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 	try {
 		// Если объект для установки адреса не инициализирован
 		if(value == nullptr)
-			// Выводим результат по умолчанию
+			// Возвращаем значение по умолчанию
 			return result;
 		// Выполняем поиск идентификатора события
 		auto i = ::__awh_nodes__.find(id);
@@ -43127,13 +43127,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -43178,13 +43178,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -43224,13 +43224,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -43242,13 +43242,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Address can only be set for node", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Address can only be set for node", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -43335,13 +43335,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -43395,13 +43395,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -43460,13 +43460,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -43515,13 +43515,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 														 * Если включён режим отладки
 														 */
 														#if DEBUG_MODE
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 														/**
 														 * Если режим отладки не включён
 														 */
 														#else
-															// Выводим сообщение об ошибке
+															// Записываем ошибку в лог
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													}
@@ -43537,13 +43537,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("MAC-address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("MAC-address can only be set for client or server nodes", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -43613,13 +43613,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("Unix socket address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("Unix socket address can only be set for client or server nodes", log_t::flag_t::WARNING);
 									#endif
 								}
@@ -43630,13 +43630,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("You cannot set address because event family does not belong to unix domain socket", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("You cannot set address because event family does not belong to unix domain socket", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -43679,13 +43679,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -43723,13 +43723,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -43819,13 +43819,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -43848,13 +43848,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -43929,13 +43929,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -43959,13 +43959,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -43977,13 +43977,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("IP-address can only be set for client or server nodes", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -44027,13 +44027,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -44071,13 +44071,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -44167,13 +44167,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -44196,13 +44196,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -44277,13 +44277,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -44307,13 +44307,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -44325,13 +44325,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("IP-address can only be set for client or server nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("IP-address can only be set for client or server nodes", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -44343,13 +44343,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Unsupported address type cannot be set", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Unsupported address type cannot be set", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -44364,13 +44364,13 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (address)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -44424,13 +44424,13 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -44532,13 +44532,13 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -44592,13 +44592,13 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -44616,17 +44616,17 @@ uint16_t awh::engine::IO::getMaximumTransmissionUnit(const event::id_t id) const
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -44677,13 +44677,13 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -44785,13 +44785,13 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -44845,13 +44845,13 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -44869,17 +44869,17 @@ bool awh::engine::IO::setMaximumTransmissionUnit(const event::id_t id, const uin
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mtu), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -44937,7 +44937,7 @@ awh::event::dscp_t awh::engine::IO::getDifferentiatedServicesCodePoint(const eve
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -44948,11 +44948,11 @@ awh::event::dscp_t awh::engine::IO::getDifferentiatedServicesCodePoint(const eve
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
 /**
@@ -45011,7 +45011,7 @@ bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -45023,11 +45023,11 @@ bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, c
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -45085,7 +45085,7 @@ awh::event::mtu_discover_t awh::engine::IO::getMaximumTransmissionUnitDiscover(c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -45096,11 +45096,11 @@ awh::event::mtu_discover_t awh::engine::IO::getMaximumTransmissionUnitDiscover(c
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
 /**
@@ -45159,7 +45159,7 @@ bool awh::engine::IO::setMaximumTransmissionUnitDiscover(const event::id_t id, c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -45171,11 +45171,11 @@ bool awh::engine::IO::setMaximumTransmissionUnitDiscover(const event::id_t id, c
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -45253,13 +45253,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#if DEBUG_MODE
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
@@ -45299,13 +45299,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -45328,13 +45328,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -45378,13 +45378,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#if DEBUG_MODE
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
@@ -45424,13 +45424,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -45453,13 +45453,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -45521,13 +45521,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#if DEBUG_MODE
 													// Устанавливаем полученный IP-адрес
 													this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
@@ -45567,13 +45567,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -45596,13 +45596,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -45652,13 +45652,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 												#if DEBUG_MODE
 													// Устанавливаем полученный IP-адрес
 													this->_addr.source(source.get(), net_addr_t::endian_t::LITTLE);
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 												#endif
 											}
@@ -45698,13 +45698,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -45727,13 +45727,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -45747,13 +45747,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Unable to add or remove multicast group for nodes other than client or server", log_t::flag_t::CRITICAL);
 						#endif
 					}
@@ -45771,13 +45771,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Multicast group cannot be added because it is empty", log_t::flag_t::CRITICAL);
 					#endif
 				} break;
@@ -45787,13 +45787,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Multicast group cannot be removed because it is empty", log_t::flag_t::CRITICAL);
 					#endif
 				} break;
@@ -45807,17 +45807,17 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode), group, source), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -45887,13 +45887,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										#if DEBUG_MODE
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
@@ -45946,13 +45946,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										#if DEBUG_MODE
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->transfer.fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
@@ -46023,13 +46023,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										#if DEBUG_MODE
 											// Устанавливаем полученный IP-адрес
 											this->_addr.v4(endpoint.sin_addr.s_addr, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
@@ -46088,13 +46088,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 										#if DEBUG_MODE
 											// Устанавливаем полученный IP-адрес
 											this->_addr.source(source, net_addr_t::endian_t::LITTLE);
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->fd, static_cast <string> (this->_addr)), log_t::flag_t::CRITICAL, ::strerror(errno));
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 										#endif
 									}
@@ -46125,13 +46125,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Unable to add or remove multicast group for nodes other than client or server", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Unable to add or remove multicast group for nodes other than client or server", log_t::flag_t::CRITICAL);
 						#endif
 					}
@@ -46149,13 +46149,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Multicast group cannot be added because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Multicast group cannot be added because it is empty", log_t::flag_t::CRITICAL);
 					#endif
 				} break;
@@ -46165,13 +46165,13 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Multicast group cannot be removed because it is empty", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Multicast group cannot be removed because it is empty", log_t::flag_t::CRITICAL);
 					#endif
 				} break;
@@ -46185,17 +46185,17 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -46223,17 +46223,17 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -46245,7 +46245,7 @@ bool awh::engine::IO::destroy(const event::id_t id) noexcept {
  * @return         пара идентификаторов созданных событий
  */
 std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	std::array <awh::event::id_t, 2> result = {0, 0};
 	/**
 	 * Выполняем перехват ошибок
@@ -46407,7 +46407,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 				static_cast <uint16_t> (family),
 				static_cast <uint16_t> (type),
@@ -46417,7 +46417,7 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -46500,7 +46500,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -46514,7 +46514,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -46568,7 +46568,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -46582,7 +46582,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -46621,7 +46621,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -46635,7 +46635,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -46672,7 +46672,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -46686,7 +46686,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -46723,7 +46723,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -46737,7 +46737,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -46774,7 +46774,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -46788,7 +46788,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -46856,7 +46856,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"An event for a Unix event cannot be created because it has an invalid initialization type",
 										__PRETTY_FUNCTION__, make_tuple(
@@ -46870,7 +46870,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -46982,7 +46982,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"An event for a IP event cannot be created because it has an invalid initialization type",
 										__PRETTY_FUNCTION__, make_tuple(
@@ -46996,7 +46996,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -47008,7 +47008,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -47022,7 +47022,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -47084,7 +47084,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"An event for a Unix event cannot be created because it has an invalid initialization type",
 										__PRETTY_FUNCTION__, make_tuple(
@@ -47098,7 +47098,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("An event for a Unix event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -47171,7 +47171,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"An event for a IP event cannot be created because it has an invalid initialization type",
 										__PRETTY_FUNCTION__, make_tuple(
@@ -47185,7 +47185,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("An event for a IP event cannot be created because it has an invalid initialization type", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -47197,7 +47197,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"Event cannot be created because family it belongs to is not defined",
 								__PRETTY_FUNCTION__, make_tuple(
@@ -47211,7 +47211,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Event cannot be created because family it belongs to is not defined", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -47226,7 +47226,7 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 				static_cast <uint16_t> (node),
 				static_cast <uint16_t> (family),
@@ -47237,11 +47237,11 @@ awh::event::id_t awh::engine::IO::event(const event::node_t node, const event::f
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -47278,7 +47278,7 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 							return 0;
 						// Если смещение от текущей позиции в файле
 						case static_cast <uint8_t> (event::seek_t::CURRENT):
-							// Выводим смещение в файле события
+							// Возвращаем смещение в файле события
 							return awh_cast <::io::file_t *> (i->second.get())->offset;
 						// Если смещение от конца файла
 						case static_cast <uint8_t> (event::seek_t::END): {
@@ -47286,9 +47286,9 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 							::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 							// Если файл открыт удачно
 							if(::fstat(fs->fd, &fs->info) == 0)
-								// Выводим смещение в файле события
+								// Возвращаем смещение в файле события
 								return (fs->info.st_size - fs->offset);
-							// Выводим смещение в файле события
+							// Возвращаем смещение в файле события
 							else return fs->offset;
 						}
 					}
@@ -47299,13 +47299,13 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Seek offset cannot be get for events that are not file system related", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Seek offset cannot be get for events that are not file system related", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -47319,17 +47319,17 @@ size_t awh::engine::IO::getSeek(const event::id_t id, const event::seek_t seek) 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -47392,13 +47392,13 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Seek offset cannot be set for events that are not file system related", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek), offset), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Seek offset cannot be set for events that are not file system related", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -47412,17 +47412,17 @@ bool awh::engine::IO::setSeek(const event::id_t id, const event::seek_t seek, co
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (seek), offset), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -47450,17 +47450,17 @@ uint16_t awh::engine::IO::getOptions(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::options::NONE;
 }
 /**
@@ -47471,7 +47471,7 @@ uint16_t awh::engine::IO::getOptions(const event::id_t id) const noexcept {
  * @return        результат выполнения установки
  */
 bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -48272,13 +48272,13 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, options), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -48294,7 +48294,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
  * @return       результат выполнения установки
  */
 bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, const bool mode) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -48457,7 +48457,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 										switch(static_cast <uint8_t> (i->second->state.node)){
 											// Если узел является межпроцессным взаимодействием
 											case static_cast <uint8_t> (event::node_t::IPC):
-												// Выводим положительный результат работы функции
+												// Возвращаем true работы функции
 												return true;
 											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER): {
@@ -48609,7 +48609,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 										switch(static_cast <uint8_t> (i->second->state.node)){
 											// Если узел является межпроцессным взаимодействием
 											case static_cast <uint8_t> (event::node_t::IPC):
-												// Выводим положительный результат работы функции
+												// Возвращаем true работы функции
 												return true;
 											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER): {
@@ -49102,7 +49102,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							i->second->state.options |= event::options::KEEPALIVE;
 						// Если необходимо деактивировать параметры keep-alive для сокета события
 						else i->second->state.options &= ~event::options::KEEPALIVE;
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 					// Если опция передана как CLOSE_ON_EXEC
@@ -49128,13 +49128,13 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, option, mode), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -49197,13 +49197,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49230,13 +49230,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49261,13 +49261,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49290,7 +49290,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте пользовательского события
 								user->dest = dest;
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 						}
@@ -49315,13 +49315,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
@@ -49354,13 +49354,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49387,13 +49387,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49418,13 +49418,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49447,7 +49447,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте файловой системы
 								fs->dest = dest;
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 						}
@@ -49474,13 +49474,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
@@ -49513,13 +49513,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49546,13 +49546,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49577,13 +49577,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49606,7 +49606,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте межпроцессного взаимодействия
 								ipc->transfer.dest = dest;
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 						}
@@ -49639,13 +49639,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49672,13 +49672,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49703,13 +49703,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49732,7 +49732,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте однорангового узла
 								peer->transfer.dest = dest;
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 						}
@@ -49765,13 +49765,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49798,13 +49798,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49829,13 +49829,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49858,7 +49858,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте однорангового узла
 								origin->transfer.dest = dest;
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 						}
@@ -49883,13 +49883,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
@@ -49922,13 +49922,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49955,13 +49955,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -49972,7 +49972,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Устанавливаем идентификатор события-приёмника в объекте посредника
 								mediator->dest = dest;
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 							// Если узел является межпроцессным взаимодействием
@@ -49995,7 +49995,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									mediator->state.type = j->second->state.type;
 									// Устанавливаем протокол события в объекте посредника
 									mediator->state.protocol = j->second->state.protocol;
-									// Выводим положительный результат
+									// Возвращаем true
 									return true;
 								// Если не совместимы типы или семейства событий
 								} else {
@@ -50015,13 +50015,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -50057,13 +50057,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -50090,13 +50090,13 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -50119,7 +50119,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте клиента
 								client->transfer.dest = dest;
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 						}
@@ -50135,17 +50135,17 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, dest), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -50181,7 +50181,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						EV_SET(&event, i->first, EVFILT_USER, EV_ENABLE, NOTE_FFNOP, 0, i->second.get());
 						// Добавляем новое событие в список изменений
 						::events::add(::move(event));
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -50214,7 +50214,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							#endif
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
-							// Выводим положительный результат
+							// Возвращаем true
 							return true;
 						}
 						// Снимаем флаг ожидания выполнения события
@@ -50252,7 +50252,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						}
 						// Добавляем новое событие в список изменений
 						::events::add(::move(event));
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -50266,7 +50266,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
 						::events::read(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -50280,7 +50280,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
 						::events::read(tunnel->fd, tunnel, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -50333,7 +50333,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Если событие является блокирующим
 									} else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 								}
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 							// Для остальных типов сокетов
@@ -50354,13 +50354,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -50431,13 +50431,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -50465,7 +50465,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								server->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-								// Выводим положительный результат
+								// Возвращаем true
 								return true;
 							}
 							// Для остальных типов сокетов
@@ -50486,13 +50486,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -50539,13 +50539,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -50573,13 +50573,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
@@ -50604,13 +50604,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
@@ -50635,13 +50635,13 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
@@ -50656,17 +50656,17 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -50716,7 +50716,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						if(peer->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова с установленным флагом события
 							peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -50755,7 +50755,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						if(client->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова с установленным флагом события
 							client->callbacks.event(client->id, event::action_t::DISCONNECT);
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				} break;
@@ -50769,17 +50769,17 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -50789,7 +50789,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
  * @return    результат выполнения подключения
  */
 bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -50872,13 +50872,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																 * Если включён режим отладки
 																 */
 																#if DEBUG_MODE
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
 																/**
 																 * Если режим отладки не включён
 																 */
 																#else
-																	// Выводим сообщение об ошибке
+																	// Записываем ошибку в лог
 																	this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																#endif
 															}
@@ -50888,7 +50888,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 															if(client->callbacks.connect != nullptr)
 																// Вызываем функцию обратного вызова для подключения
 																client->callbacks.connect(client->id, false);
-															// Выводим результат работы функции
+															// Возвращаем результат работы функции
 															return result;
 														}
 													}
@@ -50974,13 +50974,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 																	 * Если включён режим отладки
 																	 */
 																	#if DEBUG_MODE
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, ::strerror(errno));
 																	/**
 																	 * Если режим отладки не включён
 																	 */
 																	#else
-																		// Выводим сообщение об ошибке
+																		// Записываем ошибку в лог
 																		this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 																	#endif
 																}
@@ -50994,7 +50994,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														}
 													} break;
 												}
-												// Выводим результат работы функции
+												// Возвращаем результат работы функции
 												return result;
 											}
 										#endif
@@ -51027,13 +51027,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51058,13 +51058,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51089,13 +51089,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51122,13 +51122,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51153,13 +51153,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51184,13 +51184,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51215,13 +51215,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51246,13 +51246,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51277,13 +51277,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51308,13 +51308,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 											#endif
 										}
@@ -51348,13 +51348,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51379,13 +51379,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(dir->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51410,13 +51410,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(fs->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51443,13 +51443,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51474,13 +51474,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ipc->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51505,13 +51505,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(peer->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51536,13 +51536,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(origin->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51567,13 +51567,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51598,13 +51598,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51629,13 +51629,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(client->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51660,13 +51660,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(server->id, ids.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51684,13 +51684,13 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(ids.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -51705,7 +51705,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
  * @return    результат выполнения перевода в режим прослушивания
  */
 bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -51755,13 +51755,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 											#endif
 										}
@@ -51793,13 +51793,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, ::strerror(errno));
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 													#endif
 												}
@@ -51824,13 +51824,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 												#endif
 											}
@@ -51857,13 +51857,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -51899,13 +51899,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51930,13 +51930,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51961,13 +51961,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -51994,13 +51994,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -52025,13 +52025,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -52056,13 +52056,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -52087,13 +52087,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -52118,13 +52118,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -52149,13 +52149,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -52180,13 +52180,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -52220,13 +52220,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52251,13 +52251,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52282,13 +52282,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52315,13 +52315,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52346,13 +52346,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52377,13 +52377,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52408,13 +52408,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52439,13 +52439,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52470,13 +52470,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52501,13 +52501,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52532,13 +52532,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -52554,13 +52554,13 @@ bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -52592,17 +52592,17 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -52614,7 +52614,7 @@ bool awh::engine::IO::recv(const event::id_t id) noexcept {
  * @return       количество байт данных, отправленных событием
  */
 size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	size_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -52664,13 +52664,13 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 								#endif
 								// Если функция обратного вызова для вывода записанных данных установлена
@@ -52784,17 +52784,17 @@ size_t awh::engine::IO::send(const event::id_t id, const void * buffer, const si
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат работы функции
+	// Возвращаем результат работы функции
 	return result;
 }
 /**
@@ -52832,13 +52832,13 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Event incoming connection accept queue depth cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Event incoming connection accept queue depth cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -52852,13 +52852,13 @@ void awh::engine::IO::backlog(const event::id_t id, const uint16_t depth, const 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, depth, adaptive), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -52915,13 +52915,13 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -52956,7 +52956,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(ipc->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на чтение
+										// Возвращаем размер буфера на чтение
 										return static_cast <size_t> (length);
 								} break;
 								// Если действие является записью
@@ -52965,7 +52965,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(ipc->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на запись
+										// Возвращаем размер буфера на запись
 										return static_cast <size_t> (length);
 								} break;
 							}
@@ -52996,7 +52996,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(peer->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на чтение
+										// Возвращаем размер буфера на чтение
 										return static_cast <size_t> (length);
 								} break;
 								// Если действие является записью
@@ -53005,7 +53005,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(peer->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на запись
+										// Возвращаем размер буфера на запись
 										return static_cast <size_t> (length);
 								} break;
 							}
@@ -53036,7 +53036,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(origin->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на чтение
+										// Возвращаем размер буфера на чтение
 										return static_cast <size_t> (length);
 								} break;
 								// Если действие является записью
@@ -53045,7 +53045,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(origin->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на запись
+										// Возвращаем размер буфера на запись
 										return static_cast <size_t> (length);
 								} break;
 							}
@@ -53076,7 +53076,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на чтение
+										// Возвращаем размер буфера на чтение
 										return static_cast <size_t> (length);
 								} break;
 								// Если действие является записью
@@ -53085,7 +53085,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(client->transfer.fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на запись
+										// Возвращаем размер буфера на запись
 										return static_cast <size_t> (length);
 								} break;
 							}
@@ -53116,7 +53116,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(server->fd, net::socket_event_t::READ);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на чтение
+										// Возвращаем размер буфера на чтение
 										return static_cast <size_t> (length);
 								} break;
 								// Если действие является записью
@@ -53125,7 +53125,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 									const int32_t length = this->_eth.socket.getBufferSize(server->fd, net::socket_event_t::WRITE);
 									// Если установка размера буфера прошла успешно
 									if(length > 0)
-										// Выводим размер буфера на запись
+										// Возвращаем размер буфера на запись
 										return static_cast <size_t> (length);
 								} break;
 							}
@@ -53138,13 +53138,13 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Buffer size cannot be get for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Buffer size cannot be get for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -53158,17 +53158,17 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -53180,7 +53180,7 @@ size_t awh::engine::IO::getBufferSize(const event::id_t id, const event::action_
  * @return       результат выполнения установки
  */
 bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t action, const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -53233,13 +53233,13 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -53435,13 +53435,13 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Buffer size cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Buffer size cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -53455,13 +53455,13 @@ bool awh::engine::IO::setBufferSize(const event::id_t id, const event::action_t 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -53510,13 +53510,13 @@ void awh::engine::IO::bandwidth(const event::limiting_t limiting, string_view ba
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -53626,13 +53626,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -53643,13 +53643,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Network bandwidth limits can only be set for non-blocking events", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -53707,13 +53707,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("Cannot set incoming network bandwidth limit for this node type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("Cannot set incoming network bandwidth limit for this node type", log_t::flag_t::WARNING);
 										#endif
 									} break;
@@ -53725,13 +53725,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -53742,13 +53742,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Network bandwidth limits can only be set for non-blocking events", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -53839,13 +53839,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -53856,13 +53856,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Network bandwidth limits can only be set for non-blocking events", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -53891,13 +53891,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("Cannot set outgoing network bandwidth limit for this node type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("Cannot set outgoing network bandwidth limit for this node type", log_t::flag_t::WARNING);
 										#endif
 									} break;
@@ -53938,13 +53938,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Network bandwidth limits can only be set for IPv4 and IPv6 protocol families", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -53955,13 +53955,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Network bandwidth limits can only be set for non-blocking events", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Network bandwidth limits can only be set for non-blocking events", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -53972,13 +53972,13 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Bandwidth cannot be set for this event node", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Bandwidth cannot be set for this event node", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -53992,17 +53992,17 @@ bool awh::engine::IO::bandwidth(const event::id_t id, const event::limiting_t li
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (limiting), bandwidth), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -54020,7 +54020,7 @@ awh::event::delivery_mode_t awh::engine::IO::getDelivery(const event::id_t id) c
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
-			// Выводим режим трансляции пакетов
+			// Возвращаем режим трансляции пакетов
 			return i->second->state.delivery;
 	/**
 	 * Если возникает ошибка
@@ -54030,17 +54030,17 @@ awh::event::delivery_mode_t awh::engine::IO::getDelivery(const event::id_t id) c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
 /**
@@ -54067,14 +54067,14 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::peer_t *> (i->second.get())->state.delivery = delivery;
-					// Выводим результат работы функции
+					// Возвращаем результат работы функции
 					return true;
 				}
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::origin_t *> (i->second.get())->state.delivery = delivery;
-					// Выводим результат работы функции
+					// Возвращаем результат работы функции
 					return true;
 				}
 				// Если узел является посредником
@@ -54092,14 +54092,14 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::client_t *> (i->second.get())->state.delivery = delivery;
-					// Выводим результат работы функции
+					// Возвращаем результат работы функции
 					return true;
 				}
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Устанавливаем максимальное количество хопов для события
 					awh_cast <::io::server_t *> (i->second.get())->state.delivery = delivery;
-					// Выводим результат работы функции
+					// Возвращаем результат работы функции
 					return true;
 				}
 				// Для других типов узлов
@@ -54108,13 +54108,13 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unable to set packet forwarding mode for non-network nodes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unable to set packet forwarding mode for non-network nodes", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -54128,17 +54128,17 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (delivery)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -54162,11 +54162,11 @@ awh::net::dgram_info_t awh::engine::IO::getTrafficInfo(const event::id_t id) con
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Выводим метаданные последнего принятого дейтаграммного пакета
+					// Возвращаем метаданные последнего принятого дейтаграммного пакета
 					return awh_cast <::io::client_t *> (i->second.get())->raw.info;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Выводим метаданные последнего принятого дейтаграммного пакета
+					// Возвращаем метаданные последнего принятого дейтаграммного пакета
 					return awh_cast <::io::server_t *> (i->second.get())->raw.info;
 			}
 		}
@@ -54178,17 +54178,17 @@ awh::net::dgram_info_t awh::engine::IO::getTrafficInfo(const event::id_t id) con
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
 /**
@@ -54212,11 +54212,11 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Выводим количество хопов последнего принятого пакета
+					// Возвращаем количество хопов последнего принятого пакета
 					return awh_cast <::io::client_t *> (i->second.get())->raw.info.hops;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Выводим количество хопов последнего принятого пакета
+					// Возвращаем количество хопов последнего принятого пакета
 					return awh_cast <::io::server_t *> (i->second.get())->raw.info.hops;
 			}
 		}
@@ -54228,17 +54228,17 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -54249,7 +54249,7 @@ uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
  * @return     результат выполнения установки
  */
 bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -54419,7 +54419,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, make_tuple(
 							id, static_cast <uint8_t> (hops)
 						), log_t::flag_t::CRITICAL);
@@ -54427,7 +54427,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -54441,7 +54441,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 				id, static_cast <uint8_t> (hops)
 			), log_t::flag_t::CRITICAL, error.what());
@@ -54449,7 +54449,7 @@ bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noe
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -54471,7 +54471,7 @@ awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept
 		auto i = ::__awh_nodes__.find(id);
 		// Если идентификатор события найден и событие не подлежит уничтожению
 		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
-			// Выводим результат максимального количества хопов
+			// Возвращаем результат максимального количества хопов
 			return i->second->state.hops;
 	/**
 	 * Если возникает ошибка
@@ -54481,17 +54481,17 @@ awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::hops_t::WORLD;
 }
 /**
@@ -54502,7 +54502,7 @@ awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept
  * @return     результат работы функции
  */
 bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -54567,7 +54567,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, make_tuple(
 							id, static_cast <uint8_t> (hops)
 						), log_t::flag_t::CRITICAL);
@@ -54575,7 +54575,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -54589,7 +54589,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 				id, static_cast <uint8_t> (hops)
 			), log_t::flag_t::CRITICAL, error.what());
@@ -54597,7 +54597,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) no
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -54625,19 +54625,19 @@ awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) c
 			switch(static_cast <uint8_t> (i->second->state.node)){
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER):
-					// Выводим значение режима использования таймаута для обработки события чтения
+					// Возвращаем значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::peer_t *> (i->second.get())->timeouts.read.usage;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN):
-					// Выводим значение режима использования таймаута для обработки события чтения
+					// Возвращаем значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::origin_t *> (i->second.get())->timeouts.read.usage;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Выводим значение режима использования таймаута для обработки события чтения
+					// Возвращаем значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::client_t *> (i->second.get())->timeouts.read.usage;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Выводим значение режима использования таймаута для обработки события чтения
+					// Возвращаем значение режима использования таймаута для обработки события чтения
 					return awh_cast <::io::server_t *> (i->second.get())->timeouts.read.usage;
 			}
 		}
@@ -54649,17 +54649,17 @@ awh::event::usage_t awh::engine::IO::getUsageReadTimeout(const event::id_t id) c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
 /**
@@ -54713,13 +54713,13 @@ void awh::engine::IO::setUsageReadTimeout(const event::id_t id, const event::usa
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (usage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -54748,7 +54748,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 				case static_cast <uint8_t> (event::node_t::TIMEOUT):
 				// Если узел является интервалом
 				case static_cast <uint8_t> (event::node_t::INTERVAL):
-					// Выводим значение задержки времени таймаута
+					// Возвращаем значение задержки времени таймаута
 					return awh_cast <::io::timer_t *> (i->second.get())->delay;
 				// Если узел является одноранговым узлом
 				case static_cast <uint8_t> (event::node_t::PEER): {
@@ -54760,11 +54760,11 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
-							// Выводим значение таймаута для действия чтения
+							// Возвращаем значение таймаута для действия чтения
 							return peer->timeouts.read.delay;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
-							// Выводим значение таймаута для действия записи
+							// Возвращаем значение таймаута для действия записи
 							return peer->timeouts.write.delay;
 					}
 				} break;
@@ -54778,11 +54778,11 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
-							// Выводим значение таймаута для действия чтения
+							// Возвращаем значение таймаута для действия чтения
 							return origin->timeouts.read.delay;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
-							// Выводим значение таймаута для действия записи
+							// Возвращаем значение таймаута для действия записи
 							return origin->timeouts.write.delay;
 					}
 				} break;
@@ -54792,7 +54792,7 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 					// Если идентификатор связанного события установлен
 					if(mediator->dest != 0)
-						// Выводим значение таймаута для связанного события
+						// Возвращаем значение таймаута для связанного события
 						return this->getTimeout(mediator->dest, action);
 				} break;
 				// Если узел является клиентом
@@ -54805,19 +54805,19 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
-							// Выводим значение таймаута для действия чтения
+							// Возвращаем значение таймаута для действия чтения
 							return client->timeouts.read.delay;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
-							// Выводим значение таймаута для действия записи
+							// Возвращаем значение таймаута для действия записи
 							return client->timeouts.write.delay;
 						// Если действие является соединением
 						case static_cast <uint8_t> (event::action_t::CONNECT):
-							// Выводим значение таймаута для действия соединения
+							// Возвращаем значение таймаута для действия соединения
 							return client->timeouts.connect.delay;
 						// Если действие является переподключением
 						case static_cast <uint8_t> (event::action_t::RECONNECT):
-							// Выводим значение таймаута для действия переподключения
+							// Возвращаем значение таймаута для действия переподключения
 							return client->timeouts.reconnect.delay;
 					}
 				} break;
@@ -54831,11 +54831,11 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					switch(static_cast <uint8_t> (action)){
 						// Если действие является чтением
 						case static_cast <uint8_t> (event::action_t::READ):
-							// Выводим значение таймаута для действия чтения
+							// Возвращаем значение таймаута для действия чтения
 							return server->timeouts.read.delay;
 						// Если действие является записью
 						case static_cast <uint8_t> (event::action_t::WRITE):
-							// Выводим значение таймаута для действия записи
+							// Возвращаем значение таймаута для действия записи
 							return server->timeouts.write.delay;
 					}
 				} break;
@@ -54845,13 +54845,13 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unable to set timeout for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -54865,17 +54865,17 @@ uint32_t awh::engine::IO::getTimeout(const event::id_t id, const event::action_t
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -55044,13 +55044,13 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -55095,13 +55095,13 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -55217,13 +55217,13 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -55284,13 +55284,13 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -55303,13 +55303,13 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unable to set timeout for this event type", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unable to set timeout for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -55323,13 +55323,13 @@ void awh::engine::IO::setTimeout(const event::id_t id, const event::action_t act
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), timeout), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -55366,63 +55366,63 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия каталога разрешено
 							if(dir->actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является изменением каталога
 						case static_cast <uint8_t> (event::action_t::CHANGE): {
 							// Если действие изменения каталога разрешено
 							if(dir->actions & ::action::CHANGE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является удалением каталога
 						case static_cast <uint8_t> (event::action_t::DELETE): {
 							// Если действие удаления каталога разрешено
 							if(dir->actions & ::action::DELETE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является переименованием каталога
 						case static_cast <uint8_t> (event::action_t::RENAME): {
 							// Если действие переименования каталога разрешено
 							if(dir->actions & ::action::RENAME)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является изменением атрибутов каталога
 						case static_cast <uint8_t> (event::action_t::ATTRIB): {
 							// Если действие изменения атрибутов каталога разрешено
 							if(dir->actions & ::action::ATTRIB)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является отзывом доступа к каталогу
 						case static_cast <uint8_t> (event::action_t::REVOKE): {
 							// Если действие отзыва доступа к каталогу разрешено
 							if(dir->actions & ::action::REVOKE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является изменением счётчика жёстких ссылок на каталог
 						case static_cast <uint8_t> (event::action_t::HDLINK): {
 							// Если действие изменения счётчика жёстких ссылок на каталог разрешено
 							if(dir->actions & ::action::HDLINK)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55439,81 +55439,81 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Если действие на чтение из файла разрешено
 							if(fs->actions & ::action::READ)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является записью данных в файл
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Если действие на запись в файл разрешено
 							if(fs->actions & ::action::WRITE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является закрытием файла
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия файла разрешено
 							if(fs->actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является изменением файла
 						case static_cast <uint8_t> (event::action_t::CHANGE): {
 							// Если действие изменения файла разрешено
 							if(fs->actions & ::action::CHANGE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является удалением файла
 						case static_cast <uint8_t> (event::action_t::DELETE): {
 							// Если действие удаления файла разрешено
 							if(fs->actions & ::action::DELETE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является переименованием файла
 						case static_cast <uint8_t> (event::action_t::RENAME): {
 							// Если действие переименования файла разрешено
 							if(fs->actions & ::action::RENAME)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является изменением атрибутов файла
 						case static_cast <uint8_t> (event::action_t::ATTRIB): {
 							// Если действие изменения атрибутов файла разрешено
 							if(fs->actions & ::action::ATTRIB)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является отзывом доступа к файлу
 						case static_cast <uint8_t> (event::action_t::REVOKE): {
 							// Если действие отзыва доступа к файлу разрешено
 							if(fs->actions & ::action::REVOKE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является изменением счётчика жёстких ссылок на файл
 						case static_cast <uint8_t> (event::action_t::HDLINK): {
 							// Если действие изменения счётчика жёстких ссылок на файл разрешено
 							if(fs->actions & ::action::HDLINK)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55530,27 +55530,27 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Если действие на чтение из сокета разрешено
 							if(ipc->transfer.actions & ::action::READ)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Если действие на запись в сокет разрешено
 							if(ipc->transfer.actions & ::action::WRITE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия сокета разрешено
 							if(ipc->transfer.actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55567,36 +55567,36 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Если действие на чтение из сокета разрешено
 							if(peer->transfer.actions & ::action::READ)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Если действие на запись в сокет разрешено
 							if(peer->transfer.actions & ::action::WRITE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия сокета разрешено
 							if(peer->transfer.actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является отключением от сервера
 						case static_cast <uint8_t> (event::action_t::DISCONNECT): {
 							// Если действие отключение сокета от сервера разрешено
 							if(peer->transfer.actions & ::action::DISCONNECT)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55613,36 +55613,36 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Если действие на чтение из сокета разрешено
 							if(origin->transfer.actions & ::action::READ)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Если действие на запись в сокет разрешено
 							if(origin->transfer.actions & ::action::WRITE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия сокета разрешено
 							if(origin->transfer.actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является отключением от сервера
 						case static_cast <uint8_t> (event::action_t::DISCONNECT): {
 							// Если действие отключение сокета от сервера разрешено
 							if(origin->transfer.actions & ::action::DISCONNECT)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55659,27 +55659,27 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Если действие на чтение из сокета разрешено
 							if(tunnel->actions & ::action::READ)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Если действие на запись в сокет разрешено
 							if(tunnel->actions & ::action::WRITE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия сокета разрешено
 							if(tunnel->actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55705,54 +55705,54 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Если действие на чтение из сокета разрешено
 							if(client->transfer.actions & ::action::READ)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Если действие на запись в сокет разрешено
 							if(client->transfer.actions & ::action::WRITE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия сокета разрешено
 							if(client->transfer.actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является подключением к серверу
 						case static_cast <uint8_t> (event::action_t::CONNECT): {
 							// Если действие подключение сокета к серверу разрешено
 							if(client->transfer.actions & ::action::CONNECT)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является переподключением к серверу
 						case static_cast <uint8_t> (event::action_t::RECONNECT): {
 							// Если действие переподключение сокета к серверу разрешено
 							if(client->transfer.actions & ::action::RECONNECT)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является отключением от сервера
 						case static_cast <uint8_t> (event::action_t::DISCONNECT): {
 							// Если действие отключение сокета от сервера разрешено
 							if(client->transfer.actions & ::action::DISCONNECT)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55769,36 +55769,36 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 						case static_cast <uint8_t> (event::action_t::READ): {
 							// Если действие на чтение из сокета разрешено
 							if(server->actions & ::action::READ)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является записью данных в сокете
 						case static_cast <uint8_t> (event::action_t::WRITE): {
 							// Если действие на запись в сокет разрешено
 							if(server->actions & ::action::WRITE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является закрытием сокета
 						case static_cast <uint8_t> (event::action_t::CLOSE): {
 							// Если действие закрытия сокета разрешено
 							if(server->actions & ::action::CLOSE)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 						// Если действие является принятием входящего соединения
 						case static_cast <uint8_t> (event::action_t::ACCEPT): {
 							// Если действие принятия входящего соединения разрешено
 							if(server->actions & ::action::ACCEPT)
-								// Выводим значение установленного режима действия события
+								// Возвращаем значение установленного режима действия события
 								return event::mode_t::ENABLED;
-							// Выводим значение отключенного режима действия события
+							// Возвращаем значение отключенного режима действия события
 							else return event::mode_t::DISABLED;
 						}
 					}
@@ -55813,17 +55813,17 @@ awh::event::mode_t awh::engine::IO::getAction(const event::id_t id, const event:
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::mode_t::DISABLED;
 }
 /**
@@ -55874,7 +55874,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 									dir->actions &= ~::action::CLOSE;
 								break;
 							}
-							// Выводим результат выполнения установки
+							// Возвращаем результат выполнения установки
 							return true;
 						}
 						// Если действие является изменением каталога
@@ -57158,17 +57158,17 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (action), static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -57181,7 +57181,7 @@ bool awh::engine::IO::setAction(const event::id_t id, const event::action_t acti
  * @return      результат выполнения установки
  */
 bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const int32_t idle, const int32_t intvl) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -57242,13 +57242,13 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, cnt, idle, intvl), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -57262,7 +57262,7 @@ bool awh::engine::IO::keepAlive(const event::id_t id, const int32_t cnt, const i
  * @return   результат выполнения приостановки
  */
 bool awh::engine::IO::pause(const event::id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -57573,13 +57573,13 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -57593,7 +57593,7 @@ bool awh::engine::IO::pause(const event::id_t id) noexcept {
  * @return   результат выполнения возобновления
  */
 bool awh::engine::IO::resume(const event::id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -58012,13 +58012,13 @@ bool awh::engine::IO::resume(const event::id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -58048,7 +58048,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 				case static_cast <uint8_t> (event::node_t::PEER): {
 					// Если статус события является успешным
 					if(i->second->state.status == event::status_t::SUCCESS)
-						// Выводим результат проверки
+						// Возвращаем результат проверки
 						return (this->_eth.socket.getError(awh_cast <::io::peer_t *> (i->second.get())->transfer.fd) == 0);
 				} break;
 				// Если узел является одноранговым узлом-источником
@@ -58087,7 +58087,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 				case static_cast <uint8_t> (event::node_t::TUNNEL): {
 					// Если клиент находится в состоянии запущено
 					if(i->second->state.status == event::status_t::LAUNCHED)
-						// Выводим результат проверки
+						// Возвращаем результат проверки
 						return (this->_eth.socket.getError(awh_cast <::io::tun_t *> (i->second.get())->fd) == 0);
 				} break;
 				// Если узел является посредником
@@ -58103,7 +58103,7 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Если клиент находится в состоянии подключено
 					if(i->second->state.status == event::status_t::CONNECTED)
-						// Выводим результат проверки
+						// Возвращаем результат проверки
 						return (this->_eth.socket.getError(awh_cast <::io::client_t *> (i->second.get())->transfer.fd) == 0);
 				} break;
 			}
@@ -58116,17 +58116,17 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -58635,7 +58635,7 @@ void awh::engine::IO::clear() noexcept {
  * @return результат выполнения операции
  */
 bool awh::engine::IO::kick() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
@@ -58649,13 +58649,13 @@ bool awh::engine::IO::kick() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			#endif
 		}
@@ -58669,7 +58669,7 @@ bool awh::engine::IO::kick() noexcept {
  * @return результат выполнения инициализации
  */
 bool awh::engine::IO::initialize() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если Kqueue ещё не инициализирован
 	if(::__awh_kq__ == net::invalid_socket_t){
@@ -58683,13 +58683,13 @@ bool awh::engine::IO::initialize() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
@@ -58707,13 +58707,13 @@ bool awh::engine::IO::initialize() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 			#endif
 		}
@@ -58727,7 +58727,7 @@ bool awh::engine::IO::initialize() noexcept {
  * @return результат выполнения реинициализации
  */
 bool awh::engine::IO::reinitialize() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t){
@@ -58749,13 +58749,13 @@ bool awh::engine::IO::reinitialize() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
@@ -58773,13 +58773,13 @@ bool awh::engine::IO::reinitialize() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из приложения
@@ -59319,7 +59319,7 @@ bool awh::engine::IO::reinitialize() noexcept {
  * @return результат выполнения деинициализации
  */
 bool awh::engine::IO::deinitialize() noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если Kqueue инициализирован
 	if(::__awh_kq__ != net::invalid_socket_t)
@@ -59589,7 +59589,7 @@ bool awh::engine::IO::deinitialize() noexcept {
  * @return состояние инициализации
  */
 bool awh::engine::IO::isInitialized() const noexcept {
-	// Выводим результат проверки состояния инициализации
+	// Возвращаем результат проверки состояния инициализации
 	return (::__awh_kq__ != net::invalid_socket_t);
 }
 /**
@@ -59598,7 +59598,7 @@ bool awh::engine::IO::isInitialized() const noexcept {
  * @return количество событий
  */
 size_t awh::engine::IO::eventsCount() const noexcept {
-	// Выводим количество событий в сетевом движке
+	// Возвращаем количество событий в сетевом движке
 	return ::__awh_nodes__.size();
 }
 /**
@@ -59607,7 +59607,7 @@ size_t awh::engine::IO::eventsCount() const noexcept {
  * @return тип таймера для событий сетевого движка
  */
 awh::event::timer_t awh::engine::IO::getInternalTimer() const noexcept {
-	// Выводим тип таймера для событий сетевого движка
+	// Возвращаем тип таймера для событий сетевого движка
 	return ::__awh_internal_timer__;
 }
 /**
@@ -59646,7 +59646,7 @@ void awh::engine::IO::setInternalTimer(const event::timer_t timer) noexcept {
  * @return   размер файла
  */
 size_t awh::engine::IO::size(const event::id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	size_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -59686,7 +59686,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 						if(::stat(address.c_str(), &dir->info) == 0){
 							// Если текущий элемент является файлом
 							if(S_ISREG(dir->info.st_mode))
-								// Выводим размер файла
+								// Возвращаем размер файла
 								result += static_cast <size_t> (dir->info.st_size);
 						}
 					}
@@ -59699,7 +59699,7 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 					::io::file_t * fs = awh_cast <::io::file_t *> (i->second.get());
 					// Если файл открыт удачно
 					if(::fstat(fs->fd, &fs->info) == 0)
-						// Выводим смещение в файле события
+						// Возвращаем смещение в файле события
 						result = static_cast <size_t> (fs->info.st_size);
 				} break;
 				// Если узел не является файловым
@@ -59708,13 +59708,13 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unable to get size for non-file system events", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unable to get size for non-file system events", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -59728,13 +59728,13 @@ size_t awh::engine::IO::size(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -59790,13 +59790,13 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unable to get available sending queue size for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unable to get available sending queue size for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -59810,17 +59810,17 @@ size_t awh::engine::IO::available(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -59848,17 +59848,17 @@ awh::event::type_t awh::engine::IO::type(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::type_t::NONE;
 }
 /**
@@ -59886,17 +59886,17 @@ awh::event::node_t awh::engine::IO::node(const event::id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::node_t::NONE;
 }
 /**
@@ -59924,17 +59924,17 @@ awh::event::family_t awh::engine::IO::family(const event::id_t id) const noexcep
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::family_t::NONE;
 }
 /**
@@ -59962,17 +59962,17 @@ awh::event::status_t awh::engine::IO::status(const event::id_t id) const noexcep
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::status_t::NONE;
 }
 /**
@@ -60000,17 +60000,17 @@ awh::event::protocol_t awh::engine::IO::protocol(const event::id_t id) const noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::protocol_t::NONE;
 }
 /**
@@ -60063,13 +60063,13 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::WARNING, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
@@ -60131,13 +60131,13 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -60147,13 +60147,13 @@ bool awh::engine::IO::poll(const int32_t timeout) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("You cannot poll for network and filesystem events until engine AWH is initialized", __PRETTY_FUNCTION__, make_tuple(timeout), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("You cannot poll for network and filesystem events until engine AWH is initialized", log_t::flag_t::WARNING);
 		#endif
 	}
@@ -60222,13 +60222,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A data read callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A data read callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60242,13 +60242,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::read_t cb) noex
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60315,13 +60315,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A data write callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A data write callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60335,13 +60335,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::write_t cb) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60403,13 +60403,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A event callback cannot be set for this spool type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A event callback cannot be set for this spool type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60423,13 +60423,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::spool_t cb) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60506,13 +60506,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A event callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A event callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60526,13 +60526,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::event_t cb) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60621,13 +60621,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A error callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A error callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60641,13 +60641,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::error_t cb) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60689,13 +60689,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A change callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A change callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60709,13 +60709,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::vnode_t cb) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60804,13 +60804,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A status callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A status callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60824,13 +60824,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::status_t cb) no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60867,13 +60867,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A accept callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A accept callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60887,13 +60887,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60935,13 +60935,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::traffic_t cb) n
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A traffic info callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A traffic info callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -60955,13 +60955,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::traffic_t cb) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -60998,13 +60998,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A connect callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A connect callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -61018,13 +61018,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -61061,13 +61061,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A tuninfo callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A tuninfo callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -61081,13 +61081,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::tuninfo_t cb) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -61134,13 +61134,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A timeout callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A timeout callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -61154,13 +61154,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::timeout_t cb) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -61222,13 +61222,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("A available callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("A available callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
@@ -61242,13 +61242,13 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::available_t cb)
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}

@@ -89,7 +89,7 @@ using namespace placeholders;
 				void * array[50];
 				// Определяем размер бэктрейса
 				const int32_t size = ::backtrace(array, 50);
-				// Выводим информацию в консоль
+				// Записываем в лог информацию в консоль
 				cerr << "Child PID " << ::getpid() << " crashed with signal " << sig << "\nBacktrace:" << endl;
 				// Извлекаем в буфер данные бэктрейса
 				::backtrace_symbols_fd(array, size, STDERR_FILENO);
@@ -135,13 +135,13 @@ void awh::unit::Cluster::create() noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Child process worker could not be created", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Child process worker could not be created", log_t::flag_t::CRITICAL);
 					#endif
 					// Выходим из функции
@@ -157,13 +157,13 @@ void awh::unit::Cluster::create() noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Child process could not be created", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
 						#endif
 						// Выходим из приложения
@@ -215,13 +215,13 @@ void awh::unit::Cluster::create() noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(index), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
 								#endif
 							}
@@ -243,7 +243,7 @@ void awh::unit::Cluster::create() noexcept {
 							auto ret = this->_workers.emplace(worker->pid, ::move(worker));
 							// Выполняем фиксацию и запуск работы события
 							if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
-								// Выводим сообщение об успешном запуске события
+								// Записываем в лог сообщение об успешном запуске события
 								this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("events"))
@@ -255,13 +255,13 @@ void awh::unit::Cluster::create() noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке запуска события
+									// Записываем ошибку в лог запуска события
 									this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ret.first->first);
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке запуска события
+									// Записываем ошибку в лог запуска события
 									this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, ret.first->first);
 								#endif
 								// Выходим из приложения
@@ -273,7 +273,7 @@ void awh::unit::Cluster::create() noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::getpid());
 							/**
 							 * Если режим отладки не включён
@@ -296,13 +296,13 @@ void awh::unit::Cluster::create() noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -330,7 +330,7 @@ void awh::unit::Cluster::create() noexcept {
 				}
 			// Если все процессы удачно созданы
 			} else {
-				// Выводим информацию о запущенном сервере на PIPE
+				// Записываем в лог информацию о запущенном сервере на PIPE
 				this->_log->print("Cluster [%s] has been started successfully", log_t::flag_t::INFO, this->_name.c_str());
 				// Переходим по всему списку активных воркеров
 				for(auto & [pid, worker] : this->_workers){
@@ -340,13 +340,13 @@ void awh::unit::Cluster::create() noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке запуска события
+							// Записываем ошибку в лог запуска события
 							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, pid);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке запуска события
+							// Записываем ошибку в лог запуска события
 							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
 						#endif
 						// Выходим из приложения
@@ -367,13 +367,13 @@ void awh::unit::Cluster::create() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -404,13 +404,13 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Child process worker could not be created", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("Child process worker could not be created", log_t::flag_t::CRITICAL);
 				#endif
 				// Выходим из функции
@@ -426,13 +426,13 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Child process could not be created", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
 					#endif
 					// Выходим из приложения
@@ -484,13 +484,13 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
 							#endif
 						}
@@ -512,7 +512,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						auto ret = this->_workers.emplace(worker->pid, ::move(worker));
 						// Выполняем фиксацию и запуск работы события
 						if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
-							// Выводим сообщение об успешном запуске события
+							// Записываем в лог сообщение об успешном запуске события
 							this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("events"))
@@ -524,13 +524,13 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке запуска события
+								// Записываем ошибку в лог запуска события
 								this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, ret.first->first);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке запуска события
+								// Записываем ошибку в лог запуска события
 								this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, ret.first->first);
 							#endif
 							// Выходим из приложения
@@ -542,7 +542,7 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, ::getpid());
 						/**
 						 * Если режим отладки не включён
@@ -565,13 +565,13 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
 						#endif
 					}
@@ -597,13 +597,13 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке запуска события
+							// Записываем ошибку в лог запуска события
 							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(pid, ret.first->second->pid), log_t::flag_t::CRITICAL, pid);
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке запуска события
+							// Записываем ошибку в лог запуска события
 							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
 						#endif
 						// Выходим из приложения
@@ -624,13 +624,13 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -657,7 +657,7 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 				this->create();
 			// Если количество создаваемых процессов не установлено
 			else {
-				// Выводим информацию о запущенном сервере на PIPE
+				// Записываем в лог информацию о запущенном сервере на PIPE
 				this->_log->print("Cluster [%s] has been started successfully", log_t::flag_t::INFO, this->_name.c_str());
 				// Если функция обратного вызова установлена
 				if(this->_callback.is("events"))
@@ -708,7 +708,7 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
 			this->_io->destroy(i->second->eid);
 			// Если завершившийся процесс требуется анализировать дальше
 			if(i->second->pid == pid){
-				// Выводим сообщение об ошибке, о невозможности отправить сообщение
+				// Записываем ошибку в лог, о невозможности отправить сообщение
 				this->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, pid, status);
 				// Если статус сигнала — ручная остановка процесса
 				if(status == SIGINT){
@@ -815,7 +815,7 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
@@ -860,7 +860,7 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, data, size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
@@ -918,7 +918,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, ::getpid());
 					/**
 					 * Если режим отладки не включён
@@ -956,7 +956,7 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (status)), log_t::flag_t::CRITICAL, ::getpid());
 						/**
 						 * Если режим отладки не включён
@@ -1003,7 +1003,7 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (error), message), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
@@ -1048,7 +1048,7 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(eid, static_cast <uint16_t> (status), size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
@@ -1084,13 +1084,13 @@ void awh::unit::Cluster::stop() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Only the master process can stop the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Only the master process can stop the cluster", log_t::flag_t::WARNING);
 			#endif
 		}
@@ -1102,13 +1102,13 @@ void awh::unit::Cluster::stop() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
@@ -1141,13 +1141,13 @@ void awh::unit::Cluster::start() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Only the master process can start the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Only the master process can start the cluster", log_t::flag_t::WARNING);
 			#endif
 		}
@@ -1159,13 +1159,13 @@ void awh::unit::Cluster::start() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
@@ -1202,13 +1202,13 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Only the master process can clear the cluster", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Only the master process can clear the cluster", log_t::flag_t::WARNING);
 		#endif
 	}
@@ -1234,13 +1234,13 @@ void awh::unit::Cluster::emplace() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Only the master process can create child processes", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Only the master process can create child processes", log_t::flag_t::WARNING);
 			#endif
 		}
@@ -1252,13 +1252,13 @@ void awh::unit::Cluster::emplace() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
@@ -1298,13 +1298,13 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("Only the master process can remove child processes", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Only the master process can remove child processes", log_t::flag_t::WARNING);
 		#endif
 	}
@@ -1351,7 +1351,7 @@ void awh::unit::Cluster::count(const uint16_t count) noexcept {
  * @return список дочерних процессов
  */
 unordered_set <pid_t> awh::unit::Cluster::workers() const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	unordered_set <pid_t> result;
 	// Если список активных воркеров не пустой
 	if(!this->_workers.empty()){
@@ -1360,7 +1360,7 @@ unordered_set <pid_t> awh::unit::Cluster::workers() const noexcept {
 			// Добавляем идентификатор процесса в результат
 			result.emplace(pid);
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1414,7 +1414,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, ::getpid());
 				/**
 				 * Если режим отладки не включён
@@ -1432,7 +1432,7 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("A message addressed to a parent process can only be sent from child processes", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
@@ -1450,17 +1450,17 @@ size_t awh::unit::Cluster::send(const void * buffer, const size_t size) noexcept
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке запуска события
+			// Записываем ошибку в лог запуска события
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1490,7 +1490,7 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
@@ -1508,17 +1508,17 @@ size_t awh::unit::Cluster::send(const pid_t pid, const void * buffer, const size
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(pid, buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1537,13 +1537,13 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 		if(this->master()){
 			// Если список активных воркеров не пустой
 			if(!this->_workers.empty()){
-				// Результат работы функции
+				// Переменная результата
 				size_t result = 0;
 				// Переходим по всему списку активных воркеров
 				for(const auto & [pid, worker] : this->_workers)
 					// Отправляем сообщение дочернему процессу
 					result += this->_io->send(worker->eid, buffer, size);
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 		// Если процесс является дочерним
@@ -1552,7 +1552,7 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("A message addressed to a child process can only be sent from the parent process", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
@@ -1570,17 +1570,17 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("MS Windows OS, does not support cluster mode", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("MS Windows OS, does not support cluster mode", log_t::flag_t::WARNING);
 		#endif
 	#endif
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1608,7 +1608,7 @@ size_t awh::unit::Cluster::getBufferSize(const pid_t pid, const event::action_t 
 			// Извлекаем размер буфера события
 			return this->_io->getBufferSize(i->second->eid, action);
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -1637,7 +1637,7 @@ bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t ac
 			// Устанавливаем размер буфера события
 			return this->_io->setBufferSize(i->second->eid, action, size);
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**

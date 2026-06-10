@@ -142,7 +142,7 @@ namespace awh {
 							const auto & payload = this->_payload.front();
 							// Если функция подписки на логи установлена, выводим результат
 							if(this->_callback != nullptr)
-								// Выводим сообщение лога всем подписавшимся
+								// Рассылаем сообщение лога подписчикам
 								this->_callback(payload);
 							{
 								// Выполняем блокировку уникальным мютексом
@@ -163,13 +163,13 @@ namespace awh {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							::fprintf(stderr, "ERROR! %s\n\n", error.what());
 						#endif
 					}
@@ -233,7 +233,7 @@ namespace awh {
 			 * @return идентификатор потока
 			 */
 			uint64_t id() const noexcept {
-				// Выводим идентификатор потока
+				// Возвращаем идентификатор потока
 				return this->_id;
 			}
 		public:
@@ -243,7 +243,7 @@ namespace awh {
 			 * @return размер очереди для получения
 			 */
 			size_t size() const noexcept {
-				// Выводим размер очереди
+				// Возвращаем размер очереди
 				return this->_payload.size();
 			}
 			/**
@@ -252,7 +252,7 @@ namespace awh {
 			 * @return результат проверки запущен ли модуль
 			 */
 			bool launched() const noexcept {
-				// Выводим результат проверки
+				// Возвращаем результат проверки
 				return !this->_stop.load(std::memory_order_acquire);
 			}
 		public:
@@ -278,13 +278,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
 					#endif
 				}
@@ -311,13 +311,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
 					#endif
 				}
@@ -344,13 +344,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
 					#endif
 				}
@@ -378,13 +378,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
 					#endif
 				}
@@ -420,13 +420,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
 					#endif
 				}
@@ -461,13 +461,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
 					#endif
 				}
@@ -535,13 +535,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						::fprintf(stderr, "ERROR! %s\n\n", error.what());
 					#endif
 				}
@@ -553,7 +553,7 @@ namespace awh {
 			 * @return результат проверки запущен ли модуль
 			 */
 			operator bool() const noexcept {
-				// Выводим результат проверки
+				// Возвращаем результат проверки
 				return this->launched();
 			}
 			/**
@@ -562,12 +562,12 @@ namespace awh {
 			 * @return размер очереди для получения
 			 */
 			operator size_t() const noexcept {
-				// Выводим результат проверки
+				// Возвращаем результат проверки
 				return this->size();
 			}
 		public:
 			/**
-			 * @brief Оператор [=] отправки данных в экран
+			 * @brief Оператор присваивания отправки данных в экран
 			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
@@ -575,11 +575,11 @@ namespace awh {
 			Screen & operator = (T && data) noexcept {
 				// Выполняем отправку данных в экран
 				this->send(std::forward <T> (data));
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 			/**
-			 * @brief Оператор [=] отправки данных в экран
+			 * @brief Оператор присваивания отправки данных в экран
 			 *
 			 * @param data данные отправляемого сообщения
 			 * @return     текущий объект
@@ -587,11 +587,11 @@ namespace awh {
 			Screen & operator = (const T & data) noexcept {
 				// Выполняем отправку данных в экран
 				this->send(data);
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 			/**
-			 * @brief Оператор [=] установки таймаута в миллисекундах
+			 * @brief Оператор присваивания установки таймаута в миллисекундах
 			 *
 			 * @param delay значение таймаута для установки в миллисекундах
 			 * @return      текущий объект
@@ -599,11 +599,11 @@ namespace awh {
 			Screen & operator = (const uint32_t delay) noexcept {
 				// Выполняем установку таймаута
 				this->timeout(delay);
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 			/**
-			 * @brief Оператор [=] установки функции обратного вызова активации триггера
+			 * @brief Оператор присваивания установки функции обратного вызова активации триггера
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
@@ -611,11 +611,11 @@ namespace awh {
 			Screen & operator = (function <void ()> callback) noexcept {
 				// Выполняем установку функции обратного вызова
 				this->on(callback);
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 			/**
-			 * @brief Оператор [=] установки функции обратного вызова
+			 * @brief Оператор присваивания установки функции обратного вызова
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
@@ -623,11 +623,11 @@ namespace awh {
 			Screen & operator = (function <void (const T &)> callback) noexcept {
 				// Выполняем установку функции обратного вызова
 				this->on(callback);
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 			/**
-			 * @brief Оператор [=] установки функции обратного вызова получения состояния очереди
+			 * @brief Оператор присваивания установки функции обратного вызова получения состояния очереди
 			 *
 			 * @param callback функция обратного вызова для установки
 			 * @return         текущий объект
@@ -635,7 +635,7 @@ namespace awh {
 			Screen & operator = (function <void (const state_t, const size_t)> callback) noexcept {
 				// Выполняем установку функции обратного вызова
 				this->on(callback);
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 		public:

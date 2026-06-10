@@ -51,9 +51,9 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << " !!!! IS LINK " << (fs_t::type_t::LINK == fs.type("../README3.md")) << endl;
 	// Создаём символьную ссылку
 	fs.symlink("../tests", "../tests2");
-	// Выводим адрес символьной ссылки
+	// Возвращаем адрес символьной ссылки
 	cout << " !!!! Symlink " << fs.fullpath("../tests2") << " -> " << fs.fullpath("../tests2", true) << endl;
-	// Выводим адрес ярлыка
+	// Возвращаем адрес ярлыка
 	cout << " !!!! Shortcut " << fs.fullpath("../README3.md") << " -> " << fs.fullpath("../README3.md", true) << endl;
 	// Создаём жёсткую ссылку
 	fs.hardlink("../README.md", "../README4.md");
@@ -74,7 +74,7 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << " !!! Remove Dir: " << fs.unlink("../data") << endl;
 	// Извлекаем название и расширение файла
 	const fs_t::components_t & components = fs.components("../README.md", false, true);
-	// Выводим название и расширение файла
+	// Возвращаем название и расширение файла
 	cout << " !!! File Name: " << components.first << endl;
 	cout << " !!! File Ext: " << components.second << endl;
 	// Подсчитываем количество файлов в каталоге
@@ -87,24 +87,24 @@ int32_t main(int32_t argc, char * argv[]){
 	fs.write("../Data.txt", L"Hello World and ANYKS!!!\n");
 	// Читаем из файла построчно
 	fs.readfile("../README3.md", [](string_view str) noexcept -> void {
-		// Выводим строку файла
+		// Возвращаем строку файла
 		cout << " !!!! LINE: " << str << endl;
 	});
 	// Читаем из файла бинарными блоками
 	fs.readfile("../README3.md", 4096, [](const void * data, const size_t size) noexcept -> void {
-		// Выводим размер прочитанного буфера
+		// Возвращаем размер прочитанного буфера
 		cout << " !!!! BUFFER SIZE: " << size << " || " << string(static_cast <const char *> (data), size) << endl;
 	});
 	// Рекурсивно получаем все файлы в каталоге
 	fs.readdir("..", "", true, [](const fs_t::type_t type, string_view filename) noexcept -> void {
-		// Выводим имя файла
+		// Печатаем имя файла
 		cout << " !!!! FILE: " << filename << " || TYPE: " << static_cast <uint16_t> (type) << endl;
 	});
 	// Рекурсивно получаем все файлы с фильтром по расширению в каталоге
 	fs.readdir("..", "md", false, [](const fs_t::type_t type, string_view filename, string_view text) noexcept -> void {
-		// Выводим имя файла и его содержимое
+		// Печатаем имя файла и его содержимое
 		cout << " !!!! FILTERED FILE: " << filename << " || TYPE: " << static_cast <uint16_t> (type) << " || CONTENT: " << text << endl;
 	});
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

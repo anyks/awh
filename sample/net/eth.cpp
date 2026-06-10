@@ -57,17 +57,17 @@ int32_t main(int32_t argc, char * argv[]){
 	route.gateway = make_unique <net::addr_net_ipv4_t> ();
 	// Если получаем маршрут для указанного адреса
 	if(gateway.get(route)){
-		// Выводим информацию о найденном маршруте
+		// Записываем в лог информацию о найденном маршруте
 		cout << "Gateway found:" << endl;
-		// Выводим информацию о маршруте
+		// Записываем в лог информацию о маршруте
 		cout << " Interface: " << route.ifname << endl;
 		// Устанавливаем полученный IP-адрес
 		addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address, net_addr_t::endian_t::LITTLE);
-		// Выводим адрес шлюза по умолчанию
+		// Возвращаем адрес шлюза по умолчанию
 		cout << "Default Gateway: " << static_cast <string> (addr) << endl;
 		// Устанавливаем полученный IP-адрес
 		addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address, net_addr_t::endian_t::LITTLE);
-		// Выводим адрес назначения
+		// Возвращаем адрес назначения
 		cout << "Destination: " << static_cast <string> (addr) << "/" << static_cast <uint32_t> (route.prefix) << endl;
 		// Удаляем маршрут по указанному адресу
 		if(gateway.remove(route)){
@@ -89,11 +89,11 @@ int32_t main(int32_t argc, char * argv[]){
 				// route.ifname = "";
 				// Если получаем маршрут для указанного адреса
 				if(gateway.get(route)){
-					// Выводим информацию о маршруте
+					// Записываем в лог информацию о маршруте
 					cout << " Interface: " << route.ifname << endl;
 					// Устанавливаем полученный IP-адрес
 					addr.v4(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address, net_addr_t::endian_t::LITTLE);
-					// Выводим адрес шлюза по умолчанию
+					// Возвращаем адрес шлюза по умолчанию
 					cout << "Default Gateway: " << static_cast <string> (addr) << endl;
 					// Удаляем маршрут по указанному адресу
 					if(gateway.remove(route)){
@@ -103,7 +103,7 @@ int32_t main(int32_t argc, char * argv[]){
 						awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = addr.v4(net_addr_t::endian_t::LITTLE);
 						// Добавляем маршрут с новым шлюзом
 						if(gateway.add(route))
-							// Выводим сообщение об успешном восстановлении шлюза
+							// Записываем в лог сообщение об успешном восстановлении шлюза
 							cout << "Gateway restored successfully." << endl;
 					}
 				}
@@ -111,11 +111,11 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	// Иначе выводим сообщение об ошибке
 	} else cout << "Gateway not found." << endl;
-	// Выводим заголовок примера списка сетевых интерфейсов
+	// Печатаем заголовок в отладочный вывод примера списка сетевых интерфейсов
 	cout << " --- Ifaces Example --- " << endl;
 	// Получаем список сетевых интерфейсов системы
 	for(auto & iface : iface.available())
-		// Выводим список сетевых интерфейсов системы
+		// Возвращаем список сетевых интерфейсов системы
 		cout << "Interface: " << iface << endl;
 	// Название туннельного интерфейса
 	string tunnel = "";
@@ -127,34 +127,34 @@ int32_t main(int32_t argc, char * argv[]){
 	if(ip != nullptr){
 		// Устанавливаем полученный IP-адрес
 		addr.v4(awh_cast <net::addr_net_ipv4_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
-		// Выводим адрес шлюза по умолчанию
+		// Возвращаем адрес шлюза по умолчанию
 		cout << "IPv4 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip.get()) << ", isVirtual=" << iface.isVirtual("utun4") << ", isTunnel=" << iface.isTunnel("utun4") << endl;
 		// Если устанавливаем IP-адрес туннельного интерфейса
 		if(iface.setAddress(tunnel, ip.get(), ip.get(), 24))
-			// Выводим сообщение об успешной установке IP-адреса
+			// Записываем в лог сообщение об успешной установке IP-адреса
 			cout << " Assigned IPv4 address to " << tunnel << endl;
 		// Иначе выводим сообщение об ошибке
 		else cout << " Failed to assign IPv4 address to " << tunnel << endl;
 	}
 	// Устанавливаем MTU туннельного интерфейса
 	if(iface.mtu(tunnel, 1800))
-		// Выводим сообщение об успешной установке MTU
+		// Записываем в лог сообщение об успешной установке MTU
 		cout << " Set MTU to " << iface.mtu(tunnel) << " on " << tunnel << endl;
 	// Устанавливаем туннельный интерфейс в состояние UP
 	if(iface.flag(tunnel, event::eth_flag_t::UP, event::mode_t::ENABLED)){
-		// Выводим сообщение об успешной установке флага интерфейса
+		// Записываем в лог сообщение об успешной установке флага интерфейса
 		cout << " Set interface " << tunnel << " UP" << endl;
 		// Перебираем все установленные флаги туннельного интерфейса
 		for(auto & flag : iface.flags(tunnel))
-			// Выводим флаг туннельного интерфейса
+			// Возвращаем флаг туннельного интерфейса
 			cout << "  Flag: " << static_cast <uint16_t> (flag) << endl;
 		// Снимаем туннельный интерфейс в состояние UP
 		if(iface.flag(tunnel, event::eth_flag_t::UP, event::mode_t::DISABLED)){
-			// Выводим сообщение об успешной установке флага интерфейса
+			// Записываем в лог сообщение об успешной установке флага интерфейса
 			cout << " Set interface " << tunnel << " DOWN" << endl;
 			// Перебираем все установленные флаги туннельного интерфейса
 			for(auto & flag : iface.flags(tunnel))
-				// Выводим флаг туннельного интерфейса
+				// Возвращаем флаг туннельного интерфейса
 				cout << "  Flag: " << static_cast <uint16_t> (flag) << endl;
 		}
 	}
@@ -164,10 +164,10 @@ int32_t main(int32_t argc, char * argv[]){
 	if(ip != nullptr){
 		// Устанавливаем полученный IP-адрес
 		addr.v6(awh_cast <net::addr_net_ipv6_t *> (ip.get())->address, net_addr_t::endian_t::LITTLE);
-		// Выводим адрес шлюза по умолчанию
+		// Возвращаем адрес шлюза по умолчанию
 		cout << "IPv6 address: " << static_cast <string> (addr) << ", iface=" << iface.name(ip.get()) << endl;
 	}
-	// Выводим заголовок примера проброса порта
+	// Печатаем заголовок в отладочный вывод примера проброса порта
 	cout << " --- Portmapping Example --- " << endl;
 	// Создаём объект для работы с пробросом портов
 	eth::portmap_t portmap(&fmk, &log);
@@ -206,24 +206,24 @@ int32_t main(int32_t argc, char * argv[]){
 		// Получаем список проброшенных портов на маршрутизаторе
 		const vector <eth::portmap_t::fwd_t> & map = portmap.mappings();
 		/**
-		 * Выводим информацию о проброшенных портах на маршрутизаторе
+		 * Записываем в лог информацию о проброшенных портах на маршрутизаторе
 		 */
 		for(auto & fwd : map){
 			// Если внутренний адрес является IPv4
 			if(fwd.internalAddress->size == 4){
 				// Устанавливаем полученный внутренний IPv4-адрес
 				addr.v4(awh_cast <net::addr_net_ipv4_t *> (fwd.internalAddress.get())->address, net_addr_t::endian_t::LITTLE);
-				// Выводим адрес внутреннего IPv4-адреса
+				// Возвращаем адрес внутреннего IPv4-адреса
 				cout << "Internal IP: " << static_cast <string> (addr) << ":" << fwd.internalPort << endl;
 			}
 			// Если внешний адрес является IPv4
 			if(fwd.externalAddress->size == 4){
 				// Устанавливаем полученный внешний IPv4-адрес
 				addr.v4(awh_cast <net::addr_net_ipv4_t *> (fwd.externalAddress.get())->address, net_addr_t::endian_t::LITTLE);
-				// Выводим адрес внешнего IPv4-адреса
+				// Возвращаем адрес внешнего IPv4-адреса
 				cout << "External IP: " << static_cast <string> (addr) << ":" << fwd.externalPort << endl;
 			}
-			// Выводим информацию о проброшенных портах
+			// Записываем в лог информацию о проброшенных портах
 			cout << " Protocol: " << static_cast <uint16_t> (fwd.proto) << " Type: " << static_cast <uint16_t> (fwd.type)
 				<< " Description: " << fwd.description << ", TTL: " << fwd.lifeTime << " seconds" << endl;
 		}
@@ -245,9 +245,9 @@ int32_t main(int32_t argc, char * argv[]){
 		fwd.proto = eth::portmap_t::proto_t::TCP;
 		// Выполняем удаление проброса порта на маршрутизаторе
 		if(portmap.mapping(fwd, event::mode_t::DISABLED))
-			// Выводим сообщение об успешном удалении проброса порта
+			// Записываем в лог сообщение об успешном удалении проброса порта
 			cout << "Portmapping removed successfully." << endl;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

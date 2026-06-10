@@ -298,10 +298,10 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим информационное сообщение
+				// Печатаем информационное сообщение
 				this->_log->print("Called SetHandleCount(%u) successfully", log_t::flag_t::INFO, limit);
 			#endif
-			// Выводим положительный результат
+			// Возвращаем true
 			return true;
 		// Если ничего не получилось
 		} else {
@@ -309,13 +309,13 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, limit);
 			#endif
 		}
@@ -333,13 +333,13 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 			// Выходим из функции
@@ -353,12 +353,12 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим информационное сообщение
+			// Печатаем информационное сообщение
 			this->_log->print("Current FD limits: soft=%u, hard=%u", log_t::flag_t::INFO, currentSoft, currentHard);
 		#endif
 		// Если soft лимит уже >= target — ничего не делаем
 		if(currentSoft >= limit)
-			// Выводим положительный результат
+			// Возвращаем true
 			return true;
 		// Пытаемся поднять soft лимит до min(target, hard)
 		const rlim_t soft = static_cast <rlim_t> (limit <= currentHard ? limit : currentHard);
@@ -370,12 +370,12 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим информационное сообщение
+				// Печатаем информационное сообщение
 				this->_log->print("Successfully raised soft FD limit to %u", log_t::flag_t::INFO, static_cast <uint32_t> (soft));
 			#endif
 			// (Опционально) Пытаемся поднять hard лимит — если есть права
 			if(currentHard < limit){
-				// Выводим информацию о помощи
+				// Записываем в лог информацию о помощи
 				this->help(currentHard, limit);
 				// Поднимаем текущее значение лимита
 				rl.rlim_cur = static_cast <rlim_t> (soft);
@@ -387,7 +387,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим информационное сообщение
+						// Печатаем информационное сообщение
 						this->_log->print("Successfully raised hard FD limit to %u", log_t::flag_t::INFO, limit);
 					#endif
 				// Если ничего не получилось
@@ -396,18 +396,18 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Failed to raise hard FD limit to %u (need root?): %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to raise hard FD limit to %u (need root?): %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
 					#endif
 				}
 			}
-			// Выводим положительный результат
+			// Возвращаем true
 			return true;
 		// Если установить не удалось
 		} else {
@@ -415,18 +415,18 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
 			#endif
 		}
 	#endif
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -435,7 +435,7 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
  * @return количество файловых дескрипторов установленных в файловой системе
  */
 std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	std::pair <uint32_t, uint32_t> result = {0, 0};
 	/**
 	 * Для операционной системы MS Windows
@@ -455,7 +455,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим информационное сообщение
+					// Печатаем информационное сообщение
 					this->_log->print("Called SetHandleCount(%u) successfully", log_t::flag_t::INFO, result.first);
 				#endif
 			// Если ничего не получилось
@@ -464,13 +464,13 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, result.first);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, result.first);
 				#endif
 				// Выходим из функции
@@ -492,7 +492,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 						::closesocket(sock);
 					// Устанавливаем максимальное значение доступных сокетов
 					result.second = i;
-					// Выводим полученны результат
+					// Возвращаем полученный результат
 					return result;
 				}
 				socks.push_back(sock);
@@ -518,13 +518,13 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -546,16 +546,16 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 			// Выполняем установку текущего значения количества доступных файловых дескрипторов
@@ -570,17 +570,17 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	#endif
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }

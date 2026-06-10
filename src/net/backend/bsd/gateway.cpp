@@ -66,7 +66,7 @@ namespace gw {
 		if(prefix == 0)
 			// Возвращаем маску подсети
 			return 0;
-		// Выводим маску подсети
+		// Возвращаем маску подсети
 		return htonl((0xFFFFFFFFU) << (32 - static_cast <uint32_t> (prefix)));
 	}
 };
@@ -78,7 +78,7 @@ namespace gw {
  * @return      результат получения маршрута
  */
 bool awh::eth::Gateway::get(route_t & route) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -109,16 +109,16 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер данных для получения маршрутов
@@ -129,16 +129,16 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Получаем итератор следующего маршрута
@@ -309,16 +309,16 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
 							#endif
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// Перебираем все сетевые интерфейсы
@@ -360,16 +360,16 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер данных для получения маршрутов
@@ -380,16 +380,16 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Получаем итератор следующего маршрута
@@ -570,16 +570,16 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
 							#endif
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// Перебираем все сетевые интерфейсы
@@ -608,13 +608,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unsupported address family", log_t::flag_t::CRITICAL);
 					#endif
 				} break;
@@ -625,13 +625,13 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Gateway address is not initialized", log_t::flag_t::CRITICAL);
 			#endif
 		}
@@ -643,17 +643,17 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -663,7 +663,7 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
  * @return      результат добавления маршрута
  */
 bool awh::eth::Gateway::add(const route_t & route) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -685,16 +685,16 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер для добавления маршрута
@@ -858,13 +858,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
@@ -881,16 +881,16 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер для добавления маршрута
@@ -1074,13 +1074,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					}
@@ -1093,13 +1093,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unsupported address family", log_t::flag_t::CRITICAL);
 					#endif
 				} break;
@@ -1110,13 +1110,13 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Gateway address is not initialized", log_t::flag_t::CRITICAL);
 			#endif
 		}
@@ -1128,17 +1128,17 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1148,7 +1148,7 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
  * @return      результат удаления маршрута
  */
 bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -1179,16 +1179,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер данных для получения маршрутов
@@ -1199,16 +1199,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Создаём сокет для удаления маршрутов
@@ -1219,16 +1219,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Получаем итератор следующего маршрута
@@ -1438,16 +1438,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								#endif
-								// Выводим результат
+								// Возвращаем результат
 								return result;
 							}
 							// Если результат успешный
@@ -1480,16 +1480,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер данных для получения маршрутов
@@ -1500,16 +1500,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Создаём сокет для удаления маршрутов
@@ -1520,16 +1520,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Получаем итератор следующего маршрута
@@ -1763,16 +1763,16 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 								#endif
-								// Выводим результат
+								// Возвращаем результат
 								return result;
 							}
 							// Если результат успешный
@@ -1792,13 +1792,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Unsupported address family", __PRETTY_FUNCTION__, make_tuple(route.gateway->size), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Unsupported address family", log_t::flag_t::CRITICAL);
 					#endif
 				} break;
@@ -1809,13 +1809,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Gateway address is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Gateway address is not initialized", log_t::flag_t::CRITICAL);
 			#endif
 		}
@@ -1827,17 +1827,17 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

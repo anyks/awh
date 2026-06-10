@@ -148,28 +148,28 @@ namespace awh {
 			bool operator == (const Version & version) const noexcept;
 		public:
 			/**
-			 * @brief Оператор [=] присвоения версии
+			 * @brief Оператор присваивания присвоения версии
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект
 			 */
 			Version & operator = (const char * version) noexcept;
 			/**
-			 * @brief Оператор [=] присвоения версии
+			 * @brief Оператор присваивания присвоения версии
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект
 			 */
 			Version & operator = (const string & version) noexcept;
 			/**
-			 * @brief Оператор [=] присвоения версии
+			 * @brief Оператор присваивания присвоения версии
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект
 			 */
 			Version & operator = (const uint32_t version) noexcept;
 			/**
-			 * @brief Оператор [=] присвоения версии
+			 * @brief Оператор присваивания присвоения версии
 			 *
 			 * @param version версия для присвоения
 			 * @return        текущий объект

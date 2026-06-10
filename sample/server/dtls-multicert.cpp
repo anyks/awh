@@ -50,7 +50,7 @@ class Executor {
 		 * @param size размер данных для записи
 		 */
 		void write(const event::id_t eid, const size_t size) noexcept {
-			// Выводим информацию о событии записи данных клиентом
+			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
 		}
 		/**
@@ -64,13 +64,13 @@ class Executor {
 		void read([[maybe_unused]] const event::id_t eid, const uint8_t * data, const size_t size, server_t * server) noexcept {
 			// Если данные получены
 			if(size > 0)
-				// Выводим данные в лог
+				// Записываем данные в лог
 				this->_log->print("PID=%zu\n%s", log_t::flag_t::INFO, ::getpid(), string(reinterpret_cast <const char *> (data), size).c_str());
 			// Если данные не получены, то выводим сообщение об отсутствии данных
 			else this->_log->print("No data received", log_t::flag_t::WARNING);
 			// Отправляем данные обратно клиенту
 			if(server->send(eid, data, size) == 0)
-				// Выводим сообщение об ошибке отправки данных клиентом на сервер
+				// Записываем ошибку в лог отправки данных клиентом на сервер
 				this->_log->print("Failed to send data to client", log_t::flag_t::WARNING);
 		}
 		/**
@@ -86,12 +86,12 @@ class Executor {
 			switch(static_cast <uint8_t> (status)){
 				// Если событие сервера запущено
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
-					// Выводим сообщение об успешном запуске события сервера
+					// Записываем в лог сообщение об успешном запуске события сервера
 					this->_log->print("Server launched on port %d", log_t::flag_t::INFO, server->getPort());
 				break;
 				// Если событие сервера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события сервера
+					// Записываем в лог сообщение об остановке события сервера
 					this->_log->print("Server destroyed", log_t::flag_t::INFO);
 				break;
 			}
@@ -106,9 +106,9 @@ class Executor {
 		 * @param tls  объект TLS кодера
 		 */
 		void accept([[maybe_unused]] const event::id_t eid, const event::id_t cid, const tls::coder_t::id_t tid, server_t * server, tls::coder_t * tls) noexcept {
-			// Выводим сообщение об успешной установке опций события
+			// Записываем в лог сообщение об успешной установке опций события
 			cout << " Connection established: " << server->getAddress(cid, event::address_t::IPV4) << ":" << server->getPort(cid) << ", MAC: " << server->getAddress(cid, event::address_t::MAC) << endl;
-			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
+			// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 			cout << " !!!!!!!!!!!!!!!! HANDSHAKE COMPLETE !!!!!!!!!!!!!!!!!\n\n" << tls->info(tid) << endl;
 			cout << " !!!!!!!!!!!!!!!! SELECTED ALPN PROTOCOL !!!!!!!!!!!!!!!!!\n\n" << (u_short) tls->alpn(tid) << endl;
 			cout << " !!!!!!!!!!!!!!!! HOSTNAME !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!\n\n" << tls->serverNameIndication(tid) << endl << endl;
@@ -118,7 +118,7 @@ class Executor {
 			cout << "Certificate: " << tls->certificateInfo(tid) << endl << endl;
 			cout << "CRL Info: " << tls->certificateRevocationListInfo(tid) << endl << endl;
 			cout << "Certificate Validation: " << (tls->validateCertificate(tid) ? "Valid" : "Invalid") << endl << endl;
-			// Выводим сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
+			// Записываем в лог сообщение об успешном завершении рукопожатия TLS и выводим выбранный ALPN протокол
 			this->_log->print("TLS handshake completed: ID=%" PRIu64 ", ALPN protocol=%d", log_t::flag_t::INFO, tid, tls->alpn(tid));
 		}
 		/**
@@ -130,7 +130,7 @@ class Executor {
 		 * @param ip     IP-адрес сервера
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
-			// Выводим сообщение о готовности сервера к работе
+			// Записываем в лог сообщение о готовности сервера к работе
 			this->_log->print("Server is ready to accept connections: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
@@ -141,7 +141,7 @@ class Executor {
 		 * @param message сообщение об ошибке
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Server error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
 		/**
@@ -152,7 +152,7 @@ class Executor {
 		 * @param message сообщение об ошибке TLS
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке TLS
+			// Записываем ошибку в лог TLS
 			this->_log->print("TLS error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
 		/**
@@ -164,7 +164,7 @@ class Executor {
 		 * @param fgp     объект отпечатка браузера
 		 */
 		void fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser, tls::fgp_t * fgp) noexcept {
-			// Выводим информацию о браузере клиента, который подключился к серверу
+			// Записываем в лог информацию о браузере клиента, который подключился к серверу
 			this->_log->print("TLS fingerprint: ID=%" PRIu64 ", Event ID=%u, Browser=%s", log_t::flag_t::INFO, id, eid, fgp->print(browser).c_str());
 		}
 	public:
@@ -205,9 +205,9 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
 	if(server.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
+		// Записываем в лог сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
-	// Выводим сообщение об ошибке установки опций события
+	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Регистрируем объект транспортного уровня безопасности для базового шаблона TLS
 	const tls::coder_t::id_t cts1 = tls.context(event::node_t::SERVER, event::protocol_t::UDP);
@@ -319,6 +319,6 @@ int32_t main(int32_t argc, char * argv[]){
 		// Запускаем событие сервера
 		server.start();
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

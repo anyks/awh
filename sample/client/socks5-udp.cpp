@@ -46,7 +46,7 @@ class Executor {
 		 * @param port порт хоста
 		 */
 		void launch(const event::id_t eid, const string & host, const uint16_t port) noexcept {
-			// Выводим информацию о событии запуска клиента
+			// Записываем в лог информацию о событии запуска клиента
 			this->_log->print("Launched socks5 client (EID=%u, Host=%s, Port=%u)", log_t::flag_t::INFO, eid, host.c_str(), port);
 		}
 		/**
@@ -56,7 +56,7 @@ class Executor {
 		 * @param size размер данных для записи
 		 */
 		void write(const event::id_t eid, const size_t size) noexcept {
-			// Выводим информацию о событии записи данных клиентом
+			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes (EID=%u)", log_t::flag_t::INFO, size, eid);
 		}
 		/**
@@ -68,7 +68,7 @@ class Executor {
 		 * @param client объект клиента
 		 */
 		void read(const event::id_t eid, const uint8_t * data, const size_t size, client::socks5_t * client) noexcept {
-			// Выводим информацию о событии получения данных клиентом
+			// Записываем в лог информацию о событии получения данных клиентом
 			this->_log->print("DNS data response size=%zu (EID=%u)", log_t::flag_t::INFO, size, eid);
 			// Останавливаем событие клиента
 			client->stop();
@@ -91,7 +91,7 @@ class Executor {
 				break;
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события клиента
+					// Записываем в лог сообщение об остановке события клиента
 					this->_log->print("Socks5 client destroyed", log_t::flag_t::INFO);
 				break;
 			}
@@ -132,7 +132,7 @@ class Executor {
 				};
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(request, sizeof(request)) == 0)
-					// Выводим сообщение об ошибке отправки данных клиентом на сервер
+					// Записываем ошибку в лог отправки данных клиентом на сервер
 					this->_log->print("Failed to send data to remote server (EID=%u)", log_t::flag_t::WARNING, eid);
 				// Если отправка данных клиентом на сервер выполнена, то выводим сообщение об успешной отправке данных клиентом на сервер
 				else this->_log->print("Sent DNS query to remote server (EID=%u)", log_t::flag_t::INFO, eid);
@@ -148,7 +148,7 @@ class Executor {
 		 * @param ip     IP-адрес клиента
 		 */
 		void ready(const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
-			// Выводим сообщение о готовности клиента к работе
+			// Записываем в лог сообщение о готовности клиента к работе
 			this->_log->print("Client is ready to connect to remote server: %s (%s) (EID=%u)", log_t::flag_t::INFO, domain.c_str(), ip.c_str(), eid);
 		}
 		/**
@@ -159,7 +159,7 @@ class Executor {
 		 * @param message сообщение об ошибке
 		 */
 		void error(const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client error: %s (EID=%u)", log_t::flag_t::CRITICAL, message.c_str(), eid);
 		}
 	public:
@@ -196,9 +196,9 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
 	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
+		// Записываем в лог сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
-	// Выводим сообщение об ошибке установки опций события
+	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
 	// if(client.setDestinationPort(11613) && client.setTarget("217.29.53.105") && client.endpoint("77.88.8.8", 53) && client.udp("0.0.0.0")){
@@ -225,6 +225,6 @@ int32_t main(int32_t argc, char * argv[]){
 		// Запускаем событие клиента
 		client.start();
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

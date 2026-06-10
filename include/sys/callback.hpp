@@ -142,7 +142,7 @@ namespace awh {
 					 * @return указатель заголовка
 					 */
 					pointer operator -> () noexcept {
-						// Выводим результат
+						// Возвращаем результат
 						return &this->_it->second;
 					}
 					/**
@@ -151,7 +151,7 @@ namespace awh {
 					 * @return значение заголовка
 					 */
 					reference operator * () const noexcept {
-						// Выводим результат
+						// Возвращаем результат
 						return this->_it->second;
 					}
 				public:
@@ -175,17 +175,17 @@ namespace awh {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 							#endif
 						}
-						// Выводим результат
+						// Возвращаем результат
 						return (* this);
 					}
 				public:
@@ -196,7 +196,7 @@ namespace awh {
 					 * @return      результат сравнения
 					 */
 					bool operator == (const Iterator & other) const noexcept {
-						// Выводим результат
+						// Возвращаем результат
 						return (this->_it->first == other._it->first);
 					}
 					/**
@@ -206,7 +206,7 @@ namespace awh {
 					 * @return      результат сравнения
 					 */
 					bool operator != (const Iterator & other) const noexcept {
-						// Выводим результат
+						// Возвращаем результат
 						return (this->_it->first != other._it->first);
 					}
 				public:
@@ -249,7 +249,7 @@ namespace awh {
 			 * @return     сгенерированный идентификатор функции
 			 */
 			id_t id(string_view name) const noexcept {
-				// Результат работы функции
+				// Переменная результата
 				id_t result = 0;
 				/**
 				 * Выполняем отлов ошибок
@@ -272,17 +272,17 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(name), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
-				// Выводим полученный результат
+				// Возвращаем результат
 				return result;
 			}
 		public:
@@ -294,7 +294,7 @@ namespace awh {
 			bool empty() const noexcept {
 				// Выполняем блокировку потока
 				const locker_t <std::recursive_mutex> lock(this->_mtx);
-				// Выводим результат проверки
+				// Возвращаем результат проверки
 				return this->_callbacks.empty();
 			}
 		public:
@@ -314,7 +314,7 @@ namespace awh {
 			 * @return выводим созданный блок дампа контейнера
 			 */
 			const std::unordered_map <id_t, fn_t> & dump() const noexcept {
-				// Выводим дамп функций обратного вызова
+				// Формируем дамп функций обратного вызова
 				return this->_callbacks;
 			}
 			/**
@@ -341,13 +341,13 @@ namespace awh {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 						#endif
 					}
@@ -375,13 +375,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -396,7 +396,7 @@ namespace awh {
 			bool _is(const id_t id) const noexcept {
 				// Выполняем блокировку потока
 				const locker_t <std::recursive_mutex> lock(this->_mtx);
-				// Выводим результат проверки
+				// Возвращаем результат проверки
 				return ((id > 0) && (this->_callbacks.find(id) != this->_callbacks.end()));
 			}
 		public:
@@ -447,7 +447,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем првоерку существования функции обратного вызова
 					return this->_is(static_cast <id_t> (id));
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return false;
 			}
 		private:
@@ -489,13 +489,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -583,13 +583,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -632,13 +632,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -668,13 +668,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -827,7 +827,7 @@ namespace awh {
 								// Выполняем системную функцию обратного вызова
 								this->_callback(event_t::SET, id, ret.first->second);
 						}
-						// Выводим идентификатор обратной функции
+						// Возвращаем идентификатор callback
 						return id;
 					}
 				/**
@@ -838,13 +838,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -895,7 +895,7 @@ namespace awh {
 								// Выполняем системную функцию обратного вызова
 								this->_callback(event_t::SET, id2, ret.first->second);
 						}
-						// Выводим идентификатор обратной функции
+						// Возвращаем идентификатор callback
 						return id2;
 					}
 				/**
@@ -906,13 +906,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id1, id2), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -958,7 +958,7 @@ namespace awh {
 							// Выполняем системную функцию обратного вызова
 							this->_callback(event_t::SET, id, ret.first->second);
 					}
-					// Выводим идентификатор обратной функции
+					// Возвращаем идентификатор callback
 					return id;
 				/**
 				 * Если возникает ошибка
@@ -968,13 +968,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -1033,7 +1033,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <T> || is_enum_v<T>)
 					// Выполняем установку функции обратного вызова
 					return this->_set(static_cast <id_t> (id), storage);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -1091,7 +1091,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем установку функции обратного вызова
 					return this->_set(static_cast <id_t> (id1), static_cast <id_t> (id2), storage);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -1145,7 +1145,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
 					// Выполняем установку функции обратного вызова
 					return this->_set(static_cast <id_t> (id), callback);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 		private:
@@ -1164,7 +1164,7 @@ namespace awh {
 			auto _get(const id_t id) const noexcept -> function <T> {
 				// Если идентификатор функции не передан
 				if(id == 0)
-					// Выводим пустое значение
+					// Возвращаем пустое значение
 					return {};
 				/**
 				 * Выполняем отлов ошибок
@@ -1180,9 +1180,9 @@ namespace awh {
 						auto * callback = awh_cast <const BasicFunction <T> *>(i->second.get());
 						// Если функция обратного вызова не содержит данных
 						if((callback == nullptr) || (callback->fn == nullptr))
-							// Выводим пустое значение
+							// Возвращаем пустое значение
 							return {};
-						// Выводим запрашиваемую функции обратного вызова
+						// Возвращаем запрашиваемую функцию обратного вызова
 						return callback->fn;
 					}
 				/**
@@ -1193,17 +1193,17 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
-				// Выводим пустое значение
+				// Возвращаем пустое значение
 				return {};
 			}
 		public:
@@ -1289,7 +1289,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 					// Выполняем получение функции обратного вызова
 					return this->_get <B> (static_cast <id_t>(id));
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return {};
 			}
 		private:
@@ -1336,7 +1336,7 @@ namespace awh {
 							// Выполняем системную функцию обратного вызова
 							this->_callback(event_t::SET, id, ret.first->second);
 					}
-					// Выводим идентификатор обратной функции
+					// Возвращаем идентификатор callback
 					return id;
 				/**
 				 * Если возникает ошибка выделения памяти
@@ -1346,13 +1346,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, "Memory allocation error");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory allocation error");
 					#endif
 					// Выходим из приложения
@@ -1365,13 +1365,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
@@ -1493,7 +1493,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 					// Выполняем подключение функции обратного вызова
 					return this->on <Signature> (static_cast <id_t> (id), std::forward <Func> (callback), std::forward <Args> (args)...);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -1583,7 +1583,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 					// Выполняем подключение функции обратного вызова
 					return this->_on <B> (static_cast <id_t> (id), std::move(fn));
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -1621,7 +1621,7 @@ namespace awh {
 					if constexpr (is_void_v <Result>)
 						// Завершаем работу функции обратного вызова
 						return;
-					// Выводим пустое значение функции обратного вызова
+					// Возвращаем пустое значение callback
 					else return Result{};
 				}
 				/**
@@ -1638,7 +1638,7 @@ namespace awh {
 						if constexpr (is_void_v <Result>)
 							// Завершаем работу функции обратного вызова
 							return;
-						// Выводим пустое значение функции обратного вызова
+						// Возвращаем пустое значение callback
 						else return Result{};
 					}
 					// Выполняем извлечение функции обратного вызова
@@ -1649,7 +1649,7 @@ namespace awh {
 						if constexpr (is_void_v <Result>)
 							// Завершаем работу функции обратного вызова
 							return;
-						// Выводим пустое значение функции обратного вызова
+						// Возвращаем пустое значение callback
 						else return Result{};
 					}
 					// Если системная функция обратного вызова установлена
@@ -1670,13 +1670,13 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, std::make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 					// Выполняем блокировку потока
@@ -1780,7 +1780,7 @@ namespace awh {
 					if constexpr (is_void_v <Result>)
 						// Завершаем работу функции обратного вызова
 						return;
-					// Выводим пустое значение функции обратного вызова
+					// Возвращаем пустое значение callback
 					else return Result{};
 				}
 				// Выполняем функцию обратного вызова
@@ -1832,7 +1832,7 @@ namespace awh {
 					if constexpr (is_void_v <Result>)
 						// Завершаем работу функции обратного вызова
 						return;
-					// Выводим пустое значение функции обратного вызова
+					// Возвращаем пустое значение callback
 					else return Result{};
 				}
 			}
@@ -1843,7 +1843,7 @@ namespace awh {
 			 * @return конечный итератор
 			 */
 			iterator_t end() noexcept {
-				// Выводим результат
+				// Возвращаем результат
 				return iterator_t(this->_callbacks.end(), this->_log);
 			}
 			/**
@@ -1852,7 +1852,7 @@ namespace awh {
 			 * @return начальный итератор
 			 */
 			iterator_t begin() noexcept {
-				// Выводим результат
+				// Возвращаем результат
 				return iterator_t(this->_callbacks.begin(), this->_log);
 			}
 		public:
@@ -1881,17 +1881,17 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 			/**
@@ -1917,17 +1917,17 @@ namespace awh {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
-				// Выводим значение текущего объекта
+				// Возвращаем значение текущего объекта
 				return (* this);
 			}
 		public:

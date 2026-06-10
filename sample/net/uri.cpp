@@ -672,6 +672,6 @@ int32_t main(int32_t argc, char * argv[]){
 
 	cout << endl << endl;
 
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

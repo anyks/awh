@@ -149,13 +149,13 @@ void awh::Chrono::clear() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -180,7 +180,7 @@ void awh::Chrono::threadSafety(const bool mode) noexcept {
  * @return   штамп времени в миллисекундах
  */
 uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	/**
 	 * Выполняем отлов ошибок
@@ -228,19 +228,19 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 		// Выполняем сброс результата
 		result = 0;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -334,13 +334,13 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -380,13 +380,13 @@ void awh::Chrono::compile(string_view expression, const format_t format) noexcep
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(expression, static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, string(buffer, size).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, string(buffer, size).c_str());
 					#endif
 				}
@@ -406,7 +406,7 @@ void awh::Chrono::compile(string_view expression, const format_t format) noexcep
  * @return       конечная позиция обработанных данных в тексте
  */
 ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format, const size_t pos) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	ssize_t result = -1;
 	// Если данные переданы
 	if(!text.empty() && (pos < text.size()) && (format != format_t::NONE)){
@@ -935,7 +935,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -945,7 +945,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
  * @return     сформированная аббревиатура даты
  */
 std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t date) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	std::pair <type_t, double> result = {type_t::MILLISECONDS, 0.};
 	// Если число передано
 	if(date > 0){
@@ -991,18 +991,18 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1013,7 +1013,7 @@ std::pair <awh::Chrono::type_t, double> awh::Chrono::abbreviation(const uint64_t
  * @return     конец указанной даты в формате UnixTimestamp
  */
 uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	// Если дата передана
 	if(date > 0){
@@ -1120,18 +1120,18 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1153,7 +1153,7 @@ uint64_t awh::Chrono::end(const type_t type, const storage_t storage) const noex
  * @return     начало указанной даты в формате UnixTimestamp
  */
 uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	// Если дата передана
 	if(date > 0){
@@ -1302,18 +1302,18 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1337,7 +1337,7 @@ uint64_t awh::Chrono::begin(const type_t type, const storage_t storage) const no
  * @return       результат вычисления
  */
 uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type_t type, const actual_t actual) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	// Если дата передана
 	if(date > 0){
@@ -3019,18 +3019,18 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (value), static_cast <uint16_t> (type), static_cast <uint16_t> (actual)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3056,7 +3056,7 @@ uint64_t awh::Chrono::actual(const type_t value, const type_t type, const actual
  * @return       результат вычисления в формате UnixTimestamp
  */
 uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const type_t type, const offset_t offset) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	// Если дата передана
 	if(date > 0){
@@ -3413,18 +3413,18 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, value, static_cast <uint16_t> (type), static_cast <uint16_t> (offset)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3447,7 +3447,7 @@ uint64_t awh::Chrono::offset(const uint64_t value, const type_t type, const offs
  * @return        обозначение времени с указанием размерности
  */
 string awh::Chrono::seconds(const double seconds) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "0s";
 	// Если количество секунд передано
 	if(seconds > 0.){
@@ -3518,18 +3518,18 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(seconds), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3630,18 +3630,18 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(value), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3670,18 +3670,18 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return h12_t::AM;
 }
 /**
@@ -3691,7 +3691,7 @@ awh::Chrono::h12_t awh::Chrono::h12(const uint64_t date) const noexcept {
  * @return        текущее установленное значение статуса 12-и часового формата времени
  */
 awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	h12_t result = h12_t::AM;
 	/**
 	 * Выполняем отлов ошибок
@@ -3720,17 +3720,17 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3739,7 +3739,7 @@ awh::Chrono::h12_t awh::Chrono::h12(const storage_t storage) const noexcept {
  * @param date дата для извлечения года
  */
 uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint16_t result = 0;
 	/**
 	 * Выполняем отлов ошибок
@@ -3778,17 +3778,17 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3798,7 +3798,7 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
  * @return        текущее значение года
  */
 uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint16_t result = 0;
 	/**
 	 * Выполняем отлов ошибок
@@ -3827,17 +3827,17 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3897,18 +3897,18 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -3944,18 +3944,18 @@ bool awh::Chrono::leap(const uint16_t year) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(year), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -3981,18 +3981,18 @@ bool awh::Chrono::leap(const uint64_t date) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -4492,13 +4492,13 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -4518,7 +4518,7 @@ template <typename T>
  * @return     значение данных даты и времени
  */
 T awh::Chrono::get(const uint64_t date, const unit_t unit) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	T result;
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
@@ -4531,7 +4531,7 @@ T awh::Chrono::get(const uint64_t date, const unit_t unit) const noexcept {
 	}
 	// Выполняем извлечение данных
 	this->get(&result, sizeof(result), date, unit, is_class_v <T>);
-	// Выводим полученный результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -4568,7 +4568,7 @@ template <typename T>
  * @return     значение данных даты и времени
  */
 T awh::Chrono::get(const unit_t unit) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	T result;
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
@@ -4581,7 +4581,7 @@ T awh::Chrono::get(const unit_t unit) const noexcept {
 	}
 	// Выполняем извлечение данных
 	this->get(&result, sizeof(result), unit, is_class_v <T>, storage_t::GLOBAL);
-	// Выводим полученный результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -4619,7 +4619,7 @@ template <typename T>
  * @return        значение данных даты и времени
  */
 T awh::Chrono::get(const unit_t unit, const storage_t storage) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	T result;
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
@@ -4632,7 +4632,7 @@ T awh::Chrono::get(const unit_t unit, const storage_t storage) const noexcept {
 	}
 	// Выполняем извлечение данных
 	this->get(&result, sizeof(result), unit, is_class_v <T>, storage);
-	// Выводим полученный результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -4969,13 +4969,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const uint64_t date, con
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, date, static_cast <uint16_t> (unit), text), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -5743,13 +5743,13 @@ void awh::Chrono::get(void * buffer, const size_t size, const unit_t unit, const
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, static_cast <uint16_t> (unit), text, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -5807,7 +5807,7 @@ void awh::Chrono::setTimeZone(string_view zone) noexcept {
  * @return     определённая временная зона
  */
 awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	zone_t result = zone_t::NONE;
 	// Если временная зона для матчинга передана
 	if(!zone.empty()){
@@ -6587,20 +6587,20 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
-			// Результат работы функции
+			// Переменная результата
 			result = zone_t::NONE;
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -6610,7 +6610,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
  * @return        определённая временная зона
  */
 awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	zone_t result = zone_t::NONE;
 	/**
 	 * Выполняем отлов ошибок
@@ -6639,17 +6639,17 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(const storage_t storage) const no
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -6665,7 +6665,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 	switch(static_cast <uint8_t> (zone)){
 		// Если временная зона не установлена
 		case static_cast <uint8_t> (zone_t::NONE):
-			// Выводим значение локальной временной зоны
+			// Возвращаем значение локальной временной зоны
 			return this->_dt.offset;
 		// Если временная зона установлена как (Атлантическое Время)
 		case static_cast <uint8_t> (zone_t::AT):
@@ -7142,7 +7142,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
 			// Формируем смещение временной зоны (UTC+14)
 			return 50400;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return this->_dt.offset;
 }
 /**
@@ -7152,7 +7152,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t zone) const noexcept {
  * @return     смещение временной зоны в секундах
  */
 int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	int32_t result = this->_dt.offset;
 	// Если временная зона указана
 	if(!zone.empty()){
@@ -8034,20 +8034,20 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
-			// Результат работы функции
+			// Переменная результата
 			result = this->_dt.offset;
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8072,7 +8072,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		if(dt.dst)
 			// Получаем результат для летнего времени
 			return this->getTimeZone(sum);
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	/**
 	 * Если возникает ошибка
@@ -8082,17 +8082,17 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (std), static_cast <uint16_t> (sum)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return this->_dt.offset;
 }
 /**
@@ -8102,7 +8102,7 @@ int32_t awh::Chrono::getTimeZone(const zone_t std, const zone_t sum) const noexc
  * @return        смещение временной зоны в секундах
  */
 int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	int32_t result = 0;
 	/**
 	 * Выполняем отлов ошибок
@@ -8160,17 +8160,17 @@ int32_t awh::Chrono::getTimeZone(const storage_t storage) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8196,13 +8196,13 @@ void awh::Chrono::clearTimeZones() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -8230,13 +8230,13 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, offset), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -8345,13 +8345,13 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -8365,7 +8365,7 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
  * @return        штамп времени в указанных единицах измерения
  */
 uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	/**
 	 * Выполняем отлов ошибок
@@ -8584,17 +8584,17 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (type), static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -8606,7 +8606,7 @@ uint64_t awh::Chrono::timestamp(const type_t type, const storage_t storage) cons
  * @return        дата в UnixTimestamp
  */
 uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_t storage) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	// Если дата для парсинга и формат переданы
 	if(!date.empty() && !format.empty()){
@@ -9248,7 +9248,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			} break;
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -9258,7 +9258,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
  * @return     строковое обозначение временной зоны
  */
 string awh::Chrono::format(const int32_t zone) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "UTC";
 	// Если временная зона передана
 	if(zone != 0){
@@ -9299,18 +9299,18 @@ string awh::Chrono::format(const int32_t zone) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -9330,7 +9330,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		switch(static_cast <uint8_t> (zone)){
 			// Если временная зона не установлена
 			case static_cast <uint8_t> (zone_t::NONE):
-				// Выводим временную зону по умолчанию
+				// Возвращаем временную зону по умолчанию
 				return this->format(this->_dt.offset);
 			// Если временная зона установлена как (Атлантическое Время)
 			case static_cast <uint8_t> (zone_t::AT): {
@@ -9368,7 +9368,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 				if(dt.dst)
 					// Формируем летнее время
 					return "EDT";
-				// Выводим результат
+				// Возвращаем результат
 				return "EST";
 			}
 			// Если временная зона установлена как (Северноамериканское Горное Время)
@@ -9381,7 +9381,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 				if(dt.dst)
 					// Формируем летнее время
 					return "MDT";
-				// Выводим результат
+				// Возвращаем результат
 				return "UTC-7";
 			}
 			// Если временная зона установлена как (Северноамериканское Тихоокеанское Время)
@@ -9394,7 +9394,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 				if(dt.dst)
 					// Формируем летнее время
 					return "PDT";
-				// Выводим результат
+				// Возвращаем результат
 				return "PST";
 			}
 			// Если временная зона установлена как (Время В Ньюфаундленде)
@@ -10158,17 +10158,17 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (zone)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "UTC";
 }
 /**
@@ -10179,7 +10179,7 @@ string awh::Chrono::format(const zone_t zone) const noexcept {
  * @return       строка содержащая дату
  */
 string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	// Если формат даты передан
 	if(!format.empty()){
@@ -10710,7 +10710,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 								if(dt.zone == zone_t::NONE)
 									// Выполняем формирование временной зоны
 									result.append(this->format(dt.offset));
-								// Выводим установленную временную зону
+								// Возвращаем установленную временную зону
 								else result.append(this->format(dt.zone));
 							} break;
 							// Добавляем полученный символ в результат
@@ -10731,7 +10731,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -10760,7 +10760,7 @@ string awh::Chrono::format(const uint64_t date, string_view format) const noexce
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -10790,7 +10790,7 @@ string awh::Chrono::format(const uint64_t date, const int32_t zone, string_view 
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -10822,7 +10822,7 @@ string awh::Chrono::format(const uint64_t date, const zone_t zone, string_view f
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -10854,7 +10854,7 @@ string awh::Chrono::format(const uint64_t date, string_view zone, string_view fo
 		// Выполняем формирование формата даты
 		return this->format(dt, format);
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -10901,7 +10901,7 @@ string awh::Chrono::format(string_view format, const storage_t storage) const no
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -10949,7 +10949,7 @@ string awh::Chrono::format(const int32_t zone, string_view format, const storage
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -11001,7 +11001,7 @@ string awh::Chrono::format(const zone_t zone, string_view format, const storage_
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -11053,7 +11053,7 @@ string awh::Chrono::format(string_view zone, string_view format, const storage_t
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**
@@ -11086,18 +11086,18 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date, format1, format2, static_cast <uint16_t> (storage)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return "";
 }
 /**

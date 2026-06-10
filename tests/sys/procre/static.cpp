@@ -186,7 +186,7 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 			if(!destination.empty()){
 				// Проверяем что адрес назначения процесса не пустой
 				ASSERT_FALSE(destination.empty());
-				// Выводим информацию о процессе
+				// Записываем в лог информацию о процессе
 				this->_log->print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
 					awh::log_t::flag_t::INFO,
 					this->_procre->name(pid).c_str(),
@@ -197,7 +197,7 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 				);
 			// Если адрес назначения процесса не определён
 			} else {
-				// Выводим информацию о процессе
+				// Записываем в лог информацию о процессе
 				this->_log->print("Process Resolver: NAME=%s, SOURCE=%s, FAMILY=%s, PROTOCOL=%s",
 					awh::log_t::flag_t::INFO,
 					this->_procre->name(pid).c_str(),
@@ -210,7 +210,7 @@ TEST_F(ProcreFixture, InitProcessNameTest){
 		} else if(!destination.empty()) {
 			// Проверяем что адрес назначения процесса не пустой
 			ASSERT_FALSE(destination.empty());
-			// Выводим информацию о процессе
+			// Записываем в лог информацию о процессе
 			this->_log->print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
 				awh::log_t::flag_t::INFO,
 				this->_procre->name(pid).c_str(),

@@ -103,7 +103,7 @@ namespace awh {
 					Iterator & operator ++ () noexcept {
 						// Выполняем смещение текущего значения итератора
 						++this->_ptr;
-						// Выводим текущее значение итератора
+						// Возвращаем текущее значение итератора
 						return (* this);
 					}
 					/**
@@ -114,7 +114,7 @@ namespace awh {
 					Iterator & operator -- () noexcept {
 						// Выполняем смещение текущего значения итератора
 						--this->_ptr;
-						// Выводим текущее значение итератора
+						// Возвращаем текущее значение итератора
 						return (* this);
 					}
 				public:
@@ -559,7 +559,7 @@ namespace awh {
 				 * @return конечный итератор буфера
 				 */
 				auto end() noexcept -> decltype(this->_buffer.template end <T> ()) {
-					// Выводим конечный итератор буфера
+					// Возвращаем конечный итератор буфера
 					return this->_buffer.template end <T> ();
 				}
 				/**
@@ -568,7 +568,7 @@ namespace awh {
 				 * @return начальный итератор буфера
 				 */
 				auto begin() noexcept -> decltype(this->_buffer.template begin <T> ()) {
-					// Выводим начальный итератор буфера
+					// Возвращаем начальный итератор буфера
 					return this->_buffer.template begin <T> ();
 				}
 			public:
@@ -592,7 +592,7 @@ namespace awh {
 			 * @return обёрнутый бинарный буфер
 			 */
 			view <T> as() & {
-				// Выводим буфер & — только для lvalue
+				// Возвращаем буфер по ссылке — только для lvalue
 				return view <T> (* this);
 			}
 	} buffer_t;

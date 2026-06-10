@@ -47,9 +47,9 @@ int32_t main(int32_t argc, char * argv[]){
 	if(argc > 1){
 		// Выполняем получение пида
 		const pid_t pid = static_cast <pid_t> (::stoi(argv[1]));
-		// Выводим в лог название приложения
+		// Записываем в лог название приложения
 		log.print("Process Resolver: NAME=%s", log_t::flag_t::INFO, procre.name(pid).c_str());
-	// Выводим в лог название текущего проекта
+	// Записываем в лог название текущего проекта
 	} else log.print("Process Resolver: NAME=%s", log_t::flag_t::INFO, procre.name().c_str());
 	// Устанавливаем функцию обратного вызова для получения информации о процессе
 	procre.on([&addr, &procre, &fmk, &log](const pid_t pid, const procre_t::info_t & info){
@@ -170,7 +170,7 @@ int32_t main(int32_t argc, char * argv[]){
 		if(!source.empty()){
 			// Если адрес источника процесса не определён а адрес назначения процесса определён
 			if(!destination.empty()){
-				// Выводим информацию о процессе
+				// Записываем в лог информацию о процессе
 				log.print("Process Resolver: NAME=%s, SOURCE=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
 					log_t::flag_t::INFO,
 					procre.name(pid).c_str(),
@@ -181,7 +181,7 @@ int32_t main(int32_t argc, char * argv[]){
 				);
 			// Если адрес назначения процесса не определён
 			} else {
-				// Выводим информацию о процессе
+				// Записываем в лог информацию о процессе
 				log.print("Process Resolver: NAME=%s, SOURCE=%s, FAMILY=%s, PROTOCOL=%s",
 					log_t::flag_t::INFO,
 					procre.name(pid).c_str(),
@@ -192,7 +192,7 @@ int32_t main(int32_t argc, char * argv[]){
 			}
 		// Если адрес источника процесса не определён а адрес назначения процесса определён
 		} else if(!destination.empty()) {
-			// Выводим информацию о процессе
+			// Записываем в лог информацию о процессе
 			log.print("Process Resolver: NAME=%s, DEST=%s, FAMILY=%s, PROTOCOL=%s",
 				log_t::flag_t::INFO,
 				procre.name(pid).c_str(),
@@ -204,6 +204,6 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	// Запускаем процесс сканирования активных процессов и получения информации о них
 	procre.scanning();
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

@@ -100,7 +100,7 @@ namespace awh {
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Packet {
 					public:
-						// Время жизни DNS-записи (в миллисекундах)
+						// Срок истечения DNS-запроса (метка времени в миллисекундах)
 						uint64_t alive;
 						// Количество попыток DNS-запроса
 						uint8_t attempt;
@@ -108,14 +108,14 @@ namespace awh {
 						payload_t payload;
 					public:
 						/**
-						 * @brief Оператор [=] перемещения параметров пакета
+						 * @brief Оператор перемещающего присваивания параметров пакета
 						 *
 						 * @param packet объект параметров пакета
 						 * @return       текущие параметры пакета
 						 */
 						Packet & operator = (Packet && packet) noexcept;
 						/**
-						 * @brief Оператор [=] копирующего присваивания параметров пакета
+						 * @brief Оператор копирующего присваивания параметров пакета
 						 *
 						 * @param packet объект параметров пакета
 						 * @return        текущие параметры пакета
@@ -247,21 +247,21 @@ namespace awh {
 				typedef struct Resolver {
 					// Префикс для переменных окружения
 					string prefix;
-					// Порт сервера DNS-резолвера
+					// UDP-порт DNS-сервера (по умолчанию 53)
 					uint16_t port;
-					// Задержка ожидания ответа от DNS-сервера (в миллисекундах)
+					// Таймаут ожидания ответа от DNS-сервера (в миллисекундах)
 					uint32_t delay;
-					// Очередь свободных идентификаторов событий DNS-резолверов
+					// Очередь свободных идентификаторов сокетов DNS-резолвера
 					queue_t queue;
-					// Адрес DNS-сервера для выполнения запросов
+					// Список DNS-серверов для выполнения запросов
 					servers_t nameServers;
-					// Список идентификаторов событий DNS-резолверов IPv4
+					// Идентификаторы UDP-сокетов DNS-резолвера для IPv4
 					vector <event::id_t> idv4;
-					// Список идентификаторов событий DNS-резолверов IPv6
+					// Идентификаторы UDP-сокетов DNS-резолвера для IPv6
 					vector <event::id_t> idv6;
-					// Адрес сети для выполнения запроса IPv4
+					// Локальный адрес источника для запросов IPv4
 					unique_ptr <net::addr_t> sourceIPv4;
-					// Адрес сети для выполнения запроса IPv6
+					// Локальный адрес источника для запросов IPv6
 					unique_ptr <net::addr_t> sourceIPv6;
 					/**
 					 * @brief Конструктор
@@ -305,16 +305,16 @@ namespace awh {
 				transfer_t _transfer;
 			private:
 				/**
-				 * @brief Метод обработки событий дампинга DNS-кэша
+				 * @brief Метод сохранения дампа DNS-кэша в файл
 				 *
-				 * @param        идентификатор таймера DNS-резолвера
+				 * @param tid    идентификатор таймера DNS-резолвера
 				 * @param status статус события таймера DNS-резолвера
 				 */
 				void dumping(const event::id_t, const event::status_t status) noexcept;
 				/**
-				 * @brief Метод обработки событий коллектора DNS-кэша
+				 * @brief Метод очистки устаревших записей DNS-кэша
 				 *
-				 * @param        идентификатор таймера DNS-резолвера
+				 * @param tid    идентификатор таймера DNS-резолвера
 				 * @param status статус события таймера DNS-резолвера
 				 */
 				void collector(const event::id_t, const event::status_t status) noexcept;
@@ -488,14 +488,14 @@ namespace awh {
 				/**
 				 * @brief Метод очистки кэша для указанного доменного имени
 				 *
-				 * @param domain доменное имя для которого выполняется очистка кэша
+				 * @param domain доменное имя, для которого выполняется очистка кэша
 				 */
 				void clearCache(string_view domain) noexcept;
 				/**
 				 * @brief Метод очистки кэша для указанного доменного имени
 				 *
 				 * @param family семейство IP-адресов IPv4/IPv6
-				 * @param domain доменное имя для которого выполняется очистка кэша
+				 * @param domain доменное имя, для которого выполняется очистка кэша
 				 */
 				void clearCache(const event::family_t family, string_view domain) noexcept;
 			public:
@@ -551,16 +551,16 @@ namespace awh {
 				void setPrefixEnvironment(string_view prefix) noexcept;
 			public:
 				/**
-				 * @brief Метод установки адреса файла локальных хостов
+				 * @brief Метод установки пути к файлу локальных хостов
 				 *
-				 * @param filename адрес файла для установки
+				 * @param filename путь к файлу /etc/hosts или аналогу
 				 */
 				void setHostsAddress(string_view filename) noexcept;
 			public:
 				/**
-				 * @brief Метод установки адреса файлового дампа кэша
+				 * @brief Метод установки пути к файлу дампа кэша
 				 *
-				 * @param filename адрес файла для установки
+				 * @param filename путь к файлу дампа кэша
 				 * @param interval интервал сохранения дампа кэша в миллисекундах
 				 */
 				void setDumpAddress(string_view filename, const uint32_t interval) noexcept;
@@ -590,15 +590,15 @@ namespace awh {
 				bool init(const event::family_t family, const uint16_t count) noexcept;
 			public:
 				/**
-				 * @brief Метод получения порта сервера DNS-резолвера
+				 * @brief Метод получения UDP-порта DNS-сервера
 				 *
-				 * @return порт сервера DNS-резолвера
+				 * @return UDP-порт DNS-сервера
 				 */
 				uint16_t getDestinationPort() const noexcept;
 				/**
-				 * @brief Метод установки порта сервера DNS-резолвера
+				 * @brief Метод установки UDP-порта DNS-сервера
 				 *
-				 * @param port порт сервера DNS-резолвера
+				 * @param port UDP-порт DNS-сервера
 				 */
 				void setDestinationPort(const uint16_t port) noexcept;
 			public:
@@ -645,13 +645,13 @@ namespace awh {
 				/**
 				 * @brief Метод установки списка адресов DNS-серверов
 				 *
-				 * @param server адреса DNS-серверов для установки
+				 * @param servers адреса DNS-серверов для установки
 				 */
 				void setServers(const vector <string> & servers) noexcept;
 				/**
 				 * @brief Метод установки списка адресов DNS-серверов
 				 *
-				 * @param server адреса DNS-серверов для установки
+				 * @param servers адреса DNS-серверов для установки
 				 */
 				void setServers(const vector <const net::addr_t *> & servers) noexcept;
 				/**
@@ -683,38 +683,38 @@ namespace awh {
 				void setSource(const event::family_t family, string_view source) noexcept;
 			public:
 				/**
-				 * @brief Метод получения идентификатора DNS-резолвера для выполнения запроса к DNS-серверу
+				 * @brief Метод генерации идентификатора DNS-запроса
 				 *
-				 * @return идентификатор DNS-резолвера для выполнения запроса к DNS-серверу
+				 * @return уникальный идентификатор DNS-запроса
 				 */
 				id_t issue() const noexcept;
 			public:
 				/**
-				 * @brief Метод поиска доменного имени по IP-адресу
+				 * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
 				 *
 				 * @param id    идентификатор DNS-запроса
-				 * @param ip    адрес для поиска доменного имени
-				 * @param alive время жизни запроса (в миллисекундах)
-				 * @return      результат выполнения запроса
+				 * @param ip    адрес для обратного DNS-запроса
+				 * @param alive срок ожидания ответа (в миллисекундах)
+				 * @return      результат постановки запроса в очередь
 				 */
 				bool search(const id_t id, string_view ip, const uint32_t alive = 0) noexcept;
 				/**
-				 * @brief Метод поиска доменного имени по IP-адресу
+				 * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
 				 *
 				 * @param id    идентификатор DNS-запроса
-				 * @param ip    адрес для поиска доменного имени
-				 * @param alive время жизни запроса (в миллисекундах)
-				 * @return      результат выполнения запроса
+				 * @param ip    адрес для обратного DNS-запроса
+				 * @param alive срок ожидания ответа (в миллисекундах)
+				 * @return      результат постановки запроса в очередь
 				 */
 				bool search(const id_t id, const net::addr_t * ip, const uint32_t alive = 0) noexcept;
 				/**
-				 * @brief Метод поиска доменного имени по IP-адресу
+				 * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
 				 *
 				 * @param id     идентификатор DNS-запроса
-				 * @param family тип интернет-протокола IPv4/IPv6
-				 * @param ip     адрес для поиска доменного имени
-				 * @param alive  время жизни запроса (в миллисекундах)
-				 * @return       результат выполнения запроса
+				 * @param family семейство IP-адресов IPv4/IPv6
+				 * @param ip     адрес для обратного DNS-запроса
+				 * @param alive  срок ожидания ответа (в миллисекундах)
+				 * @return       результат постановки запроса в очередь
 				 */
 				bool search(const id_t id, const event::family_t family, string_view ip, const uint32_t alive = 0) noexcept;
 			public:
@@ -724,8 +724,8 @@ namespace awh {
 				 * @param id     идентификатор DNS-запроса
 				 * @param record тип DNS-записи, которую необходимо получить
 				 * @param domain доменное имя
-				 * @param alive  время жизни запроса (в миллисекундах)
-				 * @return       результат выполнения запроса
+				 * @param alive  срок ожидания ответа (в миллисекундах)
+				 * @return       результат постановки запроса в очередь
 				 */
 				bool request(const id_t id, const record_t record, string_view domain, const uint32_t alive = 0) noexcept;
 			public:
@@ -734,18 +734,18 @@ namespace awh {
 				 *
 				 * @param id     идентификатор DNS-запроса
 				 * @param domain доменное имя
-				 * @param alive  время жизни запроса (в миллисекундах)
-				 * @return       результат выполнения запроса
+				 * @param alive  срок ожидания ответа (в миллисекундах)
+				 * @return       результат постановки запроса в очередь
 				 */
 				bool resolve(const id_t id, string_view domain, const uint32_t alive = 0) noexcept;
 				/**
 				 * @brief Метод разрешения доменного имени
 				 *
 				 * @param id     идентификатор DNS-запроса
-				 * @param family тип интернет-протокола IPv4/IPv6
+				 * @param family семейство IP-адресов IPv4/IPv6
 				 * @param domain доменное имя
-				 * @param alive  время жизни запроса (в миллисекундах)
-				 * @return       результат выполнения запроса
+				 * @param alive  срок ожидания ответа (в миллисекундах)
+				 * @return       результат постановки запроса в очередь
 				 */
 				bool resolve(const id_t id, const event::family_t family, string_view domain, const uint32_t alive = 0) noexcept;
 			private:

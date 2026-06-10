@@ -100,18 +100,18 @@ using namespace std;
 		/**
 		 * @brief Функция извлечения данных из файла
 		 *
-		 * @param filename адрес файла для извлечения
+		 * @param filename путь к файлу для извлечения
 		 * @param log      объект для работы с логами
 		 * @return         содержимое файла
 		 */
 		static string read(const string & filename, const awh::log_t * log) noexcept {
-			// Результат работы функции
+			// Переменная результата
 			string result = "";
 			/**
 			 * Выполняем отлов ошибок
 			 */
 			try {
-				// Устанавливаем адрес файла для чтения
+				// Устанавливаем путь к файлу для чтения
 				ifstream file(filename.c_str());
 				// Если файл открыт удачно
 				if(file.is_open()){
@@ -140,17 +140,17 @@ using namespace std;
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 	};
@@ -174,7 +174,7 @@ void awh::Process_Resolver::scanning() noexcept {
 			/**
 			 * @brief Функция извлечения информации о сокете из файловой системы /proc/net/
 			 *
-			 * @param filename адрес файла для извлечения
+			 * @param filename путь к файлу для извлечения
 			 * @param proto    протокол сокета
 			 * @param family   семейство адресов сокета
 			 */
@@ -637,13 +637,13 @@ void awh::Process_Resolver::scanning() noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			// Если список идентификаторов процессов получен
@@ -1575,13 +1575,13 @@ void awh::Process_Resolver::scanning() noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -1593,7 +1593,7 @@ void awh::Process_Resolver::scanning() noexcept {
  * @return    название приложения которому принадлежит процесс
  */
 string awh::Process_Resolver::name(const pid_t pid) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -1761,17 +1761,17 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

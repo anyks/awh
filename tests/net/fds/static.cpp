@@ -74,6 +74,6 @@ TEST_F(FdsFixture, FdsSuiteTest){
 	bool result = this->_fds->limit(limits.second);
 	// Проверяем, что лимит файловых дескрипторов установлен
 	ASSERT_TRUE(result);
-	// Выводим справочную помощь по файловым дескрипторам в лог
+	// Записываем в лог справку по файловым дескрипторам
 	this->_fds->help(limits.first, limits.second);
 }

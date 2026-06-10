@@ -40,7 +40,7 @@ int32_t main(int32_t argc, char * argv[]){
 	cluster.count(1);
 	// Устанавливаем функцию обратного вызова на изменение статуса кластера
 	cluster.on <void (const event::status_t)> ("status", [&cluster, &log](const event::status_t status) noexcept -> void {
-		// Выводим статус работы кластера
+		// Возвращаем статус работы кластера
 		log.print("Cluster status: %s", log_t::flag_t::INFO, (status == event::status_t::LAUNCHED) ? "launched" : "destroyed");
 		/**
 		// Если статус работы кластера - запущен
@@ -51,7 +51,7 @@ int32_t main(int32_t argc, char * argv[]){
 	}, placeholders::_1);
 	// Устанавливаем функцию обратного вызова на события работы кластера
 	cluster.on <void (const pid_t, const unit::cluster_t::event_t)> ("events", [&cluster, &log](const pid_t pid, const unit::cluster_t::event_t event) noexcept -> void {
-		// Выводим событие работы кластера
+		// Возвращаем событие работы кластера
 		log.print("Cluster event: %s (pid: %u)", log_t::flag_t::INFO, (event == unit::cluster_t::event_t::START) ? "started" : "stopped", pid);
 		// Если процесс является мастер-процессом
 		if(cluster.master()){
@@ -82,24 +82,24 @@ int32_t main(int32_t argc, char * argv[]){
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие пересоздания процесса
 	cluster.on <void (const pid_t, const pid_t)> ("rebase", [&cluster, &log](const pid_t old_pid, const pid_t new_pid) noexcept -> void {
-		// Выводим событие перезапуска процесса
+		// Возвращаем событие перезапуска процесса
 		log.print("Cluster process [%u] has been reborn as process [%u]", log_t::flag_t::INFO, old_pid, new_pid);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения ошибок
 	cluster.on <void (const pid_t, const event::error_t, const string &)> ("error", [&cluster, &log](const pid_t pid, const event::error_t error, const string & message) noexcept -> void {
-		// Выводим событие получения ошибки
+		// Возвращаем событие получения ошибки
 		log.print("Cluster process [%u] has received error [%d]: %s", log_t::flag_t::CRITICAL, pid, static_cast <uint16_t >(error), message.c_str());
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие отправки сообщений
 	cluster.on <void (const pid_t, const size_t)> ("sending", [&cluster, &log](const pid_t pid, const size_t size) noexcept -> void {
-		// Выводим событие записи сообщения
+		// Возвращаем событие записи сообщения
 		log.print("Cluster process [%u] has sent message: %zu bytes, from PID=%u,", log_t::flag_t::INFO, ::getpid(), size, pid);
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения сообщений
 	cluster.on <void (const pid_t, const uint8_t *, const size_t)> ("message", [&cluster, &log](const pid_t pid, const uint8_t * data, const size_t size) noexcept -> void {
 		// Текст входящего сообщения
 		const string message(reinterpret_cast <const char *> (data), size);
-		// Выводим событие получения сообщения
+		// Возвращаем событие получения сообщения
 		log.print("Cluster process [%u] has received message: %zu bytes, from PID=%u, message: %s", log_t::flag_t::INFO, ::getpid(), size, pid, message.c_str());
 		/**
 		// Если процесс является мастер-процессом
@@ -111,21 +111,21 @@ int32_t main(int32_t argc, char * argv[]){
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
 	cluster.on <void (const pid_t, const event::status_t, const size_t)> ("available", [&cluster, &log](const pid_t pid, const event::status_t status, const size_t size) noexcept -> void {
-		// Выводим событие доступности очереди сообщений
+		// Возвращаем событие доступности очереди сообщений
 		log.print("Cluster process [%u] has message queue availability: %zu bytes, status: %s", log_t::flag_t::INFO, pid, size, (status == event::status_t::QUEUE_OVERFLOW) ? "overflow" : "available");
 	}, placeholders::_1, placeholders::_2, placeholders::_3);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса процесса
 	cluster.on <void (const pid_t, const event::status_t)> ("state", [&cluster, &log](const pid_t pid, const event::status_t status) noexcept -> void {
-		// Выводим событие изменения статуса
+		// Возвращаем событие изменения статуса
 		log.print("Cluster process [%u] state: %d", log_t::flag_t::INFO, pid, static_cast <uint16_t> (status));
 	}, placeholders::_1, placeholders::_2);
 	// Устанавливаем функцию обратного вызова на событие получения сигнала
 	cluster.on <void (const pid_t, const int32_t)> ("exit", [&cluster, &log](const pid_t pid, const int32_t signal) noexcept -> void {
-		// Выводим событие получения сигнала
+		// Возвращаем событие получения сигнала
 		log.print("Cluster process [%u] has received signal: %d", log_t::flag_t::CRITICAL, pid, signal);
 	}, placeholders::_1, placeholders::_2);
 	// Запускаем работу кластера
 	cluster.start();
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

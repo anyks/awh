@@ -975,7 +975,7 @@ namespace awh {
 				if(name != nullptr)
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (name, args...);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -997,7 +997,7 @@ namespace awh {
 				if(!name.empty())
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (name, args...);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -1019,7 +1019,7 @@ namespace awh {
 				if(!name.empty())
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (name, args...);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -1041,7 +1041,7 @@ namespace awh {
 				if(fid > 0)
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <T> (fid, args...);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 			/**
@@ -1064,7 +1064,7 @@ namespace awh {
 				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
 					// Выполняем установку функции обратного вызова
 					return this->_callback.on <B> (static_cast <uint32_t> (fid), args...);
-				// Выводим результат по умолчанию
+				// Возвращаем значение по умолчанию
 				return 0;
 			}
 		public:

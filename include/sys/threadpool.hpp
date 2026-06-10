@@ -135,7 +135,7 @@ namespace awh {
 			 * @return результат проверки
 			 */
 			bool initialized() const noexcept {
-				// Выводим результат проверки
+				// Возвращаем результат проверки
 				return !this->_workers.empty();
 			}
 		public:
@@ -214,7 +214,7 @@ namespace awh {
 			const size_t getTaskQueueSize() const noexcept {
 				// Выполняем блокировку уникальным мютексом
 				unique_lock <std::mutex> lock(this->_locker);
-				// Выводим количество заданий
+				// Возвращаем количество заданий
 				return this->_tasks.size();
 			}
 		public:
@@ -270,7 +270,7 @@ namespace awh {
 				}
 				// Сообщаем потокам, что появилась новая задача
 				this->_cv.notify_one();
-				// Выводим результат
+				// Возвращаем результат
 				return res;
 			}
 	} thr_t;

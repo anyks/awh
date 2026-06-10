@@ -507,7 +507,7 @@ namespace awh {
 				 * @brief Метод установки сертификатов доверенных центров сертификации
 				 *
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
-				 * @param filename адрес файла сертификата доверенных центров сертификации
+				 * @param filename путь к файлу сертификата доверенных центров сертификации
 				 */
 				void ca(const id_t id, string_view filename) noexcept;
 				/**
@@ -515,7 +515,7 @@ namespace awh {
 				 *
 				 * @param id   идентификатор транспортного уровня или шаблона контекста безопасности
 				 * @param dir  адрес директории с сертификатами доверенных центров сертификации
-				 * @param file адрес файла сертификата доверенного центра сертификации
+				 * @param file путь к файлу сертификата доверенного центра сертификации
 				 */
 				void ca(const id_t id, string_view dir, string_view file) noexcept;
 			public:
@@ -523,14 +523,14 @@ namespace awh {
 				 * @brief Метод установки списка отзыва сертификатов
 				 *
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
-				 * @param filename адрес файла списка отзыва сертификатов
+				 * @param filename путь к файлу списка отзыва сертификатов
 				 */
 				void certificateRevocationList(const id_t id, string_view filename) noexcept;
 				/**
 				 * @brief Метод установки приватного ключа клиента
 				 *
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
-				 * @param filename адрес файла приватного ключа клиента
+				 * @param filename путь к файлу приватного ключа клиента
 				 * @param type     тип файла приватного ключа клиента
 				 */
 				void privateKey(const id_t id, string_view filename, const type_t type = type_t::PEM) noexcept;
@@ -538,7 +538,7 @@ namespace awh {
 				 * @brief Метод установки клиентского сертификата
 				 *
 				 * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
-				 * @param filename адрес файла клиентского сертификата
+				 * @param filename путь к файлу клиентского сертификата
 				 * @param type     тип файла клиентского сертификата
 				 */
 				void certificate(const id_t id, string_view filename, const type_t type = type_t::PEM) noexcept;

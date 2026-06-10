@@ -121,13 +121,13 @@ namespace signals {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->debug("Killer detected APP=%s, USER=%s", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, name.c_str(), user);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->print("Killer detected APP=%s, USER=%s", awh::log_t::flag_t::WARNING, name.c_str(), user);
 							#endif
 						// Если имя пользователя не получено
@@ -136,13 +136,13 @@ namespace signals {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->debug("Killer detected APP=%s, UID=%u", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, name.c_str(), info->si_uid);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->print("Killer detected APP=%s, UID=%u", awh::log_t::flag_t::WARNING, name.c_str(), info->si_uid);
 							#endif
 						}
@@ -154,13 +154,13 @@ namespace signals {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->debug("Killer detected PID=%u, USER=%s", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, info->si_pid, user);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->print("Killer detected PID=%u, USER=%s", awh::log_t::flag_t::WARNING, info->si_pid, user);
 							#endif
 						// Если имя пользователя не получено
@@ -169,13 +169,13 @@ namespace signals {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->debug("Killer detected PID=%u, UID=%u", __PRETTY_FUNCTION__, make_tuple(signal), awh::log_t::flag_t::WARNING, info->si_pid, info->si_uid);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение в лог
+								// Записываем в лог сообщение в лог
 								self.log->print("Killer detected PID=%u, UID=%u", awh::log_t::flag_t::WARNING, info->si_pid, info->si_uid);
 							#endif
 						}

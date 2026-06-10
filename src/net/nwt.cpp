@@ -56,7 +56,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noe
 	this->params = ::move(url.params);
 	// Выполняем перемещение протокола URL-адреса
 	this->schema = ::move(url.schema);
-	// Выводим текущий объект
+	// Возвращаем текущий объект
 	return (* this);
 }
 /**
@@ -88,7 +88,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url
 	this->params = url.params;
 	// Выполняем копирование протокола URL-адреса
 	this->schema = url.schema;
-	// Выводим текущий объект
+	// Возвращаем текущий объект
 	return (* this);
 }
 /**
@@ -564,13 +564,13 @@ void awh::Network_Types::zone(string_view zone) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(zone), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -579,13 +579,13 @@ void awh::Network_Types::zone(string_view zone) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
@@ -596,7 +596,7 @@ void awh::Network_Types::zone(string_view zone) noexcept {
  *
  */
 const std::unordered_set <string> & awh::Network_Types::zones() const noexcept {
-	// Выводим список пользовательских зон интернета
+	// Возвращаем список пользовательских зон интернета
 	return this->_user;
 }
 /**
@@ -607,7 +607,7 @@ const std::unordered_set <string> & awh::Network_Types::zones() const noexcept {
 void awh::Network_Types::zones(const std::unordered_set <string> & zones) noexcept {
 	// Если список зон не пустой
 	if(!zones.empty())
-		// Выводим список пользовательских зон
+		// Возвращаем список пользовательских зон
 		this->_user = zones;
 }
 /**
@@ -625,7 +625,7 @@ void awh::Network_Types::clear() noexcept {
  * @return     параметры полученные в результате парсинга
  */
 awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	url_t result;
 	// Если текст передан
 	if(!text.empty()){
@@ -639,7 +639,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 			 * @param text текст для парсинга
 			 */
 			auto emailFn = [this](string_view text) noexcept -> url_t {
-				// Результат работы функции
+				// Переменная результата
 				url_t result;
 				// Если текст передан
 				if(!text.empty()){
@@ -659,7 +659,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 						result.domain = match[4];
 					}
 				}
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			};
 			/**
@@ -668,7 +668,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 			 * @param text текст для парсинга
 			 */
 			auto urlFn = [this](string_view text) noexcept -> url_t {
-				// Результат работы функции
+				// Переменная результата
 				url_t result;
 				// Если текст передан
 				if(!text.empty()){
@@ -714,7 +714,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 						result.type = types_t::URL;
 					}
 				}
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			};
 			/**
@@ -723,7 +723,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 			 * @param text текст для парсинга
 			 */
 			auto ipFn = [this](string_view text) noexcept -> url_t {
-				// Результат работы функции
+				// Переменная результата
 				url_t result;
 				// Если текст передан
 				if(!text.empty()){
@@ -754,7 +754,7 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 						}
 					}
 				}
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			};
 			// Очищаем результаты предыдущей работы
@@ -795,13 +795,13 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(text), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -810,19 +810,19 @@ awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -880,13 +880,13 @@ void awh::Network_Types::letters(string_view letters) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(letters), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -895,13 +895,13 @@ void awh::Network_Types::letters(string_view letters) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}

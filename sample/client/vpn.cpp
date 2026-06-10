@@ -93,17 +93,17 @@ class Executor {
 			switch(static_cast <uint8_t> (status)){
 				// Если статус уничтожения
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об уничтожении события
+					// Записываем в лог сообщение об уничтожении события
 					this->_log->print("Tunnel destroyed: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 				// Если статус инициализации
 				case static_cast <uint8_t> (event::status_t::INITIAL):
-					// Выводим сообщение об инициализации события
+					// Записываем в лог сообщение об инициализации события
 					this->_log->print("Tunnel initialized: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 				// Если статус запуска события
 				case static_cast <uint8_t> (event::status_t::LAUNCHED):
-					// Выводим сообщение о запуске события
+					// Записываем в лог сообщение о запуске события
 					this->_log->print("Tunnel launched: ID=%u", log_t::flag_t::INFO, eid);
 				break;
 			}
@@ -133,7 +133,7 @@ class Executor {
 				response.insert(response.end(), data, data + size);
 				// Отправляем данные обратно серверу
 				if(client->send(&response[0], response.size()) == 0)
-					// Выводим сообщение об ошибке отправки данных клиентом на сервер
+					// Записываем ошибку в лог отправки данных клиентом на сервер
 					this->_log->print("Failed to send data to server", log_t::flag_t::WARNING);
 			}
 		}
@@ -145,7 +145,7 @@ class Executor {
 		 * @param message сообщение об ошибке
 		 */
 		void errorVPN([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Tunnel error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
 	public:
@@ -156,7 +156,7 @@ class Executor {
 		 * @param size размер данных для записи
 		 */
 		void write(const event::id_t eid, const size_t size) noexcept {
-			// Выводим информацию о событии записи данных клиентом
+			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
 		}
 		/**
@@ -202,15 +202,15 @@ class Executor {
 							::memcpy(&clientIP, data + offset, record.size);
 							// Устанавливаем IP-адрес клиента в объект работы с сетевыми адресами
 							this->_addr.v4(clientIP);
-							// Выводим сообщение о получении рукопожатия с сервером и полученным IP-адресом клиента
+							// Записываем в лог сообщение о получении рукопожатия с сервером и полученным IP-адресом клиента
 							cout << "Received handshake from server with IP: " << static_cast <string> (this->_addr) << endl;
 							// Выполняем создание события туннеля
 							this->_tun = this->_tunnel->issue(event::family_t::IPV4);
 							// Устананавливаем опции события туннеля
 							if(this->_tunnel->setOptions(this->_tun, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
-								// Выводим сообщение об успешной установке опций события
+								// Записываем в лог сообщение об успешной установке опций события
 								cout << " Successfully set tunnel event options!" << endl;
-							// Выводим сообщение об ошибке установки опций события
+							// Записываем ошибку в лог установки опций события
 							else cout << " Failed to set tunnel event options!" << endl;
 							// Устанавливаем IP-адрес события туннеля и максимальный размер пакета для передачи данных по сети
 							if(this->_tunnel->setAddress(this->_tun, event::address_t::IPV4, this->_addr.source().get()) && this->_tunnel->setMaximumTransmissionUnit(this->_tun, 1400)){
@@ -236,9 +236,9 @@ class Executor {
 										awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = this->_addr.v4(net_addr_t::endian_t::LITTLE);
 										// Устанавливаем маршрут туннеля (sudo route -n add -net 10.0.0.0/24 -interface utun7)
 										if(this->_gateway.add(route))
-											// Выводим сообщение об успешной установке маршрута туннеля
+											// Записываем в лог сообщение об успешной установке маршрута туннеля
 											cout << " Tunnel route successfully added!" << endl;
-										// Выводим сообщение об успешном запуске события
+										// Записываем в лог сообщение об успешном запуске события
 										cout << " Server and tunnel event successfully launched!" << endl;
 									}
 								}
@@ -246,11 +246,11 @@ class Executor {
 						} break;
 						// Если действие не определено
 						default:
-							// Выводим сообщение о неизвестном действии
+							// Записываем в лог сообщение о неизвестном действии
 							this->_log->print("Received unknown action from server: %d", log_t::flag_t::WARNING, static_cast <uint16_t> (record.action));
 						break;
 					}
-				// Выводим сообщение о получении некорректных данных рукопожатия от клиента
+				// Записываем в лог сообщение о получении некорректных данных рукопожатия от клиента
 				} else this->_log->print("Received invalid data from server", log_t::flag_t::WARNING);
 			// Если данные не получены или мусор
 			} else this->_log->print("No data received or invalid data", log_t::flag_t::WARNING);
@@ -270,14 +270,14 @@ class Executor {
 				case static_cast <uint8_t> (event::status_t::LAUNCHED): {
 					// Выполняем подключение клиента к удалённому серверу
 					if(!client->connect())
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
 					// Если подключение выполнено, то выводим сообщение об успешном подключении клиента к удалённому серверу
 					else this->_log->print("Successfully connected to remote server", log_t::flag_t::INFO);
 				} break;
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события клиента
+					// Записываем в лог сообщение об остановке события клиента
 					this->_log->print("Client destroyed", log_t::flag_t::INFO);
 				break;
 			}
@@ -298,7 +298,7 @@ class Executor {
 				record.action = action_t::HANDSHAKE;
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(&record, sizeof(record)) == 0)
-					// Выводим сообщение об ошибке отправки данных клиентом на сервер
+					// Записываем ошибку в лог отправки данных клиентом на сервер
 					this->_log->print("Failed to send data to remote server", log_t::flag_t::WARNING);
 			// Если подключение не выполнено, то выводим сообщение об ошибке подключения клиента к удалённому серверу
 			} else this->_log->print("Failed to connect to remote server", log_t::flag_t::WARNING);
@@ -312,7 +312,7 @@ class Executor {
 		 * @param ip     IP-адрес клиента
 		 */
 		void ready([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
-			// Выводим сообщение о готовности клиента к работе
+			// Записываем в лог сообщение о готовности клиента к работе
 			this->_log->print("Client is ready to connect to remote server: %s (%s)", log_t::flag_t::INFO, domain.c_str(), ip.c_str());
 		}
 		/**
@@ -323,7 +323,7 @@ class Executor {
 		 * @param message сообщение об ошибке
 		 */
 		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
 	public:
@@ -368,9 +368,9 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
 	// Устананавливаем опции события
 	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
+		// Записываем в лог сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
-	// Выводим сообщение об ошибке установки опций события
+	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setTarget("anyks.com") && client.setDestinationPort(3333)){
@@ -401,6 +401,6 @@ int32_t main(int32_t argc, char * argv[]){
 		// Запускаем событие клиента
 		client.start();
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

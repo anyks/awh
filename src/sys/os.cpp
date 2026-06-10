@@ -402,7 +402,7 @@ using namespace std;
 	 * @return     результат проверки
 	 */
 	static string convert(wstring_view text) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		string result = "";
 		// Если текст для конвертации передан
 		if(!text.empty()){
@@ -421,7 +421,7 @@ using namespace std;
 				}
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -431,7 +431,7 @@ using namespace std;
 	 * @return     результат проверки
 	 */
 	static wstring convert(string_view text) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		wstring result = L"";
 		// Если текст для конвертации передан
 		if(!text.empty()){
@@ -450,7 +450,7 @@ using namespace std;
 				}
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 #endif
@@ -464,7 +464,7 @@ bool awh::Operating_System::isAdmin() const noexcept {
 	 * Для операционной системы не являющейся MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Выводим результат проверки
+		// Возвращаем результат проверки
 		return (::geteuid() == 0);
 	/**
 	 * Для операционной системы MS Windows
@@ -486,7 +486,7 @@ bool awh::Operating_System::isAdmin() const noexcept {
 			isAdmin = FALSE;
 		// Очищаем объект группы
 		::FreeSid(adminGroup);
-		// Выводим результат проверки
+		// Возвращаем результат проверки
 		return (isAdmin != FALSE);
 	#endif
 }
@@ -500,43 +500,43 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 	 * Операционной системой является Windows 32bit
 	 */
 	#ifdef _WIN32
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::WIND32;
 	/**
 	 * Операционной системой является Windows 64bit
 	 */
 	#elif _WIN64
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::WIND64;
 	/**
 	 * Операционной системой является MacOS X
 	 */
 	#elif __APPLE__ || __MACH__
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::MACOSX;
 	/**
 	 * Операционной системой является Linux
 	 */
 	#elif __linux__
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::LINUX;
 	/**
 	 * Операционной системой является FreeBSD
 	 */
 	#elif __FreeBSD__
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::FREEBSD;
 	/**
 	 * Операционной системой является NetBSD
 	 */
 	#elif __NetBSD__
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::NETBSD;
 	/**
 	 * Операционной системой является OpenBSD
 	 */
 	#elif __OpenBSD__
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::OPENBSD;
 	/**
 	 * Реализация под Sun Solaris
@@ -546,23 +546,23 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 		 * Если операционной системой является OpenSolaris
 		 */
 		#ifdef __illumos__
-			// Выводим флаг операционной системы
+			// Возвращаем флаг операционной системы
 			return family_t::ILLUMOS;
 		#else
-			// Выводим флаг операционной системы
+			// Возвращаем флаг операционной системы
 			return family_t::SOLARIS;
 		#endif
 	/**
 	 * Операционной системой является Unix
 	 */
 	#elif __unix || __unix__
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::UNIX;
 	/**
 	 * Операционной системой не распознана
 	 */
 	#else
-		// Выводим флаг операционной системы
+		// Возвращаем флаг операционной системы
 		return family_t::NONE;
 	#endif
 }
@@ -576,43 +576,43 @@ awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcep
 	 * Если процессор принадлежит к x86_64
 	 */
 	#if __x86_64__ || _M_X64
-		// Выводим определённую архитектуру процессора
+		// Возвращаем определённую архитектуру процессора
 		return cpu_t::AMD64;
 	/**
 	 * Если процессор принадлежит к ARM64
 	 */
 	#elif __aarch64__ || _M_ARM64
-		// Выводим определённую архитектуру процессора
+		// Возвращаем определённую архитектуру процессора
 		return cpu_t::ARM64;
 	/**
 	 * Если процессор принадлежит к ARM
 	 */
 	#elif __arm__ || _M_ARM
-		// Выводим определённую архитектуру процессора
+		// Возвращаем определённую архитектуру процессора
 		return cpu_t::ARM;
 	/**
 	 * Если процессор принадлежит к x86
 	 */
 	#elif __i386__ || _M_IX86
-		// Выводим определённую архитектуру процессора
+		// Возвращаем определённую архитектуру процессора
 		return cpu_t::X86;
 	/**
 	 * Если процессор принадлежит к PowerPC
 	 */
 	#elif __powerpc__ || __ppc__
-		// Выводим определённую архитектуру процессора
+		// Возвращаем определённую архитектуру процессора
 		return cpu_t::PPC;
 	/**
 	 * Если процессор принадлежит к MIPS
 	 */
 	#elif __mips__
-		// Выводим определённую архитектуру процессора
+		// Возвращаем определённую архитектуру процессора
 		return cpu_t::MIPS;
 	/**
 	 * Для остальных типов процессоров
 	 */
 	#else
-		// Выводим определённую архитектуру процессора
+		// Возвращаем определённую архитектуру процессора
 		return cpu_t::UNKNOWN;
 	#endif
 }
@@ -623,7 +623,7 @@ awh::Operating_System::cpu_t awh::Operating_System::architecture() const noexcep
  * @return     размер расхода памяти
  */
 size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	size_t result = 0;
 	/**
 	 * Выполняем отлов ошибок
@@ -661,13 +661,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 							#endif
 						// Выполняем извлечение размера пика потребляемой памяти
@@ -686,16 +686,16 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, "Unable to access to determine memory consumption");
 							#endif
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// Выполняем извлечение размера пика потребляемой памяти
@@ -716,16 +716,16 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// RSS в страницах; переводим в байты
@@ -744,16 +744,16 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// Выполняем чтение данных потребления памяти
@@ -762,18 +762,18 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выполняем закрытие файлового дескриптора
 							::fclose(file);
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// Выполняем закрытие файлового дескриптора
@@ -794,16 +794,16 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// Выполняем чтение данных потребления памяти
@@ -812,18 +812,18 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
 							// Выполняем закрытие файлового дескриптора
 							::close(sock);
-							// Выводим пустой результат
+							// Возвращаем пустой результат
 							return result;
 						}
 						// Выполняем закрытие файлового дескриптора
@@ -851,13 +851,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 						#endif
 					// Выполняем извлечение размера пика потребляемой памяти
@@ -876,16 +876,16 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим пустой результат
+						// Возвращаем пустой результат
 						return result;
 					}
 					// Выполняем чтение данных потребления памяти
@@ -894,18 +894,18 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Выполняем закрытие файлового дескриптора
 						::close(sock);
-						// Выводим пустой результат
+						// Возвращаем пустой результат
 						return result;
 					}
 					// Выполняем закрытие файлового дескриптора
@@ -924,13 +924,13 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 					// Если данные получили удачно
@@ -960,17 +960,17 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -982,11 +982,11 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 	 * Если используется аллокатор TcMalloc
 	 */
 	#if __AWH_USE_TCMALLOC__
-		// Выводим разделители
+		// Печатаем разделители
 		cout << "*************** START ***************" << endl << endl << flush;
-		// Выводим статус занятой памяти
+		// Возвращаем статус занятой памяти
 		MallocExtension::instance()->PrintStats();
-		// Выводим разделители
+		// Печатаем разделители
 		cout << endl << "---------------- END ----------------" << endl << endl << flush;
 	/**
 	 * Если аллокатор TcMalloc не используется
@@ -996,13 +996,13 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		#endif
 	#endif
@@ -1087,7 +1087,7 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 		void * p = ::malloc(size);
 		// Если память не выделена
 		if(p == nullptr)
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return false;
 		/**
 		 * Если операционной системой является Linux
@@ -1100,10 +1100,10 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 		#endif
 		// Освобождаем — tcmalloc/jemalloc сохранят регион в пуле
 		::free(p);
-		// Выводим положительный результат
+		// Возвращаем true
 		return true;
 	}
-	// Выводим отрицательный результат
+	// Возвращаем false
 	return false;
 }
 /**
@@ -1113,7 +1113,7 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
  * @return     результат выполнения операции
  */
 bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Если используется аллокатор TcMalloc
@@ -1184,17 +1184,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(mode), log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, "Memory operations only work in the release build");
 		#endif
 	#endif
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1207,7 +1207,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return идентификатор текущего пользователя
 	 */
 	uid_t awh::Operating_System::user() const noexcept {
-		// Выводим идентификатор текущего пользователя
+		// Возвращаем идентификатор текущего пользователя
 		return ::geteuid();
 	}
 	/**
@@ -1216,7 +1216,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return идентификатор группы текущего пользователя
 	 */
 	gid_t awh::Operating_System::group() const noexcept {
-		// Выводим идентификатор группы пользователя
+		// Возвращаем идентификатор группы пользователя
 		return ::getegid();
 	}
 	/**
@@ -1225,7 +1225,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return список групп текущего пользователя
 	 */
 	vector <gid_t> awh::Operating_System::groups() const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		vector <gid_t> result;
 		// Буфер данных для извлечения данных
 		char buffer[1024];
@@ -1281,13 +1281,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 					// Очищаем список групп пользователя
@@ -1300,17 +1300,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1328,7 +1328,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		struct passwd * data = nullptr;
 		// Выполняем извлечение данных пользователя
 		if((::getpwuid_r(uid, &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
-			// Выводим имя пользователя
+			// Печатаем имя пользователя
 			return string(pwd.pw_name);
 		// Если данные пользователя не извлечены
 		else {
@@ -1336,17 +1336,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return "";
 	}
 	/**
@@ -1364,7 +1364,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		struct group * data = nullptr;
 		// Выполняем извлечение данных группы пользователя
 		if((::getgrgid_r(gid, &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
-			// Выводим имя пользователя
+			// Печатаем имя пользователя
 			return string(grp.gr_name);
 		// Если данные пользователя не извлечены
 		else {
@@ -1372,17 +1372,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return "";
 	}
 	/**
@@ -1402,7 +1402,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			struct group * data = nullptr;
 			// Выполняем извлечение данных группы пользователя
 			if((::getgrnam_r(name.data(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
-				// Выводим идентификатор группы пользователя
+				// Возвращаем идентификатор группы пользователя
 				return grp.gr_gid;
 			// Если данные группы пользователя не извлечены
 			else {
@@ -1410,18 +1410,18 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return 0;
 	}
 	/**
@@ -1441,7 +1441,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
 			if((::getpwnam_r(name.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
-				// Выводим идентификатор пользователя
+				// Возвращаем идентификатор пользователя
 				return pwd.pw_uid;
 			// Если данные пользователя не извлечены
 			else {
@@ -1449,18 +1449,18 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return 0;
 	}
 	/**
@@ -1480,7 +1480,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			struct passwd * data = nullptr;
 			// Выполняем извлечение данных пользователя
 			if((::getpwnam_r(name.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
-				// Выводим идентификатор группы пользователя
+				// Возвращаем идентификатор группы пользователя
 				return pwd.pw_gid;
 			// Если данные пользователя не извлечены
 			else {
@@ -1488,18 +1488,18 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return 0;
 	}
 	/**
@@ -1509,7 +1509,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return     список групп пользователя
 	 */
 	vector <gid_t> awh::Operating_System::groups(string_view user) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		vector <gid_t> result;
 		// Если имя пользователя передано
 		if(!user.empty()){
@@ -1567,13 +1567,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Очищаем список групп пользователя
@@ -1586,18 +1586,18 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1609,7 +1609,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	bool awh::Operating_System::chown(const uid_t uid) const noexcept {
 		// Если идентификатор пользователя успешно установлен
 		if(::setuid(uid) == 0)
-			// Выводим положительный результат
+			// Возвращаем true
 			return true;
 		// Если идентификатор пользователя не установлен
 		else {
@@ -1617,17 +1617,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return false;
 	}
 	/**
@@ -1642,7 +1642,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		if(::setuid(uid) == 0){
 			// Если идентификатор групы пользователя успешно установлен
 			if(::setgid(gid) == 0)
-				// Выводим положительный результат
+				// Возвращаем true
 				return true;
 			// Если идентификатор группы пользователя не установлен
 			else {
@@ -1650,17 +1650,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return false;
 		// Если идентификатор пользователя не установлен
 		} else {
@@ -1668,17 +1668,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(uid, gid), log_t::flag_t::CRITICAL, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return false;
 	}
 	/**
@@ -1705,7 +1705,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				struct group * data = nullptr;
 				// Выполняем извлечение данных группы пользователя
 				if((::getgrnam_r(group.data(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
-					// Выводим установку права доступа
+					// Возвращаем установку права доступа
 					return this->chown(pwd.pw_uid, grp.gr_gid);
 				// Если данные группы пользователя не извлечены
 				else {
@@ -1713,13 +1713,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -1729,18 +1729,18 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user, group), log_t::flag_t::CRITICAL, ::strerror(errno));
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return false;
 	}
 /**
@@ -1753,7 +1753,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return идентификатор текущего пользователя
 	 */
 	wstring awh::Operating_System::user() const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		wstring result = L"";
 		// Токен текущего процесса
 		HANDLE token = nullptr;
@@ -1769,17 +1769,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 		// Размер буфера данных пользователя
@@ -1800,19 +1800,19 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
 			::CloseHandle(token);
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 		// Выделяем память под токен пользователя
@@ -1829,19 +1829,19 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
 			::CloseHandle(token);
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 		// Получаем информацию о пользователе
@@ -1862,7 +1862,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		::LocalFree(tokenUser);
 		// Закрываем токен процесса
 		::CloseHandle(token);
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1871,7 +1871,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return список групп текущего пользователя
 	 */
 	vector <wstring> awh::Operating_System::groups() const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		vector <wstring> result;
 		// Токен текущего процесса
 		HANDLE token = nullptr;
@@ -1887,17 +1887,17 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 		// Размер буфера данных пользователя
@@ -1918,19 +1918,19 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
 			::CloseHandle(token);
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 		// Выделяем память под токен группы
@@ -1947,19 +1947,19 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
 			}
 			// Закрываем токен
 			::CloseHandle(token);
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 		// Сначала получаем размер буфера
@@ -1983,7 +1983,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		::LocalFree(tokenGroups);
 		// Закрываем токен процесса
 		::CloseHandle(token);
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1993,7 +1993,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return    имя запрашиваемого пользователя/группы
 	 */
 	string awh::Operating_System::account(wstring_view sid) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		string result = "";
 		// Если идентификатор пользователя передан
 		if(!sid.empty()){
@@ -2017,16 +2017,16 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
-					// Выводим результат
+					// Возвращаем результат
 					return result;
 				}
 				// Инициализируем имя пользователя
@@ -2058,19 +2058,19 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(::convert(sid)), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2080,7 +2080,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return     полученный идентификатор пользователя/группы
 	 */
 	wstring awh::Operating_System::account(string_view name) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		wstring result = L"";
 		// Если имя пользователя/группы передано
 		if(!name.empty()){
@@ -2111,16 +2111,16 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 			// Инициализируем доменное имя пользователя
@@ -2144,7 +2144,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Освобождаем ресурсы
 			::LocalFree(pSid);
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2154,7 +2154,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return     список групп пользователя
 	 */
 	vector <wstring> awh::Operating_System::groups(string_view user) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		vector <wstring> result;
 		// Если имя пользователя передано
 		if(!user.empty()){
@@ -2176,16 +2176,16 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 				#endif
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 			// Инициализируем доменное имя пользователя
@@ -2196,7 +2196,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			if(!::LookupAccountNameW(nullptr, account.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
-				// Выводим пустой результат
+				// Возвращаем пустой результат
 				return result;
 			}
 			/**
@@ -2218,19 +2218,19 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
-				// Выводим пустой результат
+				// Возвращаем пустой результат
 				return result;
 			}
 			// Размер буфера данных
@@ -2249,13 +2249,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
@@ -2263,7 +2263,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				::CloseHandle(token);
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 			// Выделяем память под токен группы
@@ -2280,13 +2280,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(user), log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::convert(message).c_str());
 					#endif
 				}
@@ -2294,7 +2294,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				::CloseHandle(token);
 				// Освобождаем ресурсы
 				::LocalFree(pSid);
-				// Выводим результат
+				// Возвращаем результат
 				return result;
 			}
 			// Сначала получаем размер буфера
@@ -2321,7 +2321,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Освобождаем ресурсы
 			::LocalFree(pSid);
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 #endif
@@ -2342,7 +2342,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return     полученное значение записи
 	 */
 	T awh::Operating_System::sysctl(string_view name) const noexcept {
-		// Результат работы функции
+		// Переменная результата
 		T result;
 		// Если данные являются основными
 		if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
@@ -2367,7 +2367,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					::metadata(buffer, result);
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2692,6 +2692,6 @@ string awh::Operating_System::exec(string_view cmd, const bool multiline) const 
 			}
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }

@@ -515,7 +515,7 @@ namespace ssl {
 	 * @return        сформированное сообщение об ошибке
 	 */
 	static string error(const ::tls::coder_t::id_t id, string_view message = "") noexcept {
-		// Результат работы функции
+		// Переменная результата
 		string result = "";
 		/**
 		 * Определяем уровень транспортной безопасности
@@ -523,7 +523,7 @@ namespace ssl {
 		switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
 			// Если уровень является шаблонным контекстом безопасности
 			case static_cast <uint8_t> (layer_t::CTS):
-				// Выводим сообщение об ошибка как оно передано
+				// Записываем в лог сообщение об ошибка как оно передано
 				return string{message};
 			// Если уровень является транспортной передачей данных
 			case static_cast <uint8_t> (layer_t::CTL): {
@@ -573,7 +573,7 @@ namespace ssl {
 						} while((error = ::ERR_get_error()));
 					// Если получено дополнительное сообщение
 					} else if(!message.empty())
-						// Выводим сообщение об ошибка как оно передано
+						// Записываем в лог сообщение об ошибка как оно передано
 						return string{message};
 				/**
 				 * Если возникает ошибка
@@ -590,7 +590,7 @@ namespace ssl {
 				}
 			} break;
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -629,12 +629,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientHello", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientHello", size);
 							break;
 						}
@@ -649,12 +649,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHello", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHello", size);
 							break;
 						}
@@ -669,12 +669,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "Certificate", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Certificate", size);
 							break;
 						}
@@ -689,12 +689,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloRequest", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloRequest", size);
 							break;
 						}
@@ -709,12 +709,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "NewSessionTicket", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "NewSessionTicket", size);
 							break;
 						}
@@ -729,12 +729,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "EndOfEarlyData", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "EndOfEarlyData", size);
 							break;
 						}
@@ -749,12 +749,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "EncryptedExtensions", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "EncryptedExtensions", size);
 							break;
 						}
@@ -769,12 +769,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerKeyExchange", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerKeyExchange", size);
 							break;
 						}
@@ -789,12 +789,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateRequest", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateRequest", size);
 							break;
 						}
@@ -809,12 +809,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ServerHelloDone", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ServerHelloDone", size);
 							break;
 						}
@@ -829,12 +829,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateVerify", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateVerify", size);
 							break;
 						}
@@ -849,12 +849,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "ClientKeyExchange", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "ClientKeyExchange", size);
 							break;
 						}
@@ -874,12 +874,12 @@ namespace ssl {
 							switch(static_cast <uint8_t> (member->node)){
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateURL", size);
 								break;
 								// Если узел является сервером
 								case static_cast <uint8_t> (event::node_t::SERVER):
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateURL", size);
 								break;
 							}
@@ -895,12 +895,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CertificateStatus", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CertificateStatus", size);
 							break;
 						}
@@ -915,12 +915,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "SupplementalData", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "SupplementalData", size);
 							break;
 						}
@@ -935,12 +935,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "KeyUpdate", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "KeyUpdate", size);
 							break;
 						}
@@ -955,12 +955,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "CompressedCertificate", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "CompressedCertificate", size);
 							break;
 						}
@@ -975,12 +975,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "HelloVerifyRequest", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "HelloVerifyRequest", size);
 							break;
 						}
@@ -995,12 +995,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "MessageHash", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "MessageHash", size);
 							break;
 						}
@@ -1015,12 +1015,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "Finished", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Finished", size);
 							break;
 						}
@@ -1040,12 +1040,12 @@ namespace ssl {
 							switch(static_cast <uint8_t> (member->node)){
 								// Если узел является клиентом
 								case static_cast <uint8_t> (event::node_t::CLIENT):
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "NextProto", size);
 								break;
 								// Если узел является сервером
 								case static_cast <uint8_t> (event::node_t::SERVER):
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "NextProto", size);
 								break;
 							}
@@ -1061,12 +1061,12 @@ namespace ssl {
 						switch(static_cast <uint8_t> (member->node)){
 							// Если узел является клиентом
 							case static_cast <uint8_t> (event::node_t::CLIENT):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? ">>>" : "<<<"), "Handshake", size);
 							break;
 							// Если узел является сервером
 							case static_cast <uint8_t> (event::node_t::SERVER):
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s %s (%zu bytes)", log_t::flag_t::INFO, (write ? "<<<" : ">>>"), "Handshake", size);
 							break;
 						}
@@ -1087,7 +1087,7 @@ namespace ssl {
 	 * @return        результат переключения протокола
 	 */
 	static bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, const uint8_t inSize, const uint8_t * key, const uint8_t keySize) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Выполняем перебор всех данных в входящем буфере
 		for(uint8_t i = 0; (i + keySize) <= inSize; i += static_cast <uint8_t> (in[i] + 1)){
@@ -1101,7 +1101,7 @@ namespace ssl {
 				break;
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1128,10 +1128,10 @@ namespace ssl {
 				(* data) = &member->alpn.buffer[0];
 				// Выполняем установку размер буфера данных протокола
 				(* len) = static_cast <uint32_t> (member->alpn.buffer.size());
-				// Выводим результат
+				// Возвращаем результат
 				return SSL_TLSEXT_ERR_OK;
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return SSL_TLSEXT_ERR_NOACK;
 		}
 		/**
@@ -1162,7 +1162,7 @@ namespace ssl {
 					if(::ssl::selectProto(out, outSize, in, static_cast <uint8_t> (inSize), &member->alpn.buffer[i], size + 1)){
 						// Выполняем переключение на выбранный протокол
 						member->alpn.id = member->alpn.ids[index];
-						// Выводим результат
+						// Возвращаем результат
 						return SSL_TLSEXT_ERR_OK;
 					}
 					// Переходим к следующему протоколу
@@ -1171,7 +1171,7 @@ namespace ssl {
 					index++;
 				}
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return SSL_TLSEXT_ERR_NOACK;
 		}
 	#endif // !OPENSSL_NO_NEXTPROTONEG
@@ -1207,7 +1207,7 @@ namespace ssl {
 					if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, static_cast <uint8_t> (inSize), &member->alpn.buffer[i], size + 1)){
 						// Выполняем переключение на выбранный протокол
 						member->alpn.id = member->alpn.ids[index];
-						// Выводим результат
+						// Возвращаем результат
 						return SSL_TLSEXT_ERR_OK;
 					}
 					// Переходим к следующему протоколу
@@ -1216,7 +1216,7 @@ namespace ssl {
 					index++;
 				}
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return SSL_TLSEXT_ERR_NOACK;
 		}
 	#endif // OPENSSL_VERSION_NUMBER >= 0x10002000L
@@ -1233,7 +1233,7 @@ namespace ssl {
 		 * @return      результат проверки
 		 */
 		static bool addCertToStore(X509_STORE * store, string_view name, const awh::log_t * log) noexcept {
-			// Результат работы функции
+			// Переменная результата
 			bool result = false;
 			// Если объекты переданы верно
 			if((store != nullptr) && !name.empty()){
@@ -1245,16 +1245,16 @@ namespace ssl {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, "Failed to open system certificate store");
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->print("%s", log_t::flag_t::CRITICAL, "Failed to open system certificate store");
 					#endif
-					// Выводим результат
+					// Возвращаем результат
 					return result;
 				}
 				// Контекст сертификата
@@ -1279,13 +1279,13 @@ namespace ssl {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, "X509 creation failed");
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, "X509 creation failed");
 						#endif
 						// Выходим из цикла
@@ -1295,7 +1295,7 @@ namespace ssl {
 				// Закрываем системный стор
 				::CertCloseStore(sys, 0);
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 	#endif
@@ -1340,11 +1340,11 @@ namespace ssl {
 				if(!buffer.empty()){
 					// Выполняем копирование данных в выходной буфер
 					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
-						// Выводим положительный результат
+						// Возвращаем true
 						return 1;
 				}
 			}
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return 0;
 		}
 		/**
@@ -1373,11 +1373,11 @@ namespace ssl {
 				if(!buffer.empty()){
 					// Выполняем копирование данных в выходной буфер
 					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
-						// Выводим положительный результат
+						// Возвращаем true
 						return 1;
 				}
 			}
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return 0;
 		}
 		/**
@@ -1406,11 +1406,11 @@ namespace ssl {
 				if(!buffer.empty()){
 					// Выполняем копирование данных в выходной буфер
 					if(::CBB_add_bytes(out, &buffer[0], buffer.size()))
-						// Выводим положительный результат
+						// Возвращаем true
 						return 1;
 				}
 			}
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return 0;
 		}
 		/**
@@ -1438,16 +1438,16 @@ namespace ssl {
 				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, buffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(buffer.size() != length)
-					// Выводим отрицательный результат
+					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
 				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
-					// Выводим положительный результат
+					// Возвращаем true
 					return 1;
 			}
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return 0;
 		}
 		/**
@@ -1475,16 +1475,16 @@ namespace ssl {
 				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, buffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(buffer.size() != length)
-					// Выводим отрицательный результат
+					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
 				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
-					// Выводим положительный результат
+					// Возвращаем true
 					return 1;
 			}
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return 0;
 		}
 		/**
@@ -1512,16 +1512,16 @@ namespace ssl {
 				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, buffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(buffer.size() != length)
-					// Выводим отрицательный результат
+					// Возвращаем false
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
 				(* out) = ::CRYPTO_BUFFER_new(&buffer[0], buffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
-					// Выводим положительный результат
+					// Возвращаем true
 					return 1;
 			}
-			// Выводим отрицательный результат
+			// Возвращаем false
 			return 0;
 		}
 	};
@@ -1551,7 +1551,7 @@ namespace ssl {
 		 * @return         результат выполнения функции (1 - успех, 0 - ошибка)
 		 */
 		static int32_t ssl_use_certificate_chain_file(SSL * ssl, const char * filename) noexcept {
-			// Результат работы функции
+			// Переменная результата
 			int32_t result = 0;
 			// Открываем PEM-файл через BIO
 			BIO * bio = ::BIO_new_file(filename, "r");
@@ -1594,7 +1594,7 @@ namespace ssl {
 				// Закрываем BIO
 				::BIO_free(bio);
 			}
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 	};
@@ -1646,13 +1646,13 @@ namespace cookie {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 				}
@@ -1688,13 +1688,13 @@ namespace cookie {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
 				#endif
 			}
@@ -1730,7 +1730,7 @@ namespace cookie {
 		::memcpy(cookie, result, length);
 		// Устанавливаем размер буфера cookie
 		(* size) = length;
-		// Выводим положительный ответ
+		// Возвращаем true
 		return 1;
 	}
 	/**
@@ -1752,7 +1752,7 @@ namespace cookie {
 			const int32_t result = ::cookie::generate(ssl, cookie, &length);
 			// Получаем размер буфера с печенками
 			(* size) = length;
-			// Выводим результат
+			// Возвращаем результат
 			return result;
 		}
 	#endif // !OPENSSL_IS_BORINGSSL
@@ -1801,13 +1801,13 @@ namespace cookie {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
 				#endif
 			}
@@ -1895,13 +1895,13 @@ namespace verify {
 	 * @return       результат проверки
 	 */
 	static bool equal(string_view first, string_view second) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Если данные переданы
 		if(!first.empty() && !second.empty())
 			// Проверяем совпадение строки
 			result = (first.compare(second) == 0);
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1913,13 +1913,13 @@ namespace verify {
 	 * @return       результат проверки
 	 */
 	static bool noqual(string_view first, string_view second, size_t max) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Если данные переданы
 		if(!first.empty() && !second.empty())
 			// Проверяем совпадение строки
 			result = (first.substr(max, first.length() - max).compare(second.substr(max, second.length() - max)) == 0);
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1930,7 +1930,7 @@ namespace verify {
 	 * @return     результат проверки
 	 */
 	static bool hostmatch(string_view host, string_view fqdn) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = true;
 		// Если данные переданы
 		if(!host.empty() && !fqdn.empty()){
@@ -1968,7 +1968,7 @@ namespace verify {
 				::verify::noqual(fqdn.substr(pos1 + 1, length), host.substr(pos3 - length, length), length)
 			);
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -1980,7 +1980,7 @@ namespace verify {
 	 * @return    результат обработки
 	 */
 	static int32_t matchSNI(SSL * ssl, int32_t * al, [[maybe_unused]] void * ctx) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		int32_t result = SSL_TLSEXT_ERR_NOACK;
 		// Получаем название хоста (SNI) от клиента
 		const char * sni = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
@@ -2030,18 +2030,18 @@ namespace verify {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
 				#endif
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2052,13 +2052,13 @@ namespace verify {
 	 * @return     результат проверки
 	 */
 	static bool certHostcheck(string_view host, string_view fqdn) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Если данные переданы
 		if(!host.empty() && !fqdn.empty())
 			// Проверяем эквивалентны ли домен и шаблон
 			result = (::verify::equal(host, fqdn) || ::verify::hostmatch(host, fqdn));
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2069,7 +2069,7 @@ namespace verify {
 	 * @return     результат проверки
 	 */
 	static status_t matchSubjectName(string_view host, const X509 * x509) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
 		if(!host.empty() && (x509 != nullptr)){
@@ -2112,7 +2112,7 @@ namespace verify {
 						result = status_t::MatchFound;
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2123,7 +2123,7 @@ namespace verify {
 	 * @return     результат проверки
 	 */
 	static status_t matchesCommonName(string_view host, const X509 * x509) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		status_t result = status_t::MatchNotFound;
 		// Если данные переданы
 		if(!host.empty() && (x509 != nullptr)){
@@ -2131,26 +2131,26 @@ namespace verify {
 			const int32_t cnl = ::X509_NAME_get_index_by_NID(X509_get_subject_name(const_cast <X509 *> (x509)), NID_commonName, -1);
 			// Если индекс не получен тогда выходим
 			if(cnl < 0)
-				// Выводим сформированную ошибку
+				// Формируем текст ошибки
 				return status_t::Error;
 			// Извлекаем поле "CN"
 			X509_NAME_ENTRY * cne = ::X509_NAME_get_entry(X509_get_subject_name(const_cast <X509 *> (x509)), cnl);
 			// Если поле не получено тогда выходим
 			if(cne == nullptr)
-				// Выводим сформированную ошибку
+				// Формируем текст ошибки
 				return status_t::Error;
 			// Конвертируем "CN" поле в "C" строку
 			ASN1_STRING * cna = ::X509_NAME_ENTRY_get_data(cne);
 			// Если строка не сконвертирована тогда выходим
 			if(cna == nullptr)
-				// Выводим сформированную ошибку
+				// Формируем текст ошибки
 				return status_t::Error;
 			// Выполняем рукопожатие
 			if(::verify::certHostcheck(host, string(reinterpret_cast <char *> (const_cast <uint8_t *> (::ASN1_STRING_get0_data(cna))), ::ASN1_STRING_length(cna))))
-				// Выводим сформированную ошибку
+				// Формируем текст ошибки
 				return status_t::MatchFound;
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2161,7 +2161,7 @@ namespace verify {
 	 * @return     результат проверки
 	 */
 	static status_t validateHostname(string_view host, const X509 * x509) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		status_t result = status_t::Error;
 		// Если данные переданы
 		if(!host.empty() && (x509 != nullptr)){
@@ -2172,7 +2172,7 @@ namespace verify {
 				// Выполняем проверку имени хоста по общему имени у сертификата
 				result = ::verify::matchesCommonName(host, x509);
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -2195,28 +2195,28 @@ namespace verify {
 				if(x509 != nullptr){
 					// Буфер данных для получения данных
 					char buffer[0xFF];
-					// Выводим начальный разделитель
+					// Печатаем разделитель в отладочный вывод
 					printf("------------------------------------------------------------\n\n");
-					// Выводим заголовок
+					// Печатаем заголовок в отладочный вывод
 					printf("Current certificate verification:\n");
 					// Получаем название сертификата
 					::X509_NAME_oneline(::X509_get_subject_name(x509), buffer, sizeof(buffer));
-					// Выводим название сертификата
+					// Возвращаем название сертификата
 					printf("Subject: %s\n", buffer);
 					// Получаем эмитента выпустившего сертификат
 					::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
-					// Выводим эмитента сертификата
+					// Возвращаем эмитента сертификата
 					printf("Issuer: %s\n", buffer);
-					// Выводим информацию о ошибке
+					// Записываем в лог информацию о ошибке
 					printf("Error: %s\n", ::X509_verify_cert_error_string(::X509_STORE_CTX_get_error(store)));
-					// Выводим информацию об успешной проверке
+					// Записываем в лог информацию об успешной проверке
 					printf("Status: Certificate verified successfully at depth %d\n", ::X509_STORE_CTX_get_error_depth(store));
-					// Выводим конечный разделитель
+					// Печатаем конечный разделитель
 					printf("\n------------------------------------------------------------\n\n");
 				}
 			}
 		#endif
-		// Выводим результат
+		// Возвращаем результат
 		return ok;
 	}
 	/**
@@ -2243,11 +2243,11 @@ namespace verify {
 				switch(static_cast <uint8_t> (member->node)){
 					// Если узел является клиентом
 					case static_cast <uint8_t> (event::node_t::CLIENT):
-						// Выводим сообщение, что проверка пройдена
+						// Печатаем сообщение об успешной проверке
 						return ::verify::certificate(1, store);
 					// Если узел является сервером
 					case static_cast <uint8_t> (event::node_t::SERVER):
-						// Выводим сообщение, что проверка пройдена
+						// Печатаем сообщение об успешной проверке
 						return 1;
 				}
 			}
@@ -2279,13 +2279,13 @@ namespace verify {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -2315,13 +2315,13 @@ namespace verify {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -2343,7 +2343,7 @@ namespace verify {
 								#if DEBUG_MODE
 									// Получаем объект логирования
 									awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
-									// Выводим в лог сообщение
+									// Записываем в лог сообщение
 									log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.c_str(), fqdn);
 								#endif
 							// Если ресурс не найден тогда выводим сообщение об ошибке
@@ -2406,13 +2406,13 @@ namespace verify {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -2422,7 +2422,7 @@ namespace verify {
 				}
 			}
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 };
@@ -2452,7 +2452,7 @@ void awh::tls::Coder::fingerprint(const fgp_t * fgp) noexcept {
  * @return   общая информация о TLS соединении
  */
 string awh::tls::Coder::info(const id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -2486,13 +2486,13 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -2665,17 +2665,17 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -2685,7 +2685,7 @@ string awh::tls::Coder::info(const id_t id) const noexcept {
  * @return   информация о одноразовом узле TLS
  */
 string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -2732,7 +2732,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"OpenSSL version mismatch!\n"
 									"Compiled against %s\n"
@@ -2745,13 +2745,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								);
 								// Если мажорная и минорная версия OpenSSL не совпадают
 								if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
-									// Выводим в лог сообщение
+									// Записываем в лог сообщение
 									this->_log->debug("Major and minor version numbers must match, exiting", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим в лог сообщение
+								// Записываем в лог сообщение
 								this->_log->print(
 									"OpenSSL version mismatch!\r\n"
 									"Compiled against %s\r\n"
@@ -2762,7 +2762,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								);
 								// Если мажорная и минорная версия OpenSSL не совпадают
 								if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
-									// Выводим в лог сообщение
+									// Записываем в лог сообщение
 									this->_log->print("Major and minor version numbers must match, exiting", log_t::flag_t::CRITICAL);
 							#endif
 						}
@@ -2787,13 +2787,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим в лог сообщение
+								// Записываем в лог сообщение
 								this->_log->debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим в лог сообщение
+								// Записываем в лог сообщение
 								this->_log->print("%s is unsupported, use OpenSSL Version 1.1.1a or higher", log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							#endif
 						}
@@ -2822,17 +2822,17 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -2853,19 +2853,19 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
 							// Выполняем очистку BIO
 							::BIO_free(bio);
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Получаем размер данных
@@ -2874,7 +2874,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 						const size_t length = static_cast <size_t> (::BIO_get_mem_data(bio, &data));
 						// Если информация получена
 						if(length > 0)
-							// Выводим параметры шифрования
+							// Возвращаем параметры шифрования
 							result = ::move(this->_fmk->format("%sCertificate Revocation List: %s\n", result.c_str(), string(data, length).c_str()));
 						// Выполняем очистку BIO
 						::BIO_free(bio);
@@ -2915,7 +2915,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"OpenSSL version mismatch!\n"
 									"Compiled against %s\n"
@@ -2928,13 +2928,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								);
 								// Если мажорная и минорная версия OpenSSL не совпадают
 								if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
-									// Выводим в лог сообщение
+									// Записываем в лог сообщение
 									this->_log->debug("Major and minor version numbers must match, exiting", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL);
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим в лог сообщение
+								// Записываем в лог сообщение
 								this->_log->print(
 									"OpenSSL version mismatch!\r\n"
 									"Compiled against %s\r\n"
@@ -2945,7 +2945,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								);
 								// Если мажорная и минорная версия OpenSSL не совпадают
 								if((::OpenSSL_version_num() >> 20) != (OPENSSL_VERSION_NUMBER >> 20))
-									// Выводим в лог сообщение
+									// Записываем в лог сообщение
 									this->_log->print("Major and minor version numbers must match, exiting", log_t::flag_t::CRITICAL);
 							#endif
 						}
@@ -2970,13 +2970,13 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим в лог сообщение
+								// Записываем в лог сообщение
 								this->_log->debug("%s is unsupported, use OpenSSL Version 1.1.1a or higher", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим в лог сообщение
+								// Записываем в лог сообщение
 								this->_log->print("%s is unsupported, use OpenSSL Version 1.1.1a or higher", log_t::flag_t::CRITICAL, ::OpenSSL_version(OPENSSL_VERSION));
 							#endif
 						}
@@ -3005,7 +3005,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
 									result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
-									// Выводим параметры шифрования
+									// Возвращаем параметры шифрования
 									result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
 								}
 								// Выполняем получение сертификата сервера
@@ -3020,7 +3020,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
 									result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
-									// Выводим параметры шифрования
+									// Возвращаем параметры шифрования
 									result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
 									// Освобождаем объект сертификата
 									::X509_free(x509);
@@ -3042,7 +3042,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 									::X509_NAME_oneline(::X509_get_issuer_name(x509), buffer, sizeof(buffer));
 									// Формируем результат
 									result = ::move(this->_fmk->format("%sIssuer: %s\n", result.c_str(), buffer));
-									// Выводим параметры шифрования
+									// Возвращаем параметры шифрования
 									result = ::move(this->_fmk->format("%sCipher: %s\n", result.c_str(), ::SSL_CIPHER_get_name(::SSL_get_current_cipher(member->ssl))));
 								}
 							} break;
@@ -3070,17 +3070,17 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -3101,19 +3101,19 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
 							// Выполняем очистку BIO
 							::BIO_free(bio);
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Получаем размер данных
@@ -3122,7 +3122,7 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 						const size_t length = static_cast <size_t> (::BIO_get_mem_data(bio, &data));
 						// Если информация получена
 						if(length > 0)
-							// Выводим параметры шифрования
+							// Возвращаем параметры шифрования
 							result = ::move(this->_fmk->format("%sCertificate Revocation List: %s\n", result.c_str(), string(data, length).c_str()));
 						// Выполняем очистку BIO
 						::BIO_free(bio);
@@ -3138,17 +3138,17 @@ string awh::tls::Coder::peerInfo(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3190,13 +3190,13 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -3215,13 +3215,13 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -3235,7 +3235,7 @@ string awh::tls::Coder::cipherInfo(const id_t id) const noexcept {
  * @return   информация о сертификате
  */
 string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -3269,13 +3269,13 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -3340,17 +3340,17 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3360,7 +3360,7 @@ string awh::tls::Coder::certificateInfo(const id_t id) const noexcept {
  * @return   информация о списке отзыва сертификатов
  */
 string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -3400,17 +3400,17 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -3431,19 +3431,19 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
 							// Выполняем очистку BIO
 							::BIO_free(bio);
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Получаем размер данных
@@ -3452,7 +3452,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 						const size_t length = static_cast <size_t> (::BIO_get_mem_data(bio, &data));
 						// Если информация получена
 						if(length > 0)
-							// Выводим параметры шифрования
+							// Возвращаем параметры шифрования
 							result.assign(data, length);
 						// Выполняем очистку BIO
 						::BIO_free(bio);
@@ -3486,17 +3486,17 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Печатаем CRL в BIO
@@ -3517,19 +3517,19 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
 							// Выполняем очистку BIO
 							::BIO_free(bio);
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						// Получаем размер данных
@@ -3538,7 +3538,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 						const size_t length = static_cast <size_t> (::BIO_get_mem_data(bio, &data));
 						// Если информация получена
 						if(length > 0)
-							// Выводим параметры шифрования
+							// Возвращаем параметры шифрования
 							result.assign(data, length);
 						// Выполняем очистку BIO
 						::BIO_free(bio);
@@ -3554,17 +3554,17 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3574,7 +3574,7 @@ string awh::tls::Coder::certificateRevocationListInfo(const id_t id) const noexc
  * @return   список доступных шифров
  */
 vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <cipher_info_t> result;
 	/**
 	 * Выполняем перехват ошибок
@@ -3938,17 +3938,17 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -3958,7 +3958,7 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
  * @return   активный протокол
  */
 string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	string result = "";
 	/**
 	 * Выполняем перехват ошибок
@@ -3992,13 +3992,13 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -4058,17 +4058,17 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -4110,13 +4110,13 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -4153,17 +4153,17 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-						// Выводим сообщение, что сертификат ещё не действителен или просрочен
+						// Печатаем предупреждение о недействительном сертификате
 						return false;
 					}
 					// Получить хранилище CA из SSL_CTX
@@ -4188,13 +4188,13 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
@@ -4221,13 +4221,13 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
@@ -4254,13 +4254,13 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(error));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, ::X509_verify_cert_error_string(error));
 							#endif
 						}
@@ -4321,17 +4321,17 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -4433,13 +4433,13 @@ void awh::tls::Coder::validateServerNameIndication(const id_t id, const bool mod
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, mode), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4497,13 +4497,13 @@ awh::tls::Coder::mode_t awh::tls::Coder::mode(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4593,13 +4593,13 @@ void awh::tls::Coder::mode(const id_t id, const mode_t mode) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4639,13 +4639,13 @@ string awh::tls::Coder::serverNameIndication(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4732,13 +4732,13 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, sni), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -4760,13 +4760,13 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, sni), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -4814,13 +4814,13 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 							#endif
 						}
@@ -4873,13 +4873,13 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -4901,20 +4901,20 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
 							// Возвращаем отрицательный результат
 							return false;
 						}
-						// Выводим положительный результат
+						// Возвращаем true
 						return true;
 					}
 				}
@@ -4928,17 +4928,17 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ip, port), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -4948,7 +4948,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
  * @return   результат выполнения удаления
  */
 bool awh::tls::Coder::destroy(const id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -5010,17 +5010,17 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5030,7 +5030,7 @@ bool awh::tls::Coder::destroy(const id_t id) noexcept {
  * @return   результат выполнения завершения
  */
 bool awh::tls::Coder::shutdown(const id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -5064,13 +5064,13 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -5089,17 +5089,17 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5109,7 +5109,7 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
  * @return   результат выполнения рукопожатия
  */
 bool awh::tls::Coder::handshake(const id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -5141,13 +5141,13 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 				}
@@ -5202,13 +5202,13 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -5258,20 +5258,20 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 															 * Если включён режим отладки
 															 */
 															#if DEBUG_MODE
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
 															/**
 															 * Если режим отладки не включён
 															 */
 															#else
-																// Выводим сообщение об ошибке
+																// Записываем ошибку в лог
 																this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 															#endif
 														}
 														// Вызываем функцию обратного вызова чтения данных
 														member->callback.read(id, event_t::ENCRYPTION, ::local::buffer, static_cast <size_t> (bytes));
 													}
-													// Выводим результат
+													// Возвращаем результат
 													return result;
 												}
 											}
@@ -5298,13 +5298,13 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -5318,7 +5318,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 								// Устанавливаем режим удаления участника обмена защищёнными данными
 								member->state |= ::state::GARBAGE_MODE;
 							}
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 					}
@@ -5398,17 +5398,17 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5418,7 +5418,7 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
  * @return   результат выполнения повторной передачи
  */
 bool awh::tls::Coder::retransmit(const id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -5452,13 +5452,13 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -5513,17 +5513,17 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5533,7 +5533,7 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
  * @return   идентификатор транспортного уровня
  */
 awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	id_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -5590,13 +5590,13 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -5635,13 +5635,13 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -5718,13 +5718,13 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, cts->host), log_t::flag_t::WARNING, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 										#endif
 									}
@@ -5780,13 +5780,13 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -5825,13 +5825,13 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -5900,13 +5900,13 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, cts->host.name), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -5928,17 +5928,17 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -5949,7 +5949,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
  * @return      идентификатор шаблона контекста безопасности
  */
 awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const event::protocol_t proto) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	id_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -5998,7 +5998,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -6010,7 +6010,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
@@ -6075,7 +6075,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -6087,7 +6087,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
@@ -6118,7 +6118,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 							static_cast <uint16_t> (node),
 							static_cast <uint16_t> (proto)
@@ -6127,7 +6127,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 					#endif
 				// Если стор получен
@@ -6151,7 +6151,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
@@ -6160,7 +6160,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -6222,7 +6222,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -6234,7 +6234,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
@@ -6319,7 +6319,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -6331,7 +6331,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
@@ -6351,7 +6351,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -6363,7 +6363,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
@@ -6379,7 +6379,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -6391,7 +6391,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
@@ -6409,7 +6409,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 							static_cast <uint16_t> (node),
 							static_cast <uint16_t> (proto)
@@ -6418,7 +6418,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 					#endif
 				// Если стор получен
@@ -6442,7 +6442,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
 								static_cast <uint16_t> (node),
 								static_cast <uint16_t> (proto)
@@ -6451,7 +6451,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -6571,7 +6571,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug(
 						"Invalid event node type", __PRETTY_FUNCTION__,
 						make_tuple(
@@ -6583,7 +6583,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("Invalid event node type", log_t::flag_t::WARNING);
 				#endif
 			}
@@ -6596,7 +6596,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -6608,11 +6608,11 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -6624,7 +6624,7 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
  * @return       результат выполнения шифрования
  */
 bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -6658,13 +6658,13 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -6701,13 +6701,13 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -6754,13 +6754,13 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -6797,13 +6797,13 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -6819,17 +6819,17 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -6841,7 +6841,7 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
  * @return       результат выполнения расшифровки
  */
 bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -6875,13 +6875,13 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 						/**
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 						#endif
 					}
@@ -6915,7 +6915,7 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 							result = this->handshake(id);
 							// Если рукопожатие ещё не выполнено
 							if(!result || !(member->state & state::HANDSHAKE_MODE))
-								// Выводим результат
+								// Возвращаем результат
 								return result;
 						}
 						// Если у нас есть подготовленные данные для чтения
@@ -6948,13 +6948,13 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -6998,13 +6998,13 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -7027,17 +7027,17 @@ bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t s
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, buffer, size), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -7147,13 +7147,13 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -7183,13 +7183,13 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -7291,13 +7291,13 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -7327,13 +7327,13 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, support.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -7352,13 +7352,13 @@ void awh::tls::Coder::groups(const id_t id, const vector <group_t> & groups) noe
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -7537,13 +7537,13 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -7573,13 +7573,13 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -7597,13 +7597,13 @@ void awh::tls::Coder::ciphers(const id_t id, const vector <cipher_t> & ciphers) 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, ciphers.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -7670,13 +7670,13 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -7723,13 +7723,13 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -7745,13 +7745,13 @@ void awh::tls::Coder::grease(const id_t id, const event::mode_t mode) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -7819,13 +7819,13 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -7872,13 +7872,13 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
@@ -7894,13 +7894,13 @@ void awh::tls::Coder::permuteExtensions(const id_t id, const event::mode_t mode)
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -7956,13 +7956,13 @@ void awh::tls::Coder::signedCertificateTimestamp(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -8017,13 +8017,13 @@ void awh::tls::Coder::onlineCertificateStatusProtocol(const id_t id) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -8161,13 +8161,13 @@ void awh::tls::Coder::nextProtocolNegotiation(const id_t id, const event::mode_t
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -8329,13 +8329,13 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -8522,13 +8522,13 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -8544,13 +8544,13 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, fid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -8590,13 +8590,13 @@ uint8_t awh::tls::Coder::alpn(const id_t id) const noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -8701,13 +8701,13 @@ void awh::tls::Coder::alpn(const id_t id, const vector <alpn_t> & alpn) noexcept
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alpn.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -8752,13 +8752,13 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -8845,13 +8845,13 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alps.size()), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -8869,13 +8869,13 @@ void awh::tls::Coder::alps(const id_t id, const vector <alpn_t> & alps, const st
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, alps.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -9027,13 +9027,13 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -9063,13 +9063,13 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -9197,13 +9197,13 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -9236,13 +9236,13 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -9261,13 +9261,13 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, signatures.size()), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -9337,13 +9337,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -9377,13 +9377,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -9417,13 +9417,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -9447,13 +9447,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -9503,13 +9503,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -9543,13 +9543,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -9583,13 +9583,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -9613,13 +9613,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (method)), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -9638,13 +9638,13 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, methods.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
@@ -9690,13 +9690,13 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
@@ -9795,13 +9795,13 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 											 * Если включён режим отладки
 											 */
 											#if DEBUG_MODE
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.c_str());
 											/**
 											 * Если режим отладки не включён
 											 */
 											#else
-												// Выводим сообщение об ошибке
+												// Записываем ошибку в лог
 												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 											#endif
 										}
@@ -9825,13 +9825,13 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
@@ -9849,13 +9849,13 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, groups.size(), static_cast <uint16_t> (grease)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -9864,7 +9864,7 @@ void awh::tls::Coder::keyShare(const id_t id, const vector <group_t> & groups, c
  * @brief Метод установки сертификатов доверенных центров сертификации
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
- * @param filename адрес файла сертификата доверенных центров сертификации
+ * @param filename путь к файлу сертификата доверенных центров сертификации
  */
 void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 	/**
@@ -9883,7 +9883,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 					auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Если адрес файла центра сертификации не пустой
+					// Если путь к файлу центра сертификации указан
 					if(!filename.empty()){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
@@ -9905,13 +9905,13 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -9936,13 +9936,13 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -9975,13 +9975,13 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -9995,7 +9995,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 					auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 					// Создаём охранника участника обмена защищёнными данными
 					::local::guard_t guard(member);
-					// Если адрес файла центра сертификации не пустой
+					// Если путь к файлу центра сертификации указан
 					if(!filename.empty()){
 						// Создаём новое хранилище
 						X509_STORE * store = ::SSL_CTX_get_cert_store(member->ctx);
@@ -10017,13 +10017,13 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10048,13 +10048,13 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10077,13 +10077,13 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -10093,7 +10093,7 @@ void awh::tls::Coder::ca(const id_t id, string_view filename) noexcept {
  *
  * @param id   идентификатор транспортного уровня или шаблона контекста безопасности
  * @param dir  адрес директории с сертификатами доверенных центров сертификации
- * @param file адрес файла сертификата доверенного центра сертификации
+ * @param file путь к файлу сертификата доверенного центра сертификации
  */
 void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexcept {
 	/**
@@ -10134,13 +10134,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10149,13 +10149,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 						}
 						// Если каталог сертификатов передан
 						if(!dir.empty()){
-							// Полный адрес файла центра сертификации
+							// Полный путь к файлу центра сертификации
 							string filename = "";
 							// Если последний символ каталога является разделителем
 							if(dir.back() == AWH_FS_SEPARATOR[0])
-								// Формируем полный адрес файла центра сертификации
+								// Формируем полный путь к файлу центра сертификации
 								filename = ::move(this->_fmk->format("%s%s", dir.data(), file.data()));
-							// Формируем полный адрес файла центра сертификации
+							// Формируем полный путь к файлу центра сертификации
 							else filename = ::move(this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data()));
 							// Загружаем местоположение центра сертификации
 							if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
@@ -10175,13 +10175,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -10212,13 +10212,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -10260,13 +10260,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10275,13 +10275,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 						}
 						// Если каталог сертификатов передан
 						if(!dir.empty()){
-							// Полный адрес файла центра сертификации
+							// Полный путь к файлу центра сертификации
 							string filename = "";
 							// Если последний символ каталога является разделителем
 							if(dir.back() == AWH_FS_SEPARATOR[0])
-								// Формируем полный адрес файла центра сертификации
+								// Формируем полный путь к файлу центра сертификации
 								filename = ::move(this->_fmk->format("%s%s", dir.data(), file.data()));
-							// Формируем полный адрес файла центра сертификации
+							// Формируем полный путь к файлу центра сертификации
 							else filename = ::move(this->_fmk->format("%s%s%s", dir.data(), AWH_FS_SEPARATOR, file.data()));
 							// Загружаем местоположение центра сертификации
 							if(::X509_STORE_load_locations(store, filename.data(), nullptr) != 1){
@@ -10301,13 +10301,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -10338,13 +10338,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 									#endif
 								}
@@ -10368,13 +10368,13 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, dir, file), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -10383,14 +10383,14 @@ void awh::tls::Coder::ca(const id_t id, string_view dir, string_view file) noexc
  * @brief Метод установки списка отзыва сертификатов
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
- * @param filename адрес файла списка отзыва сертификатов
+ * @param filename путь к файлу списка отзыва сертификатов
  */
 void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filename) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если адрес файла сертификата не пустой
+		// Если путь к файлу сертификата указан
 		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
@@ -10428,13 +10428,13 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10459,13 +10459,13 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10494,13 +10494,13 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10538,13 +10538,13 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10569,13 +10569,13 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10604,13 +10604,13 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10629,13 +10629,13 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -10644,7 +10644,7 @@ void awh::tls::Coder::certificateRevocationList(const id_t id, string_view filen
  * @brief Метод установки приватного ключа клиента
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
- * @param filename адрес файла приватного ключа клиента
+ * @param filename путь к файлу приватного ключа клиента
  * @param type     тип файла приватного ключа клиента
  */
 void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type_t type) noexcept {
@@ -10652,7 +10652,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если адрес файла сертификата не пустой
+		// Если путь к файлу сертификата указан
 		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
@@ -10690,13 +10690,13 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -10724,13 +10724,13 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -10757,13 +10757,13 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10799,13 +10799,13 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -10833,13 +10833,13 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 										/**
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 										#endif
 									}
@@ -10866,13 +10866,13 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 								#endif
 							}
@@ -10889,13 +10889,13 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -10904,7 +10904,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
  * @brief Метод установки клиентского сертификата
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
- * @param filename адрес файла клиентского сертификата
+ * @param filename путь к файлу клиентского сертификата
  * @param type     тип файла приватного ключа клиента
  */
 void awh::tls::Coder::certificate(const id_t id, string_view filename, const type_t type) noexcept {
@@ -10912,7 +10912,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если адрес файла сертификата не пустой
+		// Если путь к файлу сертификата указан
 		if(!filename.empty()){
 			// Выполняем поиск идентификатора контекста TLS в глобальном наборе идентификаторов контекстов TLS
 			if(::__awh_ssl_ids__.find(id) != ::__awh_ssl_ids__.end()){
@@ -10956,13 +10956,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -10988,13 +10988,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -11028,13 +11028,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -11060,13 +11060,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -11112,13 +11112,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -11144,13 +11144,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -11195,13 +11195,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 													 * Если включён режим отладки
 													 */
 													#if DEBUG_MODE
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 													/**
 													 * Если режим отладки не включён
 													 */
 													#else
-														// Выводим сообщение об ошибке
+														// Записываем ошибку в лог
 														this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 													#endif
 												}
@@ -11227,13 +11227,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 												 * Если включён режим отладки
 												 */
 												#if DEBUG_MODE
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.c_str());
 												/**
 												 * Если режим отладки не включён
 												 */
 												#else
-													// Выводим сообщение об ошибке
+													// Записываем ошибку в лог
 													this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 												#endif
 											}
@@ -11254,13 +11254,13 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, filename, static_cast <uint16_t> (type)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
@@ -11273,7 +11273,7 @@ void awh::tls::Coder::certificate(const id_t id, string_view filename, const typ
  * @return         результат установки функции обратного вызова
  */
 bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -11299,17 +11299,17 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -11320,7 +11320,7 @@ bool awh::tls::Coder::on(const id_t id, read_callback_t callback) noexcept {
  * @return         результат установки функции обратного вызова
  */
 bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -11346,17 +11346,17 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -11367,7 +11367,7 @@ bool awh::tls::Coder::on(const id_t id, write_callback_t callback) noexcept {
  * @return         результат установки функции обратного вызова
  */
 bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -11407,17 +11407,17 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -11428,7 +11428,7 @@ bool awh::tls::Coder::on(const id_t id, state_callback_t callback) noexcept {
  * @return         результат установки функции обратного вызова
  */
 bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -11468,17 +11468,17 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -11489,7 +11489,7 @@ bool awh::tls::Coder::on(const id_t id, error_callback_t callback) noexcept {
  * @return         результат установки функции обратного вызова
  */
 bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -11515,17 +11515,17 @@ bool awh::tls::Coder::on(const id_t id, fingerprint_callback_t callback) noexcep
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -11548,13 +11548,13 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
 			#endif
 		}
@@ -11587,13 +11587,13 @@ awh::tls::Coder::Coder(const fmk_t * fmk, const log_t * log) noexcept :
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Rand poll is not allowed", log_t::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения
@@ -11636,13 +11636,13 @@ awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) 
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Failed to ignore signal SIGPIPE", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Failed to ignore signal SIGPIPE", log_t::flag_t::CRITICAL);
 			#endif
 		}
@@ -11675,13 +11675,13 @@ awh::tls::Coder::Coder(const fgp_t * fgp, const fmk_t * fmk, const log_t * log) 
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("Rand poll is not allowed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("Rand poll is not allowed", log_t::flag_t::CRITICAL);
 			#endif
 			// Выходим из приложения

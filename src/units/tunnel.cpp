@@ -98,7 +98,7 @@ void awh::unit::Tunnel::info(const event::id_t eid, const event::id_t mid, const
  * @return    результат выполнения фиксации
  */
 bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -120,13 +120,13 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("Failed to launch tunnel", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("Failed to launch tunnel", log_t::flag_t::CRITICAL);
 				#endif
 			}
@@ -142,17 +142,17 @@ bool awh::unit::Tunnel::commit(const event::id_t eid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -363,7 +363,7 @@ void awh::unit::Tunnel::destroy(const event::id_t eid) noexcept {
  * @return       идентификатор созданного туннеля
  */
 awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	event::id_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -390,17 +390,17 @@ awh::event::id_t awh::unit::Tunnel::issue(const event::family_t family) noexcept
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

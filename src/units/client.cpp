@@ -222,7 +222,7 @@ bool awh::unit::Client::isActual(const event::id_t eid) const noexcept {
  * @return    результат выполнения фиксации
  */
 bool awh::unit::Client::commit(const event::id_t eid) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -240,13 +240,13 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Failed to commit client", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to commit client", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -260,17 +260,17 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -280,7 +280,7 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
  * @return    результат выполнения запуска
  */
 bool awh::unit::Client::launch(const event::id_t eid) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -298,13 +298,13 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug("Failed to launch client", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Failed to launch client", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -318,17 +318,17 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -342,7 +342,7 @@ bool awh::unit::Client::pause(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем приостановку работы клиента
 		return this->_io->pause(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -356,7 +356,7 @@ bool awh::unit::Client::resume(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем возобновление работы клиента
 		return this->_io->resume(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -370,7 +370,7 @@ bool awh::unit::Client::disconnect(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем отключение клиента от удалённого узла
 		return this->_io->disconnect(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -382,7 +382,7 @@ bool awh::unit::Client::disconnect(const event::id_t eid) noexcept {
 bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
 	// Если количество идентификаторов событий для подключения больше количества событий клиента
 	if(ids.size() > this->_events.size())
-		// Выводим результат по умолчанию
+		// Возвращаем значение по умолчанию
 		return false;
 	/**
 	 * Выполняем проверку каждого идентификатора события для подключения
@@ -390,7 +390,7 @@ bool awh::unit::Client::connect(const vector <event::id_t> & ids) noexcept {
 	for(awh::event::id_t eid : ids)
 		// Если событие клиента не является актуальным
 		if(!this->isActual(eid))
-			// Выводим результат по умолчанию
+			// Возвращаем значение по умолчанию
 			return false;
 	// Выполняем подключение клиента к удалённому узлу
 	return this->_io->connect(ids);
@@ -406,7 +406,7 @@ bool awh::unit::Client::recv(const event::id_t eid) noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение данных от удалённого узла
 		return this->_io->recv(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -422,7 +422,7 @@ size_t awh::unit::Client::send(const event::id_t eid, const void * buffer, const
 	if(this->isActual(eid))
 		// Выполняем отправку данных удалённому узлу
 		return this->_io->send(eid, buffer, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -437,7 +437,7 @@ bool awh::unit::Client::splice(const event::id_t eid, const event::id_t dest) no
 	if(this->isActual(eid) && this->isActual(dest))
 		// Выполняем объединение потоков данных между событиями
 		return this->_io->splice(eid, dest);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -451,7 +451,7 @@ uint16_t awh::unit::Client::getOptions(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение опций для события клиента
 		return this->_io->getOptions(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -466,7 +466,7 @@ bool awh::unit::Client::setOptions(const event::id_t eid, const uint16_t options
 	if(this->isActual(eid))
 		// Выполняем установку опций для события клиента
 		return this->_io->setOptions(eid, options);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -482,7 +482,7 @@ bool awh::unit::Client::setOption(const event::id_t eid, const uint16_t option, 
 	if(this->isActual(eid))
 		// Выполняем установку опции для события клиента
 		return this->_io->setOption(eid, option, mode);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -496,7 +496,7 @@ awh::net::dgram_info_t awh::unit::Client::getTrafficInfo(const event::id_t eid) 
 	if(this->isActual(eid))
 		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события клиента
 		return this->_io->getTrafficInfo(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return net::dgram_info_t();
 }
 /**
@@ -510,7 +510,7 @@ uint8_t awh::unit::Client::getCountHops(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение количества хопов последнего принятого пакета для события клиента
 		return this->_io->getCountHops(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -525,7 +525,7 @@ bool awh::unit::Client::setCountHops(const event::id_t eid, const uint8_t hops) 
 	if(this->isActual(eid))
 		// Выполняем установку количества хопов последнего принятого пакета для события клиента
 		return this->_io->setCountHops(eid, hops);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -539,7 +539,7 @@ awh::event::hops_t awh::unit::Client::getHops(const event::id_t eid) const noexc
 	if(this->isActual(eid))
 		// Выполняем получение максимального количества хопов для события клиента
 		return this->_io->getHops(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::hops_t::LOOPBACK;
 }
 /**
@@ -554,7 +554,7 @@ bool awh::unit::Client::setHops(const event::id_t eid, const event::hops_t hops)
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события клиента
 		return this->_io->setHops(eid, hops);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -568,7 +568,7 @@ string awh::unit::Client::getIface(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение сетевого интерфейса для события клиента
 		return this->_io->getIface(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -583,7 +583,7 @@ bool awh::unit::Client::setIface(const event::id_t eid, string_view name) noexce
 	if(this->isActual(eid))
 		// Выполняем установку сетевого интерфейса для события клиента
 		return this->_io->setIface(eid, name);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -597,7 +597,7 @@ uint16_t awh::unit::Client::getSourcePort(const event::id_t eid) const noexcept 
 	if(this->isActual(eid))
 		// Выполняем получение внутреннего порта для события клиента
 		return this->_io->getSourcePort(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -612,7 +612,7 @@ bool awh::unit::Client::setSourcePort(const event::id_t eid, const uint16_t port
 	if(this->isActual(eid))
 		// Выполняем установку внутреннего порта для события клиента
 		return this->_io->setSourcePort(eid, port);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -626,7 +626,7 @@ uint16_t awh::unit::Client::getDestinationPort(const event::id_t eid) const noex
 	if(this->isActual(eid))
 		// Выполняем получение порта удалённого узла для события клиента
 		return this->_io->getDestinationPort(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -641,7 +641,7 @@ bool awh::unit::Client::setDestinationPort(const event::id_t eid, const uint16_t
 	if(this->isActual(eid))
 		// Выполняем установку порта удалённого узла для события клиента
 		return this->_io->setDestinationPort(eid, port);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -655,7 +655,7 @@ string awh::unit::Client::getTarget(const event::id_t eid) const noexcept {
 	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
 		return this->_io->getTarget(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -670,7 +670,7 @@ bool awh::unit::Client::setTarget(const event::id_t eid, string_view target) noe
 	if(this->isActual(eid))
 		// Выполняем установку адреса хоста целевой машины для события клиента
 		return this->_io->setTarget(eid, target);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -685,7 +685,7 @@ bool awh::unit::Client::setTarget(const event::id_t eid, const net::addr_t * tar
 	if(this->isActual(eid))
 		// Выполняем установку адреса хоста целевой машины для события клиента
 		return this->_io->setTarget(eid, target);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -700,7 +700,7 @@ bool awh::unit::Client::getTarget(const event::id_t eid, unique_ptr <net::addr_t
 	if(this->isActual(eid))
 		// Выполняем получение адреса хоста целевой машины для события клиента
 		return this->_io->getTarget(eid, target);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -715,7 +715,7 @@ string awh::unit::Client::getAddress(const event::id_t eid, const event::address
 	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
 		return this->_io->getAddress(eid, address);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return "";
 }
 /**
@@ -731,7 +731,7 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
 	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
 		return this->_io->setAddress(eid, address, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -747,7 +747,7 @@ bool awh::unit::Client::setAddress(const event::id_t eid, const event::address_t
 	if(this->isActual(eid))
 		// Выполняем установку адреса клиента для события клиента
 		return this->_io->setAddress(eid, address, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -763,7 +763,7 @@ bool awh::unit::Client::getAddress(const event::id_t eid, const event::address_t
 	if(this->isActual(eid))
 		// Выполняем получение адреса клиента для события клиента
 		return this->_io->getAddress(eid, address, value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -777,7 +777,7 @@ uint16_t awh::unit::Client::getMaximumTransmissionUnit(const event::id_t eid) co
 	if(this->isActual(eid))
 		// Выполняем получение MTU сетевого интерфейса для события клиента
 		return this->_io->getMaximumTransmissionUnit(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -792,7 +792,7 @@ bool awh::unit::Client::setMaximumTransmissionUnit(const event::id_t eid, const 
 	if(this->isActual(eid))
 		// Выполняем установку MTU сетевого интерфейса для события клиента
 		return this->_io->setMaximumTransmissionUnit(eid, mtu);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -806,7 +806,7 @@ awh::event::delivery_mode_t awh::unit::Client::getDelivery(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем получение режима трансляции пакетов клиента для события клиента
 		return this->_io->getDelivery(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::delivery_mode_t::NONE;
 }
 /**
@@ -821,7 +821,7 @@ bool awh::unit::Client::setDelivery(const event::id_t eid, const event::delivery
 	if(this->isActual(eid))
 		// Выполняем установку режима трансляции пакетов клиента для события клиента
 		return this->_io->setDelivery(eid, delivery);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -836,7 +836,7 @@ size_t awh::unit::Client::getBufferSize(const event::id_t eid, const event::acti
 	if(this->isActual(eid))
 		// Выполняем получение размера буфера клиента для события клиента
 		return this->_io->getBufferSize(eid, action);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -852,7 +852,7 @@ bool awh::unit::Client::setBufferSize(const event::id_t eid, const event::action
 	if(this->isActual(eid))
 		// Выполняем установку размера буфера клиента для события клиента
 		return this->_io->setBufferSize(eid, action, size);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -866,7 +866,7 @@ awh::event::usage_t awh::unit::Client::getUsageReadTimeout(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем получение режима использования таймаута на чтение события для события клиента
 		return this->_io->getUsageReadTimeout(eid);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::usage_t::NONE;
 }
 /**
@@ -893,7 +893,7 @@ uint32_t awh::unit::Client::getTimeout(const event::id_t eid, const event::actio
 	if(this->isActual(eid))
 		// Выполняем получение параметров таймаута для клиента
 		return this->_io->getTimeout(eid, action);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -922,7 +922,7 @@ bool awh::unit::Client::bandwidth(const event::id_t eid, const event::limiting_t
 	if(this->isActual(eid))
 		// Выполняем установку параметров пропускной способности для клиента
 		return this->_io->bandwidth(eid, limiting, bandwidth);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -939,7 +939,7 @@ bool awh::unit::Client::keepAlive(const event::id_t eid, const int32_t cnt, cons
 	if(this->isActual(eid))
 		// Выполняем установку параметров keep-alive для клиента
 		return this->_io->keepAlive(eid, cnt, idle, intvl);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -953,7 +953,7 @@ awh::event::dscp_t awh::unit::Client::getDifferentiatedServicesCodePoint(const e
 	if(this->isActual(eid))
 		// Выполняем получение значения поля Differentiated Services Code Point (DSCP) для клиента
 		return this->_io->getDifferentiatedServicesCodePoint(eid, this->_io->family(eid));
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::dscp_t::CS0;
 }
 /**
@@ -968,7 +968,7 @@ bool awh::unit::Client::setDifferentiatedServicesCodePoint(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем установку значения поля Differentiated Services Code Point (DSCP) для клиента
 		return this->_io->setDifferentiatedServicesCodePoint(eid, this->_io->family(eid), dscp);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -982,7 +982,7 @@ awh::event::mtu_discover_t awh::unit::Client::getMaximumTransmissionUnitDiscover
 	if(this->isActual(eid))
 		// Выполняем получение режима обнаружения MTU для клиента
 		return this->_io->getMaximumTransmissionUnitDiscover(eid, this->_io->family(eid));
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return event::mtu_discover_t::NONE;
 }
 /**
@@ -997,7 +997,7 @@ bool awh::unit::Client::setMaximumTransmissionUnitDiscover(const event::id_t eid
 	if(this->isActual(eid))
 		// Выполняем установку режима обнаружения MTU для клиента
 		return this->_io->setMaximumTransmissionUnitDiscover(eid, this->_io->family(eid), mode);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1015,7 +1015,7 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для клиента
 		return this->_io->membership(eid, mode, group, source, port);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1033,7 +1033,7 @@ bool awh::unit::Client::membership(const event::id_t eid, const event::mode_t mo
 	if(this->isActual(eid))
 		// Выполняем активацию/деактивацию мультикаст-группы для клиента
 		return this->_io->membership(eid, mode, group, source, port);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1119,7 +1119,7 @@ void awh::unit::Client::destroy(const event::id_t eid) noexcept {
  * @return         идентификатор созданного клиента
  */
 awh::event::id_t awh::unit::Client::issue(const event::family_t family, const event::type_t type, const event::protocol_t protocol) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	event::id_t result = 0;
 	/**
 	 * Выполняем перехват ошибок
@@ -1160,17 +1160,17 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (type), static_cast <uint16_t> (protocol)), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**

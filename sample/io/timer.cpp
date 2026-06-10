@@ -72,7 +72,7 @@ int32_t main(int32_t argc, char * argv[]){
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
 			if(status == event::status_t::SUCCESS)
-				// Выводим сообщение о срабатывании таймера
+				// Записываем в лог сообщение о срабатывании таймера
 				log.print("Таймер сработал: ID=%u, %u seconds", log_t::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - ts).count());
 		});
 		// Количество срабатываний интервала
@@ -83,7 +83,7 @@ int32_t main(int32_t argc, char * argv[]){
 			auto shift = chrono::system_clock::now();
 			// Если статус события успешен
 			if(status == event::status_t::SUCCESS){
-				// Выводим сообщение о срабатывании интервала
+				// Записываем в лог сообщение о срабатывании интервала
 				log.print("Интервал сработал: ID=%u, %u seconds", log_t::flag_t::INFO, eid, chrono::duration_cast <chrono::seconds> (shift - is).count());
 				// Замеряем время начала работы для интервала времени
 				is = ::move(shift);
@@ -95,15 +95,15 @@ int32_t main(int32_t argc, char * argv[]){
 		});
 		// Выполняем запуск события
 		if(io.launch(eid1) && io.launch(eid2)){
-			// Выводим сообщение об успешном запуске события
+			// Записываем в лог сообщение об успешном запуске события
 			cout << " Событие успешно запущено!" << endl;
 			/**
 			 * Запускаем опрос событий
 			 */
 			while(io.poll());
-		// Выводим сообщение об ошибке запуска события
+		// Записываем ошибку в лог запуска события
 		} else cout << " Ошибка запуска события!" << endl;
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

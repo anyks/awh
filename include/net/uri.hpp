@@ -406,14 +406,14 @@ namespace awh {
 			Uniform_Resource_Identifier & operator = (const unordered_map <string, string> & query) noexcept;
 		public:
 			/**
-			 * @brief Оператор [=] перемещения параметров URI
+			 * @brief Оператор перемещающего присваивания параметров URI
 			 *
 			 * @param uri объект URI для получения параметров
 			 * @return    параметры URI
 			 */
 			Uniform_Resource_Identifier & operator = (Uniform_Resource_Identifier && uri) noexcept;
 			/**
-			 * @brief Оператор [=] присваивания параметров URI
+			 * @brief Оператор присваивания присваивания параметров URI
 			 *
 			 * @param uri объект URI для получения параметров
 			 * @return    параметры URI

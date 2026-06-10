@@ -149,13 +149,13 @@ namespace binbox {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
 				#endif
 			}
@@ -182,14 +182,14 @@ namespace binbox {
 				const string header = fmk->format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
 				// Если размер буфера данных меньше размера заголовка контейнера
 				if(buffer.size() < header.size()){
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container header is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
 				}
 				// Если заголовок контейнера не совпадает с заголовком в буфере данных
 				if(!std::equal(header.begin(), header.end(), buffer.begin())){
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container header is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
@@ -206,7 +206,7 @@ namespace binbox {
 				offset += sizeof(size);
 				// Если размер бинарных данных не соответствует размеру полезной нагрузки в буфере данных
 				if(size != static_cast <uintmax_t> (buffer.size() - offset)){
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container size is invalid");
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
@@ -219,7 +219,7 @@ namespace binbox {
 				offset += sizeof(version);
 				// Если текущая версия контейнера выше предыдущего
 				if(version_t(AWH_VERSION) > version_t(version))
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("Extracted BinBox container v%s is lower than the current container v%s", log_t::flag_t::WARNING, static_cast <string> (version_t(version)).c_str(), AWH_VERSION);
 				// Общее количество бинарных данных
 				uint32_t count = 0;
@@ -255,7 +255,7 @@ namespace binbox {
 							offset += size;
 						// Если запись бинарных данных не может быть извлечена
 						} else {
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							log->print("%s", log_t::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
 							// Завершаем извлечение данных из бинарного контейнера
 							return;
@@ -270,13 +270,13 @@ namespace binbox {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer.size()), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
 				#endif
 			}
@@ -290,7 +290,7 @@ namespace binbox {
  * @return iterator итератор для преобразования
  */
 awh::BinBox::Iterator::operator awh::BinBox::Iterator::iterator() noexcept {
-	// Выводим текущее значение итератора
+	// Возвращаем текущее значение итератора
 	return this->_it;
 }
 /**
@@ -299,7 +299,7 @@ awh::BinBox::Iterator::operator awh::BinBox::Iterator::iterator() noexcept {
  * @return указатель заголовка
  */
 awh::BinBox::Iterator::pointer awh::BinBox::Iterator::operator -> () noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return &this->_it->second;
 }
 /**
@@ -308,7 +308,7 @@ awh::BinBox::Iterator::pointer awh::BinBox::Iterator::operator -> () noexcept {
  * @return значение заголовка
  */
 awh::BinBox::Iterator::reference awh::BinBox::Iterator::operator * () const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return this->_it->second;
 }
 /**
@@ -333,13 +333,13 @@ awh::BinBox::Iterator & awh::BinBox::Iterator::operator ++ () noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		// Если объект логирования не установлен
@@ -348,18 +348,18 @@ awh::BinBox::Iterator & awh::BinBox::Iterator::operator ++ () noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				::fprintf(stderr, "ERROR! %s\n\n", error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return (* this);
 }
 /**
@@ -369,7 +369,7 @@ awh::BinBox::Iterator & awh::BinBox::Iterator::operator ++ () noexcept {
  * @return      результат сравнения
  */
 bool awh::BinBox::Iterator::operator == (const Iterator & other) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_it == other._it);
 }
 /**
@@ -379,7 +379,7 @@ bool awh::BinBox::Iterator::operator == (const Iterator & other) const noexcept 
  * @return      результат сравнения
  */
 bool awh::BinBox::Iterator::operator != (const Iterator & other) const noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return (this->_it != other._it);
 }
 /**
@@ -406,7 +406,7 @@ void awh::BinBox::clear() noexcept {
  * @return результат проверки
  */
 bool awh::BinBox::empty() const noexcept {
-	// Выводим проверку на пустоту очереди
+	// Возвращаем проверку на пустоту очереди
 	return this->_records.empty();
 }
 /**
@@ -415,7 +415,7 @@ bool awh::BinBox::empty() const noexcept {
  * @return количество записей в контейнере
  */
 size_t awh::BinBox::count() const noexcept {
-	// Выводим количество записей в контейнере
+	// Возвращаем количество записей в контейнере
 	return this->_records.size();
 }
 /**
@@ -424,7 +424,7 @@ size_t awh::BinBox::count() const noexcept {
  * @return название контейнера
  */
 string awh::BinBox::getName() const noexcept {
-	// Выводим название контейнера
+	// Возвращаем название контейнера
 	return this->_name;
 }
 /**
@@ -442,7 +442,7 @@ void awh::BinBox::setName(string_view name) noexcept {
  * @return версия контейнера
  */
 string awh::BinBox::getVersion() const noexcept {
-	// Выводим версию контейнера
+	// Возвращаем версию контейнера
 	return static_cast <string> (version_t(this->_version));
 }
 /**
@@ -465,7 +465,7 @@ bool awh::BinBox::erase(string_view key) noexcept {
 	if(!key.empty())
 		// Выполняем удаление указанной записи
 		return this->erase(this->idw(key));
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -475,7 +475,7 @@ bool awh::BinBox::erase(string_view key) noexcept {
  * @return    результат работы функции
  */
 bool awh::BinBox::erase(const uint64_t idw) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если бинарные данные контейнера созданы
 	if((idw > 0) && !this->_records.empty()){
@@ -486,7 +486,7 @@ bool awh::BinBox::erase(const uint64_t idw) noexcept {
 			// Выполняем удаление записи указанных данных
 			this->_records.erase(i);
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -498,7 +498,7 @@ bool awh::BinBox::erase(const uint64_t idw) noexcept {
 awh::BinBox::iterator_t awh::BinBox::erase(const iterator_t & it) noexcept {
 	// Выполняем удаление указанного заголовка
 	auto i = this->_records.erase(static_cast <iterator_t::iterator> (const_cast <iterator_t &> (it)));
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(i, this->_fmk, this->_log);
 }
 /**
@@ -507,7 +507,7 @@ awh::BinBox::iterator_t awh::BinBox::erase(const iterator_t & it) noexcept {
  * @param filename путь к файлу для загрузки
  */
 void awh::BinBox::load(string_view filename) noexcept {
-	// Если адрес файла передан и объект работы с файловой системой создан
+	// Если путь к файлу указан и объект работы с файловой системой создан
 	if(!filename.empty() && (this->_fs != nullptr)){
 		// Создаём бинарный буфер данных для загрузки из файла
 		vector <uint8_t> buffer;
@@ -523,9 +523,9 @@ void awh::BinBox::load(string_view filename) noexcept {
  * @param filename путь к файлу для сохранения
  */
 void awh::BinBox::save(string_view filename) noexcept {
-	// Если адрес файла передан и объект работы с файловой системой создан
+	// Если путь к файлу указан и объект работы с файловой системой создан
 	if(!filename.empty() && (this->_fs != nullptr)){
-		// Результат работы функции
+		// Переменная результата
 		vector <uint8_t> result;
 		// Выполняем дамп бинарного контейнера в бинарный буфер данных
 		::binbox::dump(this->_name, this->_version, this->_records, result, this->_fmk, this->_log);
@@ -542,7 +542,7 @@ void awh::BinBox::save(string_view filename) noexcept {
  * @return    идентификатор ключа
  */
 uint64_t awh::BinBox::idw(string_view key) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	uint64_t result = 0;
 	// Если объект работы с криптографией инициализирован
 	if(this->_crypto != nullptr){
@@ -562,18 +562,18 @@ uint64_t awh::BinBox::idw(string_view key) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
 	}
-	// Выводим полученный результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -587,7 +587,7 @@ bool awh::BinBox::has(string_view key) noexcept {
 	if(!key.empty())
 		// Выполняем проверку существования ключа
 		return this->has(this->idw(key));
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -604,7 +604,7 @@ bool awh::BinBox::has(const uint64_t idw) noexcept {
 			// Формируем результат
 			return (this->_records.find(idw) != this->_records.end());
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -652,18 +652,18 @@ size_t awh::BinBox::size(const uint64_t idw) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return 0;
 }
 /**
@@ -711,18 +711,18 @@ void * awh::BinBox::get(const uint64_t idw) const noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return nullptr;
 }
 /**
@@ -784,7 +784,7 @@ template <typename T>
  * @return    результат работы функции
  */
 T awh::BinBox::get(const uint64_t idw) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	T result;
 	// Если данные являются основными
 	if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
@@ -810,7 +810,7 @@ T awh::BinBox::get(const uint64_t idw) noexcept {
 			else this->_log->print("Data type to set [%llu] could not be determined", log_t::flag_t::WARNING, idw);
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -855,7 +855,7 @@ bool awh::BinBox::get(string_view key, vector <uint8_t> & buffer) noexcept {
 	if(!key.empty())
 		// Выполняем извлечение запрошенной записи
 		return this->get(this->idw(key), buffer);
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -866,7 +866,7 @@ bool awh::BinBox::get(string_view key, vector <uint8_t> & buffer) noexcept {
  * @return       результат работы функции
  */
 bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если ключ передан
 	if(idw > 0){
@@ -898,18 +898,18 @@ bool awh::BinBox::get(const uint64_t idw, vector <uint8_t> & buffer) noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw, buffer.size()), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -925,7 +925,7 @@ bool awh::BinBox::get(string_view key, uint8_t ** buffer, size_t * size) noexcep
 	if(!key.empty())
 		// Выполняем извлечение запрошенной записи
 		return this->get(this->idw(key), buffer, size);
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -937,7 +937,7 @@ bool awh::BinBox::get(string_view key, uint8_t ** buffer, size_t * size) noexcep
  * @return       результат работы функции
  */
 bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если ключ передан
 	if(idw > 0){
@@ -969,18 +969,18 @@ bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noex
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1001,7 +1001,7 @@ bool awh::BinBox::add(const uint64_t idw, const T value) noexcept {
 	if(idw > 0)
 		// Выполняем добавление данных
 		return this->add(idw, reinterpret_cast <const uint8_t *> (&value), sizeof(value));
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1049,7 +1049,7 @@ bool awh::BinBox::add(const uint64_t idw, const vector <T> & value) noexcept {
 	if(idw > 0)
 		// Выполняем добавление данных
 		return this->add(idw, reinterpret_cast <const uint8_t *> (value.data()), value.size() * sizeof(T));
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1090,7 +1090,7 @@ bool awh::BinBox::add(const uint64_t idw, const string & value) noexcept {
 	if((idw > 0) && !value.empty())
 		// Выполняем добавление данных
 		return this->add(idw, value.c_str(), value.length());
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1102,7 +1102,7 @@ bool awh::BinBox::add(const uint64_t idw, const string & value) noexcept {
  * @return       результат работы функции
  */
 bool awh::BinBox::add(const uint64_t idw, const void * buffer, const size_t size) noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	// Если ключ и данные для записи переданы
 	if((idw > 0) && (buffer != nullptr) && (size > 0)){
@@ -1143,18 +1143,18 @@ bool awh::BinBox::add(const uint64_t idw, const void * buffer, const size_t size
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw, buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::CRITICAL, __FUNCTION__, error.what());
 			#endif
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1175,7 +1175,7 @@ bool awh::BinBox::add(string_view key, const T value) noexcept {
 	if(!key.empty())
 		// Выполняем добавление данных
 		return this->add(this->idw(key), reinterpret_cast <const uint8_t *> (&value), sizeof(value));
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1223,7 +1223,7 @@ bool awh::BinBox::add(string_view key, const vector <T> & value) noexcept {
 	if(!key.empty())
 		// Выполняем добавление данных
 		return this->add(this->idw(key), value);
-	// Выводим результат по умолчанию
+	// Возвращаем значение по умолчанию
 	return false;
 }
 /**
@@ -1264,7 +1264,7 @@ bool awh::BinBox::add(string_view key, const string & value) noexcept {
 	if(!key.empty() && !value.empty())
 		// Выполняем добавление записи в контейнер
 		return this->add(this->idw(key), value);
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -1280,7 +1280,7 @@ bool awh::BinBox::add(string_view key, const void * buffer, const size_t size) n
 	if(!key.empty() && (buffer != nullptr) && (size > 0))
 		// Выполняем добавление записи в контейнер
 		return this->add(this->idw(key), buffer, size);
-	// Выводим результат
+	// Возвращаем результат
 	return false;
 }
 /**
@@ -1304,7 +1304,7 @@ void awh::BinBox::swap(BinBox & binbox) noexcept {
  * @return конечный итератор
  */
 awh::BinBox::iterator_t awh::BinBox::end() noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(this->_records.end(), this->_fmk, this->_log);
 }
 /**
@@ -1313,7 +1313,7 @@ awh::BinBox::iterator_t awh::BinBox::end() noexcept {
  * @return начальный итератор
  */
 awh::BinBox::iterator_t awh::BinBox::begin() noexcept {
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(this->_records.begin(), this->_fmk, this->_log);
 }
 /**
@@ -1341,13 +1341,13 @@ awh::BinBox::iterator_t awh::BinBox::find(string_view key) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(key), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -1356,19 +1356,19 @@ awh::BinBox::iterator_t awh::BinBox::find(string_view key) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(this->_records.end(), this->_fmk, this->_log);
 }
 /**
@@ -1396,13 +1396,13 @@ awh::BinBox::iterator_t awh::BinBox::find(const uint64_t idw) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(idw), log_t::flag_t::CRITICAL, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 				#endif
 			// Если объект логирования не установлен
@@ -1411,19 +1411,19 @@ awh::BinBox::iterator_t awh::BinBox::find(const uint64_t idw) noexcept {
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
-					// Выводим сообщение об ошибке
+					// Записываем ошибку в лог
 					::fprintf(stderr, "ERROR! %s\n\n", error.what());
 				#endif
 			}
 		}
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return iterator_t(this->_records.end(), this->_fmk, this->_log);
 }
 /**
@@ -1432,7 +1432,7 @@ awh::BinBox::iterator_t awh::BinBox::find(const uint64_t idw) noexcept {
  * @return результат проверки
  */
 awh::BinBox::operator bool() const noexcept {
-	// Выводим результат проверки
+	// Возвращаем результат проверки
 	return !this->_records.empty();
 }
 /**
@@ -1441,11 +1441,11 @@ awh::BinBox::operator bool() const noexcept {
  * @return бинарный буфер данных
  */
 awh::BinBox::operator vector <uint8_t> () const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <uint8_t> result;
 	// Выполняем дамп бинарного контейнера в бинарный буфер данных
 	::binbox::dump(this->_name, this->_version, this->_records, result, this->_fmk, this->_log);
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -1469,7 +1469,7 @@ awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
 	binbox._name = AWH_SHORT_NAME;
 	// Восстанавливаем версию контейнера в перемещаемом объекте
 	binbox._version = static_cast <uint32_t> (version_t(AWH_VERSION));
-	// Выводим текущее значение объекта
+	// Возвращаем текущее значение объекта
 	return (* this);
 }
 /**
@@ -1481,7 +1481,7 @@ awh::BinBox & awh::BinBox::operator = (BinBox && binbox) noexcept {
 awh::BinBox & awh::BinBox::operator = (const vector <uint8_t> & buffer) noexcept {
 	// Извлекаем из бинарного буфера дампа, записи контейнера
 	::binbox::dump(this->_name, this->_version, buffer, this->_records, this->_fmk, this->_log);
-	// Выводим текущее значение объекта
+	// Возвращаем текущее значение объекта
 	return (* this);
 }
 /**

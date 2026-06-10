@@ -45,7 +45,7 @@ class Executor {
 		 * @param size размер данных для записи
 		 */
 		void write(const event::id_t eid, const size_t size) noexcept {
-			// Выводим информацию о событии записи данных клиентом
+			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes (EID=%u)", log_t::flag_t::INFO, size, eid);
 		}
 		/**
@@ -59,7 +59,7 @@ class Executor {
 		void read(const event::id_t eid, const uint8_t * data, const size_t size, client::socks5_t * client) noexcept {
 			// Если данные получены
 			if(size > 0)
-				// Выводим данные в лог
+				// Записываем данные в лог
 				this->_log->print("%s (EID=%u)", log_t::flag_t::INFO, string(reinterpret_cast <const char *> (data), size).c_str(), eid);
 			// Если данные не получены, то выводим сообщение об отсутствии данных
 			else this->_log->print("No data received (EID=%u)", log_t::flag_t::WARNING, eid);
@@ -84,7 +84,7 @@ class Executor {
 				break;
 				// Если событие клиента остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED):
-					// Выводим сообщение об остановке события клиента
+					// Записываем в лог сообщение об остановке события клиента
 					this->_log->print("Socks5 client destroyed", log_t::flag_t::INFO);
 				break;
 			}
@@ -108,7 +108,7 @@ class Executor {
 					"\r\n";
 				// Если отправка данных данных клиентом на сервер не выполнена
 				if(client->send(request.c_str(), request.size()) == 0)
-					// Выводим сообщение об ошибке отправки данных клиентом на сервер
+					// Записываем ошибку в лог отправки данных клиентом на сервер
 					this->_log->print("Failed to send data to remote server (EID=%u)", log_t::flag_t::WARNING, eid);
 				// Если отправка данных клиентом на сервер выполнена, то выводим сообщение об успешной отправке данных клиентом на сервер
 				else this->_log->print("Sent data to remote server (EID=%u)", log_t::flag_t::INFO, eid);
@@ -124,7 +124,7 @@ class Executor {
 		 * @param ip     IP-адрес клиента
 		 */
 		void ready(const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip) noexcept {
-			// Выводим сообщение о готовности клиента к работе
+			// Записываем в лог сообщение о готовности клиента к работе
 			this->_log->print("Client is ready to connect to remote server: %s (%s) (EID=%u)", log_t::flag_t::INFO, domain.c_str(), ip.c_str(), eid);
 		}
 		/**
@@ -136,7 +136,7 @@ class Executor {
 		 * @param client  объект клиента
 		 */
 		void error(const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, client::socks5_t * client) noexcept {
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("Client error: %s (EID=%u)", log_t::flag_t::CRITICAL, message.c_str(), eid);
 			// Останавливаем событие клиента
 			client->stop();
@@ -150,7 +150,7 @@ class Executor {
 		 * @param client  объект клиента
 		 */
 		void errorTLS([[maybe_unused]] const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message, client::socks5_t * client) noexcept {
-			// Выводим сообщение об ошибке TLS
+			// Записываем ошибку в лог TLS
 			this->_log->print("TLS error: %s", log_t::flag_t::CRITICAL, message.c_str());
 			// Останавливаем событие клиента
 			client->stop();
@@ -193,9 +193,9 @@ int32_t main(int32_t argc, char * argv[]){
 	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
 	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Выводим сообщение об успешной установке опций события
+		// Записываем в лог сообщение об успешной установке опций события
 		cout << " Successfully set event options!" << endl;
-	// Выводим сообщение об ошибке установки опций события
+	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Регистрируем объект транспортного уровня безопасности TLS
 	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
@@ -235,6 +235,6 @@ int32_t main(int32_t argc, char * argv[]){
 		// Запускаем событие клиента
 		client.start();
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

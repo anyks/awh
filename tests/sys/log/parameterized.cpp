@@ -58,7 +58,7 @@ TEST_P(LogTestParameterizedFixture, LogPrintTest){
 	});
 	// Устанавливаем режимы логов
 	this->_log->mode({awh::log_t::mode_t::CONSOLE});
-	// Выводим лог с параметрами в отладочном режиме
+	// Записываем в лог с параметрами в отладочном режиме
 	this->_log->debug(this->_parameter.format, this->_parameter.method, {}, this->_parameter.flag, this->_parameter.args);
 	// Устанавливаем режимы логов в отложенном режиме
 	this->_log->mode({awh::log_t::mode_t::DEFERRED});

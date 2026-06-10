@@ -63,7 +63,7 @@ namespace options {
 	static bool reuseAddress(const awh::net::socket_t sock, const awh::log_t * log) noexcept {
 		// Флаги установки опции
 		int32_t flags = 1;
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Разрешаем повторно использовать тот же сокет после отключения
 		if(!(result = !static_cast <bool> (::setsockopt(sock, SOL_SOCKET, SO_REUSEADDR, &flags, sizeof(flags))))){
@@ -71,17 +71,17 @@ namespace options {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), awh::log_t::flag_t::WARNING, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				log->print("%s", awh::log_t::flag_t::WARNING, ::strerror(errno));
 			#endif
 		}
-		// Выводим результат
+		// Возвращаем результат
 		return result;
 	}
 	/**
@@ -93,7 +93,7 @@ namespace options {
 	 * @return      результат установки таймаута
 	 */
 	static bool timeout(const awh::net::socket_t sock, const awh::net::socket_event_t event, const uint32_t msec, const awh::log_t * log) noexcept {
-		// Результат работы функции
+		// Переменная результата
 		bool result = false;
 		// Создаём объект таймаута
 		struct timeval timeout;
@@ -113,13 +113,13 @@ namespace options {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -132,13 +132,13 @@ namespace options {
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, static_cast <uint16_t> (event), msec), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
@@ -155,7 +155,7 @@ namespace options {
  * @return список параметров проброшенных портов на маршрутизаторе
  */
 vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	vector <fwd_t> result;
 	/**
 	 * Выполняем перехват ошибок
@@ -165,7 +165,7 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
 		UPNPDev * devlist = ::upnpDiscover(3000, nullptr, nullptr, 0, 0, 2, nullptr);
 		// Если устройства не найдены
 		if(devlist == nullptr)
-			// Выводим пустой результат
+			// Возвращаем пустой результат
 			return result;
 		// Действующий шлюз IGD
 		UPNPUrls urls = {0};
@@ -183,18 +183,18 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strupnperror(status));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Выводим сообщение об ошибке
+				// Записываем ошибку в лог
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
 			#endif
 			// Освобождаем память URL-ов UPnP
 			::FreeUPNPUrls(&urls);
-			// Выводим пустой результат
+			// Возвращаем пустой результат
 			return result;
 		}
 		// Индекс перебора записей проброса портов
@@ -307,17 +307,17 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
 	return result;
 }
 /**
@@ -328,7 +328,7 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
  * @return     результат выполнения установки
  */
 bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode) const noexcept {
-	// Результат работы функции
+	// Переменная результата
 	bool result = false;
 	/**
 	 * Выполняем перехват ошибок
@@ -400,7 +400,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -418,17 +418,17 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Разрешаем повторное использование адреса сокета
 					if(!::options::reuseAddress(sock, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// PCP MAP request (RFC 6887)
@@ -480,7 +480,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"Failed to determine local IP for PCP",
 										__PRETTY_FUNCTION__,
@@ -499,10 +499,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Failed to determine local IP for PCP", log_t::flag_t::CRITICAL);
 								#endif
-								// Выводим результат
+								// Возвращаем результат
 								return result;
 							}
 							// Запоминаем размер структуры
@@ -539,7 +539,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->debug(
 										"Failed to determine local IP for PCP",
 										__PRETTY_FUNCTION__,
@@ -558,10 +558,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 								 * Если режим отладки не включён
 								 */
 								#else
-									// Выводим сообщение об ошибке
+									// Записываем ошибку в лог
 									this->_log->print("Failed to determine local IP for PCP", log_t::flag_t::CRITICAL);
 								#endif
-								// Выводим результат
+								// Возвращаем результат
 								return result;
 							}
 							// Запоминаем размер структуры
@@ -578,7 +578,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -596,17 +596,17 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Разрешаем повторное использование адреса сокета
 					if(!::options::reuseAddress(sock, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					/**
@@ -661,7 +661,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Отправляем запрос на проброс порта
@@ -672,7 +672,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -690,19 +690,19 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Устанавливаем таймаут на чтение из сокета (5 секунд)
 					if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер для приёма ответа
@@ -717,7 +717,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -735,10 +735,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Устанавливаем терминальный нулевой символ в буфере
@@ -753,7 +753,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"PCP Error Code: %d",
 									__PRETTY_FUNCTION__,
@@ -772,10 +772,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("PCP Error Code: %d", log_t::flag_t::CRITICAL, code);
 							#endif
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						/**
@@ -792,7 +792,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug(
 												"Response was forged by an attacker on PCP",
 												__PRETTY_FUNCTION__,
@@ -811,7 +811,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("Response was forged by an attacker on PCP", log_t::flag_t::CRITICAL);
 										#endif
 									}
@@ -821,7 +821,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug(
 											"Port PCP mapping failed",
 											__PRETTY_FUNCTION__,
@@ -840,7 +840,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("Port PCP mapping failed", log_t::flag_t::CRITICAL);
 									#endif
 								}
@@ -855,7 +855,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										 * Если включён режим отладки
 										 */
 										#if DEBUG_MODE
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->debug(
 												"Response was forged by an attacker on PCP",
 												__PRETTY_FUNCTION__,
@@ -874,7 +874,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										 * Если режим отладки не включён
 										 */
 										#else
-											// Выводим сообщение об ошибке
+											// Записываем ошибку в лог
 											this->_log->print("Response was forged by an attacker on PCP", log_t::flag_t::CRITICAL);
 										#endif
 									}
@@ -884,7 +884,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug(
 											"Port PCP unmapping failed",
 											__PRETTY_FUNCTION__,
@@ -903,7 +903,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("Port PCP unmapping failed", log_t::flag_t::CRITICAL);
 									#endif
 								}
@@ -916,7 +916,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"Gateway address could not be obtained",
 							__PRETTY_FUNCTION__,
@@ -935,7 +935,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Gateway address could not be obtained", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -946,7 +946,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 				UPNPDev * devlist = ::upnpDiscover(3000, nullptr, nullptr, 0, 0, 2, nullptr);
 				// Если устройства не найдены
 				if(devlist == nullptr)
-					// Выводим пустой результат
+					// Возвращаем пустой результат
 					return result;
 				// Действующий шлюз IGD
 				UPNPUrls urls = {0};
@@ -964,7 +964,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -981,12 +981,12 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
 					#endif
 					// Освобождаем память URL-ов UPnP
 					::FreeUPNPUrls(&urls);
-					// Выводим пустой результат
+					// Возвращаем пустой результат
 					return result;
 				}
 				// Буфер для хранения внешнего IP-адреса
@@ -1086,7 +1086,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"%s", __PRETTY_FUNCTION__,
 							make_tuple(
@@ -1103,7 +1103,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
 					#endif
 				}
@@ -1170,7 +1170,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1188,17 +1188,17 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Разрешаем повторное использование адреса сокета
 					if(!::options::reuseAddress(sock, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Размер объекта подключения
@@ -1250,7 +1250,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// === 3. Шаг 1: Запрос публичного IP (обязательный!) ===
@@ -1263,7 +1263,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1281,19 +1281,19 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Устанавливаем таймаут на чтение из сокета (5 секунд)
 					if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Буфер для приёма ответа
@@ -1306,7 +1306,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1324,12 +1324,12 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Устанавливаем терминальный нулевой символ в буфере
@@ -1380,7 +1380,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Отправляем запрос на проброс порта
@@ -1391,7 +1391,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1409,19 +1409,19 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Устанавливаем таймаут на чтение из сокета (5 секунд)
 					if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, this->_log)){
 						// Закрываем сокет
 						::close(sock);
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Получаем ответ от шлюза
@@ -1434,7 +1434,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если включён режим отладки
 						 */
 						#if DEBUG_MODE
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->debug(
 								"%s", __PRETTY_FUNCTION__,
 								make_tuple(
@@ -1452,10 +1452,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						 * Если режим отладки не включён
 						 */
 						#else
-							// Выводим сообщение об ошибке
+							// Записываем ошибку в лог
 							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
-						// Выводим результат
+						// Возвращаем результат
 						return result;
 					}
 					// Устанавливаем терминальный нулевой символ в буфере
@@ -1470,7 +1470,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->debug(
 									"NAT-PMP Error Code: %d",
 									__PRETTY_FUNCTION__,
@@ -1489,10 +1489,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							 * Если режим отладки не включён
 							 */
 							#else
-								// Выводим сообщение об ошибке
+								// Записываем ошибку в лог
 								this->_log->print("NAT-PMP Error Code: %d", log_t::flag_t::CRITICAL, code);
 							#endif
-							// Выводим результат
+							// Возвращаем результат
 							return result;
 						}
 						/**
@@ -1507,7 +1507,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug(
 											"Port NAT-PMP mapping failed",
 											__PRETTY_FUNCTION__,
@@ -1526,7 +1526,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("Port NAT-PMP mapping failed", log_t::flag_t::CRITICAL);
 									#endif
 								}
@@ -1539,7 +1539,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->debug(
 											"Port NAT-PMP unmapping failed",
 											__PRETTY_FUNCTION__,
@@ -1558,7 +1558,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 									 * Если режим отладки не включён
 									 */
 									#else
-										// Выводим сообщение об ошибке
+										// Записываем ошибку в лог
 										this->_log->print("Port NAT-PMP unmapping failed", log_t::flag_t::CRITICAL);
 									#endif
 								}
@@ -1571,7 +1571,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->debug(
 							"Gateway address could not be obtained",
 							__PRETTY_FUNCTION__,
@@ -1590,7 +1590,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Выводим сообщение об ошибке
+						// Записываем ошибку в лог
 						this->_log->print("Gateway address could not be obtained", log_t::flag_t::CRITICAL);
 					#endif
 				}
@@ -1604,7 +1604,7 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->debug(
 				"%s", __PRETTY_FUNCTION__,
 				make_tuple(
@@ -1621,11 +1621,11 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 		 * Если режим отладки не включён
 		 */
 		#else
-			// Выводим сообщение об ошибке
+			// Записываем ошибку в лог
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Выводим результат
+	// Возвращаем результат
     return result;
 }
 /**

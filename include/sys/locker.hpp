@@ -104,7 +104,7 @@ namespace awh {
 			 *
 			 */
 			operator MutexType & () noexcept {
-				// Выводим мютекс для блокировки потока
+				// Возвращаем мютекс для блокировки потока
 				return (* this->_mtx);
 			}
 		public:
