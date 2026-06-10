@@ -181,7 +181,7 @@ namespace awh {
 				 * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
 				 * @return         максимальное количество хопов
 				 */
-				event::hops_t getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept;
+				uint8_t getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept;
 				/**
 				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 				 *
@@ -191,7 +191,7 @@ namespace awh {
 				 * @param hops     максимальное количество хопов
 				 * @return         результат работы функции
 				 */
-				bool setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept;
+				bool setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) const noexcept;
 			public:
 				/**
 				 * @brief Метод активации/деактивации мультикаст группы события

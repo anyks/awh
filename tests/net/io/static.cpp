@@ -6239,10 +6239,10 @@ TEST_F(IoFixture, IoMulticast1Test){
 	 * Серверное событие
 	 */
 	{
+		// Устанавливаем TTL для мультикастового события
+		ASSERT_TRUE(this->_io->setHops(events[1], awh::event::hops_t::NETWORK));
 		// Устанавливаем мультикастовый режим события
 		ASSERT_TRUE(this->_io->setDelivery(events[1], awh::event::delivery_mode_t::MULTICAST));
-		// Устанавливаем TTL для мультикастового события
-		ASSERT_TRUE(this->_io->setHops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
 		ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
@@ -6701,10 +6701,10 @@ TEST_F(IoFixture, IoMulticast1Test){
 	 * Клиентское событие
 	 */
 	{
+		// Устанавливаем количество хопов события
+		ASSERT_TRUE(this->_io->setHops(events[0], awh::event::hops_t::NETWORK));
 		// Устанавливаем мультикастовый режим события
 		ASSERT_TRUE(this->_io->setDelivery(events[0], awh::event::delivery_mode_t::MULTICAST));
-		// Устанавливаем количество хопов события
-		ASSERT_TRUE(this->_io->setHops(events[0], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
 		ASSERT_TRUE(this->_io->setOptions(events[0], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения
@@ -6992,10 +6992,10 @@ TEST_F(IoFixture, IoMulticast3Test){
 				// Выводим сообщение об ошибке отправки сообщения
 				this->_log->print("Сообщение отправлено: ID=%u, %s", awh::log_t::flag_t::INFO, events[1], message.c_str());
 		});
+		// Устанавливаем TTL для мультикастового события
+		ASSERT_TRUE(this->_io->setHops(events[1], awh::event::hops_t::NETWORK));
 		// Устанавливаем мультикастовый режим события
 		ASSERT_TRUE(this->_io->setDelivery(events[1], awh::event::delivery_mode_t::MULTICAST));
-		// Устанавливаем TTL для мультикастового события
-		ASSERT_TRUE(this->_io->setHops(events[1], awh::event::family_t::IPV4, awh::event::hops_t::NETWORK));
 		// Устанавливаем опции событий
 		ASSERT_TRUE(this->_io->setOptions(events[1], awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK));
 		// Устанавливаем адрес сервера назначения

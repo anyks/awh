@@ -170,6 +170,13 @@ namespace awh {
 			 */
 			virtual void action(const event::id_t eid, const event::action_t action) noexcept;
 			/**
+			 * @brief Метод обработки информационных метаданных о дейтаграммном пакете
+			 *
+			 * @param eid  идентификатор события
+			 * @param info информационные метаданные о дейтаграммном пакете
+			 */
+			virtual void traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept;
+			/**
 			 * @brief Метод обработки событий получения данных сервером
 			 *
 			 * @param eid    идентификатор клиента
@@ -501,6 +508,27 @@ namespace awh {
 			 * @return       результат выполнения установки
 			 */
 			virtual bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
+		public:
+			/**
+			 * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+			 *
+			 * @return метаданные последнего принятого дейтаграммного пакета
+			 */
+			virtual net::dgram_info_t getTrafficInfo() const noexcept;
+		public:
+			/**
+			 * @brief Метод получения количества хопов последнего принятого пакета
+			 *
+			 * @return количество хопов последнего принятого пакета
+			 */
+			virtual uint8_t getCountHops() const noexcept;
+			/**
+			 * @brief Метод установки количества хопов последнего принятого пакета
+			 *
+			 * @param hops количество хопов последнего принятого пакета
+			 * @return     результат выполнения установки
+			 */
+			virtual bool setCountHops(const uint8_t hops) noexcept;
 		public:
 			/**
 			 * @brief Метод получения максимального количества хопов, через которые может пройти пакет

@@ -68,6 +68,13 @@ namespace awh {
 				 */
 				void write(const event::id_t eid, const size_t size) noexcept;
 				/**
+				 * @brief Метод обработки событий изменения статуса клиента
+				 *
+				 * @param eid    идентификатор события
+				 * @param status новый статус клиента
+				 */
+				void status(const event::id_t eid, const event::status_t status) noexcept;
+				/**
 				 * @brief Метод обработки действий клиента
 				 *
 				 * @param eid    идентификатор события
@@ -75,12 +82,12 @@ namespace awh {
 				 */
 				void action(const event::id_t eid, const event::action_t action) noexcept;
 				/**
-				 * @brief Метод обработки событий изменения статуса клиента
+				 * @brief Метод обработки информационных метаданных о дейтаграммном пакете
 				 *
-				 * @param eid    идентификатор события
-				 * @param status новый статус клиента
+				 * @param eid  идентификатор события
+				 * @param info информационные метаданные о дейтаграммном пакете
 				 */
-				void status(const event::id_t eid, const event::status_t status) noexcept;
+				void traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept;
 				/**
 				 * @brief Метод обработки событий получения данных клиентом
 				 *
@@ -245,6 +252,30 @@ namespace awh {
 				 * @return       результат выполнения установки
 				 */
 				bool setOption(const event::id_t eid, const uint16_t option, const bool mode) noexcept;
+			public:
+				/**
+				 * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    метаданные последнего принятого дейтаграммного пакета
+				 */
+				net::dgram_info_t getTrafficInfo(const event::id_t eid) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения количества хопов последнего принятого пакета
+				 *
+				 * @param eid идентификатор события клиента
+				 * @return    количество хопов последнего принятого пакета
+				 */
+				uint8_t getCountHops(const event::id_t eid) const noexcept;
+				/**
+				 * @brief Метод установки количества хопов последнего принятого пакета
+				 *
+				 * @param eid  идентификатор события клиента
+				 * @param hops количество хопов последнего принятого пакета
+				 * @return     результат выполнения установки
+				 */
+				bool setCountHops(const event::id_t eid, const uint8_t hops) noexcept;
 			public:
 				/**
 				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет

@@ -248,6 +248,21 @@ void awh::Client::action(const event::id_t eid, const event::action_t action) no
 	}
 }
 /**
+ * @brief Метод обработки информационных метаданных о дейтаграммном пакете
+ *
+ * @param eid  идентификатор события
+ * @param info информационные метаданные о дейтаграммном пакете
+ */
+void awh::Client::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("traffic"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
+	}
+}
+/**
  * @brief Метод обработки событий получения данных клиентом
  *
  * @param eid    идентификатор клиента
@@ -784,6 +799,8 @@ void awh::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова на событие изменения состояния клиента
 	this->_callback.set("action", callback);
+	// Выполняем установку функции обратного вызова при получении информационных метаданных о дейтаграммном пакете
+	this->_callback.set("traffic", callback);
 	// Выполняем установку функции обратного вызова на событие запуска клиента
 	this->_callback.set("launch", callback);
 	// Выполняем установку функции обратного вызова на событие истечения таймаута клиента
@@ -997,6 +1014,94 @@ bool awh::Client::setOption(const uint16_t option, const bool mode) noexcept {
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(option, mode), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+ *
+ * @return метаданные последнего принятого дейтаграммного пакета
+ */
+awh::net::dgram_info_t awh::Client::getTrafficInfo() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Получаем метаданные последнего принятого дейтаграммного пакета
+		return this->_unit->client.getTrafficInfo(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return net::dgram_info_t();
+}
+/**
+ * @brief Метод получения количества хопов последнего принятого пакета
+ *
+ * @return количество хопов последнего принятого пакета
+ */
+uint8_t awh::Client::getCountHops() const noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Получаем количество хопов последнего принятого пакета
+		return this->_unit->client.getCountHops(this->_id.eid);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Client is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки количества хопов последнего принятого пакета
+ *
+ * @param hops количество хопов последнего принятого пакета
+ * @return     результат выполнения установки
+ */
+bool awh::Client::setCountHops(const uint8_t hops) noexcept {
+	// Если идентификатор клиента установлен
+	if(this->_id.eid > 0)
+		// Устанавливаем количество хопов последнего принятого пакета
+		return this->_unit->client.setCountHops(this->_id.eid, hops);
+	// Если идентификатор клиента не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Client is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hops)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -2148,6 +2253,8 @@ awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_unit->client.on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
 	this->_unit->client.on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->client.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &client_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
 	this->_unit->client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
@@ -2198,6 +2305,8 @@ awh::Client::Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) no
 	this->_unit->client.on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
 	this->_unit->client.on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->client.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &client_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
 	this->_unit->client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
@@ -2230,6 +2339,8 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 	this->_unit->client.on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
 	this->_unit->client.on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->client.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &client_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
 	this->_unit->client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
@@ -2313,6 +2424,8 @@ awh::Client::Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, co
 	this->_unit->client.on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
 	this->_unit->client.on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->client.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &client_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
 	this->_unit->client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента

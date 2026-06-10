@@ -506,7 +506,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 						// Извлекаем IP-адрес установленный в событии
 						this->_io->getTarget(eid, address);
 						// Извлекаем TTL/Hop Limit последнего принятого пакета
-						timeToLive = static_cast <uint32_t> (this->_io->getRecvHops(eid));
+						timeToLive = static_cast <uint32_t> (this->_io->getCountHops(eid));
 					// Если размер данных меньше размера заголовка ICMP
 					} else return;
 				}
@@ -516,9 +516,7 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 			// Извлекаем номер последовательности запроса
 			const uint16_t sequence = ntohs(icmp->meta.echo.sequence);
 			// Получаем метаданные последнего принятого дейтаграммного пакета
-			net::dgram_info_t info = this->_io->getDatagramInfo(eid);
-			// Извлекаем TTL/Hop Limit последнего принятого пакета
-			info.hops = static_cast <uint8_t> (this->_io->getRecvHops(eid));
+			const net::dgram_info_t & info = this->_io->getTrafficInfo(eid);
 			// Если TTL/Hop Limit не удалось извлечь из IP-заголовка
 			if(timeToLive == 0)
 				// Устанавливаем TTL/Hop Limit из метаданных пакета

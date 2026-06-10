@@ -92,18 +92,6 @@ void awh::unit::Client::write(const event::id_t eid, const size_t size) noexcept
 		this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
 }
 /**
- * @brief Метод обработки действий клиента
- *
- * @param eid    идентификатор события
- * @param action действие клиента
- */
-void awh::unit::Client::action(const event::id_t eid, const event::action_t action) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("action"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
-}
-/**
  * @brief Метод обработки событий изменения статуса клиента
  *
  * @param eid    идентификатор события
@@ -123,6 +111,30 @@ void awh::unit::Client::status(const event::id_t eid, const event::status_t stat
 	if(this->_callback.is("state"))
 		// Выполняем функцию обратного вызова
 		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+}
+/**
+ * @brief Метод обработки действий клиента
+ *
+ * @param eid    идентификатор события
+ * @param action действие клиента
+ */
+void awh::unit::Client::action(const event::id_t eid, const event::action_t action) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("action"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
+}
+/**
+ * @brief Метод обработки информационных метаданных о дейтаграммном пакете
+ *
+ * @param eid  идентификатор события
+ * @param info информационные метаданные о дейтаграммном пакете
+ */
+void awh::unit::Client::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("traffic"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
 }
 /**
  * @brief Метод обработки событий получения данных клиентом
@@ -222,12 +234,6 @@ bool awh::unit::Client::commit(const event::id_t eid) noexcept {
 			if(!(result = this->_io->commit(eid))){
 				// Удаляем событие клиента
 				this->_io->destroy(eid);
-				// Выполняем поиск идентификатора события клиента в списке событий клиента
-				auto i = this->_events.find(eid);
-				// Если идентификатор события клиента найден в списке событий клиента
-				if(i != this->_events.end())
-					// Удаляем идентификатор события клиента из списка событий клиента
-					this->_events.erase(i);
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -284,6 +290,8 @@ bool awh::unit::Client::launch(const event::id_t eid) noexcept {
 		if(this->isActual(eid)){
 			// Выполняем запуск работы клиента
 			if(!(result = this->_io->launch(eid))){
+				// Удаляем событие клиента
+				this->_io->destroy(eid);
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error")){
 					/**
@@ -478,6 +486,49 @@ bool awh::unit::Client::setOption(const event::id_t eid, const uint16_t option, 
 	return false;
 }
 /**
+ * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+ *
+ * @param eid идентификатор события клиента
+ * @return    метаданные последнего принятого дейтаграммного пакета
+ */
+awh::net::dgram_info_t awh::unit::Client::getTrafficInfo(const event::id_t eid) const noexcept {
+	// Если событие клиента является актуальным
+	if(this->isActual(eid))
+		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события клиента
+		return this->_io->getTrafficInfo(eid);
+	// Выводим результат по умолчанию
+	return net::dgram_info_t();
+}
+/**
+ * @brief Метод получения количества хопов последнего принятого пакета
+ *
+ * @param eid идентификатор события клиента
+ * @return    количество хопов последнего принятого пакета
+ */
+uint8_t awh::unit::Client::getCountHops(const event::id_t eid) const noexcept {
+	// Если событие клиента является актуальным
+	if(this->isActual(eid))
+		// Выполняем получение количества хопов последнего принятого пакета для события клиента
+		return this->_io->getCountHops(eid);
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки количества хопов последнего принятого пакета
+ *
+ * @param eid  идентификатор события клиента
+ * @param hops количество хопов последнего принятого пакета
+ * @return     результат выполнения установки
+ */
+bool awh::unit::Client::setCountHops(const event::id_t eid, const uint8_t hops) noexcept {
+	// Если событие клиента является актуальным
+	if(this->isActual(eid))
+		// Выполняем установку количества хопов последнего принятого пакета для события клиента
+		return this->_io->setCountHops(eid, hops);
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод получения максимального количества хопов, через которые может пройти пакет
  *
  * @param eid идентификатор события клиента
@@ -502,7 +553,7 @@ bool awh::unit::Client::setHops(const event::id_t eid, const event::hops_t hops)
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события клиента
-		return this->_io->setHops(eid, this->_io->family(eid), hops);
+		return this->_io->setHops(eid, hops);
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1032,6 +1083,8 @@ void awh::unit::Client::callback(const callback_t & callback) noexcept {
 	this->_callback.set("status", callback);
 	// Выполняем установку функции обратного вызова при обработке действий клиента
 	this->_callback.set("action", callback);
+	// Выполняем установку функции обратного вызова при получении информационных метаданных о дейтаграммном пакете
+	this->_callback.set("traffic", callback);
 	// Выполняем установку функции обратного вызова при подключении клиента к удалённому узлу
 	this->_callback.set("connect", callback);
 	// Выполняем установку функции обратного вызова на событие истечения таймаута клиента
@@ -1084,6 +1137,8 @@ awh::event::id_t awh::unit::Client::issue(const event::family_t family, const ev
 			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&client_t::action, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
 			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&client_t::status, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
+			this->_io->on(result, static_cast <engine::callback::traffic_t> (std::bind(&client_t::traffic, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
 			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&client_t::error, this, _1, _2, _3)));
 			// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента

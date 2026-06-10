@@ -922,12 +922,15 @@ namespace io {
 		engine::callback::event_t event;
 		// Функция обратного вызова при приёме входящего подключения
 		engine::callback::accept_t accept;
+		// Функция обратного вызова при получении информационных метаданных о дейтаграммном пакете
+		engine::callback::traffic_t traffic;
 		/**
 		 * @brief Конструктор
 		 *
 		 */
 		explicit Server_Callbacks() noexcept :
-		 write(nullptr), event(nullptr), accept(nullptr) {}
+		 write(nullptr), event(nullptr),
+		 accept(nullptr), traffic(nullptr) {}
 	} server_callbacks_t;
 
 	/**
@@ -962,6 +965,8 @@ namespace io {
 		engine::callback::connect_t connect;
 		// Функция обратного вызова при истечении таймаута события
 		engine::callback::timeout_t timeout;
+		// Функция обратного вызова при получении информационных метаданных о дейтаграммном пакете
+		engine::callback::traffic_t traffic;
 		// Функция обратного вызова при доступности очереди
 		engine::callback::available_t available;
 		/**
@@ -971,7 +976,8 @@ namespace io {
 		explicit Client_Callbacks() noexcept :
 		 read(nullptr), write(nullptr),
 		 event(nullptr), connect(nullptr),
-		 timeout(nullptr), available(nullptr) {}
+		 timeout(nullptr), traffic(nullptr),
+		 available(nullptr) {}
 	} client_callbacks_t;
 
 	/**
@@ -8490,6 +8496,10 @@ namespace io {
 											} break;
 										}
 									}
+									// Если установлена функция обратного вызова
+									if(client->callbacks.traffic != nullptr)
+										// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
+										client->callbacks.traffic(client->id, client->raw.info);
 								// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 								// Если мы получили ошибку
@@ -8709,6 +8719,10 @@ namespace io {
 										} break;
 									}
 								}
+								// Если установлена функция обратного вызова
+								if(client->callbacks.traffic != nullptr)
+									// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
+									client->callbacks.traffic(client->id, client->raw.info);
 							// Выполняем чтение данных из сокета в обычном режиме, если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 							} else bytes = ::recv(client->transfer.fd, ::__awh_buffer__, AWH_EVENT_MAX_BUFFER_SIZE, MSG_NOSIGNAL);
 							// Если мы получили ошибку
@@ -8898,6 +8912,10 @@ namespace io {
 											} break;
 										}
 									}
+									// Если установлена функция обратного вызова
+									if(client->callbacks.traffic != nullptr)
+										// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
+										client->callbacks.traffic(client->id, client->raw.info);
 								// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else {
 									// Выполняем чтение данных из сокета в обычном режиме
@@ -9130,6 +9148,10 @@ namespace io {
 										} break;
 									}
 								}
+								// Если установлена функция обратного вызова
+								if(client->callbacks.traffic != nullptr)
+									// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
+									client->callbacks.traffic(client->id, client->raw.info);
 							// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 							} else {
 								// Выполняем чтение данных из сокета в обычном режиме
@@ -10033,6 +10055,10 @@ namespace io {
 											} break;
 										}
 									}
+									// Если установлена функция обратного вызова
+									if(server->callbacks.traffic != nullptr)
+										// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
+										server->callbacks.traffic(server->id, server->raw.info);
 								// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 								} else {
 									// Выполняем чтение данных из UDP-сокета или RAW-сокета
@@ -10296,6 +10322,10 @@ namespace io {
 										} break;
 									}
 								}
+								// Если установлена функция обратного вызова
+								if(server->callbacks.traffic != nullptr)
+									// Вызываем функцию обратного вызова для обработки информационных метаданных о дейтаграммных пакетах
+									server->callbacks.traffic(server->id, server->raw.info);
 							// Если не активирован режим получения информационных метаданных для дейтаграммных пакетов
 							} else {
 								// Выполняем чтение данных из UDP-сокета или RAW-сокета
@@ -54112,101 +54142,12 @@ bool awh::engine::IO::setDelivery(const event::id_t id, const event::delivery_mo
 	return false;
 }
 /**
- * @brief Метод получения максимального количества хопов, через которые может пройти пакет
- *
- * @param id идентификатор события
- * @return   максимальное количество хопов
- */
-awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
-			// Выводим результат максимального количества хопов
-			return i->second->state.hops;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return event::hops_t::WORLD;
-}
-/**
- * @brief Метод получения количества хопов последнего принятого пакета
- *
- * @param id идентификатор события
- * @return   количество хопов последнего принятого пакета
- */
-awh::event::hops_t awh::engine::IO::getRecvHops(const event::id_t id) const noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Выполняем поиск идентификатора события
-		auto i = ::__awh_nodes__.find(id);
-		// Если идентификатор события найден и событие не подлежит уничтожению
-		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
-			/**
-			 * Определяем чем является текущий узел
-			 */
-			switch(static_cast <uint8_t> (i->second->state.node)){
-				// Если узел является клиентом
-				case static_cast <uint8_t> (event::node_t::CLIENT):
-					// Выводим количество хопов последнего принятого пакета
-					return static_cast <event::hops_t> (awh_cast <::io::client_t *> (i->second.get())->raw.info.hops);
-				// Если узел является сервером
-				case static_cast <uint8_t> (event::node_t::SERVER):
-					// Выводим количество хопов последнего принятого пакета
-					return static_cast <event::hops_t> (awh_cast <::io::server_t *> (i->second.get())->raw.info.hops);
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Выводим сообщение об ошибке
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Выводим сообщение об ошибке
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
-	// Выводим результат по умолчанию
-	return event::hops_t::LOOPBACK;
-}
-
-/**
  * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
  *
  * @param id идентификатор события
  * @return   метаданные последнего принятого дейтаграммного пакета
  */
-awh::net::dgram_info_t awh::engine::IO::getDatagramInfo(const event::id_t id) const noexcept {
+awh::net::dgram_info_t awh::engine::IO::getTrafficInfo(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -54251,14 +54192,63 @@ awh::net::dgram_info_t awh::engine::IO::getDatagramInfo(const event::id_t id) co
 	return net::dgram_info_t();
 }
 /**
- * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+ * @brief Метод получения количества хопов последнего принятого пакета
  *
- * @param id     идентификатор события
- * @param family семейство протоколов (IPv4 или IPv6)
- * @param hops   максимальное количество хопов
- * @return       результат работы функции
+ * @param id идентификатор события
+ * @return   количество хопов последнего принятого пакета
  */
-bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept {
+uint8_t awh::engine::IO::getCountHops(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Выводим количество хопов последнего принятого пакета
+					return awh_cast <::io::client_t *> (i->second.get())->raw.info.hops;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Выводим количество хопов последнего принятого пакета
+					return awh_cast <::io::server_t *> (i->second.get())->raw.info.hops;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки количества хопов последнего принятого пакета
+ *
+ * @param id   идентификатор события
+ * @param hops количество хопов последнего принятого пакета
+ * @return     результат выполнения установки
+ */
+bool awh::engine::IO::setCountHops(const event::id_t id, const uint8_t hops) noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**
@@ -54278,45 +54268,150 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					// Получаем текущее значение объекта однорангового узла
 					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(peer->transfer.fd, family, peer->state.delivery, hops)))
-						// Устанавливаем максимальное количество хопов для события
-						peer->state.hops = hops;
+					if((result = this->_eth.socket.setHops(peer->transfer.fd, peer->state.family, peer->state.delivery, hops))){
+						// Если количество хопов равно нулю
+						if(hops == 0)
+							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
+							peer->state.hops = event::hops_t::LOOPBACK;
+						// Если количество хопов равно единице
+						else if(hops == 1)
+							// Устанавливаем максимальное количество хопов для события (в рамках локальной сети)
+							peer->state.hops = event::hops_t::NETWORK;
+						// Если количество хопов входит в диапазон компании
+						else if((hops >= static_cast <uint8_t> (event::hops_t::COMPANY)) && (hops < static_cast <uint8_t> (event::hops_t::REGION)))
+							// Устанавливаем максимальное количество хопов для события (в рамках компании)
+							peer->state.hops = event::hops_t::COMPANY;
+						// Если количество хопов входит в диапазон региона
+						else if((hops >= static_cast <uint8_t> (event::hops_t::REGION)) && (hops < static_cast <uint8_t> (event::hops_t::CONTINENT)))
+							// Устанавливаем максимальное количество хопов для события (в рамках региона)
+							peer->state.hops = event::hops_t::REGION;
+						// Если количество хопов входит в диапазон континента
+						else if((hops >= static_cast <uint8_t> (event::hops_t::CONTINENT)) && (hops < static_cast <uint8_t> (event::hops_t::WORLD)))
+							// Устанавливаем максимальное количество хопов для события (в рамках континента)
+							peer->state.hops = event::hops_t::CONTINENT;
+						// Устанавливаем максимальное количество хопов для события (в рамках всего мира)
+						else peer->state.hops = event::hops_t::WORLD;
+					}
 				} break;
 				// Если узел является одноранговым узлом-источником
 				case static_cast <uint8_t> (event::node_t::ORIGIN): {
 					// Получаем текущее значение объекта однорангового узла-источника
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(origin->transfer.fd, family, origin->state.delivery, hops)))
-						// Устанавливаем максимальное количество хопов для события
-						origin->state.hops = hops;
+					if((result = this->_eth.socket.setHops(origin->transfer.fd, origin->state.family, origin->state.delivery, hops))){
+						// Если количество хопов равно нулю
+						if(hops == 0)
+							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
+							origin->state.hops = event::hops_t::LOOPBACK;
+						// Если количество хопов равно единице
+						else if(hops == 1)
+							// Устанавливаем максимальное количество хопов для события (в рамках локальной сети)
+							origin->state.hops = event::hops_t::NETWORK;
+						// Если количество хопов входит в диапазон компании
+						else if((hops >= static_cast <uint8_t> (event::hops_t::COMPANY)) && (hops < static_cast <uint8_t> (event::hops_t::REGION)))
+							// Устанавливаем максимальное количество хопов для события (в рамках компании)
+							origin->state.hops = event::hops_t::COMPANY;
+						// Если количество хопов входит в диапазон региона
+						else if((hops >= static_cast <uint8_t> (event::hops_t::REGION)) && (hops < static_cast <uint8_t> (event::hops_t::CONTINENT)))
+							// Устанавливаем максимальное количество хопов для события (в рамках региона)
+							origin->state.hops = event::hops_t::REGION;
+						// Если количество хопов входит в диапазон континента
+						else if((hops >= static_cast <uint8_t> (event::hops_t::CONTINENT)) && (hops < static_cast <uint8_t> (event::hops_t::WORLD)))
+							// Устанавливаем максимальное количество хопов для события (в рамках континента)
+							origin->state.hops = event::hops_t::CONTINENT;
+						// Устанавливаем максимальное количество хопов для события (в рамках всего мира)
+						else origin->state.hops = event::hops_t::WORLD;
+					}
 				} break;
 				// Если узел является посредником
 				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
 					// Получаем текущее значение объекта посредника
 					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
 					// Если идентификатор связанного события установлен
-					if((mediator->dest != 0) && (result = this->setHops(mediator->dest, family, hops)))
-						// Устанавливаем максимальное количество хопов для события
-						mediator->state.hops = hops;
+					if((mediator->dest != 0) && (result = this->setCountHops(mediator->dest, hops))){
+						// Если количество хопов равно нулю
+						if(hops == 0)
+							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
+							mediator->state.hops = event::hops_t::LOOPBACK;
+						// Если количество хопов равно единице
+						else if(hops == 1)
+							// Устанавливаем максимальное количество хопов для события (в рамках локальной сети)
+							mediator->state.hops = event::hops_t::NETWORK;
+						// Если количество хопов входит в диапазон компании
+						else if((hops >= static_cast <uint8_t> (event::hops_t::COMPANY)) && (hops < static_cast <uint8_t> (event::hops_t::REGION)))
+							// Устанавливаем максимальное количество хопов для события (в рамках компании)
+							mediator->state.hops = event::hops_t::COMPANY;
+						// Если количество хопов входит в диапазон региона
+						else if((hops >= static_cast <uint8_t> (event::hops_t::REGION)) && (hops < static_cast <uint8_t> (event::hops_t::CONTINENT)))
+							// Устанавливаем максимальное количество хопов для события (в рамках региона)
+							mediator->state.hops = event::hops_t::REGION;
+						// Если количество хопов входит в диапазон континента
+						else if((hops >= static_cast <uint8_t> (event::hops_t::CONTINENT)) && (hops < static_cast <uint8_t> (event::hops_t::WORLD)))
+							// Устанавливаем максимальное количество хопов для события (в рамках континента)
+							mediator->state.hops = event::hops_t::CONTINENT;
+						// Устанавливаем максимальное количество хопов для события (в рамках всего мира)
+						else mediator->state.hops = event::hops_t::WORLD;
+					}
 				} break;
 				// Если узел является клиентом
 				case static_cast <uint8_t> (event::node_t::CLIENT): {
 					// Получаем текущее значение объекта клиента
 					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(client->transfer.fd, family, client->state.delivery, hops)))
-						// Устанавливаем максимальное количество хопов для события
-						client->state.hops = hops;
+					if((result = this->_eth.socket.setHops(client->transfer.fd, client->state.family, client->state.delivery, hops))){
+						// Если количество хопов равно нулю
+						if(hops == 0)
+							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
+							client->state.hops = event::hops_t::LOOPBACK;
+						// Если количество хопов равно единице
+						else if(hops == 1)
+							// Устанавливаем максимальное количество хопов для события (в рамках локальной сети)
+							client->state.hops = event::hops_t::NETWORK;
+						// Если количество хопов входит в диапазон компании
+						else if((hops >= static_cast <uint8_t> (event::hops_t::COMPANY)) && (hops < static_cast <uint8_t> (event::hops_t::REGION)))
+							// Устанавливаем максимальное количество хопов для события (в рамках компании)
+							client->state.hops = event::hops_t::COMPANY;
+						// Если количество хопов входит в диапазон региона
+						else if((hops >= static_cast <uint8_t> (event::hops_t::REGION)) && (hops < static_cast <uint8_t> (event::hops_t::CONTINENT)))
+							// Устанавливаем максимальное количество хопов для события (в рамках региона)
+							client->state.hops = event::hops_t::REGION;
+						// Если количество хопов входит в диапазон континента
+						else if((hops >= static_cast <uint8_t> (event::hops_t::CONTINENT)) && (hops < static_cast <uint8_t> (event::hops_t::WORLD)))
+							// Устанавливаем максимальное количество хопов для события (в рамках континента)
+							client->state.hops = event::hops_t::CONTINENT;
+						// Устанавливаем максимальное количество хопов для события (в рамках всего мира)
+						else client->state.hops = event::hops_t::WORLD;
+					}
 				} break;
 				// Если узел является сервером
 				case static_cast <uint8_t> (event::node_t::SERVER): {
 					// Получаем текущее значение объекта сервера
 					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
 					// Если максимальное количество хопов установлено успешно
-					if((result = this->_eth.socket.setHops(server->fd, family, server->state.delivery, hops)))
-						// Устанавливаем максимальное количество хопов для события
-						server->state.hops = hops;
+					if((result = this->_eth.socket.setHops(server->fd, server->state.family, server->state.delivery, hops))){
+						// Если количество хопов равно нулю
+						if(hops == 0)
+							// Устанавливаем максимальное количество хопов для события (в рамках петлевого интерфейса)
+							server->state.hops = event::hops_t::LOOPBACK;
+						// Если количество хопов равно единице
+						else if(hops == 1)
+							// Устанавливаем максимальное количество хопов для события (в рамках локальной сети)
+							server->state.hops = event::hops_t::NETWORK;
+						// Если количество хопов входит в диапазон компании
+						else if((hops >= static_cast <uint8_t> (event::hops_t::COMPANY)) && (hops < static_cast <uint8_t> (event::hops_t::REGION)))
+							// Устанавливаем максимальное количество хопов для события (в рамках компании)
+							server->state.hops = event::hops_t::COMPANY;
+						// Если количество хопов входит в диапазон региона
+						else if((hops >= static_cast <uint8_t> (event::hops_t::REGION)) && (hops < static_cast <uint8_t> (event::hops_t::CONTINENT)))
+							// Устанавливаем максимальное количество хопов для события (в рамках региона)
+							server->state.hops = event::hops_t::REGION;
+						// Если количество хопов входит в диапазон континента
+						else if((hops >= static_cast <uint8_t> (event::hops_t::CONTINENT)) && (hops < static_cast <uint8_t> (event::hops_t::WORLD)))
+							// Устанавливаем максимальное количество хопов для события (в рамках континента)
+							server->state.hops = event::hops_t::CONTINENT;
+						// Устанавливаем максимальное количество хопов для события (в рамках всего мира)
+						else server->state.hops = event::hops_t::WORLD;
+					}
 				} break;
 				// Для других типов узлов
 				default: {
@@ -54326,9 +54421,7 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 					#if DEBUG_MODE
 						// Выводим сообщение об ошибке
 						this->_log->debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, make_tuple(
-							id,
-							static_cast <uint8_t> (family),
-							static_cast <uint8_t> (hops)
+							id, static_cast <uint8_t> (hops)
 						), log_t::flag_t::CRITICAL);
 					/**
 					 * Если режим отладки не включён
@@ -54350,9 +54443,155 @@ bool awh::engine::IO::setHops(const event::id_t id, const event::family_t family
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
-				id,
-				static_cast <uint8_t> (family),
-				static_cast <uint8_t> (hops)
+				id, static_cast <uint8_t> (hops)
+			), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат работы функции
+	return result;
+}
+/**
+ * @brief Метод получения максимального количества хопов, через которые может пройти пакет
+ *
+ * @param id идентификатор события
+ * @return   максимальное количество хопов
+ */
+awh::event::hops_t awh::engine::IO::getHops(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED))
+			// Выводим результат максимального количества хопов
+			return i->second->state.hops;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return event::hops_t::WORLD;
+}
+/**
+ * @brief Метод установки максимального количества хопов, через которые может пройти пакет
+ *
+ * @param id   идентификатор события
+ * @param hops максимальное количество хопов
+ * @return     результат работы функции
+ */
+bool awh::engine::IO::setHops(const event::id_t id, const event::hops_t hops) noexcept {
+	// Результат работы функции
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является одноранговым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Получаем текущее значение объекта однорангового узла
+					::io::peer_t * peer = awh_cast <::io::peer_t *> (i->second.get());
+					// Если максимальное количество хопов установлено успешно
+					if((result = this->_eth.socket.setHops(peer->transfer.fd, peer->state.family, peer->state.delivery, static_cast <uint8_t> (hops))))
+						// Устанавливаем максимальное количество хопов для события
+						peer->state.hops = hops;
+				} break;
+				// Если узел является одноранговым узлом-источником
+				case static_cast <uint8_t> (event::node_t::ORIGIN): {
+					// Получаем текущее значение объекта однорангового узла-источника
+					::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+					// Если максимальное количество хопов установлено успешно
+					if((result = this->_eth.socket.setHops(origin->transfer.fd, origin->state.family, origin->state.delivery, static_cast <uint8_t> (hops))))
+						// Устанавливаем максимальное количество хопов для события
+						origin->state.hops = hops;
+				} break;
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем текущее значение объекта посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if((mediator->dest != 0) && (result = this->setHops(mediator->dest, hops)))
+						// Устанавливаем максимальное количество хопов для события
+						mediator->state.hops = hops;
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Если максимальное количество хопов установлено успешно
+					if((result = this->_eth.socket.setHops(client->transfer.fd, client->state.family, client->state.delivery, static_cast <uint8_t> (hops))))
+						// Устанавливаем максимальное количество хопов для события
+						client->state.hops = hops;
+				} break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Если максимальное количество хопов установлено успешно
+					if((result = this->_eth.socket.setHops(server->fd, server->state.family, server->state.delivery, static_cast <uint8_t> (hops))))
+						// Устанавливаем максимальное количество хопов для события
+						server->state.hops = hops;
+				} break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", __PRETTY_FUNCTION__, make_tuple(
+							id, static_cast <uint8_t> (hops)
+						), log_t::flag_t::CRITICAL);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("It is not possible to set maximum number of network hops a packet can travel through for non-network nodes", log_t::flag_t::CRITICAL);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(
+				id, static_cast <uint8_t> (hops)
 			), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
@@ -60660,6 +60899,74 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 	}
 }
 /**
+ * @brief Метод установки функции обратного вызова на получение информационных метаданных о дейтаграммном пакете
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, engine::callback::traffic_t cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT):
+					// Устанавливаем функцию обратного вызова для обработки информационных метаданных о дейтаграммном пакете
+					awh_cast <::io::client_t *> (i->second.get())->callbacks.traffic = ::move(cb);
+				break;
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER):
+					// Устанавливаем функцию обратного вызова для обработки информационных метаданных о дейтаграммном пакете
+					awh_cast <::io::server_t *> (i->second.get())->callbacks.traffic = ::move(cb);
+				break;
+				// Для других типов узлов
+				default: {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Выводим сообщение об ошибке
+						this->_log->debug("A traffic info callback cannot be set for this event type", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Выводим сообщение об ошибке
+						this->_log->print("A traffic info callback cannot be set for this event type", log_t::flag_t::WARNING);
+					#endif
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
  * @brief Метод установки функции обратного вызова для обработки подключения
  *
  * @param id идентификатор события
@@ -60723,7 +61030,7 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::connect_t cb) n
 	}
 }
 /**
- * @brief Метод установки функции обратного вызова для получения информации о пакетах туннеля
+ * @brief Метод установки функции обратного вызова на получение информации о пакетах в туннельном интерфейсе
  *
  * @param id идентификатор события
  * @param cb функция обратного вызова

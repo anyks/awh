@@ -96,6 +96,11 @@ namespace awh {
 			 */
 			using status_t = function <void (const event::id_t, const event::status_t)>;
 			/**
+			 * @brief Функция обратного вызова срабатывающая при получении информационных метаданных о дейтаграммном пакете
+			 *
+			 */
+			using traffic_t = function <void (const event::id_t, const net::dgram_info_t &)>;
+			/**
 			 * @brief Функция обратного вызова срабатывающая при чтении из события
 			 *
 			 */

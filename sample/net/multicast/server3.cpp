@@ -80,7 +80,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем мультикастовый режим события
 		if(io.setDelivery(eid, event::delivery_mode_t::MULTICAST)){
 			// Устанавливаем TTL для мультикастового события
-			if(io.setHops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
+			if(io.setHops(eid, event::hops_t::NETWORK)){
 				// Устананавливаем опции события
 				/**
 				 * event::options::MULTICAST_LOOPBACK разрешает или запрещает отправку сообщений в локальный порт 127.0.0.1 если клиент висит на 0.0.0.0 то он получит две копии сообщений

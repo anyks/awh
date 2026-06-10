@@ -361,6 +361,21 @@ void awh::Server::action(const event::id_t eid, const event::action_t action) no
 	}
 }
 /**
+ * @brief Метод обработки информационных метаданных о дейтаграммном пакете
+ *
+ * @param eid  идентификатор события
+ * @param info информационные метаданные о дейтаграммном пакете
+ */
+void awh::Server::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
+	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->server.working()){
+		// Если функция обратного вызова установлена
+		if(this->_callback.is("traffic"))
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
+	}
+}
+/**
  * @brief Метод обработки событий получения данных сервером
  *
  * @param eid    идентификатор клиента
@@ -1208,6 +1223,8 @@ void awh::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("launch", callback);
 	// Выполняем установку функции обратного вызова при принятии входящего соединения от клиента
 	this->_callback.set("accept", callback);
+	// Выполняем установку функции обратного вызова при получении информационных метаданных о дейтаграммном пакете
+	this->_callback.set("traffic", callback);
 	// Выполняем установку функции обратного вызова на событие истечения таймаута клиента
 	this->_callback.set("timeout", callback);
 	// Выполняем установку функции обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
@@ -1436,6 +1453,94 @@ bool awh::Server::setOption(const event::id_t eid, const uint16_t option, const 
 		#if DEBUG_MODE
 			// Выводим сообщение об ошибке
 			this->_log->debug("Server or сlient is not initialized", __PRETTY_FUNCTION__, make_tuple(eid, option, mode), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Server or сlient is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+ *
+ * @return метаданные последнего принятого дейтаграммного пакета
+ */
+awh::net::dgram_info_t awh::Server::getTrafficInfo() const noexcept {
+	// Если идентификатор сервера установлен
+	if(this->_id.eid > 0)
+		// Получаем метаданные последнего принятого дейтаграммного пакета
+		return this->_unit->server.getTrafficInfo(this->_id.eid);
+	// Если идентификатор сервера не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Server or сlient is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Server or сlient is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return net::dgram_info_t();
+}
+/**
+ * @brief Метод получения количества хопов последнего принятого пакета
+ *
+ * @return количество хопов последнего принятого пакета
+ */
+uint8_t awh::Server::getCountHops() const noexcept {
+	// Если идентификатор сервера установлен
+	if(this->_id.eid > 0)
+		// Получаем количество хопов последнего принятого пакета
+		return this->_unit->server.getCountHops(this->_id.eid);
+	// Если идентификатор сервера не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Server or сlient is not initialized", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("Server or сlient is not initialized", log_t::flag_t::WARNING);
+		#endif
+	}
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки количества хопов последнего принятого пакета
+ *
+ * @param hops количество хопов последнего принятого пакета
+ * @return     результат выполнения установки
+ */
+bool awh::Server::setCountHops(const uint8_t hops) noexcept {
+	// Если идентификатор сервера установлен
+	if(this->_id.eid > 0)
+		// Устанавливаем количество хопов последнего принятого пакета
+		return this->_unit->server.setCountHops(this->_id.eid, hops);
+	// Если идентификатор сервера не установлен
+	else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("Server or сlient is not initialized", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (hops)), log_t::flag_t::WARNING);
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -3019,6 +3124,8 @@ awh::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
 	this->_unit->server.on <void (const event::id_t, const event::status_t)> ("state", &server_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий сервера
 	this->_unit->server.on <void (const event::id_t, const event::action_t)> ("action", &server_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->server.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &server_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных сервером
 	this->_unit->server.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &server_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок сервера
@@ -3087,6 +3194,8 @@ awh::Server::Server(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) no
 	this->_unit->server.on <void (const event::id_t, const event::status_t)> ("state", &server_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий сервера
 	this->_unit->server.on <void (const event::id_t, const event::action_t)> ("action", &server_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->server.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &server_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных сервером
 	this->_unit->server.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &server_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок сервера
@@ -3135,6 +3244,8 @@ awh::Server::Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 	this->_unit->server.on <void (const event::id_t, const event::status_t)> ("state", &server_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий сервера
 	this->_unit->server.on <void (const event::id_t, const event::action_t)> ("action", &server_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->server.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &server_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных сервером
 	this->_unit->server.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &server_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок сервера
@@ -3236,6 +3347,8 @@ awh::Server::Server(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, co
 	this->_unit->server.on <void (const event::id_t, const event::status_t)> ("state", &server_t::state, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие обработки действий сервера
 	this->_unit->server.on <void (const event::id_t, const event::action_t)> ("action", &server_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->server.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &server_t::traffic, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения данных сервером
 	this->_unit->server.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &server_t::read, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие ошибок сервера

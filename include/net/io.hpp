@@ -674,6 +674,30 @@ namespace awh {
 				bool setDelivery(const event::id_t id, const event::delivery_mode_t delivery) noexcept;
 			public:
 				/**
+				 * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+				 *
+				 * @param id идентификатор события
+				 * @return   метаданные последнего принятого дейтаграммного пакета
+				 */
+				net::dgram_info_t getTrafficInfo(const event::id_t id) const noexcept;
+			public:
+				/**
+				 * @brief Метод получения количества хопов последнего принятого пакета
+				 *
+				 * @param id идентификатор события
+				 * @return   количество хопов последнего принятого пакета
+				 */
+				uint8_t getCountHops(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки количества хопов последнего принятого пакета
+				 *
+				 * @param id   идентификатор события
+				 * @param hops количество хопов последнего принятого пакета
+				 * @return     результат выполнения установки
+				 */
+				bool setCountHops(const event::id_t id, const uint8_t hops) noexcept;
+			public:
+				/**
 				 * @brief Метод получения максимального количества хопов, через которые может пройти пакет
 				 *
 				 * @param id идентификатор события
@@ -681,28 +705,13 @@ namespace awh {
 				 */
 				event::hops_t getHops(const event::id_t id) const noexcept;
 				/**
-				 * @brief Метод получения количества хопов последнего принятого пакета
-				 *
-				 * @param id идентификатор события
-				 * @return   количество хопов последнего принятого пакета
-				 */
-				event::hops_t getRecvHops(const event::id_t id) const noexcept;
-				/**
-				 * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
-				 *
-				 * @param id идентификатор события
-				 * @return   метаданные последнего принятого дейтаграммного пакета
-				 */
-				net::dgram_info_t getDatagramInfo(const event::id_t id) const noexcept;
-				/**
 				 * @brief Метод установки максимального количества хопов, через которые может пройти пакет
 				 *
-				 * @param id     идентификатор события
-				 * @param family семейство протоколов (IPv4 или IPv6)
-				 * @param hops   максимальное количество хопов
-				 * @return       результат работы функции
+				 * @param id   идентификатор события
+				 * @param hops максимальное количество хопов
+				 * @return     результат работы функции
 				 */
-				bool setHops(const event::id_t id, const event::family_t family, const event::hops_t hops) noexcept;
+				bool setHops(const event::id_t id, const event::hops_t hops) noexcept;
 			public:
 				/**
 				 * @brief Метод получения режима использования таймаута для обработки события чтения
@@ -963,6 +972,13 @@ namespace awh {
 				 */
 				void on(const event::id_t id, engine::callback::accept_t cb) noexcept;
 				/**
+				 * @brief Метод установки функции обратного вызова на получение информационных метаданных о дейтаграммном пакете
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, engine::callback::traffic_t cb) noexcept;
+				/**
 				 * @brief Метод установки функции обратного вызова для обработки подключения
 				 *
 				 * @param id идентификатор события
@@ -970,7 +986,7 @@ namespace awh {
 				 */
 				void on(const event::id_t id, engine::callback::connect_t cb) noexcept;
 				/**
-				 * @brief Метод установки функции обратного вызова для получения информации о пакетах туннеля
+				 * @brief Метод установки функции обратного вызова на получение информации о пакетах в туннельном интерфейсе
 				 *
 				 * @param id идентификатор события
 				 * @param cb функция обратного вызова

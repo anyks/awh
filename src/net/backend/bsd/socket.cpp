@@ -2261,9 +2261,9 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
  * @param delivery режим трансляции пакетов (unicast, multicast, broadcast)
  * @return         максимальное количество хопов
  */
-awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept {
+uint8_t awh::eth::Socket::getHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery) const noexcept {
 	// Результат работы функции
-	event::hops_t result = event::hops_t::LOOPBACK;
+	uint8_t result = 0;
 	/**
 	 * Определяем семейство события
 	 */
@@ -2307,7 +2307,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
 						#endif
 					}
 					// Формируем итоговый результат
-					result = static_cast <event::hops_t> (flag);
+					result = static_cast <uint8_t> (flag);
 				} break;
 				// Если необходимо установить максимальное количество хопов для multicast пакетов
 				case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
@@ -2379,7 +2379,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
 						#endif
 					}
 					// Формируем итоговый результат
-					result = static_cast <event::hops_t> (flag);
+					result = static_cast <uint8_t> (flag);
 				} break;
 				// Если необходимо установить максимальное количество хопов для multicast пакетов
 				case static_cast <uint8_t> (event::delivery_mode_t::MULTICAST): {
@@ -2412,7 +2412,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
 						#endif
 					}
 					// Формируем итоговый результат
-					result = static_cast <event::hops_t> (flag);
+					result = static_cast <uint8_t> (flag);
 				} break;
 			}
 		} break;
@@ -2429,7 +2429,7 @@ awh::event::hops_t awh::eth::Socket::getHops(const net::socket_t sock, const eve
  * @param hops     максимальное количество хопов
  * @return         результат работы функции
  */
-bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const event::hops_t hops) const noexcept {
+bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t family, const event::delivery_mode_t delivery, const uint8_t hops) const noexcept {
 	// Результат работы функции
 	bool result = false;
 	/**

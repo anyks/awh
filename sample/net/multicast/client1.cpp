@@ -63,7 +63,7 @@ int32_t main(int32_t argc, char * argv[]){
 		// Устанавливаем мультикастовый режим события
 		if(io.setDelivery(eid, event::delivery_mode_t::MULTICAST)){
 			// Устанавливаем TTL для мультикастового события
-			if(io.setHops(eid, event::family_t::IPV4, event::hops_t::NETWORK)){
+			if(io.setHops(eid, event::hops_t::NETWORK)){
 				// Устананавливаем опции события
 				if(io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC | awh::event::options::MULTICAST_LOOPBACK))
 					// Выводим сообщение об успешной установке опций события

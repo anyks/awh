@@ -433,6 +433,18 @@ void awh::unit::Server::status(const event::id_t eid, const event::status_t stat
 		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
+ * @brief Метод обработки информационных метаданных о дейтаграммном пакете
+ *
+ * @param eid  идентификатор события
+ * @param info информационные метаданные о дейтаграммном пакете
+ */
+void awh::unit::Server::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callback.is("traffic"))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
+}
+/**
  * @brief Метод получения событий активации/деактивации кластера
  *
  * @param pid   идентификатор процесса
@@ -1045,6 +1057,49 @@ bool awh::unit::Server::setOption(const event::id_t eid, const uint16_t option, 
 	return false;
 }
 /**
+ * @brief Метод получения метаданных последнего принятого дейтаграммного пакета
+ *
+ * @param eid идентификатор события сервера
+ * @return    метаданные последнего принятого дейтаграммного пакета
+ */
+awh::net::dgram_info_t awh::unit::Server::getTrafficInfo(const event::id_t eid) const noexcept {
+	// Если событие сервера является актуальным
+	if(this->isActual(eid))
+		// Выполняем получение метаданных последнего принятого дейтаграммного пакета для события сервера
+		return this->_io->getTrafficInfo(eid);
+	// Выводим результат по умолчанию
+	return net::dgram_info_t();
+}
+/**
+ * @brief Метод получения количества хопов последнего принятого пакета
+ *
+ * @param eid идентификатор события сервера
+ * @return    количество хопов последнего принятого пакета
+ */
+uint8_t awh::unit::Server::getCountHops(const event::id_t eid) const noexcept {
+	// Если событие сервера является актуальным
+	if(this->isActual(eid))
+		// Выполняем получение количества хопов последнего принятого пакета для события сервера
+		return this->_io->getCountHops(eid);
+	// Выводим результат по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки количества хопов последнего принятого пакета
+ *
+ * @param eid  идентификатор события сервера
+ * @param hops количество хопов последнего принятого пакета
+ * @return     результат выполнения установки
+ */
+bool awh::unit::Server::setCountHops(const event::id_t eid, const uint8_t hops) noexcept {
+	// Если событие сервера является актуальным
+	if(this->isActual(eid))
+		// Выполняем установку количества хопов последнего принятого пакета для события сервера
+		return this->_io->setCountHops(eid, hops);
+	// Выводим результат по умолчанию
+	return false;
+}
+/**
  * @brief Метод получения максимального количества хопов, через которые может пройти пакет
  *
  * @param eid идентификатор события сервера
@@ -1069,7 +1124,7 @@ bool awh::unit::Server::setHops(const event::id_t eid, const event::hops_t hops)
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку максимального количества хопов для события сервера
-		return this->_io->setHops(eid, this->_io->family(eid), hops);
+		return this->_io->setHops(eid, hops);
 	// Выводим результат по умолчанию
 	return false;
 }
@@ -1672,6 +1727,8 @@ void awh::unit::Server::callback(const callback_t & callback) noexcept {
 	this->_callback.set("action", callback);
 	// Выполняем установку функции обратного вызова при принятии нового подключения
 	this->_callback.set("accept", callback);
+	// Выполняем установку функции обратного вызова при получении информационных метаданных о дейтаграммном пакете
+	this->_callback.set("traffic", callback);
 	// Выполняем установку функции обратного вызова на событие истечения таймаута подключённого клиента
 	this->_callback.set("timeout", callback);
 	// Выполняем установку функции обратного вызова при получении событий доступности/недоступности очереди исходящих данных сервера
@@ -1748,6 +1805,8 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие разрешения подключения
 			this->_io->on(result, static_cast <engine::callback::accept_t> (std::bind(&server_t::accept, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
+			this->_io->on(result, static_cast <engine::callback::traffic_t> (std::bind(&server_t::traffic, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
 			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4)));
 			// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
