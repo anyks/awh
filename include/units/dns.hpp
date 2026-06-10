@@ -27,6 +27,7 @@
  * Наши модули
  */
 #include "unit.hpp"
+#include "../sys/locker.hpp"
 #include "../sys/binbox.hpp"
 
 /**
@@ -179,6 +180,13 @@ namespace awh {
 						bool pop(event::id_t & eid) noexcept;
 					public:
 						/**
+						 * @brief Метод удаления идентификатора события из очереди
+						 *
+						 * @param eid идентификатор события для удаления из очереди
+						 */
+						void remove(const event::id_t eid) noexcept;
+					public:
+						/**
 						 * @brief Конструктор
 						 *
 						 */
@@ -251,13 +259,13 @@ namespace awh {
 					uint16_t port;
 					// Таймаут ожидания ответа от DNS-сервера (в миллисекундах)
 					uint32_t delay;
-					// Очередь свободных идентификаторов сокетов DNS-резолвера
+					// Очередь свободных идентификаторов событий DNS-резолвера (IPv4 и IPv6)
 					queue_t queue;
 					// Список DNS-серверов для выполнения запросов
 					servers_t nameServers;
-					// Идентификаторы UDP-сокетов DNS-резолвера для IPv4
+					// Идентификаторы событий DNS-резолвера для IPv4
 					vector <event::id_t> idv4;
-					// Идентификаторы UDP-сокетов DNS-резолвера для IPv6
+					// Идентификаторы событий DNS-резолвера для IPv6
 					vector <event::id_t> idv6;
 					// Локальный адрес источника для запросов IPv4
 					unique_ptr <net::addr_t> sourceIPv4;
@@ -285,7 +293,7 @@ namespace awh {
 					std::queue <packet_t> packets;
 					// Активные DNS-запросы, ожидающие ответа
 					unordered_map <id_t, packet_t> waiting;
-					// Соответствие между событием сокета и идентификатором запроса
+					// Соответствие между идентификатором события и идентификатором запроса
 					unordered_map <event::id_t, id_t> attached;
 					/**
 					 * @brief Конструктор
@@ -303,6 +311,9 @@ namespace awh {
 				resolver_t _resolver;
 				// Объект управления очередью и состоянием DNS-запросов
 				transfer_t _transfer;
+			private:
+				// Блокировка доступа к состоянию передачи DNS-запросов
+				mutable lock_state_t <std::mutex>  _mtx;
 			private:
 				/**
 				 * @brief Метод сохранения дампа DNS-кэша в файл
@@ -542,6 +553,13 @@ namespace awh {
 				 * @param ttl    время жизни кэша доменного имени (в секундах)
 				 */
 				void pushAddressToCache(const event::family_t family, string_view domain, string_view ip, const uint32_t ttl) noexcept;
+			public:
+				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод установки префикса переменной окружения
