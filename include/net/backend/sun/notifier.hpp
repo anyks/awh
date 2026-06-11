@@ -30,7 +30,7 @@
 		// Минимизируем включение редко используемых компонентов Windows headers
 		#define WIN32_LEAN_AND_MEAN
 		/**
-		 * Стандартные модули
+		 * Системные заголовочные файлы
 		 */
 		#include <winsock2.h>
 		#include <ws2tcpip.h>
@@ -45,19 +45,19 @@
  */
 #if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
 	/**
-	 * Стандартные модули
+	 * Стандартные заголовочные файлы
 	 */
 	#include <queue>
 	#include <mutex>
 #endif
 
 /**
- * Стандартные модули
+ * Стандартный заголовочный файл
  */
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "../sys/fmk.hpp"
 #include "../sys/log.hpp"

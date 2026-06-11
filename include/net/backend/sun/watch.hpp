@@ -16,18 +16,16 @@
 #define __AWH_EVENT_WATCH__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <queue>
 #include <chrono>
 #include <thread>
 #include <atomic>
-#include <cinttypes>
-#include <unordered_map>
 #include <condition_variable>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "notifier.hpp"
 #include "../sys/locker.hpp"

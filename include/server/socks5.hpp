@@ -19,7 +19,7 @@
 #define __AWH_SERVER_SOCKS5__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@
 #include <unordered_set>
 
 /**
- * Заголовки проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include "server.hpp"
 #include "../units/client.hpp"
@@ -480,7 +480,7 @@ namespace awh {
 				 * @param eid идентификатор события клиента или сервера
 				 * @return    порт удалённого клиента или текущего сервера
 				 */
-				uint16_t getDestinationPort(const event::id_t eid) const noexcept;
+				uint16_t getTargetPort(const event::id_t eid) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины

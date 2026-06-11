@@ -19,13 +19,13 @@
 #define __AWH_EVENT_FDS_BASE__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <cstdint>
 #include <unistd.h>
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "../sys/log.hpp"
 

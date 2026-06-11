@@ -19,7 +19,7 @@
 #define __AWH_NET_URI__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <string>
 #include <vector>
@@ -30,7 +30,7 @@
 #include <unordered_map>
 
 /**
- * Наши модуля
+ * Подключаем заголовочный файл проекта
  */
 #include "addr.hpp"
 

@@ -175,7 +175,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем порт и целевой хост для клиента
-	if(client.setTarget("127.0.0.1") && client.setDestinationPort(2222)){
+	if(client.setTarget("127.0.0.1") && client.setTargetPort(2222)){
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд
 		client.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса клиента

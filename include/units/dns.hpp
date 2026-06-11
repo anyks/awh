@@ -19,12 +19,12 @@
 #define __AWH_UNIT_DNS_RESOLVER__
 
 /**
- * Стандартные модули
+ * Стандартный заголовочный файл
  */
 #include <queue>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "unit.hpp"
 #include "../sys/locker.hpp"
@@ -612,13 +612,13 @@ namespace awh {
 				 *
 				 * @return UDP-порт DNS-сервера
 				 */
-				uint16_t getDestinationPort() const noexcept;
+				uint16_t getTargetPort() const noexcept;
 				/**
 				 * @brief Метод установки UDP-порта DNS-сервера
 				 *
 				 * @param port UDP-порт DNS-сервера
 				 */
-				void setDestinationPort(const uint16_t port) noexcept;
+				void setTargetPort(const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод установки адреса DNS-сервера

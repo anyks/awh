@@ -212,8 +212,8 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(tls.transport(cts));
 	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
-	// if(client.setDestinationPort(11613) && client.setTarget("217.29.53.105") && client.endpoint(host, 443)){
-	if(client.setDestinationPort(2222) && client.setTarget("localhost") && client.endpoint(host, 443)){
+	// if(client.setTargetPort(11613) && client.setTarget("217.29.53.105") && client.endpoint(host, 443)){
+	if(client.setTargetPort(2222) && client.setTarget("localhost") && client.endpoint(host, 443)){
 		// Устанавливаем параметры авторизации для клиента
 		client.setUser("8J0sHd", "G4DfSK");
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд

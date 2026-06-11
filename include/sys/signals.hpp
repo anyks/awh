@@ -19,7 +19,7 @@
 #define __AWH_SIGNALS__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <atomic>
 #include <cstdlib>
@@ -27,7 +27,7 @@
 #include <functional>
 
 /**
- * Подключаем наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "fmk.hpp"
 #include "log.hpp"
@@ -37,7 +37,7 @@
  */
 #if _WIN32 || _WIN64
 	/**
-	 * Системные модули
+	 * Системный заголовочный файл
 	 */
 	#include <tchar.h>
 #endif

@@ -19,13 +19,13 @@
 #define __AWH_CLIENT_SOCKS5__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <string>
 #include <vector>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "client.hpp"
 #include "../proto/socks5/client.hpp"

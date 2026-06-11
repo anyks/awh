@@ -19,12 +19,12 @@
 #define __AWH_ENGINE_CALLBACK__
 
 /**
- * Стандартные модули
+ * Стандартный заголовочный файл
  */
 #include <functional>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "net.hpp"
 #include "event.hpp"

@@ -19,7 +19,7 @@
 #define __AWH_SSL_ENGINE__
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "tls.hpp"
 #include "fingerprint.hpp"

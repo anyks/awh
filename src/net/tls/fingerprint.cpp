@@ -49,7 +49,7 @@
  */
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <vector>
 #include <cstdint>
@@ -61,13 +61,13 @@
 #include <algorithm>
 
 /**
- * Модули OpenSSL для вычисления хешей
+ * Заголовочные файлы OpenSSL
  */
 #include <openssl/md5.h>
 #include <openssl/sha.h>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <net/tls/fingerprint.hpp>
 

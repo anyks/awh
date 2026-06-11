@@ -13,7 +13,7 @@
  */
 
 /**
- * Подключаем заголовочный файл модуля
+ * Подключаем заголовочный файл проекта
  */
 #include <units/client.hpp>
 
@@ -621,11 +621,11 @@ bool awh::unit::Client::setSourcePort(const event::id_t eid, const uint16_t port
  * @param eid идентификатор события клиента
  * @return    порт удалённого узла
  */
-uint16_t awh::unit::Client::getDestinationPort(const event::id_t eid) const noexcept {
+uint16_t awh::unit::Client::getTargetPort(const event::id_t eid) const noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем получение порта удалённого узла для события клиента
-		return this->_io->getDestinationPort(eid);
+		return this->_io->getTargetPort(eid);
 	// Возвращаем значение по умолчанию
 	return 0;
 }
@@ -636,11 +636,11 @@ uint16_t awh::unit::Client::getDestinationPort(const event::id_t eid) const noex
  * @param port порт удалённого узла для установки
  * @return     результат выполнения установки
  */
-bool awh::unit::Client::setDestinationPort(const event::id_t eid, const uint16_t port) noexcept {
+bool awh::unit::Client::setTargetPort(const event::id_t eid, const uint16_t port) noexcept {
 	// Если событие клиента является актуальным
 	if(this->isActual(eid))
 		// Выполняем установку порта удалённого узла для события клиента
-		return this->_io->setDestinationPort(eid, port);
+		return this->_io->setTargetPort(eid, port);
 	// Возвращаем значение по умолчанию
 	return false;
 }

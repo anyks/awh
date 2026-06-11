@@ -206,7 +206,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(tls.transport(cts));
 	// Устанавливаем порт и целевой хост для клиента
-	if(client.setTarget(host) && client.setDestinationPort(443)){
+	if(client.setTarget(host) && client.setTargetPort(443)){
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд
 		client.setTimeout(event::action_t::READ, 6000);
 		// Регистрируем функцию обратного вызова на событие изменения статуса клиента

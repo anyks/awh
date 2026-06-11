@@ -19,14 +19,14 @@
 #define __AWH_ENGINE__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <array>
 #include <string>
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "addr.hpp"
 #include "callback.hpp"
@@ -104,7 +104,7 @@ namespace awh {
 			 * @param id идентификатор события
 			 * @return   порт назначения события
 			 */
-			virtual uint16_t getDestinationPort(const event::id_t id) const noexcept = 0;
+			virtual uint16_t getTargetPort(const event::id_t id) const noexcept = 0;
 			/**
 			 * @brief Метод установки порта назначения события
 			 *
@@ -112,7 +112,7 @@ namespace awh {
 			 * @param port порт назначения события
 			 * @return     результат выполнения установки
 			 */
-			virtual bool setDestinationPort(const event::id_t id, const uint16_t port) noexcept = 0;
+			virtual bool setTargetPort(const event::id_t id, const uint16_t port) noexcept = 0;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины

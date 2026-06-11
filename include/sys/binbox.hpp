@@ -19,7 +19,7 @@
 #define __AWH_BINBOX_CONTAINER__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <string>
 #include <vector>
@@ -27,7 +27,7 @@
 #include <unordered_map>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "fs.hpp"
 #include "fmk.hpp"

@@ -19,13 +19,13 @@
 #define __AWH_COMPRESSOR__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <any>
 #include <atomic>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "log.hpp"
 #include "locker.hpp"

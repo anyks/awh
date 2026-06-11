@@ -19,13 +19,13 @@
 #define __AWH_PROCRE__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <string>
 #include <unistd.h>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "log.hpp"
 #include "../net/net.hpp"

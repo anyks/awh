@@ -19,7 +19,7 @@
 #define __AWH_PROTO_SOCKS5_CLIENT__
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "socks5.hpp"
 

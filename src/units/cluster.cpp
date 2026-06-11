@@ -1324,6 +1324,24 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 	}
 }
 /**
+ * @brief Метод получения типа протокола передачи данных между воркерами
+ *
+ * @return тип протокола передачи данных между воркерами
+ */
+awh::event::type_t awh::unit::Cluster::getTypeEventMessage() const noexcept {
+	// Получаем тип протокола передачи данных между воркерами
+	return this->_type;
+}
+/**
+ * @brief Метод установки типа протокола передачи данных между воркерами
+ *
+ * @param type тип протокола передачи данных между воркерами для установки
+ */
+void awh::unit::Cluster::setTypeEventMessage(const event::type_t type) noexcept {
+	// Устанавливаем тип протокола передачи данных между воркерами
+	this->_type = type;
+}
+/**
  * @brief Метод установки флага автоматического возрождения процессов
  *
  * @param mode флаг возрождения процессов

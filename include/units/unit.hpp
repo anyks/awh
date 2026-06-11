@@ -19,7 +19,7 @@
 #define __AWH_UNIT__
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "../net/io.hpp"
 #include "../sys/signals.hpp"

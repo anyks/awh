@@ -19,12 +19,16 @@
 #define __AWH_LOCKER__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <mutex>
 #include <memory>
 #include <atomic>
 #include <type_traits>
+
+/**
+ * Системный заголовочный файл
+ */
 #include <unistd.h>
 
 /**

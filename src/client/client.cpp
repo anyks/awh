@@ -13,7 +13,7 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <client/client.hpp>
 
@@ -69,7 +69,7 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
 					// Если функция обратного вызова установлена
 					if(this->_callback.is("launch"))
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getDestinationPort(this->_id.eid));
+						this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getTargetPort(this->_id.eid));
 				}
 			}
 		} break;
@@ -1304,11 +1304,11 @@ bool awh::Client::setSourcePort(const uint16_t port) noexcept {
  *
  * @return порт удаленного сервера
  */
-uint16_t awh::Client::getDestinationPort() const noexcept {
+uint16_t awh::Client::getTargetPort() const noexcept {
 	// Если идентификатор клиента установлен
 	if(this->_id.eid > 0)
 		// Извлекаем порт удаленного сервера для клиента
-		return this->_unit->client.getDestinationPort(this->_id.eid);
+		return this->_unit->client.getTargetPort(this->_id.eid);
 	// Если идентификатор клиента не установлен
 	else {
 		/**
@@ -1334,13 +1334,13 @@ uint16_t awh::Client::getDestinationPort() const noexcept {
  * @param port порт удаленного сервера для установки
  * @return     результат выполнения установки
  */
-bool awh::Client::setDestinationPort(const uint16_t port) noexcept {
+bool awh::Client::setTargetPort(const uint16_t port) noexcept {
 	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
 	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Устанавливаем порт удаленного сервера для клиента
-			return this->_unit->client.setDestinationPort(this->_id.eid, port);
+			return this->_unit->client.setTargetPort(this->_id.eid, port);
 		// Если идентификатор клиента не установлен
 		else {
 			/**

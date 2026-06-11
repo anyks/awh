@@ -13,7 +13,7 @@
  */
 	
 /**
- * Подключаем OpenSSL
+ * Заголовочные файлы OpenSSL
  */
 #include <openssl/md5.h>
 #include <openssl/sha.h>
@@ -26,12 +26,12 @@
 #include <openssl/hmac.h>
 
 /**
- * Подключаем CityHash
+ * Заголовочный файл для работы с CityHash
  */
 #include <cityhash/city.h>
 
 /**
- * Стандартные модули
+ * Системные заголовочные файлы
  */
 #include <cstdio>
 #include <cstring>
@@ -40,7 +40,7 @@
 #include <sys/types.h>
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/crypto.hpp>
 

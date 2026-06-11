@@ -118,9 +118,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid1, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid1, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid1, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid1));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid1));
 			// Устанавливаем MTU события
 			// ASSERT_TRUE(this->_io->setMaximumTransmissionUnit(eid1, 1500));
 			// Проверяем что MTU получен
@@ -258,9 +258,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid2, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid2, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid2, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid2));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid2));
 			// Устанавливаем MAC-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
 			// Проверяем, что название сетевого интерфейса получено
@@ -285,9 +285,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid3, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid3, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid3, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid3));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid3));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV4, ip));
 			// Проверяем, что название сетевого интерфейса получено
@@ -308,9 +308,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid4, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid4, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid4, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid4));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid4));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/255.255.255.0"));
 			// Проверяем, что название сетевого интерфейса получено
@@ -331,7 +331,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid5, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->setDestinationPort(eid5, 8080));
+			ASSERT_FALSE(this->_io->setTargetPort(eid5, 8080));
 			// Устанавливаем UDS-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid5, awh::event::address_t::UDS, "/tmp/awh.sock"));
 			// Проверяем, что название сетевого интерфейса не получено
@@ -350,7 +350,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid6, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->setDestinationPort(eid6, 8080));
+			ASSERT_FALSE(this->_io->setTargetPort(eid6, 8080));
 			// Устанавливаем сетевой адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid6, awh::event::address_t::FS, "/tmp/awh.txt"));
 			// Проверяем, что название сетевого интерфейса не получено
@@ -369,9 +369,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid7, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid7, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid7, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid7));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid7));
 			// Устанавливаем IP-адрес назначения для события
 			ASSERT_TRUE(this->_io->setTarget(eid7, ip));
 			// Проверяем, что название сетевого интерфейса получено
@@ -392,7 +392,7 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid8, 0);
 			// Устанавливаем порт события
-			ASSERT_FALSE(this->_io->setDestinationPort(eid8, 8080));
+			ASSERT_FALSE(this->_io->setTargetPort(eid8, 8080));
 			// Устанавливаем UDS-адрес назначения для события
 			ASSERT_TRUE(this->_io->setTarget(eid8, "/tmp/awh.sock"));
 			// Проверяем, что название сетевого интерфейса не получено
@@ -415,9 +415,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid1, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid1, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid1, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid1));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid1));
 			// Устанавливаем сетевой интерфейс события
 			ASSERT_TRUE(this->_io->setIface(eid1, source.iface));
 			// Проверяем, что название сетевого интерфейса получено
@@ -442,9 +442,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid2, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid2, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid2, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid2));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid2));
 			// Устанавливаем MAC-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid2, awh::event::address_t::MAC, mac));
 			// Проверяем, что название сетевого интерфейса получено
@@ -465,9 +465,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid3, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid3, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid3, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid3));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid3));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid3, awh::event::address_t::IPV6, ip));
 			// Проверяем, что название сетевого интерфейса получено
@@ -488,9 +488,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid4, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid4, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid4, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid4));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid4));
 			// Устанавливаем IP-адрес события
 			ASSERT_TRUE(this->_io->setAddress(eid4, awh::event::address_t::NETWORK, ip + "/64"));
 			// Проверяем, что название сетевого интерфейса получено
@@ -507,9 +507,9 @@ TEST_F(IoFixture, IoSuiteTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(eid7, 0);
 			// Устанавливаем порт события
-			ASSERT_TRUE(this->_io->setDestinationPort(eid7, 8080));
+			ASSERT_TRUE(this->_io->setTargetPort(eid7, 8080));
 			// Проверяем что порт получен
-			ASSERT_EQ(8080, this->_io->getDestinationPort(eid7));
+			ASSERT_EQ(8080, this->_io->getTargetPort(eid7));
 			// Устанавливаем IP-адрес назначения для события
 			ASSERT_TRUE(this->_io->setTarget(eid7, ip));
 			// Проверяем, что IP-адрес совпадает с извлечённым ранее
@@ -540,9 +540,9 @@ TEST_F(IoFixture, IoTCPTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -1150,9 +1150,9 @@ TEST_F(IoFixture, IoUDPTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -1869,9 +1869,9 @@ TEST_F(IoFixture, IoUDPConnectTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -3888,9 +3888,9 @@ TEST_F(IoFixture, IoBroadcastTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -4633,9 +4633,9 @@ TEST_F(IoFixture, IoUDPSpliceConnectTest){
 		this->_io->setBufferSize(events[i], awh::event::action_t::WRITE, 10240);
 	}
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -6226,9 +6226,9 @@ TEST_F(IoFixture, IoMulticast1Test){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -6960,9 +6960,9 @@ TEST_F(IoFixture, IoMulticast3Test){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -7684,9 +7684,9 @@ TEST_F(IoFixture, IoTLSTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -8508,9 +8508,9 @@ TEST_F(IoFixture, IoMultiTLSTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -9349,9 +9349,9 @@ TEST_F(IoFixture, IoDTLSTest){
 		// Проверяем, что идентификатор события больше нуля
 		ASSERT_GT(events[i], 0);
 	// Устанавливаем порт события
-	ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+	ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 	// Проверяем что порт получен
-	ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+	ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 	// Устанавливаем порт события
 	ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 	// Проверяем что порт получен
@@ -10177,9 +10177,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 		// Устанавливаем порт события
 		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 		// Проверяем что порт получен
@@ -10991,9 +10991,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 		// Устанавливаем порт события
 		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 		// Проверяем что порт получен
@@ -11815,9 +11815,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 		// Устанавливаем порт события
 		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 		// Проверяем что порт получен
@@ -12721,9 +12721,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 		// Устанавливаем порт события
 		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 		// Проверяем что порт получен
@@ -13772,9 +13772,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			// Проверяем, что идентификатор события больше нуля
 			ASSERT_GT(events[i], 0);
 		// Устанавливаем порт события
-		ASSERT_TRUE(this->_io->setDestinationPort(events[0], port));
+		ASSERT_TRUE(this->_io->setTargetPort(events[0], port));
 		// Проверяем что порт получен
-		ASSERT_EQ(port, this->_io->getDestinationPort(events[0]));
+		ASSERT_EQ(port, this->_io->getTargetPort(events[0]));
 		// Устанавливаем порт события
 		ASSERT_TRUE(this->_io->setSourcePort(events[1], port));
 		// Проверяем что порт получен

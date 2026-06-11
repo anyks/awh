@@ -13,7 +13,7 @@
  */
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <mutex>
 #include <array>
@@ -25,7 +25,7 @@
 #include <cstdint>
 
 /**
- * Системные модули
+ * Системные заголовочные файлы
  */
 #include <netdb.h>
 #include <arpa/inet.h>
@@ -34,7 +34,7 @@
 #include <netinet/in.h>
 
 /**
- * Подключаем заголовочный файл модуля
+ * Подключаем заголовочный файл проекта
  */
 #include <units/ntp.hpp>
 
@@ -764,7 +764,7 @@ bool awh::unit::NTP::init(const event::family_t family) noexcept {
 		// Добавляем новое событие клиента UDP
 		this->_client.eid = this->_io->event(event::node_t::CLIENT, family, event::type_t::DATAGRAM, event::protocol_t::UDP);
 		// Устанавливаем порт события
-		if((result = this->_io->setDestinationPort(this->_client.eid, this->_client.port))){
+		if((result = this->_io->setTargetPort(this->_client.eid, this->_client.port))){
 			/**
 			 * Определяем семейство события
 			 */
@@ -987,7 +987,7 @@ awh::event::status_t awh::unit::NTP::status() const noexcept {
  *
  * @return порт NTP-сервера
  */
-uint16_t awh::unit::NTP::getDestinationPort() const noexcept {
+uint16_t awh::unit::NTP::getTargetPort() const noexcept {
 	// Получаем порт события
 	return this->_client.port;
 }
@@ -996,7 +996,7 @@ uint16_t awh::unit::NTP::getDestinationPort() const noexcept {
  *
  * @param port порт NTP-сервера для установки
  */
-void awh::unit::NTP::setDestinationPort(const uint16_t port) noexcept {
+void awh::unit::NTP::setTargetPort(const uint16_t port) noexcept {
 	// Если порт для установки передан
 	if(port > 0)
 		// Устанавливаем порт события

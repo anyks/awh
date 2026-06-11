@@ -43,12 +43,12 @@
 #endif
 
 /**
- * Подключаем стандартные модули
+ * Стандартный заголовочный файл
  */
 #include <climits>
 
 /**
- * Подключаем заголовочный файл модуля
+ * Подключаем заголовочный файл проекта
  */
 #include <client/socks5.hpp>
 
@@ -141,7 +141,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 							// Если функция обратного вызова установлена
 							if(this->_callback.is("launch"))
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getDestinationPort(this->_id.eid));
+								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getTargetPort(this->_id.eid));
 						}
 					}
 				} break;
@@ -687,7 +687,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										case static_cast <uint8_t> (net::type_t::IPV6): {
 											// Устанавливаем порт и хост для подключения к удалённому серверу
 											if(this->_unit->client.setTarget(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get()) &&
-											   this->_unit->client.setDestinationPort(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
+											   this->_unit->client.setTargetPort(this->_endpoint.udp.eid, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->port)){
 												// Выполняем фиксацию изменений для клиента, работающего через прокси
 												if(this->_unit->client.commit(this->_endpoint.udp.eid)){
 													// Выполняем запуск работы клиента, работающего через прокси
@@ -695,7 +695,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														// Получаем адрес хоста для подключения к удалённому серверу
 														target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
 														// Получаем порт хоста для подключения к удалённому серверу
-														port = this->_unit->client.getDestinationPort(this->_endpoint.udp.eid);
+														port = this->_unit->client.getTargetPort(this->_endpoint.udp.eid);
 													// Если запуск работы клиента, работающего через прокси, не выполнен
 													} else {
 														// Если функция обратного вызова не установлена
@@ -971,7 +971,7 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 				case static_cast <uint8_t> (event::status_t::CONNECTED): {
 					// Устанавливаем порт и хост для подключения к удалённому серверу
 					if(this->_unit->client.setTarget(this->_endpoint.udp.eid, addr) &&
-					   this->_unit->client.setDestinationPort(this->_endpoint.udp.eid, awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port)){
+					   this->_unit->client.setTargetPort(this->_endpoint.udp.eid, awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port)){
 						// Выполняем фиксацию изменений для клиента, работающего через прокси
 						if(this->_unit->client.commit(this->_endpoint.udp.eid)){
 							// Выполняем запуск работы клиента, работающего через прокси
@@ -983,7 +983,7 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 								// Получаем адрес хоста для подключения к удалённому серверу
 								const string & target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
 								// Получаем порт хоста для подключения к удалённому серверу
-								const uint16_t port = this->_unit->client.getDestinationPort(this->_endpoint.udp.eid);
+								const uint16_t port = this->_unit->client.getTargetPort(this->_endpoint.udp.eid);
 								// Если функция обратного вызова установлена
 								if(this->_callback.is("ready"))
 									// Выполняем функцию обратного вызова

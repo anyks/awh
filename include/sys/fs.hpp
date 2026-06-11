@@ -19,13 +19,13 @@
 #define __AWH_FS__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <string>
 #include <functional>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "os.hpp"
 #include "fmk.hpp"

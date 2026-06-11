@@ -53,7 +53,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Добавляем новое событие сервера SCTP
 	event::id_t eid = io.event(event::node_t::SERVER, event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::SCTP);
 	// Устанавливаем порт события
-	io.setPort(eid, 2222);
+	io.setSourcePort(eid, 2222);
 	// Инициализируем асинхронный движок ввода-вывода
 	if(io.initialize()){
 		// Регистрируем объект транспортного уровня безопасности

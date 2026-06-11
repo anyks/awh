@@ -19,7 +19,7 @@
 #define __AWH_IO_ENGINE__
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "engine.hpp"
 
@@ -312,7 +312,7 @@ namespace awh {
 				 * @param id идентификатор события
 				 * @return   порт назначения события
 				 */
-				uint16_t getDestinationPort(const event::id_t id) const noexcept;
+				uint16_t getTargetPort(const event::id_t id) const noexcept;
 				/**
 				 * @brief Метод установки порта назначения события
 				 *
@@ -320,7 +320,7 @@ namespace awh {
 				 * @param port порт назначения события
 				 * @return     результат выполнения установки
 				 */
-				bool setDestinationPort(const event::id_t id, const uint16_t port) noexcept;
+				bool setTargetPort(const event::id_t id, const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины

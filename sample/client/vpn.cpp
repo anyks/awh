@@ -373,7 +373,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем порт и целевой хост для клиента
-	if(client.setTarget("anyks.com") && client.setDestinationPort(3333)){
+	if(client.setTarget("anyks.com") && client.setTargetPort(3333)){
 		// Регистрируем функцию обратного вызова на событие изменения статуса тоннеля
 		tunnel.on <void (const event::id_t, const event::status_t)> ("status", &Executor::statusVPN, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие ошибок тоннеля

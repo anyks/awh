@@ -19,7 +19,7 @@
 #define __AWH_UNIT_NTP__
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "unit.hpp"
 
@@ -265,13 +265,13 @@ namespace awh {
 				 *
 				 * @return порт NTP-сервера
 				 */
-				uint16_t getDestinationPort() const noexcept;
+				uint16_t getTargetPort() const noexcept;
 				/**
 				 * @brief Метод установки порта NTP-сервера
 				 *
 				 * @param port порт NTP-сервера для установки
 				 */
-				void setDestinationPort(const uint16_t port) noexcept;
+				void setTargetPort(const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод установки адреса NTP-сервера

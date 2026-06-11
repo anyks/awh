@@ -234,7 +234,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем идентификатор TLS для клиента
 	client.setSecurityId(tls.transport(cts));
 	// Устанавливаем порт и целевой хост для клиента
-	if(client.setTarget("127.0.0.1") && client.setDestinationPort(2222) && client.endpoint("127.0.0.1", 2223) && client.udp("0.0.0.0")){
+	if(client.setTarget("127.0.0.1") && client.setTargetPort(2222) && client.endpoint("127.0.0.1", 2223) && client.udp("0.0.0.0")){
 		// Устанавливаем параметры авторизации для клиента
 		client.setUser("8J0sHd", "G4DfSK");
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд

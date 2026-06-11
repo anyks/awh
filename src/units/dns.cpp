@@ -13,7 +13,7 @@
  */
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <array>
 #include <vector>
@@ -25,13 +25,13 @@
 #include <unordered_set>
 
 /**
- * Системные модули
+ * Системные заголовочные файлы
  */
 #include <arpa/inet.h>
 #include <sys/types.h>
 
 /**
- * Заголовочный файл модуля
+ * Подключаем заголовочный файл проекта
  */
 #include <units/dns.hpp>
 
@@ -39,6 +39,9 @@
  * Если используется модуль IDN и операционная система не MS Windows
  */
 #if AWH_IDN && !_WIN32 && !_WIN64
+	/**
+	 * Заголовочный файл для работы с IDN
+	 */
 	#include <idn2.h>
 #endif
 
@@ -5237,7 +5240,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Если опции события установлены
 						if(this->_io->setOptions(this->_resolver.idv4[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 							// Устанавливаем порт события
-							if(this->_io->setDestinationPort(this->_resolver.idv4[i], this->_resolver.port)){
+							if(this->_io->setTargetPort(this->_resolver.idv4[i], this->_resolver.port)){
 								// Устанавливаем время ожидания ответа от DNS-сервера
 								this->_io->setTimeout(this->_resolver.idv4[i], event::action_t::READ, this->_resolver.delay);
 								// Если префикс для переменных окружения установлен
@@ -5332,7 +5335,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 						// Если опции события установлены
 						if(this->_io->setOptions(this->_resolver.idv6[i], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY)){
 							// Устанавливаем порт события
-							if(this->_io->setDestinationPort(this->_resolver.idv6[i], this->_resolver.port)){
+							if(this->_io->setTargetPort(this->_resolver.idv6[i], this->_resolver.port)){
 								// Устанавливаем время ожидания ответа от DNS-сервера
 								this->_io->setTimeout(this->_resolver.idv6[i], event::action_t::READ, this->_resolver.delay);
 								// Если префикс для переменных окружения установлен
@@ -5423,7 +5426,7 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
  *
  * @return порт сервера DNS-резолвера
  */
-uint16_t awh::unit::DNS::getDestinationPort() const noexcept {
+uint16_t awh::unit::DNS::getTargetPort() const noexcept {
 	// Получаем порт события
 	return this->_resolver.port;
 }
@@ -5432,7 +5435,7 @@ uint16_t awh::unit::DNS::getDestinationPort() const noexcept {
  *
  * @param port порт сервера DNS-резолвера
  */
-void awh::unit::DNS::setDestinationPort(const uint16_t port) noexcept {
+void awh::unit::DNS::setTargetPort(const uint16_t port) noexcept {
 	// Если порт для установки передан
 	if(port > 0)
 		// Устанавливаем порт события

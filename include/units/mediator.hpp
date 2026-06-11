@@ -19,7 +19,7 @@
 #define __AWH_UNIT_MEDIATOR__
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "unit.hpp"
 

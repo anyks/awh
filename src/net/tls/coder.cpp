@@ -13,7 +13,7 @@
  */
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <map>
 #include <ctime>
@@ -25,7 +25,7 @@
 #include <unordered_set>
 
 /**
- * Подключаем OpenSSL
+ * Заголовочные файлы OpenSSL
  */
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
@@ -35,7 +35,7 @@
 #include <openssl/x509v3.h>
 
 /**
- * Подключаем системные заголовки
+ * Системные заголовочные файлы
  */
 #include <arpa/inet.h>
 #include <netinet/in.h>

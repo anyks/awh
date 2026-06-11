@@ -19,7 +19,7 @@
 #define __AWH_CLIENT__
 
 /**
- * Заголовочные файлы проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include "../units/dns.hpp"
 #include "../units/client.hpp"
@@ -420,14 +420,14 @@ namespace awh {
 			 *
 			 * @return порт удаленного сервера
 			 */
-			virtual uint16_t getDestinationPort() const noexcept;
+			virtual uint16_t getTargetPort() const noexcept;
 			/**
 			 * @brief Метод установки порта удаленного сервера
 			 *
 			 * @param port порт удаленного сервера для установки
 			 * @return     результат выполнения установки
 			 */
-			virtual bool setDestinationPort(const uint16_t port) noexcept;
+			virtual bool setTargetPort(const uint16_t port) noexcept;
 		public:
 			/**
 			 * @brief Метод получения адреса хоста целевой машины

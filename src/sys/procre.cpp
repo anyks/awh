@@ -13,7 +13,7 @@
  */
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <cstdlib>
 #include <cstring>
@@ -25,7 +25,14 @@
  * Для операционной системы Linux
  */
 #ifdef __linux__
+	/**
+	 * Стандартный заголовочный файл
+	 */
 	#include <map>
+
+	/**
+	 * Системные заголовочные файлы
+	 */
 	#include <dirent.h>
 	#include <unistd.h>
 	#include <sys/file.h>
@@ -34,6 +41,9 @@
  * Для операционной системы FreeBSD
  */
 #elif __FreeBSD__
+	/**
+	 * Системные заголовочные файлы
+	 */
 	#include <libutil.h>
 	#include <sys/un.h>
 	#include <sys/user.h>
@@ -43,22 +53,39 @@
  * Для операционной системы MacOS X
  */
 #elif __APPLE__ || __MACH__
+	/**
+	 * Системный заголовочный файл
+	 */
 	#include <libproc.h>
 /**
  * Для операционной системы NetBSD или OpenBSD
  */
 #elif __NetBSD__ || __OpenBSD__
+	/**
+	 * Стандартные заголовочные файлы
+	 */
 	#include <memory>
 	#include <vector>
 	#include <fstream>
 	#include <sstream>
+
+	/**
+	 * Системный заголовочный файл
+	 */
 	#include <arpa/inet.h>
 /**
  * Реализация под Sun Solaris
  */
 #elif __sun__
+	/**
+	 * Стандартные заголовочные файлы
+	 */
 	#include <fstream>
 	#include <sstream>
+
+	/**
+	 * Системные заголовочные файлы
+	 */
 	#include <fcntl.h>
 	#include <dirent.h>
 	#include <unistd.h>
@@ -71,6 +98,9 @@
  * Для операционной системы Windows
  */
 #elif _WIN32 || _WIN64
+	/**
+	 * Системные заголовочные файлы
+	 */
 	#include <winsock2.h>
 	#include <ws2tcpip.h>
 	#include <iphlpapi.h>
@@ -80,7 +110,7 @@
 #endif
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/procre.hpp>
 

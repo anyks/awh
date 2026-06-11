@@ -143,7 +143,7 @@ class Executor {
 		 */
 		void ready(const event::id_t eid, [[maybe_unused]] const event::family_t family, const string & domain, const string & ip, server::socks5_t * server) noexcept {
 			// Записываем в лог сообщение о готовности сервера к работе
-			this->_log->print("Server is ready to accept connections: %s (%s:%d)", log_t::flag_t::INFO, domain.c_str(), ip.c_str(), server->getDestinationPort(eid));
+			this->_log->print("Server is ready to accept connections: %s (%s:%d)", log_t::flag_t::INFO, domain.c_str(), ip.c_str(), server->getTargetPort(eid));
 		}
 		/**
 		 * @brief Метод обработки ошибок сервера

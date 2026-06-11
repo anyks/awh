@@ -13,7 +13,7 @@
  */
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <server/server.hpp>
 
@@ -3085,6 +3085,24 @@ size_t awh::Server::clusterBroadcast(const void * buffer, const size_t size) noe
 	}
 	// Возвращаем значение по умолчанию
 	return 0;
+}
+/**
+ * @brief Метод получения типа протокола передачи данных между воркерами
+ *
+ * @return тип протокола передачи данных между воркерами
+ */
+awh::event::type_t awh::Server::clusterGetTypeEventMessage() const noexcept {
+	// Выполняем получение типа протокола передачи данных между воркерами
+	return this->_unit->server.clusterGetTypeEventMessage();
+}
+/**
+ * @brief Метод установки типа протокола передачи данных между воркерами
+ *
+ * @param type тип протокола передачи данных между воркерами для установки
+ */
+void awh::Server::clusterSetTypeEventMessage(const event::type_t type) noexcept {
+	// Выполняем установку типа протокола передачи данных между воркерами
+	this->_unit->server.clusterSetTypeEventMessage(type);
 }
 /**
  * @brief Метод получения размера буфера события

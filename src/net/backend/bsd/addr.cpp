@@ -51,7 +51,7 @@
 	((a) > 0 ? (1 + (((a) - 1) | (sizeof(long) - 1))) : sizeof(long))
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <array>
 #include <cerrno>
@@ -62,7 +62,7 @@
 #include <cstdlib>
 
 /**
- * Подключаем системные заголовки
+ * Системные заголовочные файлы
  */
 #include <ifaddrs.h>
 #include <arpa/inet.h>
@@ -81,7 +81,7 @@
 #include <netinet/if_ether.h>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <net/eth/addr.hpp>
 

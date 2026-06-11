@@ -159,7 +159,7 @@
 #endif
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <set>
 #include <ctime>
@@ -174,7 +174,7 @@
 #include <unordered_map>
 
 /**
- * Подключаем системные заголовки
+ * Системные заголовочные файлы
  */
 #include <pwd.h>
 #include <fcntl.h>
@@ -198,19 +198,17 @@
  * Если операционной системой является FreeBSD
  */
 #if __FreeBSD__
-	// Подключаем заголовочный файл SCTP
+	/**
+	 * Заголовочный файл для работы с протоколом SCTP
+	 */
 	#include <netinet/sctp.h>
 #endif
 
 /**
- * Подключаем заголовочный файл асинхронного движка ввода-вывода
+ * Подключаем заголовочные файлы проекта
  */
 #include <net/io.hpp>
 #include <net/queue.hpp>
-
-/**
- * Подключаем заголовочные файлы проекта
- */
 #include <sys/os.hpp>
 #include <sys/locker.hpp>
 #include <sys/threadpool.hpp>
@@ -35695,7 +35693,7 @@ bool awh::engine::IO::setSourcePort(const event::id_t id, const uint16_t port) n
  * @param id идентификатор события
  * @return   порт назначения события
  */
-uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcept {
+uint16_t awh::engine::IO::getTargetPort(const event::id_t id) const noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -35725,7 +35723,7 @@ uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcep
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Извлекаем порт связанного события
-								return this->getDestinationPort(mediator->dest);
+								return this->getTargetPort(mediator->dest);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {
@@ -35786,7 +35784,7 @@ uint16_t awh::engine::IO::getDestinationPort(const event::id_t id) const noexcep
  * @param port порт назначения события
  * @return     результат выполнения установки
  */
-bool awh::engine::IO::setDestinationPort(const event::id_t id, const uint16_t port) noexcept {
+bool awh::engine::IO::setTargetPort(const event::id_t id, const uint16_t port) noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -35816,7 +35814,7 @@ bool awh::engine::IO::setDestinationPort(const event::id_t id, const uint16_t po
 							// Если идентификатор связанного события установлен
 							if(mediator->dest != 0)
 								// Устанавливаем порт связанного события рекурсивно
-								return this->setDestinationPort(mediator->dest, port);
+								return this->setTargetPort(mediator->dest, port);
 						} break;
 						// Если узел является клиентом
 						case static_cast <uint8_t> (event::node_t::CLIENT): {

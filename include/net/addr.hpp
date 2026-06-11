@@ -19,7 +19,7 @@
 #define __AWH_NET_ADDR__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <array>
 #include <string>
@@ -30,7 +30,7 @@
 #include <unordered_map>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "net.hpp"
 #include "../sys/log.hpp"

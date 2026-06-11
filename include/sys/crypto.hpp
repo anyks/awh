@@ -19,14 +19,14 @@
 #define __AWH_CRYPTO__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <array>
 #include <string>
 #include <vector>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "fmk.hpp"
 #include "log.hpp"

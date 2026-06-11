@@ -19,7 +19,7 @@
 #define __AWH_SCREEN__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <mutex>
 #include <queue>
@@ -30,7 +30,7 @@
 #include <condition_variable>
 
 /**
- * Блокировщик потока
+ * Подключаем заголовочный файл проекта
  */
 #include "locker.hpp"
 

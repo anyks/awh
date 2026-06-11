@@ -19,13 +19,13 @@
 #define __AWH_PROTO_SOCKS5__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <string>
 #include <cstddef>
 
 /**
- * Наши модуля
+ * Подключаем заголовочные файлы проекта
  */
 #include "../../net/net.hpp"
 #include "../../sys/fmk.hpp"

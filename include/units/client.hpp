@@ -19,7 +19,7 @@
 #define __AWH_UNIT_CLIENT__
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "unit.hpp"
 
@@ -331,7 +331,7 @@ namespace awh {
 				 * @param eid идентификатор события клиента
 				 * @return    порт удалённого узла
 				 */
-				uint16_t getDestinationPort(const event::id_t eid) const noexcept;
+				uint16_t getTargetPort(const event::id_t eid) const noexcept;
 				/**
 				 * @brief Метод установки порта удалённого узла
 				 *
@@ -339,7 +339,7 @@ namespace awh {
 				 * @param port порт удалённого узла для установки
 				 * @return     результат выполнения установки
 				 */
-				bool setDestinationPort(const event::id_t eid, const uint16_t port) noexcept;
+				bool setTargetPort(const event::id_t eid, const uint16_t port) noexcept;
 			public:
 				/**
 				 * @brief Метод получения адреса хоста целевой машины

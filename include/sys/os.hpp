@@ -19,18 +19,28 @@
 #define __AWH_OPERATING_SYSTEM__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <vector>
 #include <string>
 #include <cstdint>
 #include <unistd.h>
 
-// Если используется BOOST
+/**
+ * Если используется BOOST
+ */
 #ifdef USE_BOOST_CONVERT
+	/**
+	 * Заголовочный файл для конвертации кодировок от BOOST
+	 */
 	#include <boost/locale/encoding_utf.hpp>
-// Если нужно использовать стандартную библиотеку
+/**
+ * Если нужно использовать стандартную библиотеку
+ */
 #else
+	/**
+	 * Заголовочный файл для конвертации кодировок от стандартной библиотеки
+	 */
 	#include <codecvt>
 #endif
 
@@ -46,44 +56,51 @@
  */
 #if _WIN32 || _WIN64
 	/**
-	 * Подключаем основные заголовочные файлы
+	 * Системные заголовочные файлы
 	 */
 	#include <windows.h>
 	#include <sddl.h>
 	#include <process.h>
 	#include <processthreadsapi.h>
+
 	/**
 	 * Заменяем переменную AWH ERROR
 	 */
 	#define AWH_ERROR() (::WSAGetLastError())
+
 	/**
 	 * Файловый разделитель Windows
 	 */
 	#define AWH_FS_SEPARATOR "\\"
+
 	/**
 	 * Устанавливаем тип данных uid_t
 	 */
 	#ifndef uid_t
 		#define uid_t uint16_t
 	#endif
+
 	/**
 	 * Устанавливаем тип данных gid_t
 	 */
 	#ifndef gid_t
 		#define gid_t uint16_t
 	#endif
+
 	/**
 	 * Устанавливаем тип данных u_char
 	 */
 	#ifndef u_char
 		#define u_char unsigned char
 	#endif
+
 	/**
 	 * Устанавливаем функцию getpid
 	 */
 	#ifndef getpid
 		#define getpid _getpid
 	#endif
+
 	/**
 	 * Устанавливаем функцию getppid
 	 */
@@ -95,13 +112,15 @@
  */
 #else
 	/**
-	 * Подключаем основные заголовочные файлы
+	 * Системные заголовочные файлы
 	 */
 	#include <sys/types.h>
+
 	/**
 	 * Заменяем переменную AWH ERROR
 	 */
 	#define AWH_ERROR() (errno)
+
 	/**
 	 * Файловый разделитель UNIX-подобных систем
 	 */
@@ -109,7 +128,7 @@
 #endif
 
 /**
- * Подключаем заголовочный файл логера
+ * Подключаем заголовочный файл проекта
  */
 #include "log.hpp"
 

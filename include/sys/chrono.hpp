@@ -19,14 +19,14 @@
 #define __AWH_CHRONO__
 
 /**
- * Подключаем зависимые заголовки
+ * Стандартные заголовочные файлы
  */
 #include <any>
 #include <string>
 #include <unordered_map>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "fmk.hpp"
 #include "locker.hpp"

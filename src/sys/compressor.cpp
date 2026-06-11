@@ -13,55 +13,55 @@
  */
 
 /**
- * Подключаем LZ4
+ * Заголовочные файлы для работы с LZ4
  */
 #include <lz4.h>
 #include <lz4hc.h>
 
 /**
- * Подключаем GZip
+ * Заголовочный файл для работы с GZip
  */
 #include <zlib.h>
 
 /**
- * Подключаем Zstandard
+ * Заголовочный файл для работы с Zstandard
  */
 #include <zstd.h>
 
 /**
- * Подключаем BZip2
+ * Заголовочный файл для работы с BZip2
  */
 #include <bzlib.h>
 
 /**
- * Подключаем LZma
+ * Заголовочный файл для работы с LZma
  */
 #include <lzma.h>
 
 /**
- * Подключаем Snappy
+ * Заголовочный файл для работы с Snappy
  */
 #include <snappy.h>
 
 /**
- * Подключаем Density
+ * Заголовочный файл для работы с Density
  */
 #include <density_api.h>
 
 /**
- * Подключаем Brotli
+ * Заголовочные файлы для работы с Brotli
  */
 #include <brotli/decode.h>
 #include <brotli/encode.h>
 
 /**
- * Подключаем Lizard
+ * Заголовочные файлы для работы с Lizard
  */
 #include "lizard_compress.h"
 #include "lizard_decompress.h"
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <cstdio>
 #include <cstring>
@@ -70,7 +70,7 @@
 #include <sys/types.h>
 
 /**
- * Подключаем заголовочный файл
+ * Подключаем заголовочный файл проекта
  */
 #include <sys/compressor.hpp>
 

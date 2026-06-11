@@ -19,7 +19,7 @@
 #define __AWH_REGEXP__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <map>
 #include <mutex>
@@ -28,7 +28,7 @@
 #include <cstdint>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "global.hpp"
 #include "locker.hpp"

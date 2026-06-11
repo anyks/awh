@@ -35,14 +35,14 @@
 #endif
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <tuple>
 #include <string>
 #include <functional>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "fmk.hpp"
 #include "locker.hpp"

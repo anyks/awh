@@ -13,7 +13,7 @@
  */
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <random>
 #include <cerrno>
@@ -23,7 +23,7 @@
 #include <cstdlib>
 
 /**
- * Подключаем системные заголовки
+ * Системные заголовочные файлы
  */
 #include <fcntl.h>
 #include <arpa/inet.h>
@@ -33,14 +33,14 @@
 #include <netinet/ip6.h>
 
 /**
- * Подключаем заголовочные файлы MiniUPnP
+ * Заголовочные файлы работы с модулем MiniUPnP
  */
 #include <miniupnpc/miniupnpc.h>
 #include <miniupnpc/upnpcommands.h>
 #include <miniupnpc/upnperrors.h>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <net/eth/portmap.hpp>
 

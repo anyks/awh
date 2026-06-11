@@ -19,7 +19,7 @@
 	((a) > 0 ? (1 + (((a) - 1) | (sizeof(int32_t) - 1))) : sizeof(int32_t))
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <cerrno>
 #include <memory>
@@ -28,7 +28,7 @@
 #include <cstdlib>
 
 /**
- * Подключаем системные заголовки
+ * Системные заголовочные файлы
  */
 #include <fcntl.h>
 #include <ifaddrs.h>
@@ -42,7 +42,7 @@
 #include <netinet/ip6.h>
 
 /**
- * Подключаем заголовочные файлы проекта
+ * Подключаем заголовочный файл проекта
  */
 #include <net/eth/gateway.hpp>
 

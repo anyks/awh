@@ -19,13 +19,13 @@
 #define __AWH_NETWORK_QUEUE__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <cstddef>
 #include <cstring>
 
 /**
- * Наши модуля
+ * Подключаем заголовочный файл проекта
  */
 #include "../sys/log.hpp"
 

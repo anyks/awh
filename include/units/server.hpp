@@ -19,12 +19,12 @@
 #define __AWH_UNIT_SERVER__
 
 /**
- * Стандартные модули
+ * Стандартный заголовочный файл
  */
 #include <list>
 
 /**
- * Заголовочные файлы проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include "unit.hpp"
 #include "cluster.hpp"
@@ -814,6 +814,19 @@ namespace awh {
 				 * @return       количество байт отправленного сообщения
 				 */
 				size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод получения типа протокола передачи данных между воркерами
+				 *
+				 * @return тип протокола передачи данных между воркерами
+				 */
+				event::type_t clusterGetTypeEventMessage() const noexcept;
+				/**
+				 * @brief Метод установки типа протокола передачи данных между воркерами
+				 *
+				 * @param type тип протокола передачи данных между воркерами для установки
+				 */
+				void clusterSetTypeEventMessage(const event::type_t type) noexcept;
 			public:
 				/**
 				 * @brief Метод получения размера буфера события

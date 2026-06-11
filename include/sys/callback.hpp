@@ -19,7 +19,7 @@
 #define __AWH_CALLBACK__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <memory>
 #include <string>
@@ -28,7 +28,7 @@
 #include <unordered_map>
 
 /**
- * Наши модули
+ * Подключаем заголовочные файлы проекта
  */
 #include "fmk.hpp"
 #include "log.hpp"

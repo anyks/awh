@@ -19,13 +19,13 @@
 #define __AWH_UNIT_CLUSTER__
 
 /**
- * Стандартные модули
+ * Стандартные заголовочные файлы
  */
 #include <unordered_map>
 #include <unordered_set>
 
 /**
- * Наши модули
+ * Подключаем заголовочный файл проекта
  */
 #include "unit.hpp"
 
@@ -220,6 +220,19 @@ namespace awh {
 				 * @param shutdown тип завершения работы кластера
 				 */
 				void erase(const pid_t pid, const shutdown_t shutdown) noexcept;
+			public:
+				/**
+				 * @brief Метод получения типа протокола передачи данных между воркерами
+				 *
+				 * @return тип протокола передачи данных между воркерами
+				 */
+				event::type_t getTypeEventMessage() const noexcept;
+				/**
+				 * @brief Метод установки типа протокола передачи данных между воркерами
+				 *
+				 * @param type тип протокола передачи данных между воркерами для установки
+				 */
+				void setTypeEventMessage(const event::type_t type) noexcept;
 			public:
 				/**
 				 * @brief Метод установки флага автоматического возрождения процессов
