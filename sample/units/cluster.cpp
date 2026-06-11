@@ -37,7 +37,7 @@ int32_t main(int32_t argc, char * argv[]){
 	// Создаём объект кластера
 	unit::cluster_t cluster(&fmk, &log);
 	// Устанавливаем количество дочерних процессов в кластере
-	cluster.count(1);
+	cluster.count(4);
 	// Устанавливаем функцию обратного вызова на изменение статуса кластера
 	cluster.on <void (const event::status_t)> ("status", [&cluster, &log](const event::status_t status) noexcept -> void {
 		// Возвращаем статус работы кластера

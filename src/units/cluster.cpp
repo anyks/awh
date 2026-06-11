@@ -196,19 +196,26 @@ void awh::unit::Cluster::create() noexcept {
 						#endif
 						// Если родительский процесс живой
 						if(this->_pid == ::getppid()){
+							// Если список активных воркеров не пустой
+							if(!this->_workers.empty()){
+								/**
+								 * Перебираем всех активных воркеров
+								 */
+								for(auto i = this->_workers.begin(); i != this->_workers.end();){
+									// Уничтожаем событие других дочерних процессов
+									this->_io->destroy(i->second->eid);
+									// Удаляем воркера из списка активных воркеров
+									i = this->_workers.erase(i);
+								}
+							}
+							// Если список соответствия не пустой
+							if(!this->_accord.empty())
+								// Очищаем список соответствия идентификаторов событий и идентификатора процесса
+								this->_accord.clear();
 							// Уничтожаем событие родительского процесса
 							this->_io->destroy(events[0]);
 							// Выполняем переинициализацию асинхронного движка ввода-вывода
 							this->_io->reinitialize();
-							// Если список соответствия не пустой
-							if(!this->_accord.empty()){
-								// Переходим по всему списку соответствий
-								for(auto & [eid, pid] : this->_accord)
-									// Уничтожаем событие других дочерних процессов
-									this->_io->destroy(eid);
-							}
-							// Уничтожаем события всех активных воркеров
-							this->_workers.clear();
 							// Устанавливаем опции события
 							if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 								/**
@@ -465,25 +472,26 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 					#endif
 					// Если родительский процесс живой
 					if(this->_pid == ::getppid()){
-						/**
-						 * Перебираем всех активных воркеров
-						 */
-						for(auto & [pid, worker] : this->_workers)
-							// Уничтожаем событие других дочерних процессов
-							this->_io->destroy(worker->eid);
+						// Если список активных воркеров не пустой
+						if(!this->_workers.empty()){
+							/**
+							 * Перебираем всех активных воркеров
+							 */
+							for(auto i = this->_workers.begin(); i != this->_workers.end();){
+								// Уничтожаем событие других дочерних процессов
+								this->_io->destroy(i->second->eid);
+								// Удаляем воркера из списка активных воркеров
+								i = this->_workers.erase(i);
+							}
+						}
+						// Если список соответствия не пустой
+						if(!this->_accord.empty())
+							// Очищаем список соответствия идентификаторов событий и идентификатора процесса
+							this->_accord.clear();
 						// Уничтожаем событие родительского процесса
 						this->_io->destroy(events[0]);
 						// Выполняем переинициализацию асинхронного движка ввода-вывода
 						this->_io->reinitialize();
-						// Если список соответствия не пустой
-						if(!this->_accord.empty()){
-							// Переходим по всему списку соответствий
-							for(auto & [eid, pid] : this->_accord)
-								// Уничтожаем событие других дочерних процессов
-								this->_io->destroy(eid);
-						}
-						// Уничтожаем события всех активных воркеров
-						this->_workers.clear();
 						// Устанавливаем опции события
 						if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
 							/**
