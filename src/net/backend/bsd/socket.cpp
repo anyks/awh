@@ -32,7 +32,7 @@
 #include <cstdlib>
 
 /**
- * Подключаем системные заголовки
+ * Системные заголовки
  */
 #include <fcntl.h>
 #include <signal.h>

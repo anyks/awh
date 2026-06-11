@@ -52,6 +52,11 @@
 #include <algorithm>
 
 /**
+ * Системные заголовки
+ */
+#include <netinet/in.h>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <server/socks5.hpp>
