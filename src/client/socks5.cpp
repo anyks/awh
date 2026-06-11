@@ -241,7 +241,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
  */
 void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если подключение выполнено успешно
 		if(ok){
 			// Размер буфера данных
@@ -287,7 +287,7 @@ void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept
  */
 void awh::client::Socks5::write(const event::id_t eid, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("write"))
 			// Выполняем функцию обратного вызова
@@ -302,7 +302,7 @@ void awh::client::Socks5::write(const event::id_t eid, const size_t size) noexce
  */
 void awh::client::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("state"))
 			// Выполняем функцию обратного вызова
@@ -336,7 +336,7 @@ void awh::client::Socks5::state(const event::id_t eid, const event::status_t sta
  */
 void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -967,10 +967,8 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 						}
 					}
 				} break;
-				// Если событие клиента инициализировано, запускаем его
-				case static_cast <uint8_t> (event::status_t::INITIAL):
-				// Если событие находится в состоянии успешного подключения
-				case static_cast <uint8_t> (event::status_t::SUCCESS): {
+				// Если клиент находится в подключённом состоянии
+				case static_cast <uint8_t> (event::status_t::CONNECTED): {
 					// Устанавливаем порт и хост для подключения к удалённому серверу
 					if(this->_unit->client.setTarget(this->_endpoint.udp.eid, addr) &&
 					   this->_unit->client.setDestinationPort(this->_endpoint.udp.eid, awh_cast <net::attr_fqdn_t *> (this->_ctx.host.get())->port)){
@@ -1109,7 +1107,7 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
  */
 void awh::client::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("state_tls"))
 			// Выполняем функцию обратного вызова
@@ -1133,7 +1131,7 @@ void awh::client::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder
  */
 void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1342,7 +1340,7 @@ bool awh::client::Socks5::pause() noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1403,7 +1401,7 @@ bool awh::client::Socks5::resume() noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1480,7 +1478,7 @@ bool awh::client::Socks5::disconnect() noexcept {
  */
 bool awh::client::Socks5::recv() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1522,7 +1520,7 @@ bool awh::client::Socks5::recv() noexcept {
  */
 size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */

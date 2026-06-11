@@ -19,6 +19,8 @@
 	/**
 	 * Полезная нагрузка UDP для IPv4: 1400 байт.
 	 *
+	 * Для работы с DTLS лучше заложить 1454 байта, но для UDP достаточно 1400 байт.
+	 *
 	 * База: 1500 (Ethernet MTU) - 20 (IPv4) - 8 (UDP) = 1472.
 	 * Дополнительно закладываем резерв 72 байта на инкапсуляцию
 	 * (туннели, дополнительные сервисные заголовки).
@@ -1311,7 +1313,7 @@ void awh::server::Socks5::messageCluster(const pid_t pid, const uint8_t * data, 
  */
 void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->server.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -1625,7 +1627,7 @@ void awh::server::Socks5::errorClient(const event::id_t eid, const event::error_
  */
 bool awh::server::Socks5::timeoutClient(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->server.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("timeout")){
 			// Ищем идентификатор клиента в списке сопоставления идентификаторов клиентов с пирами которым они принадлежат
@@ -1651,7 +1653,7 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
 	 */
 	try {
 		// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-		if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->server.working()){
+		if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 			// Если идентификатор сервера соответствует идентификатору socks5-сервера
 			if(eid == this->_id.eid){
 				// Добавляем пира в список активных пиров
@@ -1787,7 +1789,7 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
 	 */
 	try {
 		// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-		if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->server.working()){
+		if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("state"))
 				// Выполняем функцию обратного вызова
@@ -1903,7 +1905,7 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
  */
 void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->server.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -2388,7 +2390,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														if(this->_client.setIface(i->second.eid, iface)){
 															// Устанавливаем порт и адрес удалённого сервера для подключения
 															if(this->_client.setTarget(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get()) &&
-															this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port)){
+															   this->_client.setDestinationPort(i->second.eid, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->port)){
 																// Если функция обратного вызова установлена
 																if(this->_callback.is("ready")){
 																	// Получаем IP-адрес для подключения к удалённому серверу
@@ -3404,7 +3406,7 @@ void awh::server::Socks5::resolve(const unit::dns_t::id_t id, const event::famil
  */
 void awh::server::Socks5::stop() noexcept {
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->server.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		// Если идентификатор сервера установлен
 		if(this->_id.eid > 0){
 			// Если объект DNS-резолвера установлен

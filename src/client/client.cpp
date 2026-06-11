@@ -148,7 +148,7 @@ void awh::Client::status(const uint8_t index, const event::status_t status) noex
  */
 void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если объект транспортного уровня безопасности установлен
 		if((this->_coder != nullptr) && (this->_id.sid > 0)){
 			// Если подключение успешно
@@ -199,7 +199,7 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
  */
 void awh::Client::write(const event::id_t eid, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("write"))
 			// Выполняем функцию обратного вызова
@@ -214,7 +214,7 @@ void awh::Client::write(const event::id_t eid, const size_t size) noexcept {
  */
 void awh::Client::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("state"))
 			// Выполняем функцию обратного вызова
@@ -240,7 +240,7 @@ void awh::Client::state(const event::id_t eid, const event::status_t status) noe
  */
 void awh::Client::action(const event::id_t eid, const event::action_t action) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("action"))
 			// Выполняем функцию обратного вызова
@@ -255,7 +255,7 @@ void awh::Client::action(const event::id_t eid, const event::action_t action) no
  */
 void awh::Client::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("traffic"))
 			// Выполняем функцию обратного вызова
@@ -271,7 +271,7 @@ void awh::Client::traffic(const event::id_t eid, const net::dgram_info_t & info)
  */
 void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если объект транспортного уровня безопасности установлен
 		if((this->_coder != nullptr) && (this->_id.sid > 0)){
 			// Если данные не расшифрованы
@@ -311,7 +311,7 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
  */
 void awh::Client::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("error"))
 			// Выполняем функцию обратного вызова
@@ -342,7 +342,7 @@ void awh::Client::attempts(const unit::dns_t::id_t, const string & domain, const
  */
 void awh::Client::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("available"))
 			// Выполняем функцию обратного вызова
@@ -359,7 +359,7 @@ void awh::Client::available(const event::id_t eid, const event::status_t status,
  */
 bool awh::Client::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("timeout"))
 			// Выполняем функцию обратного вызова
@@ -398,7 +398,7 @@ void awh::Client::failure(const unit::dns_t::id_t id, const unit::dns_t::record_
  */
 void awh::Client::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("spool"))
 			// Выполняем функцию обратного вызова
@@ -440,7 +440,7 @@ void awh::Client::resolve(const unit::dns_t::id_t, const event::family_t family,
  */
 void awh::Client::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова установлена
 		if(this->_callback.is("state_tls"))
 			// Выполняем функцию обратного вызова
@@ -463,7 +463,7 @@ void awh::Client::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::stat
  */
 void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если функция обратного вызова не установлена
 		if(!this->_callback.is("error_tls")){
 			/**
@@ -492,7 +492,7 @@ void awh::Client::errorTLS(const tls::coder_t::id_t id, const tls::coder_t::erro
  */
 void awh::Client::processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
 		 * Обрабатываем тип события TLS
 		 */
@@ -535,7 +535,7 @@ void awh::Client::processTLS(const tls::coder_t::id_t, const tls::coder_t::event
  */
 void awh::Client::stop() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
 			// Если объект DNS-резолвера установлен
@@ -618,7 +618,7 @@ void awh::Client::start() noexcept {
  */
 bool awh::Client::pause() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Приостанавливаем событие клиента
@@ -650,7 +650,7 @@ bool awh::Client::pause() noexcept {
  */
 bool awh::Client::resume() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Возобновляем событие клиента
@@ -681,7 +681,7 @@ bool awh::Client::resume() noexcept {
  */
 void awh::Client::destroy() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Уничтожаем событие клиента
@@ -720,7 +720,7 @@ bool awh::Client::isAlive() const noexcept {
  */
 bool awh::Client::connect() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Подключаем клиента к удалённому серверу
@@ -752,7 +752,7 @@ bool awh::Client::connect() noexcept {
  */
 bool awh::Client::disconnect() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Отключаем клиента от удалённого сервера
@@ -825,7 +825,7 @@ void awh::Client::callback(const callback_t & callback) noexcept {
  */
 bool awh::Client::recv() noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0)
 			// Выполняем получение данных от сервера
@@ -859,7 +859,7 @@ bool awh::Client::recv() noexcept {
  */
 size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : this->_unit->client.working()){
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
 			// Если идентификатор TLS и объект TLS установлены
