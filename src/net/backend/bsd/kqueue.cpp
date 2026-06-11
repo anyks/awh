@@ -3376,57 +3376,60 @@ namespace timer1 {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Если в приоритетной очереди нет таймеров, нет необходимости перезапускать таймер ядра операционной системы
-			if(__awh_heap__.empty())
-				// Выходим из функции, так-как нет таймеров для обработки и перезапускать таймер ядра операционной системы не нужно
-				return;
-			// Получаем текущее значение времени
-			const uint64_t now = ::timer::timestamp();
-			// Получаем срок истечения ближайшего таймера
-			const uint64_t deadline = __awh_heap__.begin()->deadline;
-			// Если дедлайн уже прошёл — будим немедленно (timeout = 0)
-			const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
-			/**
-			 * Определяем как быстро нужно выполнить событие
-			 */
-			switch(static_cast <uint8_t> (rate)){
-				// Если нужно выполнить событие мгновенно
-				case static_cast <uint8_t> (event::rate_t::INSTANT): {
-					// Создаём объект события для Kqueue
-					struct kevent event{};
-					// Устанавливаем событие таймера для Kqueue
-					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
-					// Активируем событие в ядре операционной системы через Kqueue
-					if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
-						// Если объект логирования доступен
-						if(log != nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
+			// Если Kqueue инициализирован
+			if(::__awh_kq__ != net::invalid_socket_t){
+				// Если в приоритетной очереди нет таймеров, нет необходимости перезапускать таймер ядра операционной системы
+				if(__awh_heap__.empty())
+					// Выходим из функции, так-как нет таймеров для обработки и перезапускать таймер ядра операционной системы не нужно
+					return;
+				// Получаем текущее значение времени
+				const uint64_t now = ::timer::timestamp();
+				// Получаем срок истечения ближайшего таймера
+				const uint64_t deadline = __awh_heap__.begin()->deadline;
+				// Если дедлайн уже прошёл — будим немедленно (timeout = 0)
+				const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
+				/**
+				 * Определяем как быстро нужно выполнить событие
+				 */
+				switch(static_cast <uint8_t> (rate)){
+					// Если нужно выполнить событие мгновенно
+					case static_cast <uint8_t> (event::rate_t::INSTANT): {
+						// Создаём объект события для Kqueue
+						struct kevent event{};
+						// Устанавливаем событие таймера для Kqueue
+						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
+						// Активируем событие в ядре операционной системы через Kqueue
+						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
+							// Если объект логирования доступен
+							if(log != nullptr){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
 						}
-					}
-				} break;
-				// Если нужно выполнить отложенное событие
-				case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-					// Создаём объект события для Kqueue
-					struct kevent event{};
-					// Выполняем поиск узла в глобальном списке узлов событий
-					auto i = ::__awh_nodes__.find(__awh_heap__.begin()->eid);
-					// Устанавливаем событие таймера для Kqueue
-					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ((i != ::__awh_nodes__.end()) ? i->second.get() : (void *) 1));
-					// Добавляем новое событие в список изменений
-					::events::add(::move(event));
-				} break;
+					} break;
+					// Если нужно выполнить отложенное событие
+					case static_cast <uint8_t> (event::rate_t::DEFERRED): {
+						// Создаём объект события для Kqueue
+						struct kevent event{};
+						// Выполняем поиск узла в глобальном списке узлов событий
+						auto i = ::__awh_nodes__.find(__awh_heap__.begin()->eid);
+						// Устанавливаем событие таймера для Kqueue
+						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ((i != ::__awh_nodes__.end()) ? i->second.get() : (void *) 1));
+						// Добавляем новое событие в список изменений
+						::events::add(::move(event));
+					} break;
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -4533,57 +4536,60 @@ namespace timer2 {
 		 * Выполняем перехват ошибок
 		 */
 		try {
-			// Если в приоритетной очереди нет таймеров, нет необходимости перезапускать таймер ядра операционной системы
-			if(__awh_heap__.empty())
-				// Выходим из функции, так-как нет таймеров для обработки и перезапускать таймер ядра операционной системы не нужно
-				return;
-			// Получаем текущее значение времени
-			const uint64_t now = ::timer::timestamp();
-			// Получаем срок истечения ближайшего таймера
-			const uint64_t deadline = __awh_heap__[0].deadline;
-			// Если дедлайн уже прошёл — будим немедленно (timeout = 0)
-			const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
-			/**
-			 * Определяем как быстро нужно выполнить событие
-			 */
-			switch(static_cast <uint8_t> (rate)){
-				// Если нужно выполнить событие мгновенно
-				case static_cast <uint8_t> (event::rate_t::INSTANT): {
-					// Создаём объект события для Kqueue
-					struct kevent event{};
-					// Устанавливаем событие таймера для Kqueue
-					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
-					// Активируем событие в ядре операционной системы через Kqueue
-					if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
-						// Если объект логирования доступен
-						if(log != nullptr){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
+			// Если Kqueue инициализирован
+			if(::__awh_kq__ != net::invalid_socket_t){
+				// Если в приоритетной очереди нет таймеров, нет необходимости перезапускать таймер ядра операционной системы
+				if(__awh_heap__.empty())
+					// Выходим из функции, так-как нет таймеров для обработки и перезапускать таймер ядра операционной системы не нужно
+					return;
+				// Получаем текущее значение времени
+				const uint64_t now = ::timer::timestamp();
+				// Получаем срок истечения ближайшего таймера
+				const uint64_t deadline = __awh_heap__[0].deadline;
+				// Если дедлайн уже прошёл — будим немедленно (timeout = 0)
+				const uint64_t wait = ((deadline > now) ? (deadline - now) : 0);
+				/**
+				 * Определяем как быстро нужно выполнить событие
+				 */
+				switch(static_cast <uint8_t> (rate)){
+					// Если нужно выполнить событие мгновенно
+					case static_cast <uint8_t> (event::rate_t::INSTANT): {
+						// Создаём объект события для Kqueue
+						struct kevent event{};
+						// Устанавливаем событие таймера для Kqueue
+						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), (void *) 1);
+						// Активируем событие в ядре операционной системы через Kqueue
+						if(::kevent(::__awh_kq__, &event, 1, nullptr, 0, nullptr) == net::invalid_socket_t){
+							// Если объект логирования доступен
+							if(log != nullptr){
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (rate)), log_t::flag_t::WARNING, ::strerror(errno));
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+								#endif
+							}
 						}
-					}
-				} break;
-				// Если нужно выполнить отложенное событие
-				case static_cast <uint8_t> (event::rate_t::DEFERRED): {
-					// Создаём объект события для Kqueue
-					struct kevent event{};
-					// Выполняем поиск узла в глобальном списке узлов событий
-					auto i = ::__awh_nodes__.find(__awh_heap__[0].eid);
-					// Устанавливаем событие таймера для Kqueue
-					EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ((i != ::__awh_nodes__.end()) ? i->second.get() : (void *) 1));
-					// Добавляем новое событие в список изменений
-					::events::add(::move(event));
-				} break;
+					} break;
+					// Если нужно выполнить отложенное событие
+					case static_cast <uint8_t> (event::rate_t::DEFERRED): {
+						// Создаём объект события для Kqueue
+						struct kevent event{};
+						// Выполняем поиск узла в глобальном списке узлов событий
+						auto i = ::__awh_nodes__.find(__awh_heap__[0].eid);
+						// Устанавливаем событие таймера для Kqueue
+						EV_SET(&event, 0, EVFILT_TIMER, EV_ADD | EV_ONESHOT, 0, static_cast <intptr_t> (wait), ((i != ::__awh_nodes__.end()) ? i->second.get() : (void *) 1));
+						// Добавляем новое событие в список изменений
+						::events::add(::move(event));
+					} break;
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -22782,38 +22788,47 @@ namespace io {
 				switch(static_cast <uint8_t> (node->state.node)){
 					// Если узел является пользовательским событием
 					case static_cast <uint8_t> (event::node_t::NOTIFY): {
-						// Выполняем извлечение текущего значения объекта пользовательского события
-						::io::user_t * user = awh_cast <::io::user_t *> (node);
-						// Объект события для удаления из списка ожидания
-						struct kevent event{};
-						// Снимаем событие из списка ожидания
-						EV_SET(&event, user->id, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
+						// Если Kqueue инициализирован
+						if(::__awh_kq__ != net::invalid_socket_t){
+							// Выполняем извлечение текущего значения объекта пользовательского события
+							::io::user_t * user = awh_cast <::io::user_t *> (node);
+							// Объект события для удаления из списка ожидания
+							struct kevent event{};
+							// Снимаем событие из списка ожидания
+							EV_SET(&event, user->id, EVFILT_USER, EV_DELETE, 0, 0, nullptr);
+							// Добавляем новое событие в список изменений
+							::events::add(::move(event));
+						}
 					} break;
 					// Если узел является таймаутом
 					case static_cast <uint8_t> (event::node_t::TIMEOUT):
 					// Если узел является интервалом
 					case static_cast <uint8_t> (event::node_t::INTERVAL): {
-						// Выполняем извлечение текущего значения объекта таймера
-						::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
-						// Объект события для удаления из списка ожидания
-						struct kevent event{};
-						// Снимаем событие из списка ожидания
-						EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
+						// Если Kqueue инициализирован
+						if(::__awh_kq__ != net::invalid_socket_t){
+							// Выполняем извлечение текущего значения объекта таймера
+							::io::timer_t * timer = awh_cast <::io::timer_t *> (node);
+							// Объект события для удаления из списка ожидания
+							struct kevent event{};
+							// Снимаем событие из списка ожидания
+							EV_SET(&event, timer->id, EVFILT_TIMER, EV_DELETE, 0, 0, nullptr);
+							// Добавляем новое событие в список изменений
+							::events::add(::move(event));
+						}
 					} break;
 					// Если узел является директорией
 					case static_cast <uint8_t> (event::node_t::DIR): {
 						// Получаем текущее значение объекта директории
 						::io::dir_t * dir = awh_cast <::io::dir_t *> (node);
-						// Объект события для удаления из списка ожидания
-						struct kevent event{};
-						// Снимаем событие из списка ожидания
-						EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
+						// Если Kqueue инициализирован
+						if(::__awh_kq__ != net::invalid_socket_t){
+							// Объект события для удаления из списка ожидания
+							struct kevent event{};
+							// Снимаем событие из списка ожидания
+							EV_SET(&event, dir->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
+							// Добавляем новое событие в список изменений
+							::events::add(::move(event));
+						}
 						// Если событие закрытия разрешено
 						if(dir->actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
@@ -22826,12 +22841,15 @@ namespace io {
 					case static_cast <uint8_t> (event::node_t::FILE): {
 						// Получаем текущее значение объекта файловой системы
 						::io::file_t * fs = awh_cast <::io::file_t *> (node);
-						// Объект события для удаления из списка ожидания
-						struct kevent event{};
-						// Снимаем событие из списка ожидания
-						EV_SET(&event, fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
-						// Добавляем новое событие в список изменений
-						::events::add(::move(event));
+						// Если Kqueue инициализирован
+						if(::__awh_kq__ != net::invalid_socket_t){
+							// Объект события для удаления из списка ожидания
+							struct kevent event{};
+							// Снимаем событие из списка ожидания
+							EV_SET(&event, fs->fd, EVFILT_VNODE, EV_DELETE, 0, 0, nullptr);
+							// Добавляем новое событие в список изменений
+							::events::add(::move(event));
+						}
 						// Если событие закрытия разрешено
 						if(fs->actions & ::action::CLOSE){
 							// Если установлена функция обратного вызова
@@ -22852,12 +22870,21 @@ namespace io {
 							if(::__awh_pid__ == ::getpid()){
 								// Если в сокете нет ошибок
 								if(eth->socket.getError(ipc->transfer.fd) == 0){
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-									// Добавляем новое событие в список изменений
-									::events::add(::move(event));
+									// Если Kqueue инициализирован
+									if(::__awh_kq__ != net::invalid_socket_t){
+										// Создаём объект события для Kqueue
+										struct kevent event{};
+										// Деактивируем событие на чтение данных из сокета
+										EV_SET(&event, ipc->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::events::add(::move(event));
+									// Если Kqueue не инициализирован
+									} else {
+										// Закрываем дескриптор сокета
+										::close(ipc->transfer.fd);
+										// Сбрасываем значение дескриптора сокета
+										ipc->transfer.fd = net::invalid_socket_t;
+									}
 								}
 							// Если процесс является дочерним процессом
 							} else {
@@ -22914,21 +22941,39 @@ namespace io {
 							if(eth->socket.getError(peer->transfer.fd) == 0){
 								// Если активность на чтения данных установлена
 								if(peer->activity & ::activity::READ){
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-									// Добавляем новое событие в список изменений
-									::events::add(::move(event));
+									// Если Kqueue инициализирован
+									if(::__awh_kq__ != net::invalid_socket_t){
+										// Создаём объект события для Kqueue
+										struct kevent event{};
+										// Деактивируем событие на чтение данных из сокета
+										EV_SET(&event, peer->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::events::add(::move(event));
+									// Если Kqueue не инициализирован
+									} else {
+										// Закрываем дескриптор сокета
+										::close(peer->transfer.fd);
+										// Сбрасываем значение дескриптора сокета
+										peer->transfer.fd = net::invalid_socket_t;
+									}
 								}
 								// Если активность на запись данных установлена
 								if(peer->activity & ::activity::WRITE){
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Деактивируем событие на запись данных в сокет
-									EV_SET(&event, peer->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-									// Добавляем новое событие в список изменений
-									::events::add(::move(event));
+									// Если Kqueue инициализирован
+									if(::__awh_kq__ != net::invalid_socket_t){
+										// Создаём объект события для Kqueue
+										struct kevent event{};
+										// Деактивируем событие на запись данных в сокет
+										EV_SET(&event, peer->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::events::add(::move(event));
+									// Если Kqueue не инициализирован
+									} else if(peer->transfer.fd != net::invalid_socket_t) {
+										// Закрываем дескриптор сокета
+										::close(peer->transfer.fd);
+										// Сбрасываем значение дескриптора сокета
+										peer->transfer.fd = net::invalid_socket_t;
+									}
 								}
 							}
 						}
@@ -23011,12 +23056,21 @@ namespace io {
 							if(::__awh_pid__ == ::getpid()){
 								// Если в сокете нет ошибок
 								if(eth->socket.getError(tunnel->fd) == 0){
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-									// Добавляем новое событие в список изменений
-									::events::add(::move(event));
+									// Если Kqueue инициализирован
+									if(::__awh_kq__ != net::invalid_socket_t){
+										// Создаём объект события для Kqueue
+										struct kevent event{};
+										// Деактивируем событие на чтение данных из сокета
+										EV_SET(&event, tunnel->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::events::add(::move(event));
+									// Если Kqueue не инициализирован
+									} else {
+										// Закрываем дескриптор сокета
+										::close(tunnel->fd);
+										// Сбрасываем значение дескриптора сокета
+										tunnel->fd = net::invalid_socket_t;
+									}
 								}
 							// Если процесс является дочерним процессом
 							} else {
@@ -23067,92 +23121,95 @@ namespace io {
 							case static_cast <uint8_t> (event::type_t::DATAGRAM):
 							// Если событие принадлежит к типу SEQPACKET
 							case static_cast <uint8_t> (event::type_t::SEQPACKET): {
-								// Если установлен режим постоянного подключения
-								if(client->state.options & event::options::KEEPALIVE){
-									// Если событие переподключения к серверу разрешено
-									if(client->transfer.actions & ::action::RECONNECT){
-										// Если клиент не подразумевает переподключение
-										if(client->state.status == event::status_t::LAUNCHED)
-											// Выходим из условия и продолжаем выполнение функции
-											break;
-										/**
-										 * Определяем тип таймера для событий сетевого движка
-										 */
-										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE): {
-												// Отменяем все установленные таймауты для данного клиента
-												::timer1::cancel(
-													client->timeouts.read,
-													client->timeouts.write,
-													client->timeouts.connect,
-													client->timeouts.reconnect,
-													client->bandwidth.read.timeout,
-													client->bandwidth.write.timeout,
-													client->id
-												);
-											} break;
-											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Отменяем все установленные таймауты для данного клиента
-												::timer2::cancel(
-													client->timeouts.read,
-													client->timeouts.write,
-													client->timeouts.connect,
-													client->timeouts.reconnect,
-													client->bandwidth.read.timeout,
-													client->bandwidth.write.timeout,
-													client->id
-												);
-											break;
-										}
-										// Если дескриптор сокета действительный
-										if(client->transfer.fd != net::invalid_socket_t){
-											// Если в сокете нет ошибок
-											if(eth->socket.getError(client->transfer.fd) == 0){
-												// Количество событий подлежащих удалению
-												uint8_t count = 0;
-												// Список объектов события для удаления
-												struct kevent events[2] = {0};
-												// Если активность на чтения данных установлена
-												if(client->activity & ::activity::READ)
-													// Деактивируем событие на чтение данных из сокета
-													EV_SET(&events[count++], client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-												// Если активность на запись данных установлена
-												if(client->activity & ::activity::WRITE)
-													// Деактивируем событие на запись данных в сокет
-													EV_SET(&events[count++], client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-												// Выполняем удаление событий из списка ожидания
-												::kevent(::__awh_kq__, events, count, nullptr, 0, nullptr);
+								// Если Kqueue инициализирован
+								if(::__awh_kq__ != net::invalid_socket_t){
+									// Если установлен режим постоянного подключения
+									if(client->state.options & event::options::KEEPALIVE){
+										// Если событие переподключения к серверу разрешено
+										if(client->transfer.actions & ::action::RECONNECT){
+											// Если клиент не подразумевает переподключение
+											if(client->state.status == event::status_t::LAUNCHED)
+												// Выходим из условия и продолжаем выполнение функции
+												break;
+											/**
+											 * Определяем тип таймера для событий сетевого движка
+											 */
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+												// Если тип таймера для событий сетевого движка является простым
+												case static_cast <uint8_t> (event::timer_t::SIMPLE): {
+													// Отменяем все установленные таймауты для данного клиента
+													::timer1::cancel(
+														client->timeouts.read,
+														client->timeouts.write,
+														client->timeouts.connect,
+														client->timeouts.reconnect,
+														client->bandwidth.read.timeout,
+														client->bandwidth.write.timeout,
+														client->id
+													);
+												} break;
+												// Если тип таймера для событий сетевого движка является сложным
+												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+													// Отменяем все установленные таймауты для данного клиента
+													::timer2::cancel(
+														client->timeouts.read,
+														client->timeouts.write,
+														client->timeouts.connect,
+														client->timeouts.reconnect,
+														client->bandwidth.read.timeout,
+														client->bandwidth.write.timeout,
+														client->id
+													);
+												break;
 											}
-											// Закрываем дескриптор сокета
-											::close(client->transfer.fd);
-											// Сбрасываем значение дескриптора сокета
-											client->transfer.fd = net::invalid_socket_t;
+											// Если дескриптор сокета действительный
+											if(client->transfer.fd != net::invalid_socket_t){
+												// Если в сокете нет ошибок
+												if(eth->socket.getError(client->transfer.fd) == 0){
+													// Количество событий подлежащих удалению
+													uint8_t count = 0;
+													// Список объектов события для удаления
+													struct kevent events[2] = {0};
+													// Если активность на чтения данных установлена
+													if(client->activity & ::activity::READ)
+														// Деактивируем событие на чтение данных из сокета
+														EV_SET(&events[count++], client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+													// Если активность на запись данных установлена
+													if(client->activity & ::activity::WRITE)
+														// Деактивируем событие на запись данных в сокет
+														EV_SET(&events[count++], client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+													// Выполняем удаление событий из списка ожидания
+													::kevent(::__awh_kq__, events, count, nullptr, 0, nullptr);
+												}
+												// Закрываем дескриптор сокета
+												::close(client->transfer.fd);
+												// Сбрасываем значение дескриптора сокета
+												client->transfer.fd = net::invalid_socket_t;
+											}
+											// Устанавливаем статус события в состояние переподключения
+											client->state.status = event::status_t::RECONNECTED;
+											// Если задержка таймаута на переподключение не установлена
+											if(client->timeouts.reconnect.delay == 0)
+												// Устанавливаем задержку таймаута на значение в 5 секунд
+												client->timeouts.reconnect.delay = 0x1388;
+											/**
+											 * Определяем тип таймера для событий сетевого движка
+											 */
+											switch(static_cast <uint8_t> (::__awh_internal_timer__)){
+												// Если тип таймера для событий сетевого движка является простым
+												case static_cast <uint8_t> (event::timer_t::SIMPLE):
+													// Добавляем таймаут на переподключение
+													::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+												break;
+												// Если тип таймера для событий сетевого движка является сложным
+												case static_cast <uint8_t> (event::timer_t::DIFFICULT):
+													// Добавляем таймаут на переподключение
+													::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
+												break;
+											}
+											// Возвращаем результат выполнения функции
+											return !guard.garbage();
 										}
-										// Устанавливаем статус события в состояние переподключения
-										client->state.status = event::status_t::RECONNECTED;
-										// Если задержка таймаута на переподключение не установлена
-										if(client->timeouts.reconnect.delay == 0)
-											// Устанавливаем задержку таймаута на значение в 5 секунд
-											client->timeouts.reconnect.delay = 0x1388;
-										/**
-										 * Определяем тип таймера для событий сетевого движка
-										 */
-										switch(static_cast <uint8_t> (::__awh_internal_timer__)){
-											// Если тип таймера для событий сетевого движка является простым
-											case static_cast <uint8_t> (event::timer_t::SIMPLE):
-												// Добавляем таймаут на переподключение
-												::timer1::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
-											break;
-											// Если тип таймера для событий сетевого движка является сложным
-											case static_cast <uint8_t> (event::timer_t::DIFFICULT):
-												// Добавляем таймаут на переподключение
-												::timer2::set({::timer::flag_t::SIMPLE, client->timeouts.reconnect}, client->id, event::rate_t::DEFERRED, log);
-											break;
-										}
-										// Возвращаем результат выполнения функции
-										return !guard.garbage();
 									}
 								}
 								/**
@@ -23192,21 +23249,39 @@ namespace io {
 									if(eth->socket.getError(client->transfer.fd) == 0){
 										// Если активность на чтения данных установлена
 										if(client->activity & ::activity::READ){
-											// Создаём объект события для Kqueue
-											struct kevent event{};
-											// Деактивируем событие на чтение данных из сокета
-											EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-											// Добавляем новое событие в список изменений
-											::events::add(::move(event));
+											// Если Kqueue инициализирован
+											if(::__awh_kq__ != net::invalid_socket_t){
+												// Создаём объект события для Kqueue
+												struct kevent event{};
+												// Деактивируем событие на чтение данных из сокета
+												EV_SET(&event, client->transfer.fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+												// Добавляем новое событие в список изменений
+												::events::add(::move(event));
+											// Если Kqueue не инициализирован
+											} else {
+												// Закрываем дескриптор сокета
+												::close(client->transfer.fd);
+												// Сбрасываем значение дескриптора сокета
+												client->transfer.fd = net::invalid_socket_t;
+											}
 										}
 										// Если активность на запись данных установлена
 										if(client->activity & ::activity::WRITE){
-											// Создаём объект события для Kqueue
-											struct kevent event{};
-											// Деактивируем событие на запись данных в сокет
-											EV_SET(&event, client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
-											// Добавляем новое событие в список изменений
-											::events::add(::move(event));
+											// Если Kqueue инициализирован
+											if(::__awh_kq__ != net::invalid_socket_t){
+												// Создаём объект события для Kqueue
+												struct kevent event{};
+												// Деактивируем событие на запись данных в сокет
+												EV_SET(&event, client->transfer.fd, EVFILT_WRITE, EV_DELETE, 0, 0, nullptr);
+												// Добавляем новое событие в список изменений
+												::events::add(::move(event));
+											// Если Kqueue не инициализирован
+											} else if(client->transfer.fd != net::invalid_socket_t) {
+												// Закрываем дескриптор сокета
+												::close(client->transfer.fd);
+												// Сбрасываем значение дескриптора сокета
+												client->transfer.fd = net::invalid_socket_t;
+											}
 										}
 									}
 								}
@@ -23255,12 +23330,21 @@ namespace io {
 							if(eth->socket.getError(server->fd) == 0){
 								// Если активность на чтения данных установлена
 								if(server->activity & ::activity::READ){
-									// Создаём объект события для Kqueue
-									struct kevent event{};
-									// Деактивируем событие на чтение данных из сокета
-									EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
-									// Добавляем новое событие в список изменений
-									::events::add(::move(event));
+									// Если Kqueue инициализирован
+									if(::__awh_kq__ != net::invalid_socket_t){
+										// Создаём объект события для Kqueue
+										struct kevent event{};
+										// Деактивируем событие на чтение данных из сокета
+										EV_SET(&event, server->fd, EVFILT_READ, EV_DELETE, 0, 0, nullptr);
+										// Добавляем новое событие в список изменений
+										::events::add(::move(event));
+									// Если Kqueue не инициализирован
+									} else {
+										// Закрываем дескриптор сокета
+										::close(server->fd);
+										// Сбрасываем значение дескриптора сокета
+										server->fd = net::invalid_socket_t;
+									}
 								}
 							}
 						}
@@ -23286,16 +23370,19 @@ namespace io {
 						}
 					} break;
 				}
-				// Создаём объект события для Kqueue
-				struct kevent events[2] = {0};
-				// Устанавливаем пользовательское событие
-				EV_SET(&events[0], node->id, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, node);
-				// Добавляем новое событие в список изменений
-				::events::add(::move(events[0]));
-				// Триггерим событие для уничтожения узла
-				EV_SET(&events[1], node->id, EVFILT_USER, 0, NOTE_TRIGGER, 0, node);
-				// Добавляем новое событие в список изменений
-				::events::add(::move(events[1]));
+				// Если Kqueue инициализирован
+				if(::__awh_kq__ != net::invalid_socket_t){
+					// Создаём объект события для Kqueue
+					struct kevent events[2] = {0};
+					// Устанавливаем пользовательское событие
+					EV_SET(&events[0], node->id, EVFILT_USER, EV_ADD | EV_CLEAR, NOTE_FFNOP, 0, node);
+					// Добавляем новое событие в список изменений
+					::events::add(::move(events[0]));
+					// Триггерим событие для уничтожения узла
+					EV_SET(&events[1], node->id, EVFILT_USER, 0, NOTE_TRIGGER, 0, node);
+					// Добавляем новое событие в список изменений
+					::events::add(::move(events[1]));
+				}
 				// Возвращаем результат выполнения функции
 				return true;
 			}
