@@ -27497,7 +27497,7 @@ namespace sctp {
 								// Если адрес является IPv4
 								case AF_INET: {
 									// Преобразуем IPv4 адрес в строковое представление
-									::inet_ntop(AF_INET, &(reinterpret_cast <const struct sockaddr_in *> (&spc->spc_aaddr))->sin_addr, ::__awh_buffer__, INET_ADDRSTRLEN);
+									::inet_ntop(AF_INET, &(reinterpret_cast <const struct sockaddr_in *> (&spc->spc_aaddr))->sin_addr, reinterpret_cast <char *> (::__awh_buffer__), INET_ADDRSTRLEN);
 									// Записываем в лог информацию о событии изменения адреса однорангового узла SCTP
 									log->print(
 										"SCTP_PEER_ADDR_CHANGE: ID=%u, IP=%s, STATE=%d, ERROR=%d",
@@ -27511,7 +27511,7 @@ namespace sctp {
 								// Если адрес является IPv6
 								case AF_INET6: {
 									// Преобразуем IPv6 адрес в строковое представление
-									::inet_ntop(AF_INET6, &(reinterpret_cast <const struct sockaddr_in6 *> (&spc->spc_aaddr))->sin6_addr, ::__awh_buffer__, INET6_ADDRSTRLEN);
+									::inet_ntop(AF_INET6, &(reinterpret_cast <const struct sockaddr_in6 *> (&spc->spc_aaddr))->sin6_addr, reinterpret_cast <char *> (::__awh_buffer__), INET6_ADDRSTRLEN);
 									// Записываем в лог информацию о событии изменения адреса однорангового узла SCTP
 									log->print(
 										"SCTP_PEER_ADDR_CHANGE: ID=%u, IP=%s, STATE=%d, ERROR=%d",
