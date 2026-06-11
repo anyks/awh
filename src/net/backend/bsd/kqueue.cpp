@@ -5609,7 +5609,7 @@ namespace sctp {
 		 * @param log    объект работы с логами
 		 * @return       количество обработанных байт
 		 */
-		static size_t events(::io::node_t * node, const char * buffer, const size_t size, const log_t * log) noexcept;
+		static size_t events(::io::node_t * node, const uint8_t * buffer, const size_t size, const log_t * log) noexcept;
 	#endif
 };
 
