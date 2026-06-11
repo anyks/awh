@@ -302,7 +302,7 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows" OR ${CMAKE_SYSTEM_NAME} STREQUAL
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated")
 # Устанавливаем параметры игнорирования ошибок для FreeBSD, NetBSD и OpenBSD
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
-    SET(AWH_PARAMS "-lutil -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
+    SET(AWH_PARAMS "-lutil -lexecinfo -Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 # Если операционная система не определена
 else()
     SET(AWH_PARAMS "-Wno-unknown-attributes")
