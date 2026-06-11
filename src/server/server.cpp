@@ -181,27 +181,30 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 				} break;
 				// Если событие DNS-резолвера остановлено
 				case static_cast <uint8_t> (event::status_t::DESTROYED): {
-					// Если идентификатор TLS и объект TLS установлены
-					if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
-						// Временный список идентификаторов TLS, которые нужно удалить
-						vector <tls::coder_t::id_t> garbage;
-						// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
-						for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
-							// Формируем список идентификаторов TLS для удаления
-							garbage.push_back(i->second);
-							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-							i = this->_tls.safety.erase(i);
+					// Если сервер ещё живой
+					if(this->_unit != nullptr){
+						// Если идентификатор TLS и объект TLS установлены
+						if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+							// Временный список идентификаторов TLS, которые нужно удалить
+							vector <tls::coder_t::id_t> garbage;
+							// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+							for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
+								// Формируем список идентификаторов TLS для удаления
+								garbage.push_back(i->second);
+								// Удаляем сопоставление идентификатора клиента с идентификатором TLS
+								i = this->_tls.safety.erase(i);
+							}
+							// Если список идентификаторов TLS для удаления не пустой
+							if(!garbage.empty()){
+								// Проходим по всем идентификаторам TLS для удаления
+								for(const auto & id : garbage)
+									// Уничтожаем объект TLS по найденному идентификатору TLS
+									this->_tls.coder->destroy(id);
+							}
 						}
-						// Если список идентификаторов TLS для удаления не пустой
-						if(!garbage.empty()){
-							// Проходим по всем идентификаторам TLS для удаления
-							for(const auto & id : garbage)
-								// Уничтожаем объект TLS по найденному идентификатору TLS
-								this->_tls.coder->destroy(id);
-						}
+						// Останавливаем сервер
+						this->_unit->server.stop();
 					}
-					// Останавливаем сервер
-					this->_unit->server.stop();
 				} break;
 			}
 		} break;
@@ -230,7 +233,7 @@ void awh::Server::write(const event::id_t eid, const size_t size) noexcept {
  */
 void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	// Если объект транспортного уровня безопасности установлен
-	if((this->_tls.coder != nullptr) && (this->_id.sid > 0)){
+	if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.sid > 0)){
 		// Создаём идентификатор транспортного уровня TLS/DTLS
 		tls::coder_t::id_t ctl = this->_tls.coder->transport(this->_id.sid);
 		// Добавляем сопоставление идентификатора клиента с идентификатором TLS
@@ -309,7 +312,7 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 				// Обнуляем идентификатор сервера
 				this->_id.eid = 0;
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+				if((this->_unit != nullptr) && (this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
 					// Временный список идентификаторов TLS, которые нужно удалить
 					vector <tls::coder_t::id_t> garbage;
 					// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
@@ -330,15 +333,17 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 			// Если производится завершение работы клиента подключенного к текущему серверу
 			} else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_tls.coder != nullptr)){
+				if((this->_unit != nullptr) && (this->_id.sid > 0) && (this->_tls.coder != nullptr)){
 					// Выполняем поиск идентификатора TLS по идентификатору события клиента
 					auto i = this->_tls.safety.find(eid);
 					// Если для данного идентификатора события клиента найден идентификатор TLS
 					if(i != this->_tls.safety.end()){
-						// Уничтожаем объект TLS по найденному идентификатору TLS
-						this->_tls.coder->destroy(i->second);
+						// Запоминаем идентификатор TLS для удаления
+						const tls::coder_t::id_t sid = i->second;
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
+						// Уничтожаем объект TLS по найденному идентификатору TLS
+						this->_tls.coder->destroy(sid);
 					}
 				}
 			}
@@ -386,7 +391,7 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_tls.coder != nullptr) && (this->_id.sid > 0)){
+		if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.sid > 0)){
 			// Выполняем поиск идентификатора TLS по идентификатору события клиента
 			auto i = this->_tls.safety.find(eid);
 			// Если для данного идентификатора события клиента найден идентификатор TLS
@@ -712,17 +717,20 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 			} break;
 			// Если состояние уничтожения объекта транспортного уровня
 			case static_cast <uint8_t> (tls::coder_t::state_t::DESTROYED): {
-				// Если список сопоставлений идентификаторов клиентов с идентификаторами TLS не пустой
-				if(!this->_tls.safety.empty()){
-					// Выполняем поиск идентификатора TLS по идентификатору события клиента
-					auto i = this->_tls.safety.find(eid);
-					// Если для данного идентификатора события клиента найден идентификатор TLS
-					if(i != this->_tls.safety.end())
-						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-						this->_tls.safety.erase(i);
+				// Если сервер ещё живой
+				if(this->_unit != nullptr){
+					// Если список сопоставлений идентификаторов клиентов с идентификаторами TLS не пустой
+					if(!this->_tls.safety.empty()){
+						// Выполняем поиск идентификатора TLS по идентификатору события клиента
+						auto i = this->_tls.safety.find(eid);
+						// Если для данного идентификатора события клиента найден идентификатор TLS
+						if(i != this->_tls.safety.end())
+							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
+							this->_tls.safety.erase(i);
+					}
+					// Уничтожаем подключившегося клиента
+					this->_unit->server.destroy(eid);
 				}
-				// Уничтожаем подключившегося клиента
-				this->_unit->server.destroy(eid);
 			} break;
 			// Если состояние рукопожатия успешно завершено
 			case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED): {
@@ -927,27 +935,30 @@ void awh::Server::stop() noexcept {
 				this->_dns.client->stop();
 			// Если объект DNS-резолвера не установлен
 			else {
-				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
-					// Временный список идентификаторов TLS, которые нужно удалить
-					vector <tls::coder_t::id_t> garbage;
-					// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
-					for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
-						// Формируем список идентификаторов TLS для удаления
-						garbage.push_back(i->second);
-						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-						i = this->_tls.safety.erase(i);
+				// Если сервер ещё живой
+				if(this->_unit != nullptr){
+					// Если идентификатор TLS и объект TLS установлены
+					if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+						// Временный список идентификаторов TLS, которые нужно удалить
+						vector <tls::coder_t::id_t> garbage;
+						// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+						for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
+							// Формируем список идентификаторов TLS для удаления
+							garbage.push_back(i->second);
+							// Удаляем сопоставление идентификатора клиента с идентификатором TLS
+							i = this->_tls.safety.erase(i);
+						}
+						// Если список идентификаторов TLS для удаления не пустой
+						if(!garbage.empty()){
+							// Проходим по всем идентификаторам TLS для удаления
+							for(const auto & id : garbage)
+								// Уничтожаем объект TLS по найденному идентификатору TLS
+								this->_tls.coder->destroy(id);
+						}
 					}
-					// Если список идентификаторов TLS для удаления не пустой
-					if(!garbage.empty()){
-						// Проходим по всем идентификаторам TLS для удаления
-						for(const auto & id : garbage)
-							// Уничтожаем объект TLS по найденному идентификатору TLS
-							this->_tls.coder->destroy(id);
-					}
+					// Останавливаем событие сервера
+					this->_unit->server.stop();
 				}
-				// Останавливаем событие сервера
-				this->_unit->server.stop();
 			}
 		// Если идентификатор сервера не установлен
 		} else {
@@ -1116,20 +1127,25 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 			return this->_unit->server.destroy(this->_id.eid);
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
 		else if(this->_unit->server.isActual(eid)) {
-			// Если идентификатор TLS и объект TLS установлены
-			if((this->_id.sid > 0) && (this->_tls.coder != nullptr)){
-				// Выполняем поиск идентификатора TLS по идентификатору события клиента
-				auto i = this->_tls.safety.find(eid);
-				// Если для данного идентификатора события клиента найден идентификатор TLS
-				if(i != this->_tls.safety.end()){
-					// Уничтожаем объект TLS по найденному идентификатору TLS
-					this->_tls.coder->destroy(i->second);
-					// Удаляем сопоставление идентификатора клиента с идентификатором TLS
-					this->_tls.safety.erase(i);
+			// Если сервер ещё живой
+			if(this->_unit != nullptr){
+				// Если идентификатор TLS и объект TLS установлены
+				if((this->_id.sid > 0) && (this->_tls.coder != nullptr)){
+					// Выполняем поиск идентификатора TLS по идентификатору события клиента
+					auto i = this->_tls.safety.find(eid);
+					// Если для данного идентификатора события клиента найден идентификатор TLS
+					if(i != this->_tls.safety.end()){
+						// Запоминаем идентификатор TLS для удаления
+						const tls::coder_t::id_t sid = i->second;
+						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
+						this->_tls.safety.erase(i);
+						// Уничтожаем объект TLS по найденному идентификатору TLS
+						this->_tls.coder->destroy(sid);
+					}
 				}
+				// Уничтожаем событие клиента
+				this->_unit->server.destroy(eid);
 			}
-			// Уничтожаем событие клиента
-			this->_unit->server.destroy(eid);
 		// Если идентификатор сервера не установлен
 		} else {
 			/**
@@ -1301,7 +1317,7 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
 	// Если DNS-резолвер или сервер находятся в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
-		if((eid != this->_id.eid) && this->_unit->server.isActual(eid)){
+		if((this->_unit != nullptr) && (eid != this->_id.eid) && this->_unit->server.isActual(eid)){
 			// Если идентификатор TLS и объект TLS установлены
 			if((this->_id.sid > 0) && (this->_tls.coder != nullptr)){
 				// Выполняем поиск идентификатора TLS по идентификатору события клиента
