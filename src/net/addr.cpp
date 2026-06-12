@@ -835,6 +835,151 @@ namespace {
 		// Возвращаем успешный результат парсинга
 		return true;
 	}
+	/**
+	 * @brief Функция поиска самой длинной последовательности нулевых хекстетов IPv6 (минимум 2)
+	 *
+	 * @param hexets массив из 8 хекстетов IPv6-адреса
+	 * @param begin  индекс начала найденной последовательности (-1 если не найдено)
+	 * @param length длина найденной последовательности (1 если подходящей нет)
+	 */
+	void findZeroRun(const uint16_t hexets[8], int16_t & begin, int16_t & length) noexcept {
+		// Сбрасываем результат поиска
+		begin = -1, length = 1;
+		// Поиск лучшей последовательности нулевых хекстетов
+		for(int16_t i = 0; i < 8;){
+			// Если текущий хекстет равен нулю
+			if(hexets[i] == 0){
+				// Ищем длину последовательности нулевых хекстетов
+				int16_t j = i;
+				/**
+				 * Продолжаем, пока не дойдём до конца массива или не встретим ненулевой хекстет
+				 */
+				while((j < 8) && (hexets[j] == 0))
+					// Увеличиваем длину последовательности
+					j++;
+				// Если текущая последовательность длиннее найденной ранее
+				if((j - i) > length){
+					// Запоминаем новую лучшую последовательность
+					begin = i;
+					// Запоминаем длину последовательности
+					length = (j - i);
+				}
+				// Продвигаем основной индекс вперёд
+				i = j;
+			// Если текущий хекстет НЕ равен нулю, смещаем индекс вперёд
+			} else i++;
+		}
+	}
+	/**
+	 * @brief Функция формирования строки IPv6-адреса со сжатием нулевых групп
+	 *
+	 * @param out    буфер назначения (должен быть достаточного размера)
+	 * @param hexets массив из 8 хекстетов IPv6-адреса
+	 * @param conv   спецификатор системы счисления ('X' - hex, 'u' - dec, 'o' - oct)
+	 * @param delim  разделитель групп
+	 * @return       количество записанных символов
+	 */
+	int32_t emitIPv6(char * out, const uint16_t hexets[8], const char conv, const char delim) noexcept {
+		// Текущая позиция записи
+		int32_t pos = 0;
+		/**
+		 * @brief Запись одной группы в заданной системе счисления
+		 *
+		 * @param i индекс группы
+		 */
+		auto group = [&](const int16_t i) noexcept -> void {
+			/**
+			 * Определяем систему счисления
+			 */
+			switch(conv){
+				// Шестнадцатеричный формат
+				case 'X': pos += ::sprintf(out + pos, "%X", hexets[i]); break;
+				// Десятичный формат
+				case 'u': pos += ::sprintf(out + pos, "%u", hexets[i]); break;
+				// Восьмеричный формат
+				case 'o': pos += ::sprintf(out + pos, "%o", hexets[i]); break;
+			}
+		};
+		// Лямбда записи разделителя
+		auto sep = [&]() noexcept -> void { out[pos++] = delim; };
+		// Индексы начала и длины самой длинной нулевой последовательности
+		int16_t begin = -1, length = 1;
+		// Выполняем поиск лучшей последовательности нулевых хекстетов
+		::findZeroRun(hexets, begin, length);
+		// Если сжатие не применяется
+		if(length <= 1){
+			// Выводим все хекстеты подряд через разделитель
+			for(int16_t i = 0; i < 8; ++i){
+				// Если это не первая группа, добавляем разделитель
+				if(i > 0) sep();
+				// Записываем группу
+				group(i);
+			}
+		// Если сжатие в начале (формат ::xxx)
+		} else if(begin == 0) {
+			// Записываем "::"
+			sep(); sep();
+			// Выводим оставшиеся хекстеты
+			for(int16_t i = length; i < 8; ++i){
+				// Перед всеми, кроме первого после "::", добавляем разделитель
+				if(i != length) sep();
+				// Записываем группу
+				group(i);
+			}
+		// Если сжатие в конце (формат xxx::)
+		} else if((begin + length) == 8) {
+			// Выводим хекстеты до сжатия
+			for(int16_t i = 0; i < begin; ++i){
+				// Если это не первая группа, добавляем разделитель
+				if(i > 0) sep();
+				// Записываем группу
+				group(i);
+			}
+			// Завершаем "::"
+			sep(); sep();
+		// Если сжатие в середине (формат xxx::xxx)
+		} else {
+			// Выводим хекстеты до сжатия
+			for(int16_t i = 0; i < begin; ++i){
+				// Если это не первая группа, добавляем разделитель
+				if(i > 0) sep();
+				// Записываем группу
+				group(i);
+			}
+			// Добавляем "::"
+			sep(); sep();
+			// Выводим хекстеты после сжатия
+			for(int16_t i = (begin + length); i < 8; ++i){
+				// Записываем группу
+				group(i);
+				// После всех, кроме последней группы, добавляем разделитель
+				if(i != 7) sep();
+			}
+		}
+		// Завершаем строку нулевым символом
+		out[pos] = '\0';
+		// Возвращаем количество записанных символов
+		return pos;
+	}
+	/**
+	 * @brief Функция формирования опций парсинга в зависимости от строгого режима
+	 *
+	 * @param strict флаг строгого режима
+	 * @return       сформированные опции парсинга
+	 */
+	options_t makeOptions(const bool strict) noexcept {
+		// Опции парсинга по умолчанию (либеральный режим)
+		options_t options;
+		// Если включён строгий режим
+		if(strict){
+			// Запрещаем legacy-формы IPv4 (a.b.c, a.b, a)
+			options.allowLegacyV4 = false;
+			// Запрещаем не-десятичные системы счисления для IPv4 (0x..., 0...)
+			options.allowNonDecimalV4 = false;
+		}
+		// Возвращаем сформированные опции
+		return options;
+	}
 };
 
 /**
@@ -1318,6 +1463,24 @@ awh::Network_Address::type_t awh::Network_Address::type() const noexcept {
 void awh::Network_Address::type(const type_t type) noexcept {
 	// Выполняем установку типа IP-адреса
 	this->_type = type;
+}
+/**
+ * @brief Метод извлечения флага строгого режима парсинга/проверки адресов
+ *
+ * @return флаг строгого режима
+ */
+bool awh::Network_Address::strict() const noexcept {
+	// Возвращаем флаг строгого режима
+	return this->_strict;
+}
+/**
+ * @brief Метод установки строгого режима парсинга/проверки адресов
+ *
+ * @param mode флаг строгого режима (запрещает legacy и не-десятичные формы IPv4)
+ */
+void awh::Network_Address::strict(const bool mode) noexcept {
+	// Выполняем установку флага строгого режима
+	this->_strict = mode;
 }
 /**
  * @brief Метод определения типа хоста
@@ -1931,7 +2094,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 					// Временный буфер для проверки IP-адреса
 					vector <uint8_t> buffer(4, 0);
 					// Выполняем проверку IP-адреса IPv4
-					return ::ipv4(addr, buffer);
+					return ::ipv4(addr, buffer, ::makeOptions(this->_strict));
 				}
 				// Если IP-адрес определён как IPv6
 				case static_cast <uint8_t> (type_t::IPV6): {
@@ -1940,7 +2103,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 					// Временный буфер для проверки IP-адреса
 					vector <uint8_t> buffer(16, 0);
 					// Выполняем проверку IP-адреса IPv6
-					return ::ipv6(addr, buffer, zone);
+					return ::ipv6(addr, buffer, zone, ::makeOptions(this->_strict));
 				}
 				// Если IP-адрес определён как NetV4
 				case static_cast <uint8_t> (type_t::NETV4): {
@@ -1961,13 +2124,13 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом и не является корректной маской сети
-						} else if(!::ipv4(suffix, buffer))
+						} else if(!::ipv4(suffix, buffer, ::makeOptions(this->_strict)))
 							// Возвращаем результат проверки
 							return false;
 						// Зануляем структуру
 						::memset(&buffer[0], 0, buffer.size());
 						// Выполняем проверку IP-адреса IPv4
-						return ::ipv4(ip, buffer);
+						return ::ipv4(ip, buffer, ::makeOptions(this->_strict));
 					}
 				} break;
 				// Если IP-адрес определён как NetV6
@@ -1991,13 +2154,13 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 								// Если префикс сети больше допустимого значения
 								return false;
 						// Если суффикс не является числом и не является корректной маской сети
-						} else if(!::ipv6(suffix, buffer, zone))
+						} else if(!::ipv6(suffix, buffer, zone, ::makeOptions(this->_strict)))
 							// Возвращаем результат проверки
 							return false;
 						// Зануляем структуру
 						::memset(&buffer[0], 0, buffer.size());
 						// Выполняем проверку IP-адреса IPv6
-						return ::ipv6(ip, buffer, zone);
+						return ::ipv6(ip, buffer, zone, ::makeOptions(this->_strict));
 					}
 				} break;
 				// Если адрес принадлежит к URL-адресам
@@ -3354,7 +3517,7 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(4, 0);
 						// Выполняем парсинг IPv4 адреса
-						if(::ipv4(addr, this->_buffer)){
+						if(::ipv4(addr, this->_buffer, ::makeOptions(this->_strict))){
 							// Устанавливаем тип адреса
 							this->_type = type_t::IPV4;
 							// Выводрим положительный результат
@@ -3370,7 +3533,7 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 						// Выполняем инициализацию буфера
 						this->_buffer.resize(16, 0);
 						// Выполняем парсинг IPv6 адреса
-						if(::ipv6(addr, this->_buffer, this->_zone)){
+						if(::ipv6(addr, this->_buffer, this->_zone, ::makeOptions(this->_strict))){
 							// Устанавливаем тип адреса
 							this->_type = type_t::IPV6;
 							// Выводрим положительный результат
@@ -3453,7 +3616,7 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(4, 0);
 					// Выполняем парсинг IPv4 адреса
-					if(::ipv4(addr, this->_buffer)){
+					if(::ipv4(addr, this->_buffer, ::makeOptions(this->_strict))){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат
@@ -3469,7 +3632,7 @@ bool awh::Network_Address::parse(string_view addr, const type_t type) noexcept {
 					// Выполняем инициализацию буфера
 					this->_buffer.resize(16, 0);
 					// Выполняем парсинг IPv6 адреса
-					if(::ipv6(addr, this->_buffer, this->_zone)){
+					if(::ipv6(addr, this->_buffer, this->_zone, ::makeOptions(this->_strict))){
 						// Устанавливаем тип адреса
 						this->_type = type;
 						// Выводрим положительный результат
@@ -4408,294 +4571,23 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 										// Возвращаем результат в формате x:x:x:x:x:x:w.x.y.z
 										} else pos = ::sprintf(&result[0], "%X%c%X%c%X%c%X%c%X%c%X%c%u.%u.%u.%u", hexets[0], delim, hexets[1], delim, hexets[2], delim, hexets[3], delim, hexets[4], delim, hexets[5], delim, this->_buffer[12], this->_buffer[13], this->_buffer[14], this->_buffer[15]);
 									// Если нужно использовать стандартный вывод IPv6
-									} else {
-										// 2. Находим лучшее сжатие (минимум 2 нуля)
-										int16_t begin = -1, length = 1;
-										/**
-										 * Поиск лучшей последовательности нулевых хекстетов
-										 */
-										for(int16_t i = 0; i < 8;){
-											// Если текущий хекстет равен нулю
-											if(hexets[i] == 0){
-												// Ищем длину последовательности нулевых хекстетов
-												int16_t j = i;
-												/**
-												 * Продолжаем, пока не дойдём до конца массива или не встретим ненулевой хекстет
-												 */
-												while((j < 8) && (hexets[j] == 0))
-													// Ищем длину последовательности нулевых хекстетов
-													j++;
-												// Если текущая последовательность длиннее найденной ранее
-												if((j - i) > length){
-													// Запоминаем новую лучшую последовательность
-													begin = i;
-													// Запоминаем длину последовательности
-													length = (j - i);
-												}
-												// Продвигаем основной индекс вперёд
-												i = j;
-											// Если текущий хекстет НЕ равен нулю, смещаем индекс вперёд
-											} else i++;
-										}
-										// 3. Формируем строку — ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ
-										if(length <= 1)
-											// Не используем сжатие вообще
-											pos = ::sprintf(&result[0], "%X%c%X%c%X%c%X%c%X%c%X%c%X%c%X", hexets[0], delim, hexets[1], delim, hexets[2], delim, hexets[3], delim, hexets[4], delim, hexets[5], delim, hexets[6], delim, hexets[7]);
-										// Если сжатие возможно
-										else {
-											// С сжатием — выводим ТОЛЬКО то, что нужно
-											if(begin == 0){
-												// Формируем строку в формате ::xxx
-												pos = ::sprintf(&result[0], "%c%c", delim, delim);
-												/**
-												 * Продолжаем вывод оставшихся хекстетов
-												 */
-												for(int16_t i = length; i < 8; ++i){
-													// Если разделитель нам не требуется
-													if(i == length)
-														// Печатаем hex-дамп с разделителем
-														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
-													// Печатаем hex-дамп с разделителем
-													else pos += ::sprintf(&result[0] + pos, "%c%X", delim, hexets[i]);
-												}
-											// Если сжатие в конце
-											} else if((begin + length) == 8) {
-												/**
-												 * Формируем строку в формате xxx::
-												 */
-												for(int16_t i = 0; i < begin; ++i){
-													// Если разделитель нам не требуется
-													if(i == 0)
-														// Печатаем hex-дамп с разделителем
-														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
-													// Печатаем hex-дамп с разделителем
-													else pos += ::sprintf(&result[0] + pos, "%c%X", delim, hexets[i]);
-												}
-												// Завершаем сжатием
-												pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
-											// Если сжатие в середине
-											} else {
-												/**
-												 * Формируем строку в формате xxx::xxx
-												 */
-												for(int16_t i = 0; i < begin; ++i){
-													// Если разделитель нам не требуется
-													if(i == 0)
-														// Печатаем hex-дамп с разделителем
-														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
-													// Печатаем hex-дамп с разделителем
-													else pos += ::sprintf(&result[0] + pos, "%c%X", delim, hexets[i]);
-												}
-												// Добавляем сжатие
-												pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
-												/**
-												 * Продолжаем вывод оставшихся хекстетов
-												 */
-												for(int16_t i = (begin + length); i < 8; ++i){
-													// Если разделитель нам не требуется
-													if(i == 7)
-														// Печатаем hex-дамп с разделителем
-														pos += ::sprintf(&result[0] + pos, "%X", hexets[i]);
-													// Печатаем hex-дамп с разделителем
-													else pos += ::sprintf(&result[0] + pos, "%X%c", hexets[i], delim);
-												}
-											}
-										}
-									}
+									} else
+										// Формируем сжатую строку IPv6 в шестнадцатеричном виде
+										pos = ::emitIPv6(&result[0], hexets, 'X', delim);
 								} break;
 								// Если формат указан в 10-м виде
 								case static_cast <uint8_t> (format_flag_t::DECIMAL): {
 									// Перераспределяем объект результата под максимальный размер DECIMAL-формата (8*5 + 7)
 									result.resize(48);
-									// 2. Находим лучшее сжатие (минимум 2 нуля)
-									int16_t begin = -1, length = 1;
-									/**
-									 * Поиск лучшей последовательности нулевых хекстетов
-									 */
-									for(int16_t i = 0; i < 8;){
-										// Если текущий хекстет равен нулю
-										if(hexets[i] == 0){
-											// Ищем длину последовательности нулевых хекстетов
-											int16_t j = i;
-											/**
-											 * Продолжаем, пока не дойдём до конца массива или не встретим ненулевой хекстет
-											 */
-											while((j < 8) && (hexets[j] == 0))
-												// Ищем длину последовательности нулевых хекстетов
-												j++;
-											// Если текущая последовательность длиннее найденной ранее
-											if((j - i) > length){
-												// Запоминаем новую лучшую последовательность
-												begin = i;
-												// Запоминаем длину последовательности
-												length = (j - i);
-											}
-											// Продвигаем основной индекс вперёд
-											i = j;
-										// Если текущий хекстет НЕ равен нулю, смещаем индекс вперёд
-										} else i++;
-									}
-									// 3. Формируем строку — ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ
-									if(length <= 1)
-										// Не используем сжатие вообще
-										pos = ::sprintf(&result[0], "%u%c%u%c%u%c%u%c%u%c%u%c%u%c%u", hexets[0], delim, hexets[1], delim, hexets[2], delim, hexets[3], delim, hexets[4], delim, hexets[5], delim, hexets[6], delim, hexets[7]);
-									// Если сжатие возможно
-									else {
-										// С сжатием — выводим ТОЛЬКО то, что нужно
-										if(begin == 0){
-											// Формируем строку в формате ::xxx
-											pos = ::sprintf(&result[0], "%c%c", delim, delim);
-											/**
-											 * Продолжаем вывод оставшихся хекстетов
-											 */
-											for(int16_t i = length; i < 8; ++i){
-												// Если разделитель нам не требуется
-												if(i == length)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%c%u", delim, hexets[i]);
-											}
-										// Если сжатие в конце
-										} else if((begin + length) == 8) {
-											/**
-											 * Формируем строку в формате xxx::
-											 */
-											for(int16_t i = 0; i < begin; ++i){
-												// Если разделитель нам не требуется
-												if(i == 0)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%c%u", delim, hexets[i]);
-											}
-											// Завершаем сжатием
-											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
-										// Если сжатие в середине
-										} else {
-											/**
-											 * Формируем строку в формате xxx::xxx
-											 */
-											for(int16_t i = 0; i < begin; ++i){
-												// Если разделитель нам не требуется
-												if(i == 0)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%c%u", delim, hexets[i]);
-											}
-											// Добавляем сжатие
-											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
-											/**
-											 * Продолжаем вывод оставшихся хекстетов
-											 */
-											for(int16_t i = (begin + length); i < 8; ++i){
-												// Если разделитель нам не требуется
-												if(i == 7)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%u", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%u%c", hexets[i], delim);
-											}
-										}
-									}
+									// Формируем сжатую строку IPv6 в десятичном виде
+									pos = ::emitIPv6(&result[0], hexets, 'u', delim);
 								} break;
 								// Если формат указан в 8-м виде
 								case static_cast <uint8_t> (format_flag_t::OCTAL): {
 									// Перераспределяем объект результата под максимальный размер OCTAL-формата (8*6 + 7)
 									result.resize(56);
-									// 2. Находим лучшее сжатие (минимум 2 нуля)
-									int16_t begin = -1, length = 1;
-									/**
-									 * Поиск лучшей последовательности нулевых хекстетов
-									 */
-									for(int16_t i = 0; i < 8;){
-										// Если текущий хекстет равен нулю
-										if(hexets[i] == 0){
-											// Ищем длину последовательности нулевых хекстетов
-											int16_t j = i;
-											/**
-											 * Продолжаем, пока не дойдём до конца массива или не встретим ненулевой хекстет
-											 */
-											while((j < 8) && (hexets[j] == 0))
-												// Ищем длину последовательности нулевых хекстетов
-												j++;
-											// Если текущая последовательность длиннее найденной ранее
-											if((j - i) > length){
-												// Запоминаем новую лучшую последовательность
-												begin = i;
-												// Запоминаем длину последовательности
-												length = (j - i);
-											}
-											// Продвигаем основной индекс вперёд
-											i = j;
-										// Если текущий хекстет НЕ равен нулю, смещаем индекс вперёд
-										} else i++;
-									}
-									// 3. Формируем строку — ЕДИНСТВЕННЫЙ ПРАВИЛЬНЫЙ СПОСОБ
-									if(length <= 1)
-										// Не используем сжатие вообще
-										pos = ::sprintf(&result[0], "%o%c%o%c%o%c%o%c%o%c%o%c%o%c%o", hexets[0], delim, hexets[1], delim, hexets[2], delim, hexets[3], delim, hexets[4], delim, hexets[5], delim, hexets[6], delim, hexets[7]);
-									// Если сжатие возможно
-									else {
-										// С сжатием — выводим ТОЛЬКО то, что нужно
-										if(begin == 0){
-											// Формируем строку в формате ::xxx
-											pos = ::sprintf(&result[0], "%c%c", delim, delim);
-											/**
-											 * Продолжаем вывод оставшихся хекстетов
-											 */
-											for(int16_t i = length; i < 8; ++i){
-												// Если разделитель нам не требуется
-												if(i == length)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%c%o", delim, hexets[i]);
-											}
-										// Если сжатие в конце
-										} else if((begin + length) == 8) {
-											/**
-											 * Формируем строку в формате xxx::
-											 */
-											for(int16_t i = 0; i < begin; ++i){
-												// Если разделитель нам не требуется
-												if(i == 0)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%c%o", delim, hexets[i]);
-											}
-											// Завершаем сжатием
-											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
-										// Если сжатие в середине
-										} else {
-											/**
-											 * Формируем строку в формате xxx::xxx
-											 */
-											for(int16_t i = 0; i < begin; ++i){
-												// Если разделитель нам не требуется
-												if(i == 0)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%c%o", delim, hexets[i]);
-											}
-											// Добавляем сжатие
-											pos += ::sprintf(&result[0] + pos, "%c%c", delim, delim);
-											/**
-											 * Продолжаем вывод оставшихся хекстетов
-											 */
-											for(int16_t i = (begin + length); i < 8; ++i){
-												// Если разделитель нам не требуется
-												if(i == 7)
-													// Печатаем hex-дамп с разделителем
-													pos += ::sprintf(&result[0] + pos, "%o", hexets[i]);
-												// Печатаем hex-дамп с разделителем
-												else pos += ::sprintf(&result[0] + pos, "%o%c", hexets[i], delim);
-											}
-										}
-									}
+									// Формируем сжатую строку IPv6 в восьмеричном виде
+									pos = ::emitIPv6(&result[0], hexets, 'o', delim);
 								} break;
 							}
 						} break;
@@ -5572,7 +5464,7 @@ awh::Network_Address & awh::Network_Address::operator = (const std::array <uint8
  * @param log объект для работы с логами
  */
 awh::Network_Address::Network_Address(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::NONE), _fmk(fmk), _log(log) {}
+ _type(type_t::NONE), _strict(false), _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *

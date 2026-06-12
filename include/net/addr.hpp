@@ -141,6 +141,9 @@ namespace awh {
 			// Тип обрабатываемого адреса
 			type_t _type;
 		private:
+			// Флаг строгого режима парсинга/проверки адресов
+			bool _strict;
+		private:
 			// Зона IPv6 адреса
 			string _zone;
 		private:
@@ -199,6 +202,20 @@ namespace awh {
 			 * @param type тип IP-адреса для установки
 			 */
 			void type(const type_t type) noexcept;
+		public:
+			/**
+			 * @brief Метод извлечения флага строгого режима парсинга/проверки адресов
+			 *
+			 * @return флаг строгого режима
+			 */
+			bool strict() const noexcept;
+			/**
+			 * @brief Метод установки строгого режима парсинга/проверки адресов
+			 *
+			 * @param mode флаг строгого режима (в строгом режиме для IPv4 запрещены legacy-формы
+			 *             [a.b.c, a.b, a] и не-десятичные системы счисления [0x..., 0...])
+			 */
+			void strict(const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод определения типа хоста
