@@ -187,11 +187,11 @@ int32_t main(int32_t argc, char * argv[]){
 				cout << "  - Unpack Data: " << status.unackdata << endl;
 				cout << "  - Pending Data: " << status.penddata << endl;
 				// Записываем в лог сообщение о принятии события
-				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getPort(cid));
+				log.print("Событие принято: ID=%u, Клиентский ID=%u, ADDR=%s:%d", log_t::flag_t::INFO, eid, cid, io.getAddress(cid, event::address_t::IPV4).c_str(), io.getSourcePort(cid));
 				// Создаём идентификатор транспортного уровня DTLS
 				tls::coder_t::id_t ctl = tls.transport(cts);
 				// Устанавливаем клиента DTLS для события
-				tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.getPort(cid));
+				tls.peer(ctl, io.getAddress(cid, event::address_t::IPV4), io.getSourcePort(cid));
 				// Регистрируем функцию обратного вызова на получение ошибок DTLS
 				tls.on(ctl, [&log](const tls::coder_t::id_t id, [[maybe_unused]] const tls::coder_t::error_t error, const string & message) noexcept -> void {
 					// Записываем в лог сообщение о предупреждающей ошибке DTLS

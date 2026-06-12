@@ -2920,15 +2920,6 @@ awh::event::id_t awh::Server::init(const event::family_t family, const event::ty
 	return this->_id.eid;
 }
 /**
- * @brief Метод установки флага автоматического возрождения процессов
- *
- * @param mode флаг возрождения процессов
- */
-void awh::Server::clusterRebirth(const bool mode) noexcept {
-	// Устанавливаем флаг автоматического возрождения процессов для кластера
-	this->_unit->server.clusterRebirth(mode);
-}
-/**
  * @brief Метод установки названия кластера
  *
  * @param name название кластера для установки
@@ -3085,6 +3076,25 @@ size_t awh::Server::clusterBroadcast(const void * buffer, const size_t size) noe
 	}
 	// Возвращаем значение по умолчанию
 	return 0;
+}
+/**
+ * @brief Метод установки флага автоматического возрождения процессов
+ *
+ * @param mode флаг возрождения процессов
+ */
+void awh::Server::clusterRebirth(const bool mode) noexcept {
+	// Устанавливаем флаг автоматического возрождения процессов для кластера
+	this->_unit->server.clusterRebirth(mode);
+}
+/**
+ * @brief Метод установки параметров защиты от цикла перезапусков процессов кластера
+ *
+ * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
+ * @param window временное окно «быстрого» (раннего) падения процесса в миллисекундах
+ */
+void awh::Server::clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
+	// Устанавливаем параметры защиты от цикла перезапусков процессов кластера
+	this->_unit->server.clusterRebirthLimit(limit, window);
 }
 /**
  * @brief Метод получения типа протокола передачи данных между воркерами

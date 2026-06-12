@@ -857,13 +857,6 @@ namespace awh {
 			virtual event::id_t init(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 		public:
 			/**
-			 * @brief Метод установки флага автоматического возрождения процессов
-			 *
-			 * @param mode флаг возрождения процессов
-			 */
-			virtual void clusterRebirth(const bool mode) noexcept;
-		public:
-			/**
 			 * @brief Метод установки названия кластера
 			 *
 			 * @param name название кластера для установки
@@ -937,6 +930,20 @@ namespace awh {
 			 * @return       количество байт отправленного сообщения
 			 */
 			virtual size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
+		public:
+			/**
+			 * @brief Метод установки флага автоматического возрождения процессов
+			 *
+			 * @param mode флаг возрождения процессов
+			 */
+			virtual void clusterRebirth(const bool mode) noexcept;
+			/**
+			 * @brief Метод установки параметров защиты от цикла перезапусков процессов кластера
+			 *
+			 * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
+			 * @param window временное окно «быстрого» (раннего) падения процесса в миллисекундах
+			 */
+			virtual void clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept;
 		public:
 			/**
 			 * @brief Метод получения типа протокола передачи данных между воркерами

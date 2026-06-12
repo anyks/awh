@@ -61,6 +61,10 @@ namespace awh {
 					bool rebirth;
 					// Максимальное количество процессов в кластере
 					uint16_t count;
+					// Максимальное число подряд идущих быстрых падений процессов до остановки кластера (0 — без ограничения)
+					uint16_t restartLimit;
+					// Временное окно «быстрого» (раннего) падения процесса в миллисекундах
+					uint64_t restartWindow;
 					// Режим активации кластера
 					event::mode_t mode;
 					/**
@@ -68,8 +72,9 @@ namespace awh {
 					 *
 					 */
 					explicit ClusterParams() noexcept :
-					 name{""}, rebirth(false),
-					 count(0), mode(event::mode_t::DISABLED) {}
+					 name{""}, rebirth(false), count(0),
+					 restartLimit(10), restartWindow(30000),
+					 mode(event::mode_t::DISABLED) {}
 				} cluster_params_t;
 			private:
 				// Объект работы с кластером
@@ -735,13 +740,6 @@ namespace awh {
 				event::id_t issue(const event::family_t family, const event::type_t type = event::type_t::NONE, const event::protocol_t protocol = event::protocol_t::NONE) noexcept;
 			public:
 				/**
-				 * @brief Метод установки флага автоматического возрождения процессов
-				 *
-				 * @param mode флаг возрождения процессов
-				 */
-				void clusterRebirth(const bool mode) noexcept;
-			public:
-				/**
 				 * @brief Метод установки названия кластера
 				 *
 				 * @param name название кластера для установки
@@ -814,6 +812,20 @@ namespace awh {
 				 * @return       количество байт отправленного сообщения
 				 */
 				size_t clusterBroadcast(const void * buffer, const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод установки флага автоматического возрождения процессов
+				 *
+				 * @param mode флаг возрождения процессов
+				 */
+				void clusterRebirth(const bool mode) noexcept;
+				/**
+				 * @brief Метод установки параметров защиты от цикла перезапусков процессов кластера
+				 *
+				 * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
+				 * @param window временное окно «быстрого» (раннего) падения процесса в миллисекундах
+				 */
+				void clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept;
 			public:
 				/**
 				 * @brief Метод получения типа протокола передачи данных между воркерами

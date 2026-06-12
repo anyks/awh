@@ -17,6 +17,9 @@
  */
 #include <thread>
 #include <cerrno>
+#include <cstdio>
+#include <cstdint>
+#include <cstdlib>
 #include <cstring>
 #include <csignal>
 
@@ -27,6 +30,7 @@
 	/**
 	 * Системные заголовочные файлы
 	 */
+	#include <dlfcn.h>
 	#include <sys/wait.h>
 	#include <execinfo.h>
 #endif
@@ -80,6 +84,83 @@ using namespace placeholders;
 		 */
 		namespace {
 			/**
+			 * @brief Функция выполнения внешней команды и получения её стандартного вывода
+			 *
+			 * @param cmd команда для выполнения
+			 * @return    стандартный вывод выполненной команды
+			 */
+			string __awh_exec_command__(const string & cmd) noexcept {
+				// Результат выполнения команды
+				string result = "";
+				// Открываем канал на чтение стандартного вывода команды
+				FILE * pipe = ::popen(cmd.c_str(), "r");
+				// Если канал открыт
+				if(pipe != nullptr){
+					// Буфер для чтения вывода команды
+					char buffer[1024];
+					/**
+					 * Читаем вывод команды до конца
+					 */
+					while(::fgets(buffer, sizeof(buffer), pipe) != nullptr)
+						// Добавляем прочитанные данные в результат
+						result.append(buffer);
+					// Закрываем канал
+					::pclose(pipe);
+				}
+				// Возвращаем результат
+				return result;
+			}
+			/**
+			 * @brief Функция определения позиции в исходном коде по адресу инструкции
+			 *
+			 * @param pc адрес инструкции из бэктрейса
+			 * @return   строка вида «функция файл:строка», либо пустая строка, если позицию определить не удалось
+			 */
+			string __awh_resolve_line__(void * pc) noexcept {
+				// Результат определения позиции в исходном коде
+				string result = "";
+				// Объект информации о символе
+				Dl_info info;
+				// Зануляем объект информации о символе
+				::memset(&info, 0, sizeof(info));
+				// Если по адресу удалось определить модуль (исполняемый файл или разделяемую библиотеку)
+				if((::dladdr(pc, &info) != 0) && (info.dli_fname != nullptr)){
+					// Получаем абсолютный адрес инструкции
+					const uint64_t addr = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (pc));
+					// Получаем базовый адрес загрузки модуля
+					const uint64_t base = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (info.dli_fbase));
+					// Буфер для формирования команды символизации
+					char command[2048];
+					/**
+					 * Для операционной системы MacOS X
+					 */
+					#if __APPLE__ || __MACH__
+						// Формируем команду символизации через atos (смещение загрузки модуля задаётся параметром -l)
+						::snprintf(command, sizeof(command), "atos -o '%s' -l 0x%llx 0x%llx 2>/dev/null", info.dli_fname, static_cast <uint64_t> (base), static_cast <uint64_t> (addr));
+					/**
+					 * Для операционных систем Linux, FreeBSD и OpenIndiana (illumos/Solaris)
+					 */
+					#else
+						// Формируем команду символизации через addr2line по смещению инструкции внутри модуля
+						::snprintf(command, sizeof(command), "addr2line -f -C -p -e '%s' 0x%llx 2>/dev/null", info.dli_fname, static_cast <uint64_t> (addr - base));
+					#endif
+					// Выполняем команду символизации и получаем её вывод
+					result = __awh_exec_command__(command);
+					/**
+					 * Удаляем завершающие пробельные символы из результата
+					 */
+					while(!result.empty() && ((result.back() == '\n') || (result.back() == '\r') || (result.back() == ' ') || (result.back() == '\t')))
+						// Удаляем последний пробельный символ
+						result.pop_back();
+					// Если символизатор не смог определить позицию (вернул нерасшифрованный результат) — очищаем результат
+					if(result.empty() || (result.find("??") != string::npos))
+						// Очищаем результат
+						result.clear();
+				}
+				// Возвращаем результат
+				return result;
+			}
+			/**
 			 * @brief Функция выводи трейса ошибок дочернего потока
 			 *
 			 * @param sig номер сигнала вызвавшего краш
@@ -89,16 +170,31 @@ using namespace placeholders;
 				void * array[50];
 				// Определяем размер бэктрейса
 				const int32_t size = ::backtrace(array, 50);
+				// Получаем текстовое представление символов бэктрейса (используется как запасной вариант вывода)
+				char ** symbols = ::backtrace_symbols(array, size);
 				// Записываем в лог информацию в консоль
-				cerr << "Child PID " << ::getpid() << " crashed with signal " << sig << "\nBacktrace:" << endl;
-				// Извлекаем в буфер данные бэктрейса
-				::backtrace_symbols_fd(array, size, STDERR_FILENO);
+				cerr << "Child PID " << ::getpid() << " crashed with signal " << sig << " (" << ::strsignal(sig) << ")\nBacktrace:" << endl;
+				/**
+				 * Переходим по всем кадрам бэктрейса
+				 */
+				for(int32_t i = 0; i < size; ++i){
+					// Определяем позицию в исходном коде по адресу инструкции
+					const string & location = __awh_resolve_line__(array[i]);
+					// Если позицию в исходном коде удалось определить
+					if(!location.empty())
+						// Выводим номер кадра, адрес и расшифрованную позицию «функция файл:строка»
+						cerr << "  #" << i << " " << array[i] << " " << location << endl;
+					// Если позицию определить не удалось — выводим исходную (закодированную) информацию символа
+					else cerr << "  #" << i << " " << ((symbols != nullptr) ? symbols[i] : "") << endl;
+				}
+				// Если символы бэктрейса были выделены — освобождаем память
+				if(symbols != nullptr)
+					// Освобождаем память символов бэктрейса
+					::free(symbols);
 				// Возвращаем стандартный обработчик, чтобы операционная система создала полноценный Crash Report
 				::signal(sig, SIG_DFL);
 				// Повторно вызываем сигнал
 				::kill(::getpid(), sig);
-				// Завершаем вывод результата бэкстрейса
-				cerr << endl;
 			}
 		}
 	#endif
@@ -117,254 +213,53 @@ void awh::unit::Cluster::create() noexcept {
 		 * Для операционных систем, отличных от MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Индекс инициализированного процесса
-			uint16_t index = 0;
-			// Устанавливаем метку начала создания процессов
-			NewProcess:
-			// Если не все форки созданы
-			if(index < this->_count){
-				// Создаём новый вокрер дочернего процесса
-				unique_ptr <worker_t> worker = make_unique <worker_t> ();
-				// Устанавливаем время создания процесса
-				worker->life = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-				// Добавляем новые события для обмена сообщениями между процессами
-				const auto & events = this->_io->events(event::family_t::UDS, this->_type);
-				// Если события не созданы
-				if((events[0] == 0) || (events[1] == 0)){
+			/**
+			 * Создаём дочерние процессы по количеству установленных воркеров
+			 */
+			for(uint16_t index = 0; index < this->_count; ++index){
+				// Создаём очередной воркер с отложенным запуском события
+				const family_t family = this->spawn(0, true);
+				// Если мы оказались в дочернем процессе — прекращаем создание и выходим в цикл событий
+				if(family == family_t::CHILDREN)
+					// Выходим из функции
+					return;
+				// Если воркер создать не удалось — откатываем уже созданные процессы
+				else if(family == family_t::NONE) {
+					// Освобождаем ресурсы и принудительно завершаем уже созданные процессы
+					this->clear(shutdown_t::FORCEFUL);
+					// Выходим из функции
+					return;
+				}
+			}
+			// Записываем в лог информацию о запущенном кластере
+			this->_log->print("Cluster [%s] has been started successfully", log_t::flag_t::INFO, this->_name.c_str());
+			/**
+			 * Переходим по всему списку активных воркеров
+			 */
+			for(auto & [pid, worker] : this->_workers){
+				// Выполняем фиксацию и запуск работы события
+				if(!(this->_io->commit(worker->eid) && this->_io->launch(worker->eid))){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("Child process worker could not be created", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+						// Записываем ошибку в лог запуска события
+						this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, pid);
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
-						// Записываем ошибку в лог
-						this->_log->print("Child process worker could not be created", log_t::flag_t::CRITICAL);
+						// Записываем ошибку в лог запуска события
+						this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
 					#endif
-					// Выходим из функции
-					return;
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
 				}
-				/**
-				 * Определяем тип потока
-				 */
-				switch((worker->pid = ::fork())){
-					// Если поток не создан
-					case -1: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("Child process could not be created", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					} break;
-					// Если процесс является дочерним
-					case 0: {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							{
-								// Создаём объект перехвата сигнала
-								struct sigaction sa{};
-								// Устанавливаем обрабочик перехвата сигнала
-								sa.sa_handler = ::childCrashHandler;
-								// Зануляем маску объекта перехватчика
-								sigemptyset(&sa.sa_mask);
-								// Сбрасываем флаги перехватчика
-								sa.sa_flags = 0;
-								// Устанавливаем перехват сигнала SIGSEGV
-								::sigaction(SIGSEGV, &sa, nullptr);
-								// Устанавливаем перехват сигнала SIGBUS
-								::sigaction(SIGBUS, &sa, nullptr);
-								// Устанавливаем перехват сигнала SIGILL
-								::sigaction(SIGILL, &sa, nullptr);
-								// Устанавливаем перехват сигнала SIGABRT
-								::sigaction(SIGABRT, &sa, nullptr);
-							}
-						#endif
-						// Если родительский процесс живой
-						if(this->_pid == ::getppid()){
-							// Если список активных воркеров не пустой
-							if(!this->_workers.empty()){
-								/**
-								 * Перебираем всех активных воркеров
-								 */
-								for(auto i = this->_workers.begin(); i != this->_workers.end();){
-									// Уничтожаем событие других дочерних процессов
-									this->_io->destroy(i->second->eid);
-									// Удаляем воркера из списка активных воркеров
-									i = this->_workers.erase(i);
-								}
-							}
-							// Если список соответствия не пустой
-							if(!this->_accord.empty())
-								// Очищаем список соответствия идентификаторов событий и идентификатора процесса
-								this->_accord.clear();
-							// Уничтожаем событие родительского процесса
-							this->_io->destroy(events[0]);
-							// Выполняем переинициализацию асинхронного движка ввода-вывода
-							this->_io->reinitialize();
-							// Устанавливаем опции события
-							if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог
-									this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(index), log_t::flag_t::WARNING);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог
-									this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
-								#endif
-							}
-							// Устанавливаем функцию обратного вызова на событие записи сообщений
-							this->_io->on(events[1], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-							// Устанавливаем функцию обратного вызова на событие чтения сообщений
-							this->_io->on(events[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-							// Устанавливаем функцию обратного вызова на событие изменения состояния
-							this->_io->on(events[1], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
-							// Устанавливаем функцию обратного вызова на событие получения ошибок
-							this->_io->on(events[1], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
-							// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-							this->_io->on(events[1], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
-							// Устанавливаем идентификатор события для обмена сообщениями между процессами
-							worker->eid = events[1];
-							// Устанавливаем идентификатор процесса воркера
-							worker->pid = ::getpid();
-							// Добавляем нового воркера в список активных воркеров
-							auto ret = this->_workers.emplace(worker->pid, ::move(worker));
-							// Выполняем фиксацию и запуск работы события
-							if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
-								// Записываем в лог сообщение об успешном запуске события
-								this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("events"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const pid_t, const event_t)> ("events", ret.first->first, event_t::START);
-							// Если событие не может быть запущено
-							} else {
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Записываем ошибку в лог запуска события
-									this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ret.first->first);
-								/**
-								 * Если режим отладки не включён
-								 */
-								#else
-									// Записываем ошибку в лог запуска события
-									this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, ret.first->first);
-								#endif
-								// Выходим из приложения
-								::exit(EXIT_FAILURE);
-							}
-						// Если родительский процесс умер
-						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::getpid());
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Процесс превратился в зомби, самоликвидируем его
-								this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-							#endif
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						}
-					} break;
-					// Если процесс является родительским
-					default: {
-						// Уничтожаем событие дочернего процесса
-						this->_io->destroy(events[1]);
-						// Устанавливаем опции события
-						if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
-							#endif
-						}
-						// Устанавливаем функцию обратного вызова на событие записи сообщений
-						this->_io->on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-						// Устанавливаем функцию обратного вызова на событие чтения сообщений
-						this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-						// Устанавливаем функцию обратного вызова на событие изменения состояния
-						this->_io->on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
-						// Устанавливаем функцию обратного вызова на событие получения ошибок
-						this->_io->on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
-						// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-						this->_io->on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
-						// Устанавливаем идентификатор события для обмена сообщениями между процессами
-						worker->eid = events[0];
-						// Добавляем нового воркера в список активных воркеров
-						auto ret = this->_workers.emplace(worker->pid, ::move(worker));
-						// Добавляем соответствие идентификаторов событий и идентификатора процесса в список соответствия
-						this->_accord.emplace(ret.first->second->eid, ret.first->first);
-						// Увеличиваем индекс созданного процесса
-						++index;
-						// Переходим к метке создания следующего процесса
-						goto NewProcess;
-					}
-				}
-			// Если все процессы удачно созданы
-			} else {
-				// Записываем в лог информацию о запущенном сервере на PIPE
-				this->_log->print("Cluster [%s] has been started successfully", log_t::flag_t::INFO, this->_name.c_str());
-				// Переходим по всему списку активных воркеров
-				for(auto & [pid, worker] : this->_workers){
-					// Выполняем фиксацию и запуск работы события
-					if(!(this->_io->commit(worker->eid) && this->_io->launch(worker->eid))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог запуска события
-							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, pid);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог запуска события
-							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					}
-				}
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("events"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
 			}
+			// Если функция обратного вызова установлена
+			if(this->_callback.is("events"))
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -399,236 +294,8 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 		 * Для операционных систем, отличных от MS Windows
 		 */
 		#if !_WIN32 && !_WIN64
-			// Создаём новый вокрер дочернего процесса
-			unique_ptr <worker_t> worker = make_unique <worker_t> ();
-			// Устанавливаем время создания процесса
-			worker->life = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-			// Добавляем новые события для обмена сообщениями между процессами
-			const auto & events = this->_io->events(event::family_t::UDS, this->_type);
-			// Если события не созданы
-			if((events[0] == 0) || (events[1] == 0)){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("Child process worker could not be created", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("Child process worker could not be created", log_t::flag_t::CRITICAL);
-				#endif
-				// Выходим из функции
-				return;
-			}
-			/**
-			 * Определяем тип потока
-			 */
-			switch((worker->pid = ::fork())){
-				// Если поток не создан
-				case -1: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("Child process could not be created", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
-					#endif
-					// Выходим из приложения
-					::exit(EXIT_FAILURE);
-				} break;
-				// Если процесс является дочерним
-				case 0: {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						{
-							// Создаём объект перехвата сигнала
-							struct sigaction sa{};
-							// Устанавливаем обрабочик перехвата сигнала
-							sa.sa_handler = ::childCrashHandler;
-							// Зануляем маску объекта перехватчика
-							sigemptyset(&sa.sa_mask);
-							// Сбрасываем флаги перехватчика
-							sa.sa_flags = 0;
-							// Устанавливаем перехват сигнала SIGSEGV
-							::sigaction(SIGSEGV, &sa, nullptr);
-							// Устанавливаем перехват сигнала SIGBUS
-							::sigaction(SIGBUS, &sa, nullptr);
-							// Устанавливаем перехват сигнала SIGILL
-							::sigaction(SIGILL, &sa, nullptr);
-							// Устанавливаем перехват сигнала SIGABRT
-							::sigaction(SIGABRT, &sa, nullptr);
-						}
-					#endif
-					// Если родительский процесс живой
-					if(this->_pid == ::getppid()){
-						// Если список активных воркеров не пустой
-						if(!this->_workers.empty()){
-							/**
-							 * Перебираем всех активных воркеров
-							 */
-							for(auto i = this->_workers.begin(); i != this->_workers.end();){
-								// Уничтожаем событие других дочерних процессов
-								this->_io->destroy(i->second->eid);
-								// Удаляем воркера из списка активных воркеров
-								i = this->_workers.erase(i);
-							}
-						}
-						// Если список соответствия не пустой
-						if(!this->_accord.empty())
-							// Очищаем список соответствия идентификаторов событий и идентификатора процесса
-							this->_accord.clear();
-						// Уничтожаем событие родительского процесса
-						this->_io->destroy(events[0]);
-						// Выполняем переинициализацию асинхронного движка ввода-вывода
-						this->_io->reinitialize();
-						// Устанавливаем опции события
-						if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
-							#endif
-						}
-						// Устанавливаем функцию обратного вызова на событие записи сообщений
-						this->_io->on(events[1], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-						// Устанавливаем функцию обратного вызова на событие чтения сообщений
-						this->_io->on(events[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-						// Устанавливаем функцию обратного вызова на событие изменения состояния
-						this->_io->on(events[1], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
-						// Устанавливаем функцию обратного вызова на событие получения ошибок
-						this->_io->on(events[1], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
-						// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-						this->_io->on(events[1], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
-						// Устанавливаем идентификатор события для обмена сообщениями между процессами
-						worker->eid = events[1];
-						// Устанавливаем идентификатор процесса воркера
-						worker->pid = ::getpid();
-						// Добавляем нового воркера в список активных воркеров
-						auto ret = this->_workers.emplace(worker->pid, ::move(worker));
-						// Выполняем фиксацию и запуск работы события
-						if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
-							// Записываем в лог сообщение об успешном запуске события
-							this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("events"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const pid_t, const event_t)> ("events", ret.first->first, event_t::START);
-						// Если событие не может быть запущено
-						} else {
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог запуска события
-								this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, ret.first->first);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог запуска события
-								this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, ret.first->first);
-							#endif
-							// Выходим из приложения
-							::exit(EXIT_FAILURE);
-						}
-					// Если родительский процесс умер
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::CRITICAL, ::getpid());
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Процесс превратился в зомби, самоликвидируем его
-							this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					}
-				} break;
-				// Если процесс является родительским
-				default: {
-					// Уничтожаем событие дочернего процесса
-					this->_io->destroy(events[1]);
-					// Устанавливаем опции события
-					if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(pid), log_t::flag_t::WARNING);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
-						#endif
-					}
-					// Устанавливаем функцию обратного вызова на событие записи сообщений
-					this->_io->on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
-					// Устанавливаем функцию обратного вызова на событие чтения сообщений
-					this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
-					// Устанавливаем функцию обратного вызова на событие изменения состояния
-					this->_io->on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
-					// Устанавливаем функцию обратного вызова на событие получения ошибок
-					this->_io->on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
-					// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-					this->_io->on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
-					// Устанавливаем идентификатор события для обмена сообщениями между процессами
-					worker->eid = events[0];
-					// Добавляем нового воркера в список активных воркеров
-					auto ret = this->_workers.emplace(worker->pid, ::move(worker));
-					// Добавляем соответствие идентификаторов событий и идентификатора процесса в список соответствия
-					this->_accord.emplace(ret.first->second->eid, ret.first->first);
-					// Выполняем фиксацию и запуск работы события
-					if(!(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог запуска события
-							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(pid, ret.first->second->pid), log_t::flag_t::CRITICAL, pid);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог запуска события
-							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, pid);
-						#endif
-						// Выходим из приложения
-						::exit(EXIT_FAILURE);
-					}
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("rebase") && (pid > 0))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const pid_t, const pid_t)> ("rebase", ret.first->first, pid);
-				}
-			}
+			// Создаём новый дочерний процесс с немедленным запуском события взамен завершившегося
+			this->spawn(pid, false);
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -650,6 +317,24 @@ void awh::unit::Cluster::emplace([[maybe_unused]] const pid_t pid) noexcept {
 	}
 }
 /**
+ * @brief Метод освобождения ресурсов воркера
+ *
+ * @param eid идентификатор события воркера
+ */
+void awh::unit::Cluster::release([[maybe_unused]] const event::id_t eid) noexcept {
+	/**
+	 * Для операционных систем, отличных от MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Сбрасываем функцию обратного вызова на изменение статуса, чтобы не реагировать на DESTROYED при ручном закрытии события
+		this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+		// Удаляем соответствие идентификатора события и идентификатора процесса
+		this->_matching.erase(eid);
+		// Уничтожаем событие (закрывает сокет, что уведомляет дочерний процесс о завершении работы)
+		this->_io->destroy(eid);
+	#endif
+}
+/**
  * @brief Метод запуска/остановки работы кластера
  *
  * @param status статус запуска/остановки кластера
@@ -665,6 +350,28 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			if(this->_callback.is("clusterStatus"))
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const event::status_t)> ("clusterStatus", status);
+			// Сбрасываем счётчик подряд идущих быстрых падений при запуске кластера
+			this->_rebirth.restarts = 0;
+			// Создаём событие пробуждения до запуска дочерних процессов (отложенная обработка сигнала SIGCHLD)
+			this->_wakeup = this->_io->event(event::node_t::NOTIFY, event::family_t::USER);
+			// Если событие пробуждения создано и его настройки зафиксированы
+			if((this->_wakeup != 0) && this->_io->commit(this->_wakeup)){
+				// Устанавливаем функцию обратного вызова на чтение для отложенной обработки завершившихся процессов
+				this->_io->on(this->_wakeup, static_cast <engine::callback::read_t> (std::bind(&cluster_t::reap, this, _1, _2, _3)));
+				// Запускаем работу события пробуждения
+				if(!this->_io->launch(this->_wakeup)){
+					// Уничтожаем событие пробуждения
+					this->_io->destroy(this->_wakeup);
+					// Обнуляем идентификатор события пробуждения
+					this->_wakeup = 0;
+				}
+			// Если событие пробуждения создать не удалось
+			} else if(this->_wakeup != 0) {
+				// Уничтожаем событие пробуждения
+				this->_io->destroy(this->_wakeup);
+				// Обнуляем идентификатор события пробуждения
+				this->_wakeup = 0;
+			}
 			// Если количество создаваемых процессов установлено
 			if(this->_count > 0)
 				// Выполняем создание дочерних процессов
@@ -687,11 +394,18 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 				for(auto & [pid, worker] : this->_workers){
 					// Запрещаем анализ остановленного процесса
 					worker->pid = 0;
-					// Устанавливаем функцию обратного вызова на событие изменения статуса
-					this->_io->on(worker->eid, static_cast <engine::callback::status_t> (nullptr));
+					// Освобождаем ресурсы воркера (закрываем сокет, что завершает дочерний процесс)
+					this->release(worker->eid);
 				}
 				// Уничтожаем события всех активных воркеров
 				this->_workers.clear();
+			}
+			// Если событие пробуждения создано — уничтожаем его
+			if(this->_wakeup != 0){
+				// Уничтожаем событие пробуждения
+				this->_io->destroy(this->_wakeup);
+				// Обнуляем идентификатор события пробуждения
+				this->_wakeup = 0;
 			}
 			// Если функция обратного вызова установлена
 			if(this->_callback.is("clusterStatus")){
@@ -702,6 +416,270 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			}
 		} break;
 	}
+}
+/**
+ * @brief Метод создания одного дочернего процесса (воркера)
+ *
+ * @param replaced идентификатор замещаемого (упавшего) процесса, либо 0 при первичном создании
+ * @param deferred флаг отложенного запуска события (true — фиксация/запуск выполняются позже пакетно)
+ * @return         семейство процесса: MASTER — родитель, CHILDREN — дочерний, NONE — ошибка создания
+ */
+awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const pid_t replaced, [[maybe_unused]] const bool deferred) noexcept {
+	/**
+	 * Для операционных систем, отличных от MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Создаём новый вокрер дочернего процесса
+		unique_ptr <worker_t> worker = make_unique <worker_t> ();
+		// Устанавливаем время создания процесса
+		worker->life = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		// Добавляем новые события для обмена сообщениями между процессами
+		const auto & events = this->_io->events(event::family_t::UDS, this->_type);
+		// Если события не созданы
+		if((events[0] == 0) || (events[1] == 0)){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Child process worker could not be created", __PRETTY_FUNCTION__, make_tuple(replaced, deferred), log_t::flag_t::CRITICAL);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Child process worker could not be created", log_t::flag_t::CRITICAL);
+			#endif
+			// Возвращаем результат отсутствия созданного воркера
+			return family_t::NONE;
+		}
+		/**
+		 * Определяем тип потока
+		 */
+		switch((worker->pid = ::fork())){
+			// Если поток не создан
+			case -1: {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("Child process could not be created", __PRETTY_FUNCTION__, make_tuple(replaced, deferred), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("Child process could not be created", log_t::flag_t::CRITICAL);
+				#endif
+				// Выходим из приложения
+				::exit(EXIT_FAILURE);
+			} break;
+			// Если процесс является дочерним
+			case 0: {
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					{
+						// Создаём объект перехвата сигнала
+						struct sigaction sa{};
+						// Устанавливаем обрабочик перехвата сигнала
+						sa.sa_handler = ::childCrashHandler;
+						// Зануляем маску объекта перехватчика
+						sigemptyset(&sa.sa_mask);
+						// Сбрасываем флаги перехватчика
+						sa.sa_flags = 0;
+						// Устанавливаем перехват сигнала SIGSEGV
+						::sigaction(SIGSEGV, &sa, nullptr);
+						// Устанавливаем перехват сигнала SIGBUS
+						::sigaction(SIGBUS, &sa, nullptr);
+						// Устанавливаем перехват сигнала SIGILL
+						::sigaction(SIGILL, &sa, nullptr);
+						// Устанавливаем перехват сигнала SIGABRT
+						::sigaction(SIGABRT, &sa, nullptr);
+					}
+				#endif
+				// Если родительский процесс живой
+				if(this->_pid == ::getppid()){
+					// Если список активных воркеров не пустой
+					if(!this->_workers.empty()){
+						/**
+						 * Перебираем всех активных воркеров
+						 */
+						for(auto i = this->_workers.begin(); i != this->_workers.end();){
+							// Уничтожаем событие других дочерних процессов
+							this->_io->destroy(i->second->eid);
+							// Удаляем воркера из списка активных воркеров
+							i = this->_workers.erase(i);
+						}
+					}
+					// Если список соответствия не пустой
+					if(!this->_matching.empty())
+						// Очищаем список соответствия идентификаторов событий и идентификатора процесса
+						this->_matching.clear();
+					// Уничтожаем унаследованное событие пробуждения (дочерний процесс не пожинает завершившиеся процессы)
+					if(this->_wakeup != 0){
+						// Уничтожаем событие пробуждения
+						this->_io->destroy(this->_wakeup);
+						// Обнуляем идентификатор события пробуждения
+						this->_wakeup = 0;
+					}
+					// Уничтожаем событие родительского процесса
+					this->_io->destroy(events[0]);
+					// Выполняем переинициализацию асинхронного движка ввода-вывода
+					this->_io->reinitialize();
+					// Устанавливаем опции события
+					if(!this->_io->setOptions(events[1], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(replaced, deferred), log_t::flag_t::WARNING);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
+						#endif
+					}
+					// Устанавливаем функцию обратного вызова на событие записи сообщений
+					this->_io->on(events[1], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+					// Устанавливаем функцию обратного вызова на событие чтения сообщений
+					this->_io->on(events[1], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+					// Устанавливаем функцию обратного вызова на событие изменения состояния
+					this->_io->on(events[1], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+					// Устанавливаем функцию обратного вызова на событие получения ошибок
+					this->_io->on(events[1], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+					// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
+					this->_io->on(events[1], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+					// Устанавливаем идентификатор события для обмена сообщениями между процессами
+					worker->eid = events[1];
+					// Устанавливаем идентификатор процесса воркера
+					worker->pid = ::getpid();
+					// Добавляем нового воркера в список активных воркеров
+					auto ret = this->_workers.emplace(worker->pid, ::move(worker));
+					// Выполняем фиксацию и запуск работы события
+					if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
+						// Записываем в лог сообщение об успешном запуске события
+						this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
+						// Если функция обратного вызова установлена
+						if(this->_callback.is("events"))
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const pid_t, const event_t)> ("events", ret.first->first, event_t::START);
+					// Если событие не может быть запущено
+					} else {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог запуска события
+							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(replaced, deferred), log_t::flag_t::CRITICAL, ret.first->first);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог запуска события
+							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, ret.first->first);
+						#endif
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					}
+				// Если родительский процесс умер
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("Process [%d] has turned into a zombie, we perform self-destruction", __PRETTY_FUNCTION__, make_tuple(replaced, deferred), log_t::flag_t::CRITICAL, ::getpid());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Процесс превратился в зомби, самоликвидируем его
+						this->_log->print("Process [%d] has turned into a zombie, we perform self-destruction", log_t::flag_t::CRITICAL, ::getpid());
+					#endif
+					// Выходим из приложения
+					::exit(EXIT_FAILURE);
+				}
+				// Возвращаем признак дочернего процесса (создание следующих воркеров должно быть прекращено)
+				return family_t::CHILDREN;
+			}
+			// Если процесс является родительским
+			default: {
+				// Уничтожаем событие дочернего процесса
+				this->_io->destroy(events[1]);
+				// Устанавливаем опции события
+				if(!this->_io->setOptions(events[0], event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC)){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("Error setting cluster worker event options", __PRETTY_FUNCTION__, make_tuple(replaced, deferred), log_t::flag_t::WARNING);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("Error setting cluster worker event options", log_t::flag_t::WARNING);
+					#endif
+				}
+				// Устанавливаем функцию обратного вызова на событие записи сообщений
+				this->_io->on(events[0], static_cast <engine::callback::write_t> (std::bind(&cluster_t::write, this, _1, _2)));
+				// Устанавливаем функцию обратного вызова на событие чтения сообщений
+				this->_io->on(events[0], static_cast <engine::callback::read_t> (std::bind(&cluster_t::read, this, _1, _2, _3)));
+				// Устанавливаем функцию обратного вызова на событие изменения состояния
+				this->_io->on(events[0], static_cast <engine::callback::status_t> (std::bind(&cluster_t::state, this, _1, _2)));
+				// Устанавливаем функцию обратного вызова на событие получения ошибок
+				this->_io->on(events[0], static_cast <engine::callback::error_t> (std::bind(&cluster_t::error, this, _1, _2, _3)));
+				// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
+				this->_io->on(events[0], static_cast <engine::callback::available_t> (std::bind(&cluster_t::available, this, _1, _2, _3)));
+				// Устанавливаем идентификатор события для обмена сообщениями между процессами
+				worker->eid = events[0];
+				// Добавляем нового воркера в список активных воркеров
+				auto ret = this->_workers.emplace(worker->pid, ::move(worker));
+				// Добавляем соответствие идентификаторов событий и идентификатора процесса в список соответствия
+				this->_matching.emplace(ret.first->second->eid, ret.first->first);
+				// Если запуск события не отложен (одиночное размещение воркера во время работы кластера)
+				if(!deferred){
+					// Выполняем фиксацию и запуск работы события
+					if(!(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог запуска события
+							this->_log->debug("Cluster worker process [%d] event could not be launched", __PRETTY_FUNCTION__, make_tuple(replaced, deferred), log_t::flag_t::CRITICAL, replaced);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог запуска события
+							this->_log->print("Cluster worker process [%d] event could not be launched", log_t::flag_t::CRITICAL, replaced);
+						#endif
+						// Выходим из приложения
+						::exit(EXIT_FAILURE);
+					}
+					// Если функция обратного вызова установлена
+					if(this->_callback.is("rebase") && (replaced > 0))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const pid_t, const pid_t)> ("rebase", ret.first->first, replaced);
+				}
+			} break;
+		}
+		// Возвращаем признак родительского процесса
+		return family_t::MASTER;
+	/**
+	 * Если операционной системой является MS Windows
+	 */
+	#else
+		// Возвращаем результат отсутствия созданного воркера
+		return family_t::NONE;
+	#endif
 }
 /**
  * @brief Метод перезапуска упавшего процесса
@@ -718,45 +696,23 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
 		auto i = this->_workers.find(pid);
 		// Если указанный воркер найден
 		if(i != this->_workers.end()){
-			// Уничтожаем событие завершившегося процесса
-			this->_io->destroy(i->second->eid);
 			// Если завершившийся процесс требуется анализировать дальше
 			if(i->second->pid == pid){
-				// Записываем ошибку в лог, о невозможности отправить сообщение
+				// Записываем в лог сообщение об остановке дочернего процесса
 				this->_log->print("Child process stopped, PID=%d, STATUS=%d", log_t::flag_t::WARNING, pid, status);
-				// Если статус сигнала — ручная остановка процесса
-				if(status == SIGINT){
-					// Если список активных воркеров не пустой
-					if(!this->_workers.empty()){
-						// Переходим по всему списку активных воркеров
-						for(auto & [pid, worker] : this->_workers){
-							// Запрещаем анализ остановленного процесса
-							worker->pid = 0;
-							// Устанавливаем функцию обратного вызова на событие изменения статуса
-							this->_io->on(worker->eid, static_cast <engine::callback::status_t> (nullptr));
-						}
-						// Уничтожаем события всех активных воркеров
-						this->_workers.clear();
-					}
-					// Выходим из приложения
+				// Определяем, является ли завершение ручной остановкой процесса (сигнал SIGINT)
+				const bool manual = (WIFSIGNALED(status) && (WTERMSIG(status) == SIGINT));
+				// Если это ручная остановка процесса — останавливаем весь кластер
+				if(manual){
+					// Освобождаем ресурсы всех воркеров и очищаем список активных воркеров
+					this->clear(shutdown_t::NONE);
+					// Выходим из приложения с кодом сигнала ручной остановки
 					::exit(SIGINT);
-				// Если время жизни процесса составляет меньше 30 секунд
-				} else if((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) - i->second->life) <= 30000ULL) {
-					// Если список активных воркеров не пустой
-					if(!this->_workers.empty()){
-						// Переходим по всему списку активных воркеров
-						for(auto & [pid, worker] : this->_workers){
-							// Запрещаем анализ остановленного процесса
-							worker->pid = 0;
-							// Устанавливаем функцию обратного вызова на событие изменения статуса
-							this->_io->on(worker->eid, static_cast <engine::callback::status_t> (nullptr));
-						}
-						// Уничтожаем события всех активных воркеров
-						this->_workers.clear();
-					}
-					// Выходим из приложения
-					::exit(status);
 				}
+				// Определяем, упал ли процесс в пределах временного окна жизни (признак быстрого/раннего падения)
+				const bool rapid = ((this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS) - i->second->life) <= this->_rebirth.window);
+				// Освобождаем ресурсы завершившегося воркера
+				this->release(i->second->eid);
 				// Удаляем завершившийся процесс из списка активных воркеров
 				this->_workers.erase(i);
 				// Если функция обратного вызова установлена
@@ -767,13 +723,59 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
 				if(this->_callback.is("events"))
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const pid_t, const event_t)> ("events", pid, event_t::STOP);
-				// Если разрешен автоматический перезапуск процесса
-				if(this->_rebirth)
-					// Выполняем создание нового процесса
+				// Если разрешён автоматический перезапуск процесса
+				if(this->_rebirth.mode){
+					// Если процесс упал слишком быстро
+					if(rapid)
+						// Увеличиваем счётчик подряд идущих быстрых падений
+						++this->_rebirth.restarts;
+					// Если процесс прожил достаточно долго — сбрасываем счётчик быстрых падений
+					else this->_rebirth.restarts = 0;
+					// Если защита включена и число подряд идущих быстрых падений превысило порог — прекращаем перезапуск и останавливаем кластер
+					if((this->_rebirth.limit > 0) && (this->_rebirth.restarts >= this->_rebirth.limit)){
+						// Записываем в лог сообщение об обнаружении цикла перезапусков
+						this->_log->print("Cluster [%s] worker keeps crashing on startup, aborting after %u rapid restarts", log_t::flag_t::CRITICAL, this->_name.c_str(), this->_rebirth.restarts);
+						// Освобождаем ресурсы оставшихся воркеров и очищаем список активных воркеров
+						this->clear(shutdown_t::NONE);
+						// Выходим из приложения с кодом завершения дочернего процесса
+						::exit(WIFEXITED(status) ? WEXITSTATUS(status) : EXIT_FAILURE);
+					}
+					// Выполняем создание нового процесса взамен упавшего
 					this->emplace(pid);
-			// Удаляем завершившийся процесс из списка активных воркеров
-			} else this->_workers.erase(i);
+				}
+			// Если завершившийся процесс анализировать не нужно
+			} else {
+				// Освобождаем ресурсы воркера
+				this->release(i->second->eid);
+				// Удаляем завершившийся процесс из списка активных воркеров
+				this->_workers.erase(i);
+			}
 		}
+	#endif
+}
+/**
+ * @brief Метод отложенной обработки завершившихся процессов (выполняется в цикле событий)
+ *
+ * @param eid  идентификатор события пробуждения
+ * @param data данные события пробуждения
+ * @param size размер данных события пробуждения
+ */
+void awh::unit::Cluster::reap([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const uint8_t * data, [[maybe_unused]] const size_t size) noexcept {
+	/**
+	 * Для операционных систем, отличных от MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Идентификатор завершившегося процесса
+		pid_t pid = 0;
+		// Статус завершившегося процесса
+		int32_t status = 0;
+		/**
+		 * Пожинаем все завершившиеся дочерние процессы. Метод выполняется в потоке цикла событий,
+		 * поэтому мутации контейнеров, перезапуск воркеров и логирование здесь безопасны.
+		 */
+		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0)
+			// Выполняем обработку завершившегося процесса
+			this->process(pid, status);
 	#endif
 }
 /**
@@ -788,16 +790,23 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
 	 * Для операционных систем, отличных от MS Windows
 	 */
 	#if !_WIN32 && !_WIN64
-		// Идентификатор упавшего процесса
-		pid_t pid = 0;
-		// Статус упавшего процесса
-		int32_t status = 0;
-		/**
-		 * Выполняем получение идентификатора упавшего процесса
-		 */
-		while((pid = ::waitpid(-1, &status, WNOHANG)) > 0)
-			// Выполняем создание дочернего потока
-			const_cast <awh::unit::cluster_t *> (::__awh_cluster__)->process(pid, status);
+		// Если объект кластера ещё существует
+		if(::__awh_cluster__ != nullptr){
+			// Получаем указатель на объект кластера
+			cluster_t * self = ::__awh_cluster__;
+			// Если событие пробуждения активно
+			if(self->_wakeup != 0){
+				// Байт-маркер для триггера события пробуждения
+				const uint8_t marker = 0x01;
+				/**
+				 * Не выполняем здесь waitpid/fork/логирование и мутацию контейнеров: контекст обработчика
+				 * сигнала не является асинхронно-сигнал-безопасным. Безопасно триггерим событие пробуждения
+				 * (один системный вызов), чтобы фактическая обработка завершившихся процессов выполнилась
+				 * в потоке цикла событий (см. метод reap).
+				 */
+				self->_io->send(self->_wakeup, &marker, sizeof(marker));
+			}
+		}
 	#endif
 }
 /**
@@ -812,9 +821,9 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
-			auto i = this->_accord.find(eid);
+			auto i = this->_matching.find(eid);
 			// Если идентификатор процесса найден
-			if(i != this->_accord.end())
+			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const size_t)> ("sending", i->second, size);
 		// Если процесс является дочерним
@@ -857,9 +866,9 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
-			auto i = this->_accord.find(eid);
+			auto i = this->_matching.find(eid);
 			// Если идентификатор процесса найден
-			if(i != this->_accord.end())
+			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("message", i->second, data, size);
 		// Если процесс является дочерним
@@ -953,9 +962,9 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 				// Если процесс является родительским
 				if(this->master()){
 					// Выполняем поиск идентификатора процесса по идентификатору события
-					auto i = this->_accord.find(eid);
+					auto i = this->_matching.find(eid);
 					// Если идентификатор процесса найден
-					if(i != this->_accord.end())
+					if(i != this->_matching.end())
 						// Выполняем функцию обратного вызова
 						this->_callback.call <void (const pid_t, const event::status_t)> ("state", i->second, status);
 				// Если процесс является дочерним
@@ -1000,9 +1009,9 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
-			auto i = this->_accord.find(eid);
+			auto i = this->_matching.find(eid);
 			// Если идентификатор процесса найден
-			if(i != this->_accord.end())
+			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("error", i->second, error, message);
 		// Если процесс является дочерним
@@ -1045,9 +1054,9 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
-			auto i = this->_accord.find(eid);
+			auto i = this->_matching.find(eid);
 			// Если идентификатор процесса найден
-			if(i != this->_accord.end())
+			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
 				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("available", i->second, status, size);
 		// Если процесс является дочерним
@@ -1198,10 +1207,8 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 			for(auto & [pid, worker] : this->_workers){
 				// Запрещаем анализ остановленного процесса
 				worker->pid = 0;
-				// Устанавливаем функцию обратного вызова на событие изменения статуса
-				this->_io->on(worker->eid, static_cast <engine::callback::status_t> (nullptr));
-				// Уничтожаем событие процесса
-				this->_io->destroy(worker->eid);
+				// Освобождаем ресурсы воркера (сброс колбэка статуса, очистка соответствия, уничтожение события)
+				this->release(worker->eid);
 				// Если требуется принудительное завершение работы процесса
 				if(shutdown == shutdown_t::FORCEFUL)
 					// Убиваем дочерний процесс
@@ -1294,10 +1301,8 @@ void awh::unit::Cluster::erase(const pid_t pid, const shutdown_t shutdown) noexc
 			if(i != this->_workers.end()){
 				// Запрещаем анализ остановленного процесса
 				i->second->pid = 0;
-				// Устанавливаем функцию обратного вызова на событие изменения статуса
-				this->_io->on(i->second->eid, static_cast <engine::callback::status_t> (nullptr));
-				// Уничтожаем событие процесса
-				this->_io->destroy(i->second->eid);
+				// Освобождаем ресурсы воркера (сброс колбэка статуса, очистка соответствия, уничтожение события)
+				this->release(i->second->eid);
 				// Если требуется принудительное завершение работы процесса
 				if(shutdown == shutdown_t::FORCEFUL)
 					// Убиваем дочерний процесс
@@ -1348,7 +1353,19 @@ void awh::unit::Cluster::setTypeEventMessage(const event::type_t type) noexcept 
  */
 void awh::unit::Cluster::rebirth(const bool mode) noexcept {
 	// Устанавливаем флаг автоматического возрождения процессов
-	this->_rebirth = mode;
+	this->_rebirth.mode = mode;
+}
+/**
+ * @brief Метод установки параметров защиты от цикла перезапусков воркеров
+ *
+ * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
+ * @param window временное окно «быстрого» (раннего) падения воркера в миллисекундах
+ */
+void awh::unit::Cluster::rebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
+	// Устанавливаем максимальное число подряд идущих быстрых падений воркеров
+	this->_rebirth.limit = limit;
+	// Устанавливаем временное окно «быстрого» падения воркера
+	this->_rebirth.window = window;
 }
 /**
  * @brief Метод установки названия кластера
@@ -1680,7 +1697,7 @@ bool awh::unit::Cluster::setBufferSize(const pid_t pid, const event::action_t ac
  */
 awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
  unit_t(fmk, log), _name{AWH_SHORT_NAME},
- _rebirth(false), _count(0), _type(event::type_t::SEQPACKET) {
+ _count(0), _wakeup(0), _type(event::type_t::SEQPACKET) {
 	/**
 	 * Для операционных систем, отличных от MS Windows
 	 */
@@ -1703,8 +1720,12 @@ awh::unit::Cluster::Cluster(const fmk_t * fmk, const log_t * log) noexcept :
 			::sigaction(SIGCHLD, &::__awh_action__, nullptr);
 			// Устанавливаем количество доступных ядер в системе
 			this->_count = static_cast <uint16_t> (thread::hardware_concurrency());
+			// Если количество доступных ядер определить не удалось
+			if(this->_count == 0)
+				// Используем один воркер по умолчанию
+				this->_count = 1;
 			// Если количество доступных воркеров больше 1-х, уменьшаем пополам
-			if(this->_count > 1)
+			else if(this->_count > 1)
 				// Уменьшаем количество воркеров в два раза
 				this->_count /= 2;
 		}
@@ -1719,4 +1740,31 @@ awh::unit::Cluster::~Cluster() noexcept {
 	if(this->master())
 		// Выполняем очистку всех выделенных ресурсов
 		this->clear(shutdown_t::FORCEFUL);
+	// Если событие пробуждения создано — уничтожаем его
+	if(this->_wakeup != 0){
+		// Уничтожаем событие пробуждения
+		this->_io->destroy(this->_wakeup);
+		// Обнуляем идентификатор события пробуждения
+		this->_wakeup = 0;
+	}
+	/**
+	 * Для операционных систем, отличных от MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Если разрушаемый объект является текущим зарегистрированным кластером
+		if(::__awh_cluster__ == this){
+			// Создаём объект восстановления стандартного обработчика сигнала
+			struct sigaction sa{};
+			// Устанавливаем стандартный обработчик сигнала
+			sa.sa_handler = SIG_DFL;
+			// Зануляем маску перехватчика
+			sigemptyset(&sa.sa_mask);
+			// Сбрасываем флаги перехватчика
+			sa.sa_flags = 0;
+			// Восстанавливаем стандартный обработчик сигнала завершения дочерних процессов
+			::sigaction(SIGCHLD, &sa, nullptr);
+			// Сбрасываем глобальный указатель на объект кластера
+			::__awh_cluster__ = nullptr;
+		}
+	#endif
 }

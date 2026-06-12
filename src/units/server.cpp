@@ -235,6 +235,8 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 							this->_cluster->count(this->_clusterParams.count);
 							// Устанавливаем флаг автоматического возрождения процессов
 							this->_cluster->rebirth(this->_clusterParams.rebirth);
+							// Устанавливаем параметры защиты от цикла перезапусков процессов
+							this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
 						}
 						// Устанавливаем функцию обратного вызова на событие получения сигнала
 						this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
@@ -1641,6 +1643,8 @@ void awh::unit::Server::start() noexcept {
 						this->_cluster->count(this->_clusterParams.count);
 						// Устанавливаем флаг автоматического возрождения процессов
 						this->_cluster->rebirth(this->_clusterParams.rebirth);
+						// Устанавливаем параметры защиты от цикла перезапусков процессов
+						this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
 					}
 					// Устанавливаем функцию обратного вызова на событие получения сигнала
 					this->_cluster->on <void (const pid_t, const int32_t)> ("exit", &server_t::exit, this, _1, _2);
@@ -1838,19 +1842,6 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 	return result;
 }
 /**
- * @brief Метод установки флага автоматического возрождения процессов
- *
- * @param mode флаг возрождения процессов
- */
-void awh::unit::Server::clusterRebirth(const bool mode) noexcept {
-	// Устанавливаем флаг автоматического возрождения процессов
-	this->_clusterParams.rebirth = mode;
-	// Если кластер инициализирован
-	if(this->_cluster != nullptr)
-		// Устанавливаем флаг автоматического возрождения процессов
-		this->_cluster->rebirth(this->_clusterParams.rebirth);
-}
-/**
  * @brief Метод установки названия кластера
  *
  * @param name название кластера для установки
@@ -2014,6 +2005,35 @@ size_t awh::unit::Server::clusterBroadcast(const void * buffer, const size_t siz
 		return this->_cluster->broadcast(buffer, size);
 	// Возвращаем значение по умолчанию
 	return 0;
+}
+/**
+ * @brief Метод установки флага автоматического возрождения процессов
+ *
+ * @param mode флаг возрождения процессов
+ */
+void awh::unit::Server::clusterRebirth(const bool mode) noexcept {
+	// Устанавливаем флаг автоматического возрождения процессов
+	this->_clusterParams.rebirth = mode;
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr)
+		// Устанавливаем флаг автоматического возрождения процессов
+		this->_cluster->rebirth(this->_clusterParams.rebirth);
+}
+/**
+ * @brief Метод установки параметров защиты от цикла перезапусков процессов кластера
+ *
+ * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
+ * @param window временное окно «быстрого» (раннего) падения процесса в миллисекундах
+ */
+void awh::unit::Server::clusterRebirthLimit(const uint16_t limit, const uint64_t window) noexcept {
+	// Устанавливаем максимальное число подряд идущих быстрых падений процессов
+	this->_clusterParams.restartLimit = limit;
+	// Устанавливаем временное окно «быстрого» падения процесса
+	this->_clusterParams.restartWindow = window;
+	// Если кластер инициализирован
+	if(this->_cluster != nullptr)
+		// Устанавливаем параметры защиты от цикла перезапусков процессов
+		this->_cluster->rebirthLimit(this->_clusterParams.restartLimit, this->_clusterParams.restartWindow);
 }
 /**
  * @brief Метод получения типа протокола передачи данных между воркерами

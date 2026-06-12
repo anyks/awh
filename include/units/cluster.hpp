@@ -94,22 +94,46 @@ namespace awh {
 					 */
 					explicit Worker() noexcept :
 					 pid(0), life(0), eid(0) {}
-				} worker_t;
+				} __attribute__((packed)) worker_t;
+				/**
+				 * @brief Структура хранения параметров возрождения процессов
+				 *
+				 */
+				typedef struct Rebirth {
+					// Флаг автоматического возрождения процессов
+					bool mode;
+					// Максимальное число подряд идущих быстрых падений воркеров до остановки кластера (0 — без ограничения)
+					uint16_t limit;
+					// Временное окно «быстрого» (раннего) падения воркера в миллисекундах
+					uint64_t window;
+					// Счётчик подряд идущих быстрых (ранних) падений воркеров для защиты от цикла перезапусков
+					uint16_t restarts;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Rebirth() noexcept :
+					 mode(false), limit(10),
+					 window(30000), restarts(0) {}
+				} __attribute__((packed)) rebirth_t;
 			private:
 				// Название кластера
 				string _name;
 			private:
-				// Флаг автоматического возрождения процессов
-				bool _rebirth;
-			private:
 				// Количество воркеров
 				uint16_t _count;
+			private:
+				// Параметры возрождения процессов
+				rebirth_t _rebirth;
+			private:
+				// Идентификатор события пробуждения для отложенной обработки сигнала SIGCHLD
+				event::id_t _wakeup;
 			private:
 				// Тип протокола передачи данных между воркерами
 				event::type_t _type;
 			private:
 				// Список соответствия идентификаторов событий и идентификаторов процессов
-				unordered_map <event::id_t, pid_t> _accord;
+				unordered_map <event::id_t, pid_t> _matching;
 				// Список активных воркеров
 				unordered_map <pid_t, unique_ptr <worker_t>> _workers;
 			private:
@@ -126,11 +150,27 @@ namespace awh {
 				void emplace(const pid_t pid) noexcept;
 			private:
 				/**
+				 * @brief Метод освобождения ресурсов воркера
+				 *
+				 * @param eid идентификатор события воркера
+				 */
+				void release(const event::id_t eid) noexcept;
+			private:
+				/**
 				 * @brief Метод запуска/остановки работы кластера
 				 *
 				 * @param status статус запуска/остановки кластера
 				 */
 				void launch(const event::status_t status) noexcept;
+			private:
+				/**
+				 * @brief Метод создания одного дочернего процесса (воркера)
+				 *
+				 * @param replaced идентификатор замещаемого (упавшего) процесса, либо 0 при первичном создании
+				 * @param deferred флаг отложенного запуска события (true — фиксация/запуск выполняются позже пакетно)
+				 * @return         семейство процесса: MASTER — родитель, CHILDREN — дочерний, NONE — ошибка создания
+				 */
+				family_t spawn(const pid_t replaced, const bool deferred) noexcept;
 			private:
 				/**
 				 * @brief Метод перезапуска упавшего процесса
@@ -139,6 +179,15 @@ namespace awh {
 				 * @param status статус остановившегося процесса
 				 */
 				void process(const pid_t pid, const int32_t status) noexcept;
+				/**
+				 * @brief Метод отложенной обработки завершившихся процессов (выполняется в цикле событий)
+				 *
+				 * @param eid  идентификатор события пробуждения
+				 * @param data данные события пробуждения
+				 * @param size размер данных события пробуждения
+				 */
+				void reap(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+			private:
 				/**
 				 * @brief Функция фильтр перехватчика сигналов
 				 *
@@ -240,6 +289,13 @@ namespace awh {
 				 * @param mode флаг возрождения процессов
 				 */
 				void rebirth(const bool mode) noexcept;
+				/**
+				 * @brief Метод установки параметров защиты от цикла перезапусков воркеров
+				 *
+				 * @param limit  максимальное число подряд идущих быстрых падений до остановки кластера (0 — без ограничения)
+				 * @param window временное окно «быстрого» (раннего) падения воркера в миллисекундах
+				 */
+				void rebirthLimit(const uint16_t limit, const uint64_t window) noexcept;
 			public:
 				/**
 				 * @brief Метод установки названия кластера
