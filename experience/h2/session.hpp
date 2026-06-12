@@ -10,9 +10,8 @@
  *   2. сессия разбирает фреймы и дёргает callbacks (function-pointer, zero-overhead);
  *   3. исходящие фреймы накапливаются во внутреннем буфере (pending()).
  *
- * ВАЖНО: это скелет (этапы 3–6 из README.md ещё не реализованы). Реализован разбор
- * preface и базовая диспетчеризация фреймов с обвязкой HPACK; полный конечный автомат
- * состояний потоков, flow control и защиты от DoS помечены TODO.
+ * Исходящие блоки заголовков, превышающие SETTINGS_MAX_FRAME_SIZE пира, режутся
+ * на HEADERS/PUSH_PROMISE + CONTINUATION автоматически (frame::serializeHeaderBlock).
  */
 
 #ifndef AWH_EXPERIENCE_H2_SESSION_HPP
@@ -170,7 +169,8 @@ namespace awh {
 				 *
 				 * Если поток ещё не существует и это запрос клиента — поток открывается.
 				 * При endStream поток сразу полузакрывается с нашей стороны (тело отсутствует).
-				 * TODO(CONTINUATION): разбивать блок, превышающий MAX_FRAME_SIZE.
+				 * Блок, превышающий SETTINGS_MAX_FRAME_SIZE пира, автоматически режется на
+				 * HEADERS + CONTINUATION (RFC 9113 §6.2/§6.10).
 				 */
 				void submitHeaders(uint32_t streamId, const std::vector <hpack::field_t> & fields, bool endStream) noexcept;
 

@@ -224,6 +224,61 @@ static void testFraming() {
 		const auto st = frame::parseWindowUpdate(h, reinterpret_cast <const uint8_t *> (buf.data()) + 9, inc, err);
 		check((st == status_t::ERROR) && (err == error_t::PROTOCOL_ERROR), "WINDOW_UPDATE zero => PROTOCOL_ERROR");
 	}
+	// HEADERS + CONTINUATION при отправке большого блока (нарезка по maxFramePayload).
+	{
+		const std::string big(50000, 'x');
+		std::string buf;
+		frame::serializeHeaderBlock(buf, 1, big, /* endStream */ false, /* maxFramePayload */ 16384);
+		size_t off = 0;
+		int headers = 0, cont = 0;
+		std::string reassembled;
+		while(off + 9 <= buf.size()){
+			frame::header_t h;
+			if(!frame::parseHeader(reinterpret_cast <const uint8_t *> (buf.data()) + off, buf.size() - off, h)) break;
+			const uint8_t * pay = reinterpret_cast <const uint8_t *> (buf.data()) + off + 9;
+			if(h.type == frame_t::HEADERS){
+				headers++;
+				frame::headers_t hd; error_t err = error_t::NO_ERROR;
+				check(frame::parseHeaders(h, pay, hd, err) == status_t::OK, "split HEADERS parse");
+				reassembled.append(hd.block.data(), hd.block.size());
+			} else if(h.type == frame_t::CONTINUATION){
+				cont++;
+				std::string_view frag; bool endH = false; error_t err = error_t::NO_ERROR;
+				check(frame::parseContinuation(h, pay, frag, endH, err) == status_t::OK, "split CONTINUATION parse");
+				reassembled.append(frag.data(), frag.size());
+			} else break;
+			off += 9 + h.length;
+		}
+		check((headers == 1) && (cont == 3) && (reassembled == big), "serializeHeaderBlock => HEADERS+CONTINUATION, payload восстановлен");
+	}
+	// PUSH_PROMISE + CONTINUATION при большом блоке (4 октета под promised id в первом фрейме).
+	{
+		const std::string big(40000, 'y');
+		std::string buf;
+		frame::serializePushPromiseBlock(buf, 1, 2, big, 16384);
+		size_t off = 0;
+		int push = 0, cont = 0;
+		std::string reassembled;
+		while(off + 9 <= buf.size()){
+			frame::header_t h;
+			if(!frame::parseHeader(reinterpret_cast <const uint8_t *> (buf.data()) + off, buf.size() - off, h)) break;
+			const uint8_t * pay = reinterpret_cast <const uint8_t *> (buf.data()) + off + 9;
+			if(h.type == frame_t::PUSH_PROMISE){
+				push++;
+				frame::push_promise_t pp; error_t err = error_t::NO_ERROR;
+				check(frame::parsePushPromise(h, pay, pp, err) == status_t::OK, "split PUSH_PROMISE parse");
+				check(pp.promisedStreamId == 2, "split PUSH_PROMISE promised id");
+				reassembled.append(pp.block.data(), pp.block.size());
+			} else if(h.type == frame_t::CONTINUATION){
+				cont++;
+				std::string_view frag; bool endH = false; error_t err = error_t::NO_ERROR;
+				check(frame::parseContinuation(h, pay, frag, endH, err) == status_t::OK, "split PUSH CONTINUATION parse");
+				reassembled.append(frag.data(), frag.size());
+			} else break;
+			off += 9 + h.length;
+		}
+		check((push == 1) && (cont == 2) && (reassembled == big), "serializePushPromiseBlock => PUSH_PROMISE+CONTINUATION");
+	}
 }
 
 // ───────────────────── Конечный автомат состояний потоков ─────────────────────
@@ -582,6 +637,41 @@ namespace {
 	}
 }
 
+static void testOutgoingHeaderBlock() {
+	std::printf("[Исходящий HEADERS+CONTINUATION — submitHeaders]\n");
+	struct big_ctx_t {
+		int      headerCount = 0;
+		std::string bigValue;
+		bool     errored = false;
+	};
+	auto onHeader = [](void * u, uint32_t, std::string_view n, std::string_view v) {
+		auto * c = static_cast <big_ctx_t *> (u);
+		c->headerCount++;
+		if(n == "x-big") c->bigValue.assign(v);
+	};
+	auto onError = [](void * u, error_t, const char *) { static_cast <big_ctx_t *> (u)->errored = true; };
+
+	const std::string bigVal(50000, 'z');
+	const std::vector <hpack::field_t> bigReq = {
+		{ ":method", "GET" }, { ":scheme", "https" }, { ":path", "/big" }, { ":authority", "example.com" },
+		{ "x-big", bigVal }
+	};
+
+	big_ctx_t srvCtx;
+	callbacks_t scb;
+	scb.onHeader = onHeader;
+	scb.onError  = onError;
+	Session client(endpoint_t::CLIENT, callbacks_t{}, nullptr);
+	Session server(endpoint_t::SERVER, scb, &srvCtx);
+	client.submitPreface();
+	server.submitPreface();
+	client.submitHeaders(1, bigReq, true);
+	exchange(client, server);
+
+	check((srvCtx.headerCount == 5) && (srvCtx.bigValue.size() == 50000) && (srvCtx.bigValue == bigVal) && !srvCtx.errored,
+		"клиент отправил большой блок => сервер получил все заголовки через CONTINUATION");
+}
+
 static void testServerPush() {
 	std::printf("[Server push — RFC 9113 §6.6/§8.4]\n");
 	const std::vector <hpack::field_t> req = {
@@ -660,6 +750,7 @@ int main() {
 	testFlowControl();
 	testSecurity();
 	testHttpSemantics();
+	testOutgoingHeaderBlock();
 	testServerPush();
 	std::printf("\n%d/%d проверок пройдено\n", g_total - g_failed, g_total);
 	return (g_failed == 0) ? 0 : 1;

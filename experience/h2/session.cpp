@@ -3,13 +3,8 @@
  * @brief Реализация сессии HTTP/2 — скелет конечного автомата (RFC 9113 §5).
  *
  * Реализовано: разбор preface, буферизация неполных фреймов, диспетчеризация всех
- * типов фреймов, обвязка HPACK (HEADERS + CONTINUATION) и базовый SETTINGS/PING/GOAWAY.
- *
- * НЕ реализовано (этапы 3–6, см. README.md) — помечено TODO:
- *   - полная таблица переходов состояний потоков и проверка допустимости фреймов;
- *   - корректный учёт flow control и автоматическая отправка WINDOW_UPDATE;
- *   - защиты от DoS (Rapid Reset, CONTINUATION flood, SETTINGS flood);
- *   - валидация HTTP-семантики (псевдо-заголовки).
+ * типов фреймов, обвязка HPACK (HEADERS + CONTINUATION), SETTINGS/PING/GOAWAY,
+ * state machine, flow control, DoS-защиты, HTTP-семантика, server push.
  *
  * Сборка:
  *   g++ -std=c++17 -O2 -Wall -Wextra -c session.cpp
@@ -283,8 +278,7 @@ namespace awh {
 		void Session::submitHeaders(uint32_t streamId, const std::vector <hpack::field_t> & fields, bool endStream) noexcept {
 			std::string block;
 			_encoder.encode(fields, block, true);
-			// TODO(CONTINUATION): разбивать блок, превышающий MAX_FRAME_SIZE пира.
-			frame::serializeHeaders(_output, streamId, block, endStream, true);
+			frame::serializeHeaderBlock(_output, streamId, block, endStream, _remote.maxFrameSize);
 			stream_t & s = stream(streamId);
 			if(s.state == stream_state_t::IDLE) s.state = stream_state_t::OPEN; // мы инициируем поток
 			// Ответ на собственный push: reserved(local) -> half-closed(remote).
@@ -307,8 +301,7 @@ namespace awh {
 			_nextStreamId += 2;
 			std::string block;
 			_encoder.encode(request, block, true);
-			// TODO(CONTINUATION): разбивать блок, превышающий MAX_FRAME_SIZE пира.
-			frame::serializePushPromise(_output, associatedStreamId, promisedId, block, true);
+			frame::serializePushPromiseBlock(_output, associatedStreamId, promisedId, block, _remote.maxFrameSize);
 			stream_t & ps = stream(promisedId);
 			ps.state = stream_state_t::RESERVED_LOCAL;
 			return promisedId;

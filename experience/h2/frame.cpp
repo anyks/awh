@@ -8,6 +8,8 @@
 
 #include "frame.hpp"
 
+#include <algorithm>
+
 namespace awh {
 	namespace http2 {
 		namespace frame {
@@ -209,6 +211,49 @@ namespace awh {
 			void serializeContinuation(std::string & out, uint32_t streamId, std::string_view block, bool endHeaders) noexcept {
 				wrHeader(out, static_cast <uint32_t> (block.size()), frame_t::CONTINUATION, endHeaders ? flag::END_HEADERS : flag::NONE, streamId);
 				out.append(block.data(), block.size());
+			}
+
+			void serializeHeaderBlock(std::string & out, uint32_t streamId, std::string_view block, bool endStream, uint32_t maxFramePayload) noexcept {
+				if((maxFramePayload == 0) || (maxFramePayload > proto::MAX_FRAME_LENGTH))
+					maxFramePayload = proto::DEFAULT_MAX_FRAME_SIZE;
+				const size_t maxChunk = static_cast <size_t> (maxFramePayload);
+				if(block.size() <= maxChunk){
+					serializeHeaders(out, streamId, block, endStream, true);
+					return;
+				}
+				size_t off = 0;
+				bool first = true;
+				while(off < block.size()){
+					const size_t chunk = std::min(block.size() - off, maxChunk);
+					const bool last = (off + chunk >= block.size());
+					const std::string_view frag(block.data() + off, chunk);
+					if(first){
+						serializeHeaders(out, streamId, frag, endStream, last);
+						first = false;
+					} else serializeContinuation(out, streamId, frag, last);
+					off += chunk;
+				}
+			}
+
+			void serializePushPromiseBlock(std::string & out, uint32_t streamId, uint32_t promisedStreamId, std::string_view block, uint32_t maxFramePayload) noexcept {
+				if((maxFramePayload == 0) || (maxFramePayload > proto::MAX_FRAME_LENGTH))
+					maxFramePayload = proto::DEFAULT_MAX_FRAME_SIZE;
+				if(maxFramePayload < 4) maxFramePayload = 4;
+				const size_t firstMax = static_cast <size_t> (maxFramePayload) - 4;
+				if(block.size() <= firstMax){
+					serializePushPromise(out, streamId, promisedStreamId, block, true);
+					return;
+				}
+				const size_t firstChunk = firstMax;
+				serializePushPromise(out, streamId, promisedStreamId, block.substr(0, firstChunk), false);
+				size_t off = firstChunk;
+				const size_t maxChunk = static_cast <size_t> (maxFramePayload);
+				while(off < block.size()){
+					const size_t chunk = std::min(block.size() - off, maxChunk);
+					const bool last = (off + chunk >= block.size());
+					serializeContinuation(out, streamId, std::string_view(block.data() + off, chunk), last);
+					off += chunk;
+				}
 			}
 
 			void serializePriority(std::string & out, uint32_t streamId, bool exclusive, uint32_t streamDep, uint8_t weight) noexcept {

@@ -161,6 +161,23 @@ namespace awh {
 			void serializeData(std::string & out, uint32_t streamId, std::string_view data, bool endStream) noexcept;
 			void serializeHeaders(std::string & out, uint32_t streamId, std::string_view block, bool endStream, bool endHeaders) noexcept;
 			void serializeContinuation(std::string & out, uint32_t streamId, std::string_view block, bool endHeaders) noexcept;
+
+			/**
+			 * @brief Сериализовать HPACK-блок в HEADERS + CONTINUATION (RFC 9113 §6.2/§6.10).
+			 *
+			 * @param maxFramePayload максимальный размер полезной нагрузки одного фрейма
+			 *        (SETTINGS_MAX_FRAME_SIZE пира). END_STREAM, если задан, ставится только
+			 *        на первый HEADERS — даже если блок продолжается в CONTINUATION.
+			 */
+			void serializeHeaderBlock(std::string & out, uint32_t streamId, std::string_view block, bool endStream, uint32_t maxFramePayload) noexcept;
+
+			/**
+			 * @brief Сериализовать HPACK-блок обещанного запроса в PUSH_PROMISE + CONTINUATION.
+			 *
+			 * Первый фрейм резервирует 4 октета под Promised Stream ID; остаток блока
+			 * уходит в CONTINUATION при необходимости.
+			 */
+			void serializePushPromiseBlock(std::string & out, uint32_t streamId, uint32_t promisedStreamId, std::string_view block, uint32_t maxFramePayload) noexcept;
 			void serializePriority(std::string & out, uint32_t streamId, bool exclusive, uint32_t streamDep, uint8_t weight) noexcept;
 			void serializeRstStream(std::string & out, uint32_t streamId, error_t code) noexcept;
 			void serializeSettings(std::string & out, const setting_entry_t * items, size_t count, bool ack) noexcept;
