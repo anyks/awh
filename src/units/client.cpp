@@ -50,7 +50,9 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 			if(!this->_events.empty()){
 				// Копируем список событий клиента для безопасного удаления событий клиента во время итерации
 				auto events = this->_events;
-				// Выполняем удаление всех событий клиента
+				/**
+				 * Выполняем удаление всех событий клиента
+				 */
 				for(const auto & eid : events)
 					// Удаляем событие клиента
 					this->_io->destroy(eid);
@@ -1189,7 +1191,9 @@ awh::unit::Client::~Client() noexcept {
 	if(!this->_events.empty()){
 		// Копируем список событий клиента для безопасного удаления событий клиента во время итерации
 		auto events = this->_events;
-		// Выполняем удаление всех событий клиента
+		/**
+		 * Выполняем удаление всех событий клиента
+		 */
 		for(const auto & eid : events)
 			// Удаляем событие клиента
 			this->_io->destroy(eid);

@@ -3107,7 +3107,7 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 							// Для дат до марта 29-е февраля попадает в предыдущий год, иначе - в текущий год
 							const uint8_t shift = (dt.month > 2 ? 0 : 1);
 							/**
-							 *  Выполняем перебор всех лет
+							 * Выполняем перебор всех лет
 							 */
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
 								// Если год, в который попадает 29-е февраля вычитаемого интервала, високосный
@@ -3389,7 +3389,7 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 					// Размерность времени и размерность секунд
 					double dimension = 1., seconds = 0.;
 					/**
-					 *  Выполняем перебор всех полученных вариантов
+					 * Выполняем перебор всех полученных вариантов
 					 */
 					for(uint8_t j = 1; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
@@ -3873,7 +3873,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Если день передан в виде названия
 							} else {
 								/**
-								 *  Выполняем перебор всего списка дней недели
+								 * Выполняем перебор всего списка дней недели
 								 */
 								for(size_t i = 0; i < params.nameDays.size(); i++){
 									// Получаем название дня
@@ -4040,7 +4040,7 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Если день передан в виде названия
 							} else {
 								/**
-								 *  Выполняем перебор всего списка месяцев
+								 * Выполняем перебор всего списка месяцев
 								 */
 								for(size_t i = 0; i < params.nameMonths.size(); i++){
 									// Получаем название месяца
@@ -5627,7 +5627,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 					// Создаём массив собранных результатов
 					vector <string> data(regex.re_nsub + 1);
 					/**
-					 *  Выполняем перебор всех полученных вариантов
+					 * Выполняем перебор всех полученных вариантов
 					 */
 					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
@@ -6431,7 +6431,7 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 					// Создаём массив собранных результатов
 					vector <string> data(regex.re_nsub + 1);
 					/**
-					 *  Выполняем перебор всех полученных вариантов
+					 * Выполняем перебор всех полученных вариантов
 					 */
 					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
@@ -6774,7 +6774,7 @@ void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zone
 	// Название временной зоны
 	string name = "";
 	/**
-	 *  Выполняем перебор всего списка временных зон
+	 * Выполняем перебор всего списка временных зон
 	 */
 	for(auto & zone : zones){
 		// Получаем название временной зоны
@@ -7183,7 +7183,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 			} break;
 		}
 		/**
-		 *  Выполняем перебор формата
+		 * Выполняем перебор формата
 		 */
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
@@ -8714,7 +8714,7 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 		// Режим детекции переменной формата
 		bool mode = false;
 		/**
-		 *  Выполняем перебор формата
+		 * Выполняем перебор формата
 		 */
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
@@ -9669,7 +9669,7 @@ awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
  */
 awh::Chrono::~Chrono() noexcept {
 	/**
-	 *  Выполняем перебор всего списка скомпилированных регулярных выражений
+	 * Выполняем перебор всего списка скомпилированных регулярных выражений
 	 */
 	for(auto i = this->_expressions.begin(); i != this->_expressions.end();){
 		// Выполняем удаление выделенной памяти

@@ -41,7 +41,9 @@ void awh::Watch::trigger() noexcept {
 			if(!this->_items.empty()){
 				// Извлекаем таймер ожидающий активации
 				const auto & item = this->_items.front();
-				// Выполняем перебор всего списка таймеров
+				/**
+				 * Выполняем перебор всего списка таймеров
+				 */
 				for(auto i = this->_timers.begin(); i != this->_timers.end();){
 					// Если мы нашли наш таймер
 					if(item.first == i->second)
@@ -74,7 +76,9 @@ void awh::Watch::trigger() noexcept {
 				}
 			// Если очередь пустая
 			} else {
-				// Выполняем перебор всего списка таймеров
+				/**
+				 * Выполняем перебор всего списка таймеров
+				 */
 				for(auto i = this->_timers.begin(); i != this->_timers.end();){
 					// Если время вышло
 					if(date >= i->first){
@@ -255,7 +259,9 @@ void awh::Watch::away(const uint32_t id) noexcept {
 		if(!this->_timers.empty()){
 			// Выполняем блокировку потока
 			const locker_t lock(this->_mtx);
-			// Выполняем перебор всего списка таймеров
+			/**
+			 * Выполняем перебор всего списка таймеров
+			 */
 			for(auto i = this->_timers.begin(); i != this->_timers.end(); ++i){
 				// Если мы нашли наш таймер
 				if(id == i->second){

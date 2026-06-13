@@ -1890,7 +1890,9 @@ namespace fingerprint {
 		if((count == 0) || (size < (1 + count)))
 			// Выходим из функции
 			return;
-		// Выполняем парсинг поддерживаемых режимов обмена ключами PSK из данных расширения
+		/**
+		 * Выполняем парсинг поддерживаемых режимов обмена ключами PSK из данных расширения
+		 */
 		for(uint8_t i = 0; ((i < count) && (static_cast <size_t> (1 + i) < size)); ++i){
 			/**
 			 * Проверяем значение режима обмена ключами PSK
@@ -1936,7 +1938,9 @@ namespace fingerprint {
 		if((count == 0) || (size < static_cast <size_t> (1 + count)) || ((count % 2) != 0))
 			// Выходим из функции
 			return;
-		// Выполняем парсинг поддерживаемых версий из данных расширения
+		/**
+		 * Выполняем парсинг поддерживаемых версий из данных расширения
+		 */
 		for(size_t i = 1; ((i < static_cast <size_t> (1 + count)) && ((i + 1) < size)); i += 2){
 			// Получаем 16-битное значение версии из данных расширения
 			const uint16_t ver = ::local::u16(buffer + i);
@@ -2071,7 +2075,9 @@ namespace fingerprint {
 			return;
 		// Если количество поддерживаемых алгоритмов подписи больше 0
 		if(count > 0){
-			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			/**
+			 * Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			 */
 			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
 				// Получаем код алгоритма подписи из буфера
 				const uint16_t alg = ::local::u16(buffer + i);
@@ -2210,7 +2216,9 @@ namespace fingerprint {
 			return;
 		// Если количество байт в списке алгоритмов сжатия больше 0
 		if(count > 0){
-			// Перебираем алгоритмы сжатия в данных расширения
+			/**
+			 * Перебираем алгоритмы сжатия в данных расширения
+			 */
 			for(size_t i = 0; (((i + 2) <= static_cast <size_t> (count)) && ((1 + i + 2) <= size)); i += 2){
 				// Извлекаем идентификатор алгоритма сжатия из текущей позиции в буфере данных расширения
 				const uint16_t id = ::local::u16(buffer + (i + 1));
@@ -2346,7 +2354,9 @@ namespace fingerprint {
 			return;
 		// Если количество поддерживаемых профилей SRTP больше 0
 		if(count > 0){
-			// Перебираем поддерживаемые профили SRTP в данных расширения
+			/**
+			 * Перебираем поддерживаемые профили SRTP в данных расширения
+			 */
 			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
 				// Извлекаем код профиля SRTP из буфера
 				const uint16_t profile = ::local::u16(buffer + i);
@@ -2433,7 +2443,9 @@ namespace fingerprint {
 			return;
 		// Если количество поддерживаемых алгоритмов подписи больше 0
 		if(count > 0){
-			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			/**
+			 * Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			 */
 			for(size_t i = 2; (((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size)); i += 2){
 				// Получаем код алгоритма подписи из буфера
 				const uint16_t alg = ::local::u16(buffer + i);
@@ -2572,7 +2584,9 @@ namespace fingerprint {
 			return;
 		// Если количество поддерживаемых алгоритмов подписи больше 0
 		if(count > 0){
-			// Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			/**
+			 * Перебираем поддерживаемые алгоритмы подписи в данных расширения
+			 */
 			for(size_t i = 2; ((i + 1) < static_cast <size_t> (2 + count)) && ((i + 1) < size); i += 2){
 				// Получаем код алгоритма подписи из буфера
 				const uint16_t alg = ::local::u16(buffer + i);
@@ -2711,7 +2725,9 @@ namespace fingerprint {
 			return;
 		// Если количество поддерживаемых форматов точек эллиптической кривой больше 0
 		if(count > 0){
-			// Перебираем поддерживаемые форматы точек эллиптической кривой в данных расширения
+			/**
+			 * Перебираем поддерживаемые форматы точек эллиптической кривой в данных расширения
+			 */
 			for(uint8_t i = 0; ((i < count) && (static_cast <size_t> (i + 1) < size)); ++i){
 				// Извлекаем код формата точек из буфера
 				const uint8_t format = buffer[1 + i];
@@ -3207,7 +3223,9 @@ namespace fingerprint {
 			return;
 		// Получаем ссылку на список расширений
 		auto * ext = awh_cast <awh::tls::fgp_t::extension_ech_outer_extensions_t *> (browser.extensions.back().get());
-		// Перебираем 2-байтовые коды типов расширений
+		/**
+		 * Перебираем 2-байтовые коды типов расширений
+		 */
 		for(size_t i = 1; (i + 1) <= static_cast <size_t> (1 + count); i += 2)
 			// Сохраняем как UNKNOWN (маппинг wire-кодов → extension_type_t не требуется для отпечатка)
 			ext->extensions.push_back(awh::tls::extension_type_t::UNKNOWN);
@@ -3443,7 +3461,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 		return false;
 	// Если объекты расширений совпадают по размерам и не пустые
 	else if(!this->extensions.empty() && !browser.extensions.empty()) {
-		// Итерируем по расширениям и сравниваем их типы
+		/**
+		 * Итерируем по расширениям и сравниваем их типы
+		 */
 		for(size_t i = 0; i < this->extensions.size(); ++i){
 			// Если типы расширений не совпадают, объекты не равны
 			if(this->extensions[i]->type != browser.extensions[i]->type)
@@ -3463,7 +3483,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если объекты расширений совпадают по размерам и не пустые
 						else if(!awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.empty() && !awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names.empty()) {
-							// Итерируем по расширениям и сравниваем их типы
+							/**
+							 * Итерируем по расширениям и сравниваем их типы
+							 */
 							for(size_t j = 0; j < awh_cast <extension_server_name_t *> (this->extensions[i].get())->names.size(); ++j){
 								// Если имена в расширении server_name не совпадают, объекты не равны
 								if(awh_cast <extension_server_name_t *> (this->extensions[i].get())->names[j] != awh_cast <extension_server_name_t *> (browser.extensions[i].get())->names[j])
@@ -3548,7 +3570,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если списки протоколов ALPN не пустые, сравниваем их поэлементно
 						else if(!lhsProtos.empty()) {
-							// Итерируем по протоколам ALPN и сравниваем их
+							/**
+							 * Итерируем по протоколам ALPN и сравниваем их
+							 */
 							for(size_t j = 0; j < lhsProtos.size(); ++j){
 								// Если протоколы ALPN не совпадают, объекты не равны
 								if(lhsProtos[j] != rhsProtos[j])
@@ -3617,7 +3641,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если списки идентификаторов PSK не пустые, сравниваем их поэлементно
 						else if(!lhsIds.empty()) {
-							// Итерируем по идентификаторам PSK и сравниваем их
+							/**
+							 * Итерируем по идентификаторам PSK и сравниваем их
+							 */
 							for(size_t j = 0; j < lhsIds.size(); ++j){
 								// Если значения ticket_age не совпадают, объекты не равны
 								if(lhsIds[j].ticketAge != rhsIds[j].ticketAge)
@@ -3673,7 +3699,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если списки авторитетов сертификатов не пустые, сравниваем их поэлементно
 						else if(!lhsAuths.empty()) {
-							// Итерируем по авторитетам сертификатов и сравниваем их
+							/**
+							 * Итерируем по авторитетам сертификатов и сравниваем их
+							 */
 							for(size_t j = 0; j < lhsAuths.size(); ++j){
 								// Если размеры данных авторитета сертификата не совпадают или если они не пустые и не совпадают побайтно, объекты не равны
 								if((lhsAuths[j].size() != rhsAuths[j].size()) ||
@@ -3702,7 +3730,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если списки ключей для обмена не пустые, сравниваем их поэлементно
 						else if(!lhsShares.empty()) {
-							// Итерируем по ключам для обмена и сравниваем их
+							/**
+							 * Итерируем по ключам для обмена и сравниваем их
+							 */
 							for(size_t j = 0; j < lhsShares.size(); ++j){
 								// Если группы ключа для обмена не совпадают, объекты не равны
 								if(lhsShares[j].first != rhsShares[j].first)
@@ -3742,7 +3772,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если списки протоколов NPN не пустые, сравниваем их поэлементно
 						else if(!lhsNPN.empty()) {
-							// Итерируем по протоколам NPN и сравниваем их
+							/**
+							 * Итерируем по протоколам NPN и сравниваем их
+							 */
 							for(size_t j = 0; j < lhsNPN.size(); ++j){
 								// Если протоколы NPN не совпадают, объекты не равны
 								if(lhsNPN[j] != rhsNPN[j])
@@ -3762,7 +3794,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если списки протоколов не пустые, сравниваем их поэлементно
 						else if(!lhsASO.empty()) {
-							// Итерируем по протоколам и сравниваем их
+							/**
+							 * Итерируем по протоколам и сравниваем их
+							 */
 							for(size_t j = 0; j < lhsASO.size(); ++j){
 								// Если протоколы не совпадают, объекты не равны
 								if(lhsASO[j] != rhsASO[j])
@@ -3782,7 +3816,9 @@ bool awh::tls::Fingerprint::Browser::operator == (const Browser & browser) const
 							return false;
 						// Если списки протоколов не пустые, сравниваем их поэлементно
 						else if(!lhsAS.empty()) {
-							// Итерируем по протоколам и сравниваем их
+							/**
+							 * Итерируем по протоколам и сравниваем их
+							 */
 							for(size_t j = 0; j < lhsAS.size(); ++j){
 								// Если протоколы не совпадают, объекты не равны
 								if(lhsAS[j] != rhsAS[j])
@@ -5497,7 +5533,9 @@ bool awh::tls::Fingerprint::imprint(const browser_t & browser, imprint_t & resul
 				if(ext->type == extension_type_t::SUPPORTED_VERSIONS){
 					// Приводим объект нужного нам расширения
 					const auto * sv = awh_cast <const extension_supported_versions_t *> (ext.get());
-					// Проходим по версиям в расширении и ищем наибольшую не-GREASE
+					/**
+					 * Проходим по версиям в расширении и ищем наибольшую не-GREASE
+					 */
 					for(const auto version : sv->versions){
 						// Если версия — GREASE, пропускаем её
 						if(version == version_t::GREASE)
@@ -7607,7 +7645,9 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		 * @return     объект найденного расширения или nullptr, если не найдено
 		 */
 		auto findSrcExt = [&src](const extension_type_t type) -> const extension_t * {
-			// Перебираем расширения исходного ClientHello
+			/**
+			 * Перебираем расширения исходного ClientHello
+			 */
 			for(const auto & extension : src.extensions){
 				// Если нашли нужный тип — возвращаем указатель
 				if(extension->type == type)
@@ -8293,7 +8333,9 @@ vector <awh::tls::Fingerprint::id_t> awh::tls::Fingerprint::list() const noexcep
 	vector <id_t> result;
 	// Блокируем хранилище отпечатков для чтения
 	const local::fgp_shared_lock_t lock(this->_mtx, local::fgp_shared);
-	// Выполняем перебор всех цифровых отпечатков браузеров в хранилище
+	/**
+	 * Выполняем перебор всех цифровых отпечатков браузеров в хранилище
+	 */
 	for(const auto & [id, browser] : this->_browsers)
 		// Добавляем идентификатор цифрового отпечатка браузера в результат
 		result.push_back(id);
@@ -8542,7 +8584,9 @@ vector <uint8_t> awh::tls::Fingerprint::dump() const noexcept {
 			vector <uint8_t> buffer;
 			// Размер буфера снимка цифрового отпечатка браузера и количество снимков браузеров в результирующем дампе
 			size_t size = 0, count = 0;
-			// Выполняем перебор всех снимков браузеров в хранилище
+			/**
+			 * Выполняем перебор всех снимков браузеров в хранилище
+			 */
 			for(const auto & [id, browser] : this->_browsers){
 				// Очищаем буфер от предыдущих данных
 				buffer.clear();
@@ -8866,7 +8910,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список имён серверов
 						extension->names.resize(count);
-						// Перебираем имена серверов
+						/**
+						 * Перебираем имена серверов
+						 */
 						for(auto & name : extension->names){
 							// Читаем размер имени сервера из буфера
 							if(!read(&size, sizeof(size)))
@@ -9046,7 +9092,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список протоколов ALPN
 						extension->protocols.resize(count);
-						// Перебираем протоколы ALPN
+						/**
+						 * Перебираем протоколы ALPN
+						 */
 						for(auto & proto : extension->protocols){
 							// Читаем размер протокола ALPN из буфера
 							if(!read(&size, sizeof(size)))
@@ -9205,7 +9253,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список идентификаторов PSK
 						extension->identities.resize(count);
-						// Перебираем идентификаторы PSK
+						/**
+						 * Перебираем идентификаторы PSK
+						 */
 						for(auto & identity : extension->identities){
 							// Читаем значение ticket_age
 							if(!read(&identity.ticketAge, sizeof(identity.ticketAge)))
@@ -9322,7 +9372,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список авторитетов сертификатов
 						extension->authorities.resize(count);
-						// Перебираем авторитеты сертификатов
+						/**
+						 * Перебираем авторитеты сертификатов
+						 */
 						for(auto & auth : extension->authorities){
 							// Читаем размер авторитета сертификата из буфера
 							if(!read(&size, sizeof(size)))
@@ -9380,7 +9432,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список ключей для обмена
 						extension->shares.resize(count);
-						// Перебираем ключи для обмена
+						/**
+						 * Перебираем ключи для обмена
+						 */
 						for(auto & share : extension->shares){
 							// Читаем группу ключа для обмена
 							if(!read(&share.first, sizeof(share.first)))
@@ -9418,7 +9472,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 					if(count > 0){
 						// Ключ и значение параметра транспортного уровня QUIC
 						uint64_t key = 0, value = 0;
-						// Перебираем параметры транспортного уровня QUIC
+						/**
+						 * Перебираем параметры транспортного уровня QUIC
+						 */
 						for(size_t i = 0; i < count; i++){
 							// Обнуляем ключ параметра транспортного уровня QUIC
 							key = 0;
@@ -9477,7 +9533,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список протоколов NPN
 						extension->protocols.resize(count);
-						// Перебираем протоколы NPN
+						/**
+						 * Перебираем протоколы NPN
+						 */
 						for(auto & proto : extension->protocols){
 							// Читаем размер протокола NPN
 							if(!read(&size, sizeof(size)))
@@ -9513,7 +9571,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список протоколов
 						extension->protocols.resize(count);
-						// Перебираем протоколы
+						/**
+						 * Перебираем протоколы
+						 */
 						for(auto & proto : extension->protocols){
 							// Читаем размер протокола
 							if(!read(&size, sizeof(size)))
@@ -9549,7 +9609,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 						size_t size = 0;
 						// Выделяем память под список протоколов
 						extension->protocols.resize(count);
-						// Перебираем протоколы
+						/**
+						 * Перебираем протоколы
+						 */
 						for(auto & proto : extension->protocols){
 							// Читаем размер протокола
 							if(!read(&size, sizeof(size)))
@@ -9649,7 +9711,9 @@ bool awh::tls::Fingerprint::dump(const vector <uint8_t> & input, browser_t & bro
 					if(count > 0){
 						// Ключ и значение параметра транспортного уровня QUIC (устаревшее расширение)
 						uint64_t key = 0, value = 0;
-						// Перебираем параметры транспортного уровня QUIC (устаревшее расширение)
+						/**
+						 * Перебираем параметры транспортного уровня QUIC (устаревшее расширение)
+						 */
 						for(size_t i = 0; i < count; i++){
 							// Обнуляем ключ параметра транспортного уровня QUIC (устаревшее расширение)
 							key = 0;

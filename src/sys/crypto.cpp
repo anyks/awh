@@ -147,7 +147,9 @@ namespace driver {
 						::MD5_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::MD5_Final(digest.data(), &ctx);
-						// Заполняем строку данными MD5
+						/**
+						 * Заполняем строку данными MD5
+						 */
 						for(uint8_t i = 0; i < 16; i++)
 							// Формируем данные MD5-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -168,7 +170,9 @@ namespace driver {
 						::SHA1_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA1_Final(digest.data(), &ctx);
-						// Заполняем строку данными SHA1
+						/**
+						 * Заполняем строку данными SHA1
+						 */
 						for(uint8_t i = 0; i < 20; i++)
 							// Формируем данные SHA1-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -189,7 +193,9 @@ namespace driver {
 						::SHA224_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA224_Final(digest.data(), &ctx);
-						// Заполняем строку данными SHA224
+						/**
+						 * Заполняем строку данными SHA224
+						 */
 						for(uint8_t i = 0; i < 28; i++)
 							// Формируем данные SHA224-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -210,7 +216,9 @@ namespace driver {
 						::SHA256_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA256_Final(digest.data(), &ctx);
-						// Заполняем строку данными SHA256
+						/**
+						 * Заполняем строку данными SHA256
+						 */
 						for(uint8_t i = 0; i < 32; i++)
 							// Формируем данные SHA256-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -231,7 +239,9 @@ namespace driver {
 						::SHA384_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA384_Final(digest.data(), &ctx);
-						// Заполняем строку данными SHA384
+						/**
+						 * Заполняем строку данными SHA384
+						 */
 						for(uint8_t i = 0; i < 48; i++)
 							// Формируем данные SHA384-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -252,7 +262,9 @@ namespace driver {
 						::SHA512_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA512_Final(digest.data(), &ctx);
-						// Заполняем строку данными SHA512
+						/**
+						 * Заполняем строку данными SHA512
+						 */
 						for(uint8_t i = 0; i < 64; i++)
 							// Формируем данные SHA512-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -306,7 +318,9 @@ namespace driver {
 						result.resize(33, 0);
 						// Выполняем получение подписи
 						const uint8_t * digest = ::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
-						// Заполняем строку данными MD5
+						/**
+						 * Заполняем строку данными MD5
+						 */
 						for(uint8_t i = 0; i < 16; i++)
 							// Формируем данные MD5-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -319,7 +333,9 @@ namespace driver {
 						result.resize(41, 0);
 						// Выполняем получение подписи
 						const uint8_t * digest = ::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
-						// Заполняем строку данными SHA1
+						/**
+						 * Заполняем строку данными SHA1
+						 */
 						for(uint8_t i = 0; i < 20; i++)
 							// Формируем данные SHA1-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -332,7 +348,9 @@ namespace driver {
 						result.resize(57, 0);
 						// Выполняем получение подписи
 						const uint8_t * digest = ::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
-						// Заполняем строку данными SHA224
+						/**
+						 * Заполняем строку данными SHA224
+						 */
 						for(uint8_t i = 0; i < 28; i++)
 							// Формируем данные SHA224-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -345,7 +363,9 @@ namespace driver {
 						result.resize(65, 0);
 						// Выполняем получение подписи
 						const uint8_t * digest = ::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
-						// Заполняем строку данными SHA256
+						/**
+						 * Заполняем строку данными SHA256
+						 */
 						for(uint8_t i = 0; i < 32; i++)
 							// Формируем данные SHA256-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -358,7 +378,9 @@ namespace driver {
 						result.resize(97, 0);
 						// Выполняем получение подписи
 						const uint8_t * digest = ::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
-						// Заполняем строку данными SHA384
+						/**
+						 * Заполняем строку данными SHA384
+						 */
 						for(uint8_t i = 0; i < 48; i++)
 							// Формируем данные SHA384-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
@@ -371,7 +393,9 @@ namespace driver {
 						result.resize(129, 0);
 						// Выполняем получение подписи
 						const uint8_t * digest = ::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
-						// Заполняем строку данными SHA512
+						/**
+						 * Заполняем строку данными SHA512
+						 */
 						for(uint8_t i = 0; i < 64; i++)
 							// Формируем данные SHA512-хэша
 							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));

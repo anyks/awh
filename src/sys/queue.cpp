@@ -539,7 +539,9 @@ size_t awh::Queue::push(const vector <record_t> & records, const size_t size) no
 				::memcpy(&this->_buffer[this->_range.end], reinterpret_cast <const uint8_t *> (&size), sizeof(size));
 				// Увеличиваем смещение конца данных буфера
 				this->_range.end += sizeof(size);
-				// Выполняем перебор всех записей
+				/**
+				 * Выполняем перебор всех записей
+				 */
 				for(auto & record : records){
 					// Выполняем добавление самих данных полезной нагрузки
 					::memcpy(&this->_buffer[this->_range.end], record.first, record.second);

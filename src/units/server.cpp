@@ -99,7 +99,9 @@ void awh::unit::Server::unlinkServerClients(const event::id_t sid) noexcept {
 		auto i = this->_serverClients.find(sid);
 		// Если список найден
 		if(i != this->_serverClients.end()){
-			// Удаляем только клиентов текущего сервера
+			/**
+			 * Удаляем только клиентов текущего сервера
+			 */
 			for(const event::id_t cid : i->second){
 				// Удаляем клиент из общего индекса событий
 				auto j = this->_events.find(cid);
@@ -271,7 +273,9 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если в списке событий сервера есть события
 			if(!this->_events.empty()){
-				// Выполняем удаление всех событий сервера
+				/**
+				 * Выполняем удаление всех событий сервера
+				 */
 				for(const auto & event : this->_events)
 					// Удаляем событие сервера
 					this->_io->destroy(event.first);
@@ -1528,7 +1532,9 @@ bool awh::unit::Server::membership(const event::id_t eid, const event::mode_t mo
 void awh::unit::Server::clear() noexcept {
 	// Если в списке событий сервера есть события
 	if(!this->_events.empty()){
-		// Удаляем все события сервера
+		/**
+		 * Удаляем все события сервера
+		 */
 		for(const auto & event : this->_events)
 			// Удаляем событие сервера
 			this->_io->destroy(event.first);
@@ -2104,7 +2110,9 @@ awh::unit::Server::Server(const fmk_t * fmk, const log_t * log) noexcept : unit_
 awh::unit::Server::~Server() noexcept {
 	// Если в списке событий сервера есть события
 	if(!this->_events.empty()){
-		// Выполняем удаление всех событий сервера
+		/**
+		 * Выполняем удаление всех событий сервера
+		 */
 		for(const auto & event : this->_events)
 			// Удаляем событие сервера
 			this->_io->destroy(event.first);

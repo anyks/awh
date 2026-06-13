@@ -280,7 +280,9 @@ vector <string> awh::Regular_Expressions::exec(const char * text, const size_t s
 			} else {
 				// Выполняем создание результата
 				result.resize(exp->reg.re_nsub + 1);
-				// Выполняем перебор всех полученных вариантов
+				/**
+				 * Выполняем перебор всех полученных вариантов
+				 */
 				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->reg.re_nsub + 1); i++){
 					// Если результат получен
 					if((match[i].rm_eo > 0) && (static_cast <size_t> (match[i].rm_eo) <= size) && (match[i].rm_so >= 0))
@@ -419,7 +421,9 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char *
 			} else {
 				// Выполняем создание результата
 				result.resize(exp->reg.re_nsub + 1);
-				// Выполняем перебор всех полученных вариантов
+				/**
+				 * Выполняем перебор всех полученных вариантов
+				 */
 				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->reg.re_nsub + 1); i++){
 					// Если результат получен
 					if((match[i].rm_eo > 0) && (static_cast <size_t> (match[i].rm_eo) <= size) && (match[i].rm_so >= 0))
@@ -526,7 +530,9 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 			int32_t option = 0;
 			// Если опции переданы
 			if(!options.empty()){
-				// Выполняем перебор всех переданных опций
+				/**
+				 * Выполняем перебор всех переданных опций
+				 */
 				for(auto & item : options){
 					/**
 					 * Определяем тип переданной опции

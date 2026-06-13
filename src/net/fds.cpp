@@ -482,11 +482,15 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 			socks.reserve(1000);
 			// Сокет для инициализации
 			SOCKET sock = INVALID_SOCKET;
-			// Выполняем создание 100000 сокетов
+			/**
+			 * Выполняем создание 100000 сокетов
+			 */
 			for(uint32_t i = 0; i < result.second; ++i){
 				// Выполняем инициализацию сокетов
 				if((sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET){
-					// Выполняем закрытие открытых сокетов
+					/**
+					 * Выполняем закрытие открытых сокетов
+					 */
 					for(auto & sock : socks)
 						// Закрываем все открытые сокеты
 						::closesocket(sock);
@@ -498,7 +502,9 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 				socks.push_back(sock);
 				// Оптимизация: не держим слишком много — закрываем каждые 1000
 				if(socks.size() >= 1000){
-					// Выполняем закрытие открытых сокетов
+					/**
+					 * Выполняем закрытие открытых сокетов
+					 */
 					for(auto & sock : socks)
 						// Закрываем все открытые сокеты
 						::closesocket(sock);
@@ -506,7 +512,9 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 					socks.clear();
 				}
 			}
-			// Выполняем закрытие открытых сокетов
+			/**
+			 * Выполняем закрытие открытых сокетов
+			 */
 			for(auto & sock : socks)
 				// Закрываем все открытые сокеты
 				::closesocket(sock);

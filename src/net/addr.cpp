@@ -361,7 +361,9 @@ namespace {
 			uint8_t base = 0;
 			// Значение результата парсинга
 			uint64_t value = 0;
-			// Каждая часть в 0..255, при allowNonDecimal можно 0x/0..oct
+			/**
+			 * Каждая часть в 0..255, при allowNonDecimal можно 0x/0..oct
+			 */
 			for(uint8_t i = 0; i < 4; ++i){
 				// Текущая часть строки IP-адреса
 				auto octet = octets[i];
@@ -491,7 +493,9 @@ namespace {
 			return false;
 		// Значение результата парсинга
 		uint64_t value = 0;
-		// Парсим каждый октет строки IP-адреса
+		/**
+		 * Парсим каждый октет строки IP-адреса
+		 */
 		for(uint8_t i = 0; i < 4; ++i){
 			// Текущий октет строки IP-адреса
 			auto octet = octets[i];
@@ -577,7 +581,9 @@ namespace {
 				return false;
 			// Парсим хекстет посимвольно
 			uint32_t value = 0;
-			// Проходим по каждому символу хекстета
+			/**
+			 * Проходим по каждому символу хекстета
+			 */
 			for(char letter : hextet){
 				// Проверяем шестнадцатеричный символ
 				if(!::ishex(letter))
@@ -623,7 +629,9 @@ namespace {
 		words.reserve(8);
 		// Первый и второй хекстеты IPv4-адреса
 		uint16_t hextet1 = 0, hextet2 = 0;
-		// Разбираем левую часть
+		/**
+		 * Разбираем левую часть
+		 */
 		for(uint8_t i = 0; i < static_cast <uint8_t> (leftParts.size()); ++i){
 			// Текущий токен левой части
 			auto part = leftParts[i];
@@ -714,7 +722,9 @@ namespace {
 			full.reserve(8);
 			// Собираем полный адрес
 			full.insert(full.end(), words.begin(), words.end());
-			// Вставляем нулевые слова
+			/**
+			 * Вставляем нулевые слова
+			 */
 			for(uint8_t i = 0; i < zerosToInsert; ++i)
 				// Вставляем нулевое слово
 				full.push_back(0);
@@ -724,7 +734,9 @@ namespace {
 			if(full.size() != 8)
 				// Возвращаем ошибку
 				return false;
-			// Перебираем все слова полного адреса
+			/**
+			 * Перебираем все слова полного адреса
+			 */
 			for(uint8_t i = 0; i < 8; ++i){
 				/**
 				 * Выполняем формирование результата парсинга
@@ -740,7 +752,9 @@ namespace {
 			if(words.size() != 8)
 				// Возвращаем ошибку
 				return false;
-			// Перебираем все слова полного адреса
+			/**
+			 * Перебираем все слова полного адреса
+			 */
 			for(uint8_t i = 0; i < 8; ++i){
 				/**
 				 * Выполняем формирование результата парсинга
@@ -845,7 +859,9 @@ namespace {
 	void findZeroRun(const uint16_t hexets[8], int16_t & begin, int16_t & length) noexcept {
 		// Сбрасываем результат поиска
 		begin = -1, length = 1;
-		// Поиск лучшей последовательности нулевых хекстетов
+		/**
+		 * Поиск лучшей последовательности нулевых хекстетов
+		 */
 		for(int16_t i = 0; i < 8;){
 			// Если текущий хекстет равен нулю
 			if(hexets[i] == 0){
@@ -908,7 +924,9 @@ namespace {
 		::findZeroRun(hexets, begin, length);
 		// Если сжатие не применяется
 		if(length <= 1){
-			// Выводим все хекстеты подряд через разделитель
+			/**
+			 * Выводим все хекстеты подряд через разделитель
+			 */
 			for(int16_t i = 0; i < 8; ++i){
 				// Если это не первая группа, добавляем разделитель
 				if(i > 0) sep();
@@ -919,7 +937,9 @@ namespace {
 		} else if(begin == 0) {
 			// Записываем "::"
 			sep(); sep();
-			// Выводим оставшиеся хекстеты
+			/**
+			 * Выводим оставшиеся хекстеты
+			 */
 			for(int16_t i = length; i < 8; ++i){
 				// Перед всеми, кроме первого после "::", добавляем разделитель
 				if(i != length) sep();
@@ -928,7 +948,9 @@ namespace {
 			}
 		// Если сжатие в конце (формат xxx::)
 		} else if((begin + length) == 8) {
-			// Выводим хекстеты до сжатия
+			/**
+			 * Выводим хекстеты до сжатия
+			 */
 			for(int16_t i = 0; i < begin; ++i){
 				// Если это не первая группа, добавляем разделитель
 				if(i > 0) sep();
@@ -939,7 +961,9 @@ namespace {
 			sep(); sep();
 		// Если сжатие в середине (формат xxx::xxx)
 		} else {
-			// Выводим хекстеты до сжатия
+			/**
+			 * Выводим хекстеты до сжатия
+			 */
 			for(int16_t i = 0; i < begin; ++i){
 				// Если это не первая группа, добавляем разделитель
 				if(i > 0) sep();
@@ -948,7 +972,9 @@ namespace {
 			}
 			// Добавляем "::"
 			sep(); sep();
-			// Выводим хекстеты после сжатия
+			/**
+			 * Выводим хекстеты после сжатия
+			 */
 			for(int16_t i = (begin + length); i < 8; ++i){
 				// Записываем группу
 				group(i);
@@ -1497,7 +1523,9 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем полную проверку всех типов хостов
+			/**
+			 * Выполняем полную проверку всех типов хостов
+			 */
 			for(uint8_t i = 0; i < 9; i++){
 				/**
 				 * Устанавливаем тип для проверки
@@ -2060,7 +2088,9 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						return false;
 					// Если длина MAC-адреса равна 12 символам
 					if(addr.length() == 12){
-						// Выполняем проверку каждого символа MAC-адреса
+						/**
+						 * Выполняем проверку каждого символа MAC-адреса
+						 */
 						for(char letter : addr){
 							// Если символ не является шестнадцатеричным
 							if(!::ishex(letter))
@@ -2070,7 +2100,9 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Возвращаем результат проверки
 						return true;
 					}
-					// Выполняем проверку каждого символа MAC-адреса
+					/**
+					 * Выполняем проверку каждого символа MAC-адреса
+					 */
 					for(size_t i = 0; i < 17; ++i){
 						// Если символ не является шестнадцатеричным
 						if((i % 3) == 2){
@@ -2216,7 +2248,9 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						if((label[0] == '-') || (label.back() == '-'))
 							// Если метка начинается или заканчивается дефисом
 							return false;
-						// Проверяем каждый символ метки
+						/**
+						 * Проверяем каждый символ метки
+						 */
 						for(char c : label){
 							// Если символ не является допустимым
 							if(!(std::isalnum(c) || (c == '-')))
@@ -2334,7 +2368,9 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									::memcpy(&oct, &this->_buffer[0] + num, sizeof(oct));
 									// Переводим октет в бинарный вид
 									std::bitset <8> bits(oct);
-									// Зануляем все лишние элементы
+									/**
+									 * Зануляем все лишние элементы
+									 */
 									for(uint8_t i = (8 - (prefix % 8)); i < 8; i++)
 										// Зануляем все лишние биты
 										bits.set(i, 0);
@@ -2358,7 +2394,9 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									::memcpy(&oct, &this->_buffer[0] + num, sizeof(oct));
 									// Переводим октет в бинарный вид
 									std::bitset <8> bits(oct);
-									// Зануляем все лишние элементы
+									/**
+									 * Зануляем все лишние элементы
+									 */
 									for(uint8_t i = 0; i < (8 - (prefix % 8)); i++)
 										// Зануляем все лишние биты
 										bits.set(i, 0);
@@ -2395,7 +2433,9 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
 									// Переводим хекстет в бинарный вид
 									std::bitset <16> bits(hex);
-									// Зануляем все лишние элементы
+									/**
+									 * Зануляем все лишние элементы
+									 */
 									for(uint8_t i = (16 - (prefix % 16)); i < 16; i++)
 										// Зануляем все лишние биты
 										bits.set(i, 0);
@@ -2419,7 +2459,9 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
 									// Переводим хекстет в бинарный вид
 									std::bitset <16> bits(hex);
-									// Зануляем все лишние элементы
+									/**
+									 * Зануляем все лишние элементы
+									 */
 									for(uint8_t i = 0; i < (16 - (prefix % 16)); i++)
 										// Зануляем все лишние биты
 										bits.set(i, 0);
@@ -2499,7 +2541,9 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 					case static_cast <uint8_t> (type_t::IPV4): {
 						// Получаем значение маски в виде адреса
 						const uint32_t num = net.v4();
-						// Выполняем перебор всего значения буфера
+						/**
+						 * Выполняем перебор всего значения буфера
+						 */
 						for(uint8_t i = 0; i < 4; i++){
 							// Переводим хекстет в бинарный вид
 							bits = (reinterpret_cast <const uint8_t *> (&num))[i];
@@ -2511,7 +2555,9 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 					case static_cast <uint8_t> (type_t::IPV6): {
 						// Получаем значение маски в виде адреса
 						const std::array <uint8_t, 16> num = net.v6();
-						// Выполняем перебор всего значения буфера
+						/**
+						 * Выполняем перебор всего значения буфера
+						 */
 						for(uint8_t i = 0; i < 16; i++){
 							// Переводим хекстет в бинарный вид
 							bits = reinterpret_cast <const uint8_t *> (&num[0])[i];
@@ -3189,7 +3235,9 @@ awh::Network_Address::own_t awh::Network_Address::own() const noexcept {
 			const_cast <net_addr_t *> (this)->initLocalNet();
 			// Выполняем группировку нужного нам вида адресов
 			auto ret = this->_localsNet.equal_range(this->_type);
-			// Перебираем все локальные адреса
+			/**
+			 * Перебираем все локальные адреса
+			 */
 			for(auto i = ret.first; i != ret.second; ++i){
 				/**
 				 * Определяем тип IP-адреса
@@ -3301,7 +3349,9 @@ string awh::Network_Address::arpa() const noexcept {
 		switch(static_cast <uint8_t> (this->_type)){
 			// Если IP-адрес определён как IPv4
 			case static_cast <uint8_t> (type_t::IPV4): {
-				// Переходим по всему массиву
+				/**
+				 * Переходим по всему массиву
+				 */
 				for(int8_t i = (static_cast <int8_t> (this->_buffer.size()) - 1); i > -1; i--){
 					// Если строка уже существует, добавляем разделитель
 					if(!result.empty())
@@ -3322,8 +3372,10 @@ string awh::Network_Address::arpa() const noexcept {
 				static constexpr char hex[] = "0123456789abcdef";
 				// 32 hex-цифры + 31 точка + ".ip6.arpa" = ~72 символов
 				result.reserve(64 + 10);
-				// IPv6: каждый байт → две hex-цифры, в обратном порядке битов (но не байтов!)
-				// RFC 3596: каждый nibble (полубайт) отдельно, в обратном порядке байтов
+				/**
+				 * IPv6: каждый байт → две hex-цифры, в обратном порядке битов (но не байтов!)
+				 * RFC 3596: каждый nibble (полубайт) отдельно, в обратном порядке байтов
+				 */
 				for(int8_t i = 15; i >= 0; --i){
 					// Младший полубайт → сначала
 					result.append(1, hex[this->_buffer[i] & 0x0F]);
@@ -3504,7 +3556,9 @@ bool awh::Network_Address::parse(string_view addr) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем полную проверку всех типов адресов
+			/**
+			 * Выполняем полную проверку всех типов адресов
+			 */
 			for(uint8_t i = 0; i < 3; i++){
 				/**
 				 * Устанавливаем тип для проверки

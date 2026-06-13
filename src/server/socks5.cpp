@@ -1823,7 +1823,9 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
 						// Удаляем пира из списка активных пиров
 						this->_peers.erase(i);
 					}
-					// Если завершён UDP data-пир, сбрасываем ссылку в активной сессии
+					/**
+					 * Если завершён UDP data-пир, сбрасываем ссылку в активной сессии
+					 */
 					for(auto s = this->_sessions.begin(); s != this->_sessions.end(); ++s){
 						// Если идентификатор завершённого пира соответствует data-пиру сессии
 						if(s->second.second == eid){

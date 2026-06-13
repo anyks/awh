@@ -187,7 +187,9 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 						if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
 							// Временный список идентификаторов TLS, которые нужно удалить
 							vector <tls::coder_t::id_t> garbage;
-							// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+							/**
+							 * Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+							 */
 							for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
 								// Формируем список идентификаторов TLS для удаления
 								garbage.push_back(i->second);
@@ -196,7 +198,9 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 							}
 							// Если список идентификаторов TLS для удаления не пустой
 							if(!garbage.empty()){
-								// Проходим по всем идентификаторам TLS для удаления
+								/**
+								 * Проходим по всем идентификаторам TLS для удаления
+								 */
 								for(const auto & id : garbage)
 									// Уничтожаем объект TLS по найденному идентификатору TLS
 									this->_tls.coder->destroy(id);
@@ -315,7 +319,9 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 				if((this->_unit != nullptr) && (this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
 					// Временный список идентификаторов TLS, которые нужно удалить
 					vector <tls::coder_t::id_t> garbage;
-					// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+					/**
+					 * Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+					 */
 					for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
 						// Формируем список идентификаторов TLS для удаления
 						garbage.push_back(i->second);
@@ -324,7 +330,9 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
 					}
 					// Если список идентификаторов TLS для удаления не пустой
 					if(!garbage.empty()){
-						// Проходим по всем идентификаторам TLS для удаления
+						/**
+						 * Проходим по всем идентификаторам TLS для удаления
+						 */
 						for(const auto & id : garbage)
 							// Уничтожаем объект TLS по найденному идентификатору TLS
 							this->_tls.coder->destroy(id);
@@ -941,7 +949,9 @@ void awh::Server::stop() noexcept {
 					if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
 						// Временный список идентификаторов TLS, которые нужно удалить
 						vector <tls::coder_t::id_t> garbage;
-						// Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+						/**
+						 * Проходим по всем сопоставлениям идентификаторов клиентов с идентификаторами TLS
+						 */
 						for(auto i = this->_tls.safety.begin(); i != this->_tls.safety.end();){
 							// Формируем список идентификаторов TLS для удаления
 							garbage.push_back(i->second);
@@ -950,7 +960,9 @@ void awh::Server::stop() noexcept {
 						}
 						// Если список идентификаторов TLS для удаления не пустой
 						if(!garbage.empty()){
-							// Проходим по всем идентификаторам TLS для удаления
+							/**
+							 * Проходим по всем идентификаторам TLS для удаления
+							 */
 							for(const auto & id : garbage)
 								// Уничтожаем объект TLS по найденному идентификатору TLS
 								this->_tls.coder->destroy(id);

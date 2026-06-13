@@ -279,7 +279,9 @@ namespace {
 		uint64_t operator()(const array <uint8_t, 16> & key) const noexcept {
 			// FNV-1a 64-bit constants
 			uint64_t result = 14695981039346656037ULL; // FNV offset basis
-			// Выполняем перебор всех байт ключа
+			/**
+			 * Выполняем перебор всех байт ключа
+			 */
 			for(uint8_t byte : key){
 				// Смешиваем текущий байт с накопленным значением
 				result ^= static_cast <uint64_t> (byte);
@@ -306,7 +308,9 @@ namespace {
 		uint64_t operator()(string_view domain) const noexcept {
 			// FNV-1a 64-bit constants
 			uint64_t result = 14695981039346656037ULL; // FNV offset basis
-			// Выполняем перебор всех байт доменного имени
+			/**
+			 * Выполняем перебор всех байт доменного имени
+			 */
 			for(char c : domain){
 				// Приводим к lowercase на лету (если ещё не нормализовали)
 				char lower = static_cast <char> (::tolower(static_cast<uint8_t>(c)));
@@ -1781,7 +1785,9 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 				 * Выполняем перебор всех IP-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-					// Выполняем перебор всех записей IP-адреса
+					/**
+					 * Выполняем перебор всех записей IP-адреса
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если время жизни записи IP-адреса истекло и запись не является локальной
 						if(!j->local && (j->life > 0) && (j->life <= now))
@@ -1804,7 +1810,9 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 				 * Выполняем перебор всех IP-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-					// Выполняем перебор всех записей IP-адреса
+					/**
+					 * Выполняем перебор всех записей IP-адреса
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если время жизни записи IP-адреса истекло и запись не является локальной
 						if(!j->local && (j->life > 0) && (j->life <= now))
@@ -1827,7 +1835,9 @@ void awh::unit::DNS::collector([[maybe_unused]] const event::id_t, const event::
 				 * Выполняем перебор всех доменных имён в кэше
 				 */
 				for(auto i = ::__awh_cache__.domains.begin(); i != ::__awh_cache__.domains.end();){
-					// Выполняем перебор всех записей доменного имени
+					/**
+					 * Выполняем перебор всех записей доменного имени
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если время жизни записи доменного имени истекло и запись не является локальной
 						if(!j->local && (j->life > 0) && (j->life <= now))
@@ -1891,7 +1901,9 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 				 * Выполняем перебор всех IP-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-					// Выполняем перебор всех записей доменного имени
+					/**
+					 * Выполняем перебор всех записей доменного имени
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя является локальным
 						if(j->local)
@@ -1914,7 +1926,9 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 				 * Выполняем перебор всех IP-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-					// Выполняем перебор всех записей доменного имени
+					/**
+					 * Выполняем перебор всех записей доменного имени
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя является локальным
 						if(j->local)
@@ -1937,7 +1951,9 @@ void awh::unit::DNS::hosts(const event::id_t, const uint8_t * data, const size_t
 				 * Выполняем перебор всех доменных имён в кэше
 				 */
 				for(auto i = ::__awh_cache__.domains.begin(); i != ::__awh_cache__.domains.end();){
-					// Выполняем перебор всех записей доменного имени
+					/**
+					 * Выполняем перебор всех записей доменного имени
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя является локальным
 						if(j->local)
@@ -3977,7 +3993,9 @@ void awh::unit::DNS::clearCache() noexcept {
 		 * Выполняем перебор всех IP-адресов в кэше
 		 */
 		for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-			// Выполняем перебор всех записей IP-адреса
+			/**
+			 * Выполняем перебор всех записей IP-адреса
+			 */
 			for(auto j = i->second.begin(); j != i->second.end();){
 				// Если IP-адрес не является локальным
 				if(!j->local)
@@ -4000,7 +4018,9 @@ void awh::unit::DNS::clearCache() noexcept {
 		 * Выполняем перебор всех IP-адресов в кэше
 		 */
 		for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-			// Выполняем перебор всех записей IP-адреса
+			/**
+			 * Выполняем перебор всех записей IP-адреса
+			 */
 			for(auto j = i->second.begin(); j != i->second.end();){
 				// Если IP-адрес не является локальным
 				if(!j->local)
@@ -4023,7 +4043,9 @@ void awh::unit::DNS::clearCache() noexcept {
 		 * Выполняем перебор всех доменных имён в кэше
 		 */
 		for(auto i = ::__awh_cache__.domains.begin(); i != ::__awh_cache__.domains.end();){
-			// Выполняем перебор всех записей доменного имени
+			/**
+			 * Выполняем перебор всех записей доменного имени
+			 */
 			for(auto j = i->second.begin(); j != i->second.end();){
 				// Если доменное имя не является локальным
 				if(!j->local)
@@ -4059,7 +4081,9 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 			 * Выполняем перебор всех доменных имён в кэше
 			 */
 			for(auto i = ::__awh_cache__.domains.begin(); i != ::__awh_cache__.domains.end();){
-				// Выполняем перебор всех записей доменного имени
+				/**
+				 * Выполняем перебор всех записей доменного имени
+				 */
 				for(auto j = i->second.begin(); j != i->second.end();){
 					/**
 					 * Определяем семейство события
@@ -4107,7 +4131,9 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 					 * Выполняем перебор всех IP-адресов в кэше
 					 */
 					for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-						// Выполняем перебор всех записей IP-адреса
+						/**
+						 * Выполняем перебор всех записей IP-адреса
+						 */
 						for(auto j = i->second.begin(); j != i->second.end();){
 							// Если IP-адрес не является локальным
 							if(!j->local)
@@ -4133,7 +4159,9 @@ void awh::unit::DNS::clearCache(const event::family_t family) noexcept {
 					 * Выполняем перебор всех IP-адресов в кэше
 					 */
 					for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-						// Выполняем перебор всех записей IP-адреса
+						/**
+						 * Выполняем перебор всех записей IP-адреса
+						 */
 						for(auto j = i->second.begin(); j != i->second.end();){
 							// Если IP-адрес не является локальным
 							if(!j->local)
@@ -4189,7 +4217,9 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 			auto i = ::__awh_cache__.domains.find(string{domain});
 			// Если в кэше доменное имя найдено
 			if(i != ::__awh_cache__.domains.end()){
-				// Выполняем перебор всех записей доменного имени
+				/**
+				 * Выполняем перебор всех записей доменного имени
+				 */
 				for(auto j = i->second.begin(); j != i->second.end();){
 					// Если доменное имя не является локальным
 					if(!j->local)
@@ -4209,7 +4239,9 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 				 * Выполняем перебор всех IPv4-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-					// Выполняем перебор всех записей IPv4-адреса
+					/**
+					 * Выполняем перебор всех записей IPv4-адреса
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 						if(!j->local && this->_fmk->compare(domain, j->domain))
@@ -4232,7 +4264,9 @@ void awh::unit::DNS::clearCache(string_view domain) noexcept {
 				 * Выполняем перебор всех IPv6-адресов в кэше
 				 */
 				for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-					// Выполняем перебор всех записей IPv6-адреса
+					/**
+					 * Выполняем перебор всех записей IPv6-адреса
+					 */
 					for(auto j = i->second.begin(); j != i->second.end();){
 						// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 						if(!j->local && this->_fmk->compare(domain, j->domain))
@@ -4335,7 +4369,9 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 						 * Выполняем перебор всех IPv4-адресов в кэше
 						 */
 						for(auto i = ::__awh_cache__.ipv4.begin(); i != ::__awh_cache__.ipv4.end();){
-							// Выполняем перебор всех записей IPv4-адреса
+							/**
+							 * Выполняем перебор всех записей IPv4-адреса
+							 */
 							for(auto j = i->second.begin(); j != i->second.end();){
 								// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 								if(!j->local && this->_fmk->compare(domain, j->domain))
@@ -4361,7 +4397,9 @@ void awh::unit::DNS::clearCache(const event::family_t family, string_view domain
 						 * Выполняем перебор всех IPv6-адресов в кэше
 						 */
 						for(auto i = ::__awh_cache__.ipv6.begin(); i != ::__awh_cache__.ipv6.end();){
-							// Выполняем перебор всех записей IPv6-адреса
+							/**
+							 * Выполняем перебор всех записей IPv6-адреса
+							 */
 							for(auto j = i->second.begin(); j != i->second.end();){
 								// Если доменное имя соответствует удаляемому, то удаляем его из кэша
 								if(!j->local && this->_fmk->compare(domain, j->domain))
@@ -7125,7 +7163,9 @@ awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk,
 				mt19937 generator(::__awh_randev__());
 				// Выполняем рандомную сортировку списка DNS-серверов
 				::shuffle(resolvers.begin(), resolvers.end(), generator);
-				// Выполняем перебор всех DNS-серверов из массива
+				/**
+				 * Выполняем перебор всех DNS-серверов из массива
+				 */
 				for(const auto & item : resolvers){
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
@@ -7139,7 +7179,9 @@ awh::unit::DNS::DNS(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk,
 				mt19937 generator(::__awh_randev__());
 				// Выполняем рандомную сортировку списка DNS-серверов
 				::shuffle(resolvers.begin(), resolvers.end(), generator);
-				// Выполняем перебор всех DNS-серверов из массива
+				/**
+				 * Выполняем перебор всех DNS-серверов из массива
+				 */
 				for(const auto & item : resolvers){
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV6))
@@ -7187,7 +7229,9 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 				mt19937 generator(::__awh_randev__());
 				// Выполняем рандомную сортировку списка DNS-серверов
 				::shuffle(resolvers.begin(), resolvers.end(), generator);
-				// Выполняем перебор всех DNS-серверов из массива
+				/**
+				 * Выполняем перебор всех DNS-серверов из массива
+				 */
 				for(const auto & item : resolvers){
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV4))
@@ -7201,7 +7245,9 @@ awh::unit::DNS::DNS(const event::family_t family, const fmk_t * fmk, const log_t
 				mt19937 generator(::__awh_randev__());
 				// Выполняем рандомную сортировку списка DNS-серверов
 				::shuffle(resolvers.begin(), resolvers.end(), generator);
-				// Выполняем перебор всех DNS-серверов из массива
+				/**
+				 * Выполняем перебор всех DNS-серверов из массива
+				 */
 				for(const auto & item : resolvers){
 					// Выполняем парсинг IP-адреса
 					if(this->_addr.parse(item, net_addr_t::type_t::IPV6))

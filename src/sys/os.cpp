@@ -268,7 +268,9 @@ using namespace std;
 				if(!result.empty()){
 					// Очередь собранных данных
 					std::queue <std::pair <string, bool>> data;
-					// Выполняем перебор всего полученного результата
+					/**
+					 * Выполняем перебор всего полученного результата
+					 */
 					for(auto & item : result){
 						// Если символ является пробелом
 						if(::isspace(item) || (item == '\t') || (item == '\n') || (item == '\r') || (item == '\f') || (item == '\v')){
@@ -1264,7 +1266,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				while((grp = ::getgrent()) != nullptr){
 					// Получаем текущую группу пользователя
 					if(grp->gr_mem){
-						// Теперь перебираем все группы пользователей котоыре есть
+						/**
+						 * Теперь перебираем все группы пользователей котоыре есть
+						 */
 						for(char ** member = grp->gr_mem; (* member != nullptr); ++member){
 							// Если пользователи совпадают
 							if(::strcmp(pwd.pw_name, * member) == 0){
@@ -1550,7 +1554,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					while((grp = ::getgrent()) != nullptr){
 						// Получаем текущую группу пользователя
 						if(grp->gr_mem){
-							// Теперь перебираем все группы пользователей котоыре есть
+							/**
+							 * Теперь перебираем все группы пользователей котоыре есть
+							 */
 							for(char ** member = grp->gr_mem; (* member != nullptr); ++member){
 								// Если пользователи совпадают
 								if(user.compare(* member) == 0){
@@ -1977,7 +1983,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		}
 		// Сначала получаем размер буфера
 		if(::GetTokenInformation(token, TokenGroups, tokenGroups, size, &size)){
-			// Выполняем перебор всех групп пользователя
+			/**
+			 * Выполняем перебор всех групп пользователя
+			 */
 			for(DWORD i = 0; i < tokenGroups->GroupCount; ++i){
 				// Итоговое название группы пользователя
 				LPWSTR usergroup = nullptr;
@@ -2312,7 +2320,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			}
 			// Сначала получаем размер буфера
 			if(::GetTokenInformation(token, TokenGroups, tokenGroups, size, &size)){
-				// Выполняем перебор всех групп пользователя
+				/**
+				 * Выполняем перебор всех групп пользователя
+				 */
 				for(DWORD i = 0; i < tokenGroups->GroupCount; ++i){
 					// Итоговое название группы пользователя
 					LPWSTR usergroup = nullptr;
@@ -2536,7 +2546,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			#if __linux__
 				// Выполняем преобразование числа в строку
 				string param = "";
-				// Выполняем перебор всего списка параметров
+				/**
+				 * Выполняем перебор всего списка параметров
+				 */
 				for(auto & item : items){
 					// Если строка уже сформированна
 					if(!param.empty())
@@ -2555,7 +2567,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				size_t offset = 0;
 				// Буфер результата по умолчанию
 				vector <uint8_t> buffer(items.size() * sizeof(T), 0);
-				// Выполняем перебор всего списка параметров
+				/**
+				 * Выполняем перебор всего списка параметров
+				 */
 				for(auto & item : items){
 					// Выполняем установку результата по умолчанию
 					::memcpy(buffer.data() + offset, &item, sizeof(item));
@@ -2601,7 +2615,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		if(!name.empty()){
 			// Выполняем преобразование числа в строку
 			string param = "";
-			// Выполняем перебор всего списка параметров
+			/**
+			 * Выполняем перебор всего списка параметров
+			 */
 			for(auto & item : items){
 				// Если строка уже сформированна
 				if(!param.empty())
@@ -2628,7 +2644,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		if(!name.empty()){
 			// Выполняем преобразование числа в строку
 			string param = "";
-			// Выполняем перебор всего списка параметров
+			/**
+			 * Выполняем перебор всего списка параметров
+			 */
 			for(auto & item : items){
 				// Если строка уже сформированна
 				if(!param.empty())

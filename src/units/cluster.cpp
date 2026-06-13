@@ -390,7 +390,9 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если список активных воркеров не пустой
 			if(!this->_workers.empty()){
-				// Переходим по всему списку активных воркеров
+				/**
+				 * Переходим по всему списку активных воркеров
+				 */
 				for(auto & [pid, worker] : this->_workers){
 					// Запрещаем анализ остановленного процесса
 					worker->pid = 0;
@@ -1203,7 +1205,9 @@ void awh::unit::Cluster::clear(const shutdown_t shutdown) noexcept {
 	if(this->master()){
 		// Если список активных воркеров не пустой
 		if(!this->_workers.empty()){
-			// Переходим по всему списку активных воркеров
+			/**
+			 * Переходим по всему списку активных воркеров
+			 */
 			for(auto & [pid, worker] : this->_workers){
 				// Запрещаем анализ остановленного процесса
 				worker->pid = 0;
@@ -1404,7 +1408,9 @@ unordered_set <pid_t> awh::unit::Cluster::workers() const noexcept {
 	unordered_set <pid_t> result;
 	// Если список активных воркеров не пустой
 	if(!this->_workers.empty()){
-		// Переходим по всему списку активных воркеров
+		/**
+		 * Переходим по всему списку активных воркеров
+		 */
 		for(const auto & [pid, worker] : this->_workers)
 			// Добавляем идентификатор процесса в результат
 			result.emplace(pid);
@@ -1588,7 +1594,9 @@ size_t awh::unit::Cluster::broadcast(const void * buffer, const size_t size) noe
 			if(!this->_workers.empty()){
 				// Переменная результата
 				size_t result = 0;
-				// Переходим по всему списку активных воркеров
+				/**
+				 * Переходим по всему списку активных воркеров
+				 */
 				for(const auto & [pid, worker] : this->_workers)
 					// Отправляем сообщение дочернему процессу
 					result += this->_io->send(worker->eid, buffer, size);

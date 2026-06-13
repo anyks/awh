@@ -450,7 +450,9 @@ namespace {
 			string part = "";
 			// Составные части пути
 			vector <string> parts;
-			// 2. Теперь у нас есть строка, начинающаяся с '/', — нормализуем её
+			/**
+			 * 2. Теперь у нас есть строка, начинающаяся с '/', — нормализуем её
+			 */
 			for(char letter : path){
 				// Если встретили слэш разделителя файловой системы
 				if(letter == AWH_FS_SEPARATOR[0]){
@@ -487,7 +489,9 @@ namespace {
 			}
 			// 3. Собираем результат — строго один слэш в начале
 			string result = AWH_FS_SEPARATOR;
-			// Проходим по всем частям пути
+			/**
+			 * Проходим по всем частям пути
+			 */
 			for(size_t i = 0; i < parts.size(); ++i){
 				// Если это не первая часть пути
 				if(i > 0)
@@ -1672,7 +1676,9 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 						buffer[address.size() - 1] = 0;
 					// Указатель на сепаратор
 					char * i = nullptr;
-					// Переходим по всем символам
+					/**
+					 * Переходим по всем символам
+					 */
 					for(i = buffer + 1; * i; i++){
 						// Если найден сепаратор
 						if((* i) == AWH_FS_SEPARATOR[0]){

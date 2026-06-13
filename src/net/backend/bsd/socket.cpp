@@ -505,7 +505,9 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					// Возвращаем пустой результат
 					return result;
 				}
-				// Перебираем все сетевые интерфейсы
+				/**
+				 * Перебираем все сетевые интерфейсы
+				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не IPv4-интерфейсы
 					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
@@ -2642,7 +2644,9 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 							struct ifaddrs * ptr = nullptr;
 							// Выполняем получение списка сетевых интерфейсов
 							if(::getifaddrs(&ptr) == 0){
-								// Перебираем все сетевые интерфейсы
+								/**
+								 * Перебираем все сетевые интерфейсы
+								 */
 								for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 									// Если не IPv6 адреса
 									if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
@@ -2737,7 +2741,9 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 							struct ifaddrs * ptr = nullptr;
 							// Выполняем получение списка сетевых интерфейсов
 							if(::getifaddrs(&ptr) == 0){
-								// Перебираем все сетевые интерфейсы
+								/**
+								 * Перебираем все сетевые интерфейсы
+								 */
 								for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 									// Если не IPv6 адреса
 									if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
@@ -3515,7 +3521,9 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 			case static_cast <uint8_t> (event::family_t::IPV4):
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
-				// Создаём нужное количество сокетов
+				/**
+				 * Создаём нужное количество сокетов
+				 */
 				for(net::socket_t & socket : result)
 					// Создаём сокет по указанным параметрам
 					socket = this->issue(family, type, proto);

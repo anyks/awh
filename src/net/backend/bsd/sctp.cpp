@@ -293,7 +293,9 @@ bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::
 				#endif
 				// Создаём объект подписки на события
 				struct sctp_event_subscribe subscribe{0};
-				// Выполняем перебор всех возможных событий SCTP
+				/**
+				 * Выполняем перебор всех возможных событий SCTP
+				 */
 				for(auto & event : events){
 					/**
 					 * Определяем тип события SCTP
@@ -415,7 +417,9 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
 		hmac->shmac_number_of_idents = static_cast <uint32_t> (types.size());
 		// Индекс для записи поддерживаемых алгоритмов аутентификации SCTP сокета
 		uint32_t index = 0;
-		// Выполняем перебор всех переданных типов алгоритмов аутентификации
+		/**
+		 * Выполняем перебор всех переданных типов алгоритмов аутентификации
+		 */
 		for(auto & type : types){
 			/**
 			 * Определяем тип аутентификации
@@ -580,7 +584,9 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 	if(!chunks.empty()){
 		// Создаём объект чанка аутентификации SCTP сокета
 		struct sctp_authchunk authchunk{0};
-		// Выполняем перебор всех переданных чанков аутентификации
+		/**
+		 * Выполняем перебор всех переданных чанков аутентификации
+		 */
 		for(auto & chunk : chunks){
 			/**
 			 * Определяем тип чанка аутентификации
@@ -727,7 +733,9 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 	}
 	// Получаем протокол сокета
 	if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, &authchunks, &length) == 0))){
-		// Перебираем все полученные чанки аутентификации
+		/**
+		 * Перебираем все полученные чанки аутентификации
+		 */
 		for(uint32_t i = 0; i < authchunks.gauth_number_of_chunks; i++){
 			/**
 			 * Определяем тип чанка аутентификации

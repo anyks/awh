@@ -146,7 +146,9 @@ namespace uri {
 							 * а не схема, и мы переходим к разбору хоста.
 							 */
 							bool hasDot = false;
-							// Ищем точку в кандидате на схему
+							/**
+							 * Ищем точку в кандидате на схему
+							 */
 							for(const char * s = tokenBegin; s < ptr; ++s){
 								// Если нашли точку
 								if(* s == '.'){
@@ -183,7 +185,9 @@ namespace uri {
 							bool isHost = (* tokenBegin == '[');
 							// Если не IPv6 — ищем точку
 							if(!isHost){
-								// Ищем точку в кандидате
+								/**
+								 * Ищем точку в кандидате
+								 */
 								for(const char * s = tokenBegin; s < ptr; ++s){
 									// Если нашли точку
 									if(* s == '.'){
@@ -238,7 +242,9 @@ namespace uri {
 						bool isHost = ((ptr > tokenBegin) && (* tokenBegin == '['));
 						// Если не IPv6 — ищем точку
 						if(!isHost && (ptr > tokenBegin)){
-							// Ищем точку в кандидате
+							/**
+							 * Ищем точку в кандидате
+							 */
 							for(const char * s = tokenBegin; s < ptr; ++s){
 								// Если нашли точку
 								if(* s == '.'){
@@ -331,7 +337,9 @@ namespace uri {
 					} else {
 						// Ищем @ до первого /, ?, # или конца строки
 						bool hasAtInOpaque = false;
-						// Перебираем символы начиная с текущего
+						/**
+						 * Перебираем символы начиная с текущего
+						 */
 						for(const char * look = ptr; look < end; ++look){
 							// Если нашли @ - это userinfo@host без //
 							if(* look == '@'){
@@ -401,7 +409,9 @@ namespace uri {
 						{
 							// Глубина вложенности скобок IPv6
 							uint16_t depth = 0;
-							// Перебираем символы после текущего :
+							/**
+							 * Перебираем символы после текущего :
+							 */
 							for(const char * look = (ptr + 1); look < end; ++look){
 								// Если встретили [, увеличиваем глубину
 								if(* look == '[')
@@ -530,7 +540,9 @@ namespace uri {
 				 * Иначе — относительный путь.
 				 */
 				const char * atSign = nullptr;
-				// Ищем @ в строке
+				/**
+				 * Ищем @ в строке
+				 */
 				for(const char * s = tokenBegin; s < end; ++s){
 					// Если нашли @
 					if(* s == '@'){
@@ -703,7 +715,9 @@ namespace uri {
 				ss.fill('0');
 				// Переключаемся на 16-ю систему счисления
 				ss << std::hex;
-				// Перебираем все символы
+				/**
+				 * Перебираем все символы
+				 */
 				for(char letter : text){
 					// Если символ разрешён для данного элемента URI, записываем его как есть
 					if(isalnum(letter, item)){
@@ -770,7 +784,9 @@ namespace uri {
 				const char * offset = nullptr;
 				// Выделяем память для строки
 				result.reserve(text.length());
-				// Переходим по всей длине строки
+				/**
+				 * Переходим по всей длине строки
+				 */
 				for(size_t i = 0; i < text.length(); i++){
 					// Получаем текущее смещение в текстовом буфере
 					offset = (text.data() + i);
@@ -1878,7 +1894,9 @@ string awh::Uniform_Resource_Identifier::etag(string_view text, const uint8_t si
 		try {
 			// Получаем 64-битный FNV-1a хэш строки
 			uint64_t hash = 0xcbf29ce484222325ULL;
-			// Перебираем все символы
+			/**
+			 * Перебираем все символы
+			 */
 			for(char letter : text){
 				// Вычисляем FNV-1a хэш для каждого символа
 				hash ^= static_cast <uint8_t> (letter);
@@ -2764,7 +2782,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::MYSQL):
 						case static_cast <uint8_t> (type_t::SOCKS5):
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(const string & segment : this->_path){
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
@@ -2776,7 +2796,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::SSH): {
 							// Добавляем символ ":" перед сегментом пути URI
 							result.append(1, ':');
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
 								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
 								if(i != this->_path.begin())
@@ -2788,7 +2810,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						} break;
 						// Если тип URI является Scheme
 						case static_cast <uint8_t> (type_t::SCHEME): {
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
 								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
 								if(i != this->_path.begin())
@@ -2844,7 +2868,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
 							// Добавляем символ "?" перед первой парой ключ-значение параметров URI
 							result.append("?");
-							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							/**
+							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							 */
 							for(const auto & [key, value] : this->_query)
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
 								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
@@ -3703,7 +3729,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::MYSQL):
 						case static_cast <uint8_t> (type_t::SOCKS5):
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(const string & segment : this->_path){
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
@@ -3715,7 +3743,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::SSH): {
 							// Добавляем символ ":" перед сегментом пути URI
 							result.append(1, ':');
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
 								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
 								if(i != this->_path.begin())
@@ -3727,7 +3757,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						} break;
 						// Если тип URI является Scheme
 						case static_cast <uint8_t> (type_t::SCHEME): {
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
 								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
 								if(i != this->_path.begin())
@@ -3784,7 +3816,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						case static_cast <uint8_t> (type_t::SCHEME):
 						case static_cast <uint8_t> (type_t::SOCKS5):
 						case static_cast <uint8_t> (type_t::POSTGRESQL): {
-							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							/**
+							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							 */
 							for(const auto & [key, value] : this->_query)
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
 								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
@@ -4635,7 +4669,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 					case static_cast <uint8_t> (type_t::POSTGRESQL): {
 						// Если путь URI не пустой, то добавляем его в результат
 						if(!this->_path.empty()){
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(const string & segment : this->_path){
 								// Добавляем символ "/" перед сегментом пути URI
 								result.append(1, '/');
@@ -4648,7 +4684,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 						if(!this->_query.empty()){
 							// Добавляем символ "?" перед первой парой ключ-значение параметров URI
 							result.append("?");
-							// Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							/**
+							 * Добавляем пары ключ-значение параметров URI в результат, разделяя их символом "&"
+							 */
 							for(const auto & [key, value] : this->_query)
 								// Добавляем пару ключ-значение параметров URI в результат, разделяя их символом "=" и добавляя символ "&" после каждой пары
 								result.append(this->_fmk->format("%s=%s&", uri::encode(key, item_t::QUERY, this->_log).c_str(), uri::encode(value, item_t::QUERY, this->_log).c_str()));
@@ -4741,7 +4779,9 @@ string awh::Uniform_Resource_Identifier::print(const item_t item, const format_t
 					case static_cast <uint8_t> (type_t::SCHEME): {
 						// Если путь URI не пустой, то добавляем его в результат
 						if(!this->_path.empty()){
-							// Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							/**
+							 * Добавляем символ "/" перед каждым сегментом пути URI и добавляем сегменты пути URI в результат
+							 */
 							for(auto i = this->_path.begin(); i != this->_path.end(); ++i){
 								// Если это не первый сегмент пути URI, то добавляем символ "/" перед ним
 								if(i != this->_path.begin())
@@ -4958,7 +4998,9 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 			result = (this->_path.size() == uri._path.size());
 			// Если размеры путей URI равны
 			if(result && !this->_path.empty()){
-				// Выполняем сравнение путей URI
+				/**
+				 * Выполняем сравнение путей URI
+				 */
 				for(size_t i = 0; i < this->_path.size(); ++i){
 					// Выполняем сравнение сегментов путей URI
 					if(!(result = this->_fmk->compare(this->_path[i], uri._path[i])))
@@ -4972,7 +5014,9 @@ bool awh::Uniform_Resource_Identifier::operator == (const Uniform_Resource_Ident
 				result = (this->_query.size() == uri._query.size());
 				// Если размеры параметров URI равны
 				if(result && !this->_query.empty()){
-					// Выполняем сравнение размеров параметров URI
+					/**
+					 * Выполняем сравнение размеров параметров URI
+					 */
 					for(auto & [key, value] : this->_query){
 						// Выполняем сравнение параметров URI
 						if(!(result = ((uri._query.find(key) != uri._query.end()) && this->_fmk->compare(uri._query.at(key), value))))
@@ -5113,7 +5157,9 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 			result = (this->_path.size() != uri._path.size());
 			// Если размеры путей URI равны
 			if(!result && !this->_path.empty()){
-				// Выполняем сравнение путей URI
+				/**
+				 * Выполняем сравнение путей URI
+				 */
 				for(size_t i = 0; i < this->_path.size(); ++i){
 					// Выполняем сравнение сегментов путей URI
 					if((result = !this->_fmk->compare(this->_path[i], uri._path[i])))
@@ -5127,7 +5173,9 @@ bool awh::Uniform_Resource_Identifier::operator != (const Uniform_Resource_Ident
 				result = (this->_query.size() != uri._query.size());
 				// Если размеры параметров URI равны
 				if(!result && !this->_query.empty()){
-					// Выполняем сравнение размеров параметров URI
+					/**
+					 * Выполняем сравнение размеров параметров URI
+					 */
 					for(auto & [key, value] : this->_query){
 						// Выполняем сравнение параметров URI
 						if((result = ((uri._query.find(key) == uri._query.end()) || !this->_fmk->compare(uri._query.at(key), value))))

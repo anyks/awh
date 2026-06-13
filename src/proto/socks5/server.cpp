@@ -282,7 +282,9 @@ bool awh::proto::Server_Socks5::parse(const void * buffer, const size_t size, ct
 								ctx.status = proto::socks5_t::status_t::DENIED;
 								// Временное значение метода для извлечения
 								method_t method = method_t::NOMETHOD;
-								// Переходим по всем методам авторизации
+								/**
+								 * Переходим по всем методам авторизации
+								 */
 								for(uint8_t i = 0; i < count; i++){
 									// Получаем метод авторизации
 									::memcpy(&method, reinterpret_cast <const uint8_t *> (buffer) + offset, sizeof(method));

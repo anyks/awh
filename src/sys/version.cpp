@@ -80,7 +80,9 @@ string awh::Version::str(const uint8_t octets) const noexcept {
 		else if(octets > 4)
 			// Выполняем корректировку
 			const_cast <uint8_t &> (octets) = 4;
-		// Переходим по всему массиву
+		/**
+		 * Переходим по всему массиву
+		 */
 		for(uint8_t i = 0; i < octets; i++){
 			// Если строка уже существует, добавляем разделитель
 			if(!result.empty())

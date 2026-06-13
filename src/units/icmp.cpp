@@ -1571,7 +1571,9 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 							this->_transfer.count = count;
 							// Последовательность
 							uint16_t sequence = 0;
-							// Выполняем пинг указанного количества раз
+							/**
+							 * Выполняем пинг указанного количества раз
+							 */
 							for(uint16_t i = 0; i < count; i++){
 								// Отправляем ICMP Echo-запрос
 								if(this->sendEcho(eid, id, sequence) > 0){

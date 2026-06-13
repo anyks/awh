@@ -56,7 +56,9 @@ void awh::unit::Timer::state(const event::id_t eid, const event::status_t status
 void awh::unit::Timer::clear() noexcept {
 	// Если список активных таймеров не пустой
 	if(!this->_timers.empty()){
-		// Переходим по всему списку активных таймеров
+		/**
+		 * Переходим по всему списку активных таймеров
+		 */
 		for(auto & eid : this->_timers){
 			// Если функция обратного вызова установлена
 			if(this->_callback.is(eid))
@@ -65,7 +67,9 @@ void awh::unit::Timer::clear() noexcept {
 		}
 		// Если список активных таймеров не пустой
 		if(!this->_timers.empty()){
-			// Переходим по всему списку активных таймеров
+			/**
+			 * Переходим по всему списку активных таймеров
+			 */
 			for(auto & eid : this->_timers)
 				// Удаляем событие таймера
 				this->_io->destroy(eid);
@@ -224,7 +228,9 @@ void awh::unit::Timer::callback(const callback_t & callback) noexcept {
 	unit_t::callback(callback);
 	// Если список активных таймеров не пустой
 	if(!this->_timers.empty()){
-		// Переходим по всему списку активных таймеров
+		/**
+		 * Переходим по всему списку активных таймеров
+		 */
 		for(auto & eid : this->_timers){
 			// Если функция обратного вызова установлена
 			if(callback.is(eid))

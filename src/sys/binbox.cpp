@@ -231,7 +231,9 @@ namespace binbox {
 				if(count > 0){
 					// Идентификатор записи
 					uint64_t idw = 0;
-					// Выполняем перебор всех записей бинарных данных
+					/**
+					 * Выполняем перебор всех записей бинарных данных
+					 */
 					for(uint32_t i = 0; i < count; i++){
 						// Выполняем извлечение идентификатора записи
 						::memcpy(reinterpret_cast <void *> (&idw), &buffer[0] + offset, sizeof(idw));

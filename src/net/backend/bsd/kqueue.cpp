@@ -555,7 +555,9 @@ namespace std {
 					case static_cast <uint8_t> (event::family_t::UDS): {
 						// Безопасное чтение 108 байт пути сокета как массива uint64_t
 						const uint64_t * words = reinterpret_cast <const uint64_t *> (id.un.path);
-						// Хэш по всем 108 байтам, включая нули
+						/**
+						 * Хэш по всем 108 байтам, включая нули
+						 */
 						for(uint8_t i = 0; i < static_cast <uint8_t> (sizeof(id.un.path) / sizeof(uint64_t)); ++i)
 							// Комбинируем хеш-код части пути сокета
 							this->combine(result, hash <uint64_t> {}(words[i]));
@@ -1507,7 +1509,9 @@ namespace fs {
 			string part = "";
 			// Составные части пути
 			vector <string> parts;
-			// 2. Теперь у нас есть строка, начинающаяся с '/', — нормализуем её
+			/**
+			 * 2. Теперь у нас есть строка, начинающаяся с '/', — нормализуем её
+			 */
 			for(char letter : path){
 				// Если встретили слэш разделителя файловой системы
 				if(letter == AWH_FS_SEPARATOR[0]){
@@ -1544,7 +1548,9 @@ namespace fs {
 			}
 			// 3. Собираем результат — строго один слэш в начале
 			string result = AWH_FS_SEPARATOR;
-			// Проходим по всем частям пути
+			/**
+			 * Проходим по всем частям пути
+			 */
 			for(size_t i = 0; i < parts.size(); ++i){
 				// Если это не первая часть пути
 				if(i > 0)
@@ -1594,7 +1600,9 @@ namespace fs {
 		if((length > 0) && (addr.sun_path[0] == '\0'))
 			// Имя начинается со второго байта
 			return ("@" + string(addr.sun_path + 1, length - 1));
-		// Обрезаем по первому \0, если он есть (защита от мусора)
+		/**
+		 * Обрезаем по первому \0, если он есть (защита от мусора)
+		 */
 		for(uint8_t i = 0; i < static_cast <uint8_t> (length); ++i){
 			// Если встретили нулевой байт
 			if(addr.sun_path[i] == '\0'){
@@ -2150,7 +2158,9 @@ namespace local {
 					}
 					// Значение узла для обработки изменений
 					::io::node_t * node = nullptr;
-					// Выполняем переход по всему объекту изменений
+					/**
+					 * Выполняем переход по всему объекту изменений
+					 */
 					for(auto i = ::local::result.begin(); i != ::local::result.end();){
 						// Возвращаем начинающий перенос текста
 						cout << endl;
@@ -4357,9 +4367,13 @@ namespace timer2 {
 			if(__awh_chunk_pool__.empty()){
 				// Создаём новый чанк для хранения информации о таймерах
 				chunk = make_unique <Chunk> ();
-				// Перебираем все слоты в чанке
+				/**
+				 * Перебираем все слоты в чанке
+				 */
 				for(auto & row : chunk->slots){
-					// Инициализируем все слоты в строке значением -1
+					/**
+					 * Инициализируем все слоты в строке значением -1
+					 */
 					for(auto & val : row)
 						// Устанавливаем значение слота в -1, что означает отсутствие таймера
 						val = -1;
@@ -4370,9 +4384,13 @@ namespace timer2 {
 				chunk = ::move(__awh_chunk_pool__.back());
 				// Удаляем последний элемент из пула чанков, так как он теперь используется
 				__awh_chunk_pool__.pop_back();
-				// Перебираем все слоты в чанке
+				/**
+				 * Перебираем все слоты в чанке
+				 */
 				for(auto & row : chunk->slots){
-					// Инициализируем все слоты в строке значением -1
+					/**
+					 * Инициализируем все слоты в строке значением -1
+					 */
 					for(auto & val : row)
 						// Устанавливаем значение слота в -1, что означает отсутствие таймера
 						val = -1;
@@ -4407,7 +4425,9 @@ namespace timer2 {
 	 *
 	 */
 	static void __release_empty_chunks__() noexcept {
-		// Перебираем все активные чанки
+		/**
+		 * Перебираем все активные чанки
+		 */
 		for(auto & ptr : __awh_chunks__){
 			// Если чанк существует и в нём нет активных таймеров, освобождаем его
 			if((ptr != nullptr) && (ptr->count == 0))
@@ -13583,7 +13603,9 @@ namespace io {
 		try {
 			// Флаг оставшихся данных для отправки
 			bool hasTransferData = false;
-			// Проходим по всем сессиям источников
+			/**
+			 * Проходим по всем сессиям источников
+			 */
 			for(auto & session : ::__awh_origin_sessions__){
 				// Получаем текущее значение объекта однорангового узла-источника
 				::io::origin_t * origin = awh_cast <::io::origin_t *> (session.second);
@@ -24783,7 +24805,9 @@ namespace io {
 					::rewinddir(dir->handle);
 					// Если произошло событие удаления файла или каталога
 					if(!entries.empty()){
-						// Проходим по всем записям во временном множестве
+						/**
+						 * Проходим по всем записям во временном множестве
+						 */
 						for(const auto & entry : entries){
 							// Вызываем функцию обратного вызова
 							dir->callbacks.vnode(dir->id, event::action_t::DELETE, entry.second, entry.first);
@@ -26045,7 +26069,9 @@ namespace io {
 								if(::fcntl(dir->fd, F_GETPATH, ::__awh_buffer__) == 0){
 									// Множество уже прочитанных записей каталога
 									unordered_map <string, event::vnode_t> entries;
-									// Проходим по всем записям в директории
+									/**
+									 * Проходим по всем записям в директории
+									 */
 									for(auto i = dir->entries.begin(); i != dir->entries.end();){
 										// Добавляем запись в список содержимого директории с новым путём
 										entries.emplace(fmk->format("%s%s", ::__awh_buffer__, i->first.substr(awh_cast <net::addr_fs_t *> (dir->path.get())->address.length()).c_str()), i->second);
@@ -27290,7 +27316,9 @@ namespace sctp {
 							const size_t length = (sac->sac_length - offset);
 							// Выделяем память для информационных флагов
 							association->info.resize(length);
-							// Перебираем все информационные флаги событий
+							/**
+							 * Перебираем все информационные флаги событий
+							 */
 							for(size_t i = 0; i < length; i++){
 								/**
 								 * Обрабатываем информационные флаги события SCTP
@@ -27942,7 +27970,9 @@ namespace sctp {
 							const uint16_t * streams = reinterpret_cast <const uint16_t *> (strres + 1);
 							// Выделяем память под список сброшенных потоков
 							association->streams.resize(count);
-							// Печатаем список сброшенных потоков
+							/**
+							 * Печатаем список сброшенных потоков
+							 */
 							for(size_t i = 0; i < count; i++)
 								// Добавляем номер сброшенного потока
 								association->streams[i] = streams[i];
@@ -28498,7 +28528,9 @@ namespace sctp {
 							peer->transfer.sctp.info.sinfo_flags = 0;
 							// Если флаги SCTP установлены
 							if(!info.flags.empty()){
-								// Выполняем перебор всех возможных информационных флагов SCTP
+								/**
+								 * Выполняем перебор всех возможных информационных флагов SCTP
+								 */
 								for(auto & flag : info.flags){
 									/**
 									 * Определяем тип информационного флага SCTP
@@ -28602,7 +28634,9 @@ namespace sctp {
 							client->transfer.sctp.info.sinfo_flags = 0;
 							// Если флаги SCTP установлены
 							if(!info.flags.empty()){
-								// Выполняем перебор всех возможных информационных флагов SCTP
+								/**
+								 * Выполняем перебор всех возможных информационных флагов SCTP
+								 */
 								for(auto & flag : info.flags){
 									/**
 									 * Определяем тип информационного флага SCTP
@@ -46451,7 +46485,9 @@ std::array <awh::event::id_t, 2> awh::engine::IO::events(const event::family_t f
 		const auto & fds = this->_eth.socket.ipc(family, type, protocol);
 		// Если пара сокетов создана удачно
 		if((fds[0] != net::invalid_socket_t) && (fds[1] != net::invalid_socket_t)){
-			// Переходим по всему списку идентификаторов событий
+			/**
+			 * Переходим по всему списку идентификаторов событий
+			 */
 			for(uint8_t i = 0; i < 2; i++){
 				/**
 				 * Определяем семейство адресов
@@ -50993,7 +51029,9 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 	try {
 		// Если список идентификаторов событий для подключения не пустой
 		if(!ids.empty()){
-			// Выполняем перебор всех идентификаторов
+			/**
+			 * Выполняем перебор всех идентификаторов
+			 */
 			for(const event::id_t & id : ids){
 				// Выполняем поиск идентификатора события
 				auto i = ::__awh_nodes__.find(id);
@@ -51109,7 +51147,9 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 														vector <struct sockaddr> addrs(ids.size());
 														// Добавляем адреса в список для подключения
 														addrs.front() = ::trust_cast <struct sockaddr> (client->endpoint.server);
-														// Проходим по всем идентификаторам событий для подключения
+														/**
+														 * Проходим по всем идентификаторам событий для подключения
+														 */
 														for(size_t j = 1; j < ids.size(); j++){
 															// Выполняем поиск идентификатора события
 															auto i = ::__awh_nodes__.find(* (ids.begin() + j));
@@ -58341,7 +58381,9 @@ void awh::engine::IO::clear() noexcept {
 			(void) this->poll(0);
 			// Флаг наличия узлов, ожидающих завершения удаления
 			bool pending = false;
-			// Выполняем перебор всех активных узлов
+			/**
+			 * Выполняем перебор всех активных узлов
+			 */
 			for(const auto & item : ::__awh_nodes__){
 				// Если узел находится в состоянии подлежащего уничтожению
 				if(item.second->state.status == event::status_t::DESTROYED){
@@ -58358,7 +58400,9 @@ void awh::engine::IO::clear() noexcept {
 			// Выполняем пинок Kqueue для обработки отложенных пользовательских событий
 			(void) this->kick();
 		}
-		// Выполняем перебор всех активных узлов
+		/**
+		 * Выполняем перебор всех активных узлов
+		 */
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			// Если узел уже находится в рабочем состоянии
 			if(i->second->state.status != event::status_t::NONE){
@@ -59007,7 +59051,9 @@ bool awh::engine::IO::reinitialize() noexcept {
 		}
 		// Добавляем новое событие в список изменений
 		::events::add(::move(event));
-		// Выполняем перебор всех активных узлов
+		/**
+		 * Выполняем перебор всех активных узлов
+		 */
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			// Если узел ещё не находится в рабочем состоянии
 			if(i->second->state.status == event::status_t::NONE){
@@ -59552,7 +59598,9 @@ bool awh::engine::IO::deinitialize() noexcept {
 			(void) this->poll(0);
 			// Флаг наличия узлов, ожидающих завершения удаления
 			bool pending = false;
-			// Выполняем перебор всех активных узлов
+			/**
+			 * Выполняем перебор всех активных узлов
+			 */
 			for(const auto & item : ::__awh_nodes__){
 				// Если узел находится в состоянии подлежащего уничтожению
 				if(item.second->state.status == event::status_t::DESTROYED){
@@ -59572,7 +59620,9 @@ bool awh::engine::IO::deinitialize() noexcept {
 	}
 	// Если после деинициализации остались активные узлы
 	if((result = !::__awh_nodes__.empty())){
-		// Выполняем перебор всех активных узлов
+		/**
+		 * Выполняем перебор всех активных узлов
+		 */
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			/**
 			 * Определяем чем является текущий узел
@@ -61590,7 +61640,9 @@ awh::engine::IO::~IO() noexcept {
 		::__awh_origin_sessions__.clear();
 	// Если после деинициализации остались активные узлы
 	if(!::__awh_nodes__.empty()){
-		// Выполняем перебор всех активных узлов
+		/**
+		 * Выполняем перебор всех активных узлов
+		 */
 		for(auto i = ::__awh_nodes__.begin(); i != ::__awh_nodes__.end();){
 			/**
 			 * Определяем чем является текущий узел

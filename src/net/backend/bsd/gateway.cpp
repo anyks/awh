@@ -321,7 +321,9 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							// Возвращаем пустой результат
 							return result;
 						}
-						// Перебираем все сетевые интерфейсы
+						/**
+						 * Перебираем все сетевые интерфейсы
+						 */
 						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 							// Если не IPv4 адреса
 							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
@@ -536,7 +538,9 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							route.prefix = 0;
 							// Если задана маска подсети
 							if(mask != nullptr){
-								// Преобразуем маску в префикс
+								/**
+								 * Преобразуем маску в префикс
+								 */
 								for(uint8_t i = 0; i < 16; ++i){
 									// Получаем байт маски
 									uint8_t byte = mask->sin6_addr.s6_addr[i];
@@ -582,7 +586,9 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 							// Возвращаем пустой результат
 							return result;
 						}
-						// Перебираем все сетевые интерфейсы
+						/**
+						 * Перебираем все сетевые интерфейсы
+						 */
 						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 							// Если не IPv6 адреса
 							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
@@ -771,7 +777,9 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						struct ifaddrs * ifptr = nullptr;
 						// Получаем список сетевых интерфейсов
 						if(::getifaddrs(&ifptr) == 0){
-							// Перебираем интерфейсы
+							/**
+							 * Перебираем интерфейсы
+							 */
 							for(struct ifaddrs * ifa = ifptr; ifa != nullptr; ifa = ifa->ifa_next){
 								// Если интерфейс совпадает и семейство адресов IPv4
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
@@ -969,7 +977,9 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 						struct ifaddrs * ifptr = nullptr;
 						// Получаем список сетевых интерфейсов
 						if(::getifaddrs(&ifptr) == 0){
-							// Перебираем интерфейсы
+							/**
+							 * Перебираем интерфейсы
+							 */
 							for(struct ifaddrs * ifa = ifptr; ifa != nullptr; ifa = ifa->ifa_next){
 								// Если интерфейс совпадает и семейство адресов IPv6
 								if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_INET6) && (::strcmp(ifa->ifa_name, route.ifname.c_str()) == 0)){
@@ -1038,7 +1048,9 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 					} else if(route.prefix > 0) {
 						// Текущий префикс
 						uint32_t prefix = static_cast <uint32_t> (route.prefix);
-						// Проходим по байтам
+						/**
+						 * Проходим по байтам
+						 */
 						for(uint8_t i = 0; i < 16; ++i){
 							// Если префикс больше либо равен 8
 							if(prefix >= 8){
@@ -1542,7 +1554,9 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					if(route.prefix > 0){
 						// Текущий префикс
 						uint32_t prefix = static_cast <uint32_t> (route.prefix);
-						// Проходим по байтам
+						/**
+						 * Проходим по байтам
+						 */
 						for(uint8_t i = 0; i < 16; ++i){
 							// Если префикс больше либо равен 8
 							if(prefix >= 8){

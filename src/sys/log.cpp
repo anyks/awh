@@ -250,7 +250,9 @@ string & awh::Logging::cleaner(string & text) const noexcept {
 	 * Выполняем поиск символов экранирования
 	 */
 	while((pos = text.find("\x1B[", pos)) != string::npos){
-		// Выполняем поиск завершения блока экранирования
+		/**
+		 * Выполняем поиск завершения блока экранирования
+		 */
 		for(size_t i = (pos + 3); i < text.length(); i++){
 			// Выполняем получение текущего символа
 			letter = text[i];
@@ -568,7 +570,9 @@ void awh::Logging::print(string_view format, flag_t flag, ...) const noexcept {
 				va_start(args, flag);
 				// Буфер данных для логирования
 				vector <char> buffer(1024);
-				// Выполняем перебор всех аргументов
+				/**
+				 * Выполняем перебор всех аргументов
+				 */
 				for(;;){
 					// Создаем список аргументов
 					va_list args2;
@@ -723,7 +727,9 @@ void awh::Logging::print(wstring_view format, flag_t flag, ...) const noexcept {
 				 * Создаём текст для логирования
 				 */
 				const wstring text{format};
-				// Выполняем перебор всех аргументов
+				/**
+				 * Выполняем перебор всех аргументов
+				 */
 				for(;;){
 					// Создаем список аргументов
 					va_list args2;

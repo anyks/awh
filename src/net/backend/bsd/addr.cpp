@@ -164,7 +164,9 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 					return;
 				// Переменная результата
 				bool result = false;
-				// Перебираем все сетевые интерфейсы
+				/**
+				 * Перебираем все сетевые интерфейсы
+				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не совпадающие имена интерфейсов
 					if((ifa->ifa_name == nullptr) || (::strcmp(ifa->ifa_name, source.iface.c_str()) != 0))
@@ -220,7 +222,9 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							// Выходим из функции
 							return;
 						}
-						// Перебираем все сетевые интерфейсы
+						/**
+						 * Перебираем все сетевые интерфейсы
+						 */
 						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 							// Пропускаем не IPv4-интерфейсы
 							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
@@ -266,7 +270,9 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 							// Выходим из функции
 							return;
 						}
-						// Перебираем все сетевые интерфейсы
+						/**
+						 * Перебираем все сетевые интерфейсы
+						 */
 						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 							// Пропускаем не IPv6-интерфейсы
 							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
@@ -393,7 +399,9 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				}
 				// Устанавливаем префикс хостового адреса
 				awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->prefix = network->prefix;
-				// Перебираем все сетевые интерфейсы
+				/**
+				 * Перебираем все сетевые интерфейсы
+				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не IPv4-интерфейсы
 					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
@@ -464,7 +472,9 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->prefix = network->prefix;
 				// Временный IPv6-адрес
 				struct in6_addr addr;
-				// Перебираем все сетевые интерфейсы
+				/**
+				 * Перебираем все сетевые интерфейсы
+				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не IPv6-интерфейсы
 					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
@@ -689,7 +699,9 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						char * end = (&buffer[0] + size);
 						// Получаем числовое значение IP-адреса
 						const uint32_t addr = awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address;
-						// Переходим по всем сетевым интерфейсам
+						/**
+						 * Переходим по всем сетевым интерфейсам
+						 */
 						for(begin = &buffer[0]; begin < end;){
 							// Получаем указатель сетевого интерфейса
 							struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
@@ -808,7 +820,9 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						struct sockaddr_in6 addr;
 						// Копируем IP-адрес в структуру подключения
 						::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr.sin6_addr));
-						// Переходим по всем сетевым интерфейсам
+						/**
+						 * Переходим по всем сетевым интерфейсам
+						 */
 						for(begin = &buffer[0]; begin < end;){
 							// Получаем указатель сетевого интерфейса
 							struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
@@ -920,7 +934,9 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						net::src_t temp(::make_unique <net::addr_net_ipv4_t> ());
 						// Получаем числовое значение IP-адреса
 						const uint32_t addr = awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address;
-						// Перебираем все сетевые интерфейсы
+						/**
+						 * Перебираем все сетевые интерфейсы
+						 */
 						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 							// Пропускаем не IPv4-интерфейсы
 							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
@@ -993,7 +1009,9 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						struct sockaddr_in6 addr;
 						// Копируем IP-адрес в структуру подключения
 						::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr.sin6_addr));
-						// Перебираем все сетевые интерфейсы
+						/**
+						 * Перебираем все сетевые интерфейсы
+						 */
 						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 							// Пропускаем не IPv6-интерфейсы
 							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))

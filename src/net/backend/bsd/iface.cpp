@@ -346,7 +346,9 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 			// Возвращаем пустой результат
 			return result;
 		}
-		// Перебираем все сетевые интерфейсы
+		/**
+		 * Перебираем все сетевые интерфейсы
+		 */
 		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next)
 			// Добавляем имя сетевого интерфейса в результирующий список
 			result.emplace(ifa->ifa_name);
@@ -408,7 +410,9 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 				// Возвращаем пустой результат
 				return result;
 			}
-			// Перебираем все сетевые интерфейсы
+			/**
+			 * Перебираем все сетевые интерфейсы
+			 */
 			for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next)
 				// Добавляем имя сетевого интерфейса в результирующий список
 				if((result = this->_fmk->compare(ifa->ifa_name, name)))
@@ -457,7 +461,9 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
 			if(::getifaddrs(&ptr) == 0){
-				// Перебираем все сетевые интерфейсы
+				/**
+				 * Перебираем все сетевые интерфейсы
+				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Если имя интерфейса совпадает
 					if(this->_fmk->compare(ifa->ifa_name, name)){
@@ -559,7 +565,9 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
 			if(::getifaddrs(&ptr) == 0){
-				// Перебираем все сетевые интерфейсы
+				/**
+				 * Перебираем все сетевые интерфейсы
+				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Если имя интерфейса совпадает
 					if(this->_fmk->compare(ifa->ifa_name, name)){
@@ -688,7 +696,9 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 			// Возвращаем пустой результат
 			return result;
 		}
-		// Перебираем все сетевые интерфейсы
+		/**
+		 * Перебираем все сетевые интерфейсы
+		 */
 		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 			/**
 			 * Определяем тип адреса
@@ -797,7 +807,9 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					struct ifaddrs * ifap = nullptr;
 					// Если список получен успешно
 					if(::getifaddrs(&ifap) == 0){
-						// Перебираем интерфейсы
+						/**
+						 * Перебираем интерфейсы
+						 */
 						for(struct ifaddrs * ifa = ifap; ifa != nullptr; ifa = ifa->ifa_next){
 							// Пропускаем интерфейсы без адреса AF_LINK
 							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_LINK))
@@ -844,7 +856,9 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					}
 					// Теперь открываем BPF устройство для работы с пакетами
 					char buffer[32];
-					// Перебираем устройства BPF
+					/**
+					 * Перебираем устройства BPF
+					 */
 					for(uint16_t i = 0; i < 256; ++i){
 						// Формируем путь
 						::snprintf(buffer, sizeof(buffer), "/dev/bpf%u", i);
@@ -1826,7 +1840,9 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 					if((prefix > 0) && (prefix <= 128)){
 						// Текущее значение маски подсети
 						uint32_t mask = static_cast <uint32_t> (prefix);
-						// Проходим по байтам
+						/**
+						 * Проходим по байтам
+						 */
 						for(uint8_t i = 0; i < 16; ++i){
 							// Если префикс больше либо равен 8
 							if(mask >= 8){
@@ -1928,7 +1944,9 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 				// Выходим из функции
 				return result;
 			}
-			// Перебираем все сетевые интерфейсы
+			/**
+			 * Перебираем все сетевые интерфейсы
+			 */
 			for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 				// Пропускаем не IPv4-интерфейсы
 				if(ifa->ifa_addr == nullptr)
@@ -2121,7 +2139,9 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 					if((prefix > 0) && (prefix <= 128)){
 						// Текущее значение маски подсети
 						uint32_t mask = static_cast <uint32_t> (prefix);
-						// Проходим по байтам
+						/**
+						 * Проходим по байтам
+						 */
 						for(uint8_t i = 0; i < 16; ++i){
 							// Если префикс больше либо равен 8
 							if(mask >= 8){
@@ -2209,7 +2229,9 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
 			if(::getifaddrs(&ptr) == 0){
-				// Перебираем все сетевые интерфейсы
+				/**
+				 * Перебираем все сетевые интерфейсы
+				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Если интерфейс не имеет адреса или имя не совпадает
 					if((ifa->ifa_addr == nullptr) || !this->_fmk->compare(ifa->ifa_name, name))
@@ -2266,7 +2288,9 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 									if(ifa->ifa_netmask != nullptr){
 										// Получаем маску подсети
 										struct sockaddr_in6 * msk6 = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_netmask);
-										// Вычисляем префикс
+										/**
+										 * Вычисляем префикс
+										 */
 										for(size_t i = 0; i < 16; ++i){
 											// Получаем байт маски
 											uint8_t byte = msk6->sin6_addr.s6_addr[i];

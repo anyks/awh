@@ -1540,7 +1540,9 @@ namespace ssl {
 	static bool selectProto(uint8_t ** out, uint8_t * outSize, const uint8_t * in, const uint8_t inSize, const uint8_t * key, const uint8_t keySize) noexcept {
 		// Переменная результата
 		bool result = false;
-		// Выполняем перебор всех данных в входящем буфере
+		/**
+		 * Выполняем перебор всех данных в входящем буфере
+		 */
 		for(uint8_t i = 0; (i + keySize) <= inSize; i += static_cast <uint8_t> (in[i] + 1)){
 			// Если данные ключа скопированны удачно
 			if((result = (::memcmp(&in[i], key, keySize) == 0))){
@@ -1605,7 +1607,9 @@ namespace ssl {
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем перебор всех поддерживаемых протоколов
+				/**
+				 * Выполняем перебор всех поддерживаемых протоколов
+				 */
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
 					size = member->alpn.buffer[i];
@@ -1650,7 +1654,9 @@ namespace ssl {
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
-				// Выполняем перебор всех поддерживаемых протоколов
+				/**
+				 * Выполняем перебор всех поддерживаемых протоколов
+				 */
 				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 					// Получаем размер протокола
 					size = member->alpn.buffer[i];
@@ -2589,7 +2595,9 @@ namespace verify {
 			if(san != nullptr){
 				// Полученное доменное имя
 				string fqdn = "";
-				// Проверяем каждый элемент SAN
+				/**
+				 * Проверяем каждый элемент SAN
+				 */
 				for(int32_t i = 0; i < sk_GENERAL_NAME_num(san); i++){
 					// Извлекаем элемент SAN
 					const GENERAL_NAME * cn = sk_GENERAL_NAME_value(san, i);
@@ -4174,7 +4182,9 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 							const size_t size = result.size();
 							// Выделяем память для хранения информации о шифрах
 							result.resize(size + count);
-							// Проходим по каждому шифру в списке
+							/**
+							 * Проходим по каждому шифру в списке
+							 */
 							for(size_t i = 0; i < count; ++i){
 								// Получаем объект шифра
 								const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
@@ -4322,7 +4332,9 @@ vector <awh::tls::Coder::cipher_info_t> awh::tls::Coder::availableCiphers(const 
 							const size_t size = result.size();
 							// Выделяем память для хранения информации о шифрах
 							result.resize(size + count);
-							// Проходим по каждому шифру в списке
+							/**
+							 * Проходим по каждому шифру в списке
+							 */
 							for(size_t i = 0; i < count; ++i){
 								// Получаем объект шифра
 								const SSL_CIPHER * c = ::sk_SSL_CIPHER_value(ciphers, i);
@@ -4807,7 +4819,9 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 					if(san != nullptr){
 						// Полученное доменное имя
 						string fqdn = "";
-						// Проверяем каждый элемент SAN
+						/**
+						 * Проверяем каждый элемент SAN
+						 */
 						for(int32_t i = 0; i < sk_GENERAL_NAME_num(san); i++){
 							// Извлекаем элемент SAN
 							const GENERAL_NAME * cn = sk_GENERAL_NAME_value(san, i);
@@ -5886,7 +5900,9 @@ bool awh::tls::Coder::handshake(const id_t id) noexcept {
 						::SSL_get0_alpn_selected(member->ssl, &proto, &length);
 						// Размер и индекс протокола
 						uint8_t size = 0, index = 0;
-						// Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
+						/**
+						 * Выполняем перебор всего буфера поддерживаемых ALPN-протоколов
+						 */
 						for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
 							// Извлекаем размер протокола
 							size = member->alpn.buffer[i];

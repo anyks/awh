@@ -626,13 +626,17 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 					}
 					// Если описание записи пустое
 					if(::strlen(fwd.description) < 12){
-						// Перебираем байты описания записи
+						/**
+						 * Перебираем байты описания записи
+						 */
 						for(uint8_t i = 0; i < 12; ++i)
 							// Заполняем описание записи случайными байтами
 							const_cast <fwd_t &> (fwd).description[i] = request[24 + i] = (std::rand() % 255);
 					// Если описание записи не пустое
 					} else {
-						// Перебираем байты описания записи
+						/**
+						 * Перебираем байты описания записи
+						 */
 						for(uint8_t i = 0; i < 12; ++i)
 							// Копируем описание записи в поле запроса
 							request[24 + i] = fwd.description[i];

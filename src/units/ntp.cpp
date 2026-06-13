@@ -1851,7 +1851,9 @@ awh::unit::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk,
 			mt19937 generator(::__awh_randev__());
 			// Выполняем случайное перемешивание списка NTP-серверов
 			::shuffle(resolvers.begin(), resolvers.end(), generator);
-			// Выполняем перебор всех NTP-серверов из массива
+			/**
+			 * Выполняем перебор всех NTP-серверов из массива
+			 */
 			for(const auto & item : resolvers)
 				// Сохраняем доменное имя NTP-сервера для отложенного разрешения
 				::servers::hostnames.emplace_back(item);
