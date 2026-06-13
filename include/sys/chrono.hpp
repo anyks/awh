@@ -21,7 +21,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <any>
 #include <string>
 #include <unordered_map>
 
@@ -369,8 +368,6 @@ namespace awh {
 				lock_state_t <std::mutex> tz;
 				// Мютекс контроля локального объекта даты
 				lock_state_t <std::mutex> date;
-				// Мютекс контроля парсинга
-				lock_state_t <std::recursive_mutex> parse;
 			} mtx_t;
 			/**
 			 * @brief Структура параметров даты и времени
@@ -392,8 +389,8 @@ namespace awh {
 				uint16_t days;         // Количество прошедвших дней от 1 января
 				int32_t offset;        // Смещение временной зоны в секундах относительно UTC
 				uint32_t milliseconds; // Количество миллисекунд
-				uint64_t nanoseconds;  // Количество наносекунд
 				uint64_t microseconds; // Количество микросекунд
+				uint64_t nanoseconds;  // Количество наносекунд
 				/**
 				 * @brief Конструктор
 				 *
@@ -404,7 +401,7 @@ namespace awh {
 				 day(2), date(1), hour(0), month(1),
 				 weeks(0), seconds(0), minutes(0),
 				 year(1970), days(0), offset(0),
-				 milliseconds(0), nanoseconds(0), microseconds(0) {}
+				 milliseconds(0), microseconds(0), nanoseconds(0) {}
 			} __attribute__((packed)) dt_t;
 		private:
 			// Объект локального времени
@@ -415,8 +412,6 @@ namespace awh {
 		private:
 			// Список внутренних временных зон
 			unordered_map <string, int32_t> _timeZones;
-			// Список скомпилированных регулярных выражений
-			unordered_map <format_t, std::any> _expressions;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -483,14 +478,6 @@ namespace awh {
 			 * @param dt   объект даты который необходимо заполнить
 			 */
 			void makeDate(const uint64_t date, dt_t & dt) const noexcept;
-		private:
-			/**
-			 * @brief Метод компиляции регулярных выражений
-			 *
-			 * @param expression регулярное выражение для компиляции
-			 * @param format     формат к которому относится регулярное выражение
-			 */
-			void compile(string_view expression, const format_t format) noexcept;
 		private:
 			/**
 			 * @brief Функция заполнения объекта даты и времени

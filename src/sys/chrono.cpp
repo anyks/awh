@@ -22,11 +22,6 @@
 #include <iostream>
 
 /**
- * Подключаем заголовочный файл для работы с PCRE2
- */
-#include <pcre2/pcre2posix.h>
-
-/**
  * Подключаем заголовочные файлы проекта
  */
 #include <sys/log.hpp>
@@ -38,7 +33,7 @@
 using namespace std;
 
 /**
- * Инкапсулируем статические функции в пространство имён
+ * Инкапсулируем статические параметры в пространство имён
  */
 namespace {
 	/**
@@ -97,7 +92,794 @@ namespace {
 			{3,1},{4,4},{5,0},{6,3}
 		}) {}
 	} params;
-}
+};
+
+/**
+ * Инкапсулируем статические функции в пространство имён
+ */
+namespace {
+	/**
+	 * @brief Структура одной группы совпадения
+	 *
+	 */
+	struct match_t {
+		// Конец группы относительно начала анализируемого текста
+		ssize_t end;
+		// Начало группы относительно начала анализируемого текста
+		ssize_t begin;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit match_t() noexcept : end(-1), begin(-1) {}
+	};
+
+	/**
+	 * @brief Функция определения типа символа (от '0' до '9')
+	 *
+	 * @param letter символ для определения
+	 * @return       результат определения
+	 */
+	static inline bool isDigitChar(const char letter) noexcept {
+		// Выводим результат проверки символа на цифру
+		return ((letter >= '0') && (letter <= '9'));
+	}
+	/**
+	 * @brief Функция определения типа символа (от 'A' до 'Z')
+	 *
+	 * @param letter символ для определения
+	 * @return       результат определения
+	 */
+	static inline bool isUpperChar(const char letter) noexcept {
+		// Выводим результат проверки символа на заглавную букву
+		return ((letter >= 'A') && (letter <= 'Z'));
+	}
+	/**
+	 * @brief Функция определения типа символа (от 'a' до 'z')
+	 *
+	 * @param letter символ для определения
+	 * @return       результат определения
+	 */
+	static inline bool isLowerChar(const char letter) noexcept {
+		// Выводим результат проверки символа на строчную букву
+		return ((letter >= 'a') && (letter <= 'z'));
+	}
+	/**
+	 * @brief Функция определения типа символа (от 'A' до 'Z' или от 'a' до 'z')
+	 *
+	 * @param letter символ для определения
+	 * @return       результат определения
+	 */
+	static inline bool isAlphaChar(const char letter) noexcept {
+		// Выводим результат проверки символа на букву
+		return (isUpperChar(letter) || isLowerChar(letter));
+	}
+	/**
+	 * @brief Функция определения типа символа (от 'A' до 'Z' или от 'a' до 'z' или от '0' до '9' или '_')
+	 *
+	 * @param letter символ для определения
+	 * @return       результат определения
+	 */
+	static inline bool isWordChar(const char letter) noexcept {
+		// Выводим результат проверки символа на буквенно-цифровой символ или подчёркивание
+		return (isAlphaChar(letter) || isDigitChar(letter) || (letter == '_'));
+	}
+	/**
+	 * @brief Функция определения типа символа (пробельный символ)
+	 *
+	 * @param letter символ для определения
+	 * @return       результат определения
+	 */
+	static inline bool isSpaceChar(const char letter) noexcept {
+		// Выводим результат проверки символа на пробельный символ
+		return (
+			(letter == ' ') || (letter == '\t') ||
+			(letter == '\n') || (letter == '\r') ||
+			(letter == '\f') || (letter == '\v')
+		);
+	}
+	/**
+	 * @brief Функция жадного захвата серии цифр в позиции pos
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param pos    позиция в тексте
+	 * @param min    минимальное количество цифр
+	 * @param max    максимальное количество цифр
+	 * @return       количество захваченных цифр или 0 если их меньше min
+	 */
+	static inline size_t takeDigits(const char * text, const size_t length, const size_t pos, const size_t min, const size_t max) noexcept {
+		// Количество захваченных цифр
+		size_t count = 0;
+		/**
+		 * Захватываем цифры пока они есть и не достигнут предел
+		 */
+		while(((pos + count) < length) && (count < max) && isDigitChar(text[pos + count]))
+			// Увеличиваем количество захваченных цифр
+			count++;
+		// Возвращаем результат с учётом минимального количества
+		return ((count >= min) ? count : 0);
+	}
+	/**
+	 * @brief Функция проверки совпадения серии цифр \d{min,max} в позиции pos с заполнением группы
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param pos    позиция в тексте
+	 * @param min    минимальное количество цифр
+	 * @param max    максимальное количество цифр
+	 * @param match  группа совпадения
+	 * @return       результат проверки совпадения
+	 */
+	static inline bool matchDigits(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
+		// Захватываем серию цифр
+		const size_t digits = takeDigits(text, length, pos, min, max);
+		// Если цифр недостаточно
+		if(digits == 0)
+			// Сообщаем о неудаче
+			return false;
+		// Заполняем группу начала совпадения
+		match.begin = static_cast <ssize_t> (pos);
+		// Заполняем группу конца совпадения
+		match.end = static_cast <ssize_t> (pos + digits);
+		// Сдвигаем позицию
+		pos += digits;
+		// Сообщаем об успехе
+		return true;
+	}
+	/**
+	 * @brief Функция проверки совпадения одного литерала в позиции pos с заполнением группы
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param pos    позиция в тексте
+	 * @param letter символ для совпадения
+	 * @param match  группа совпадения
+	 * @return       результат проверки совпадения
+	 */
+	static inline bool matchLiteral(const char * text, const size_t length, size_t & pos, const char letter) noexcept {
+		// Если символ не совпадает
+		if((pos >= length) || (text[pos] != letter))
+			// Сообщаем о неудаче
+			return false;
+		// Сдвигаем позицию
+		pos++;
+		// Сообщаем об успехе
+		return true;
+	}
+	/**
+	 * @brief Функция проверки совпадения серии пробельных символов \s+ в позиции pos с заполнением группы
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param pos    позиция в тексте
+	 * @return       результат проверки совпадения
+	 */
+	static inline bool matchSpaces(const char * text, const size_t length, size_t & pos) noexcept {
+		// Если пробельных символов нет
+		if((pos >= length) || !isSpaceChar(text[pos]))
+			// Сообщаем о неудаче
+			return false;
+		/**
+		 * Пропускаем все пробельные символы
+		 */
+		while((pos < length) && isSpaceChar(text[pos]))
+			// Сдвигаем позицию
+			pos++;
+		// Сообщаем об успехе
+		return true;
+	}
+	/**
+	 * @brief Функция проверки совпадения шаблона [A-Z][a-z]{min,max} в позиции pos с заполнением группы
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param pos    позиция в тексте
+	 * @param min    минимальное количество строчных букв
+	 * @param max    максимальное количество строчных букв
+	 * @param match  группа совпадения
+	 * @return       результат проверки совпадения
+	 */
+	static inline bool matchName(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
+		// Если первый символ не является заглавной буквой
+		if((pos >= length) || !isUpperChar(text[pos]))
+			// Сообщаем о неудаче
+			return false;
+		// Количество строчных букв
+		size_t count = 0;
+		/**
+		 * Жадно захватываем строчные буквы
+		 */
+		while(((pos + 1 + count) < length) && (count < max) && isLowerChar(text[pos + 1 + count]))
+			// Увеличиваем количество захваченных строчных букв
+			count++;
+		// Если строчных букв недостаточно
+		if(count < min)
+			// Сообщаем о неудаче
+			return false;
+		// Заполняем группу начала совпадения
+		match.begin = static_cast <ssize_t> (pos);
+		// Заполняем группу конца совпадения
+		match.end = static_cast <ssize_t> (pos + 1 + count);
+		// Сдвигаем позицию
+		pos += (1 + count);
+		// Сообщаем об успехе
+		return true;
+	}
+	/**
+	 * @brief Функция проверки совпадения шаблона [A-Za-z]{2} в позиции pos с заполнением группы
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param pos    позиция в тексте
+	 * @param match  группа совпадения
+	 * @return       результат проверки совпадения
+	 */
+	static inline bool matchAlpha2(const char * text, const size_t length, size_t & pos, match_t & match) noexcept {
+		// Если двух букв подряд нет
+		if(((pos + 2) > length) || !isAlphaChar(text[pos]) || !isAlphaChar(text[pos + 1]))
+			// Сообщаем о неудаче
+			return false;
+		// Заполняем группу начала совпадения
+		match.begin = static_cast <ssize_t> (pos);
+		// Заполняем группу конца совпадения
+		match.end = static_cast <ssize_t> (pos + 2);
+		// Сдвигаем позицию
+		pos += 2;
+		// Сообщаем об успехе
+		return true;
+	}
+	/**
+	 * @brief Парсер серии цифр \d{min,max} (поиск первого совпадения)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param min    минимальное количество цифр
+	 * @param max    максимальное количество цифр
+	 * @return       список групп совпадения (пустой если совпадения нет)
+	 */
+	static vector <match_t> parseDigits(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Пропускаем нецифровые символы
+			if(!isDigitChar(text[i]))
+				// Переходим к следующей позиции
+				continue;
+			// Позиция и группа
+			size_t pos = i;
+			// Группа совпадения
+			match_t match{};
+			// Если серия цифр захвачена
+			if(matchDigits(text, length, pos, min, max, match)){
+				// Инициализируем результат одной группой совпадения
+				result.resize(1);
+				// Устанавливаем группу всего совпадения
+				result[0] = match;
+				// Возвращаем результат
+				return result;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсинга слова \w+ (поиск первого совпадения)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @return       список групп совпадения (пустой если совпадения нет)
+	 */
+	static vector <match_t> parseWord(const char * text, const size_t length) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Пропускаем не словесные символы
+			if(!isWordChar(text[i]))
+				// Переходим к следующей позиции
+				continue;
+			// Захватываем все словесные символы
+			size_t pos = i;
+			/**
+			 * Захватываем словесные символы пока они есть
+			 */
+			while((pos < length) && isWordChar(text[pos]))
+				// Сдвигаем позицию
+				pos++;
+			// Инициализируем результат одной группой совпадения
+			result.resize(1);
+			// Заполняем группу начала совпадения
+			result[0].begin = static_cast <ssize_t> (i);
+			// Заполняем группу конца совпадения
+			result[0].end = static_cast <ssize_t> (pos);
+			// Возвращаем результат
+			return result;
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера шаблона [A-Za-z]{2} (поиск первого совпадения)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @return       список групп совпадения (пустой если совпадения нет)
+	 */
+	static vector <match_t> parseAlpha2(const char * text, const size_t length) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Позиция и группа
+			size_t pos = i;
+			// Группа совпадения
+			match_t match{};
+			// Если две буквы захвачены
+			if(matchAlpha2(text, length, pos, match)){
+				// Инициализируем результат одной группой совпадения
+				result.resize(1);
+				// Устанавливаем группу всего совпадения
+				result[0] = match;
+				// Возвращаем результат
+				return result;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера шаблона [A-Z][a-z]{min,max} (поиск первого совпадения)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param min    минимальное количество строчных букв
+	 * @param max    максимальное количество строчных букв
+	 * @return       список групп совпадения (пустой если совпадения нет)
+	 */
+	static vector <match_t> parseName(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Позиция и группа
+			size_t pos = i;
+			// Группа совпадения
+			match_t match{};
+			// Если название захвачено
+			if(matchName(text, length, pos, min, max, match)){
+				// Инициализируем результат одной группой совпадения
+				result.resize(1);
+				// Устанавливаем группу всего совпадения
+				result[0] = match;
+				// Возвращаем результат
+				return result;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера последовательности цифровых групп с разделителем
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @param sep    символ разделителя между группами
+	 * @param specs  список диапазонов [min,max] для каждой группы
+	 * @return       список групп совпадения (группа 0 - всё совпадение)
+	 */
+	static vector <match_t> parseDigitGroups(const char * text, const size_t length, const char sep, const vector <pair <size_t, size_t>> & specs) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Пропускаем нецифровые символы
+			if(!isDigitChar(text[i]))
+				// Переходим к следующей позиции
+				continue;
+			// Текущая позиция и флаг успеха
+			size_t pos = i;
+			// Флаг успешного совпадения всех групп
+			bool ok = true;
+			// Список групп (плюс группа 0)
+			vector <match_t> groups(specs.size() + 1);
+			/**
+			 * Выполняем перебор всех групп
+			 */
+			for(size_t j = 0; j < specs.size(); j++){
+				// Если серия цифр не захвачена
+				if(!matchDigits(text, length, pos, specs[j].first, specs[j].second, groups[j + 1])){
+					// Снимаем флаг успеха
+					ok = false;
+					// Выходим из цикла
+					break;
+				}
+				// Если это не последняя группа
+				if((j + 1) < specs.size()){
+					// Если разделитель не совпал
+					if(!matchLiteral(text, length, pos, sep)){
+						// Снимаем флаг успеха
+						ok = false;
+						// Выходим из цикла
+						break;
+					}
+				}
+			}
+			// Если совпадение получено
+			if(ok){
+				// Заполняем группу начала совпадения
+				groups[0].begin = static_cast <ssize_t> (i);
+				// Заполняем группу конца совпадения
+				groups[0].end = static_cast <ssize_t> (pos);
+				// Возвращаем результат
+				return groups;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера шаблона (\d{1,2}):(\d{1,2}):(\d{1,2})\s+([A-Za-z]{2}) (формат %r)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @return       список групп совпадения (группа 0 - всё совпадение)
+	 */
+	static vector <match_t> parseTimeMeridiem(const char * text, const size_t length) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Пропускаем нецифровые символы
+			if(!isDigitChar(text[i]))
+				// Переходим к следующей позиции
+				continue;
+			// Текущая позиция
+			size_t pos = i;
+			// Список групп
+			vector <match_t> groups(5);
+			// Выполняем последовательный разбор времени и метки времени суток
+			const bool ok = matchDigits(text, length, pos, 1, 2, groups[1]) &&
+			                matchLiteral(text, length, pos, ':') &&
+							matchDigits(text, length, pos, 1, 2, groups[2]) &&
+							matchLiteral(text, length, pos, ':') &&
+							matchDigits(text, length, pos, 1, 2, groups[3]) &&
+							matchSpaces(text, length, pos) &&
+							matchAlpha2(text, length, pos, groups[4]);
+			// Если совпадение получено
+			if(ok){
+				// Заполняем группу начала совпадения
+				groups[0].begin = static_cast <ssize_t> (i);
+				// Заполняем группу конца совпадения
+				groups[0].end = static_cast <ssize_t> (pos);
+				// Возвращаем результат
+				return groups;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера шаблона ([A-Z][a-z]{2})\s+([A-Z][a-z]{2})\s+(\d{1,2})\s+(\d{1,2}):(\d{1,2}):(\d{1,2})\s+(\d{4}) (формат %c)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @return       список групп совпадения (группа 0 - всё совпадение)
+	 */
+	static vector <match_t> parseAsctime(const char * text, const size_t length) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Пропускаем символы не являющиеся заглавной буквой
+			if(!isUpperChar(text[i]))
+				// Переходим к следующей позиции
+				continue;
+			// Текущая позиция
+			size_t pos = i;
+			// Список групп
+			vector <match_t> groups(8);
+			// Выполняем последовательный разбор даты в формате asctime
+			const bool ok = matchName(text, length, pos, 2, 2, groups[1]) &&
+			                matchSpaces(text, length, pos) &&
+							matchName(text, length, pos, 2, 2, groups[2]) &&
+							matchSpaces(text, length, pos) &&
+							matchDigits(text, length, pos, 1, 2, groups[3]) &&
+							matchSpaces(text, length, pos) &&
+							matchDigits(text, length, pos, 1, 2, groups[4]) &&
+							matchLiteral(text, length, pos, ':') &&
+							matchDigits(text, length, pos, 1, 2, groups[5]) &&
+							matchLiteral(text, length, pos, ':') &&
+							matchDigits(text, length, pos, 1, 2, groups[6]) &&
+							matchSpaces(text, length, pos) &&
+							matchDigits(text, length, pos, 4, 4, groups[7]);
+			// Если совпадение получено
+			if(ok){
+				// Заполняем группу начала совпадения
+				groups[0].begin = static_cast <ssize_t> (i);
+				// Заполняем группу конца совпадения
+				groups[0].end = static_cast <ssize_t> (pos);
+				// Возвращаем результат
+				return groups;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера шаблона (\+|\-)((\d{1,2}):(\d{1,2})|\d{1,4}) (формат %z)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - знак, группа 2 - блок смещения, группы 3 и 4 - часы и минуты при формате с двоеточием, группа 5 - цифровое смещение при формате без двоеточия)
+	 */
+	static vector <match_t> parseZoneOffset(const char * text, const size_t length) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Пропускаем символы не являющиеся знаком
+			if((text[i] != '+') && (text[i] != '-'))
+				// Переходим к следующей позиции
+				continue;
+			// Список групп
+			vector <match_t> groups(6);
+			// Заполняем группу начала совпадения
+			groups[1].begin = static_cast <ssize_t> (i);
+			// Заполняем группу конца совпадения
+			groups[1].end = static_cast <ssize_t> (i + 1);
+			// Позиция начала блока смещения
+			const size_t branchStart = (i + 1);
+			// Конечная позиция совпадения
+			size_t pos = branchStart;
+			// Пробуем ветку (\d{1,2}):(\d{1,2})
+			size_t begin = branchStart;
+			// Группы часов и минут
+			match_t hh{}, mm{};
+			// Если ветка с двоеточием совпала
+			if(matchDigits(text, length, begin, 1, 2, hh) &&
+			   matchLiteral(text, length, begin, ':') &&
+			   matchDigits(text, length, begin, 1, 2, mm)){
+				// Заполняем группы часов и минут
+				groups[3] = hh;
+				groups[4] = mm;
+				// Заполняем группу начала совпадения
+				groups[2].begin = static_cast <ssize_t> (branchStart);
+				// Заполняем группу конца совпадения
+				groups[2].end = static_cast <ssize_t> (begin);
+				// Сдвигаем конечную позицию
+				pos = begin;
+			// Иначе пробуем ветку \d{1,4}
+			} else {
+				// Группа цифрового смещения
+				match_t dd{};
+				// Позиция и группа цифрового смещения
+				size_t begin = branchStart;
+				// Если цифровое смещение захвачено
+				if(matchDigits(text, length, begin, 1, 4, dd)){
+					// Заполняем группу цифрового смещения
+					groups[5] = dd;
+					// Заполняем группу начала совпадения
+					groups[2].begin = static_cast <ssize_t> (branchStart);
+					// Заполняем группу конца совпадения
+					groups[2].end = static_cast <ssize_t> (begin);
+					// Сдвигаем конечную позицию
+					pos = begin;
+				// Если знак не сопровождается смещением, переходим к следующей позиции
+				} else continue;
+			}
+			// Заполняем группу начала совпадения
+			groups[0].begin = static_cast <ssize_t> (i);
+			// Заполняем группу конца совпадения
+			groups[0].end = static_cast <ssize_t> (pos);
+			// Возвращаем результат
+			return groups;
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера шаблона (\w+)?((\+|\-)((\d{1,2}):(\d{1,2})|\d{1,4}))? (формат %e)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - слово, группа 2 - блок смещения, группа 3 - знак, группы 4 и 5 - часы и минуты при формате с двоеточием, группа 6 - цифровое смещение при формате без двоеточия)
+	 */
+	static vector <match_t> parseZoneFull(const char * text, const size_t length) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого непустого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Текущая позиция
+			size_t pos = i;
+			// Список групп
+			vector <match_t> groups(7);
+			// Пробуем необязательное слово (\w+)?
+			if(isWordChar(text[pos])){
+				// Захватываем все словесные символы
+				size_t offset = pos;
+				/**
+				 * Захватываем словесные символы пока они есть
+				 */
+				while((offset < length) && isWordChar(text[offset]))
+					// Сдвигаем смещение
+					offset++;
+				// Заполняем группу начала совпадения
+				groups[1].begin = static_cast <ssize_t> (pos);
+				// Заполняем группу конца совпадения
+				groups[1].end = static_cast <ssize_t> (offset);
+				// Сдвигаем позицию
+				pos = offset;
+			}
+			// Пробуем необязательный блок смещения ((\+|\-)(...))?
+			if((pos < length) && ((text[pos] == '+') || (text[pos] == '-'))){
+				// Группы значения смещения
+				match_t off{}, hh{}, mm{};
+				// Флаг успеха разбора внутреннего смещения
+				bool inner = false;
+				// Позиция начала блока и позиция значения смещения
+				const size_t blockStart = pos;
+				// Конечная позиция блока
+				size_t offset = (pos + 1);
+				/**
+				 * Пробуем ветку (\d{1,2}):(\d{1,2})
+				 */
+				// Группы значения смещения для ветки с двоеточием
+				match_t h2{}, m2{};
+				// Позиция и группа часов и минут при формате с двоеточием
+				size_t begin = (pos + 1);
+				// Если ветка с двоеточием совпала
+				if(matchDigits(text, length, begin, 1, 2, h2) &&
+				   matchLiteral(text, length, begin, ':') &&
+				   matchDigits(text, length, begin, 1, 2, m2)){
+					// Сохраняем часы и минуты
+					hh = h2;
+					mm = m2;
+					// Заполняем группу начала совпадения
+					off.begin = static_cast <ssize_t> (pos + 1);
+					// Заполняем группу конца совпадения
+					off.end = static_cast <ssize_t> (begin);
+					// Сдвигаем конечную позицию блока
+					offset = begin;
+					// Поднимаем флаг успеха
+					inner = true;
+				// Иначе пробуем ветку \d{1,4}
+				} else {
+					// Группа цифрового смещения для ветки без двоеточия
+					match_t d2{};
+					// Позиция и группа цифрового смещения
+					size_t begin = (pos + 1);
+					// Если цифровое смещение захвачено
+					if(matchDigits(text, length, begin, 1, 4, d2)){
+						// Заполняем группу начала совпадения
+						off.begin = static_cast <ssize_t> (pos + 1);
+						// Заполняем группу конца совпадения
+						off.end = static_cast <ssize_t> (begin);
+						// Сдвигаем конечную позицию блока
+						offset = begin;
+						// Поднимаем флаг успеха
+						inner = true;
+					}
+				}
+				// Если внутреннее смещение разобрано
+				if(inner){
+					// Заполняем группу начала совпадения
+					groups[3].begin = static_cast <ssize_t> (blockStart);
+					// Заполняем группу конца совпадения
+					groups[3].end = static_cast <ssize_t> (blockStart + 1);
+					// Заполняем группу значения смещения и часов/минут
+					groups[4] = off;
+					groups[5] = hh;
+					groups[6] = mm;
+					// Заполняем группу начала совпадения
+					groups[2].begin = static_cast <ssize_t> (blockStart);
+					// Заполняем группу конца совпадения
+					groups[2].end = static_cast <ssize_t> (offset);
+					// Сдвигаем позицию
+					pos = offset;
+				}
+			}
+			// Если общее совпадение непустое (аналог REG_NOTEMPTY)
+			if(pos > i){
+				// Заполняем группу начала совпадения
+				groups[0].begin = static_cast <ssize_t> (i);
+				// Заполняем группу конца совпадения
+				groups[0].end = static_cast <ssize_t> (pos);
+				// Возвращаем результат
+				return groups;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция парсера шаблона ([\d\.\,]+)\s*(s|m|h|d|w|M|y)$ (формат %S размерности времени)
+	 *
+	 * @param text   анализируемый текст
+	 * @param length длина анализируемого текста
+	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - число, группа 2 - единица размерности)
+	 */
+	static vector <match_t> parseSeconds(const char * text, const size_t length) noexcept {
+		// Результат работы
+		vector <match_t> result;
+		/**
+		 * Выполняем поиск первого совпадения
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Пропускаем символы не являющиеся цифрой, точкой или запятой
+			if(!(isDigitChar(text[i]) || (text[i] == '.') || (text[i] == ',')))
+				// Переходим к следующей позиции
+				continue;
+			// Захватываем серию [\d.,]+
+			size_t pos1 = i;
+			/**
+			 * Захватываем символы, являющиеся цифрой, точкой или запятой
+			 */
+			while((pos1 < length) && (isDigitChar(text[pos1]) || (text[pos1] == '.') || (text[pos1] == ',')))
+				// Сдвигаем позицию
+				pos1++;
+			// Пропускаем необязательные пробелы \s*
+			size_t pos2 = pos1;
+			/**
+			 * Пропускаем необязательные пробелы \s*
+			 */
+			while((pos2 < length) && isSpaceChar(text[pos2]))
+				// Сдвигаем позицию
+				pos2++;
+			// Если единица размерности отсутствует
+			if(pos2 >= length)
+				// Переходим к следующей позиции
+				continue;
+			// Получаем символ единицы размерности
+			const char letter = text[pos2];
+			// Если символ не является допустимой единицей размерности
+			if((letter != 's') && (letter != 'm') && (letter != 'h') && (letter != 'd') && (letter != 'w') && (letter != 'M') && (letter != 'y'))
+				// Переходим к следующей позиции
+				continue;
+			// Если единица размерности не в конце строки (аналог якоря $)
+			if((pos2 + 1) != length)
+				// Переходим к следующей позиции
+				continue;
+			// Список групп
+			vector <match_t> groups(3);
+			// Заполняем группу начала всего совпадения
+			groups[0].begin = static_cast <ssize_t> (i);
+			// Заполняем группу конца всего совпадения
+			groups[0].end = static_cast <ssize_t> (pos2 + 1);
+			// Заполняем группу числа начала совпадения
+			groups[1].begin = static_cast <ssize_t> (i);
+			// Заполняем группу числа конца совпадения
+			groups[1].end = static_cast <ssize_t> (pos1);
+			// Заполняем группу единицы размерности начала совпадения
+			groups[2].begin = static_cast <ssize_t> (pos2);
+			// Заполняем группу единицы размерности конца совпадения
+			groups[2].end = static_cast <ssize_t> (pos2 + 1);
+			// Возвращаем результат
+			return groups;
+		}
+		// Возвращаем результат
+		return result;
+	}
+};
 
 /**
  * @brief Метод очистку всех локальных данных
@@ -169,9 +951,8 @@ void awh::Chrono::threadSafety(const bool mode) noexcept {
 	/** 
 	 * Активируем или деактивируем мьютексы в зависимости от переданного флага
 	 */
-	this->_mtx.tz.enabled    = mode;
-	this->_mtx.date.enabled  = mode;
-	this->_mtx.parse.enabled = mode;
+	this->_mtx.tz.enabled   = mode;
+	this->_mtx.date.enabled = mode;
 }
 /**
  * @brief Метод подсчёта количества десятичных разрядов числа
@@ -445,55 +1226,6 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 	} else dt = dt_t();
 }
 /**
- * @brief Метод компиляции регулярных выражений
- *
- * @param expression регулярное выражение для компиляции
- * @param format     формат к которому относится регулярное выражение
- */
-void awh::Chrono::compile(string_view expression, const format_t format) noexcept {
-	// Если регулярное выражение передано
-	if(!expression.empty()){
-		// Выполняем поиск регулярного выражения
-		auto i = this->_expressions.find(format);
-		// Если регулярное выражение не существует
-		if(i == this->_expressions.end()){
-			// Выполняем создании записи кэша
-			auto ret = this->_expressions.emplace(format, regex_t{});
-			// Получаем объект регулярного выражения
-			regex_t & regex = std::any_cast <regex_t &> (ret.first->second);
-			// Выполняем компиляцию регулярного выражения
-			const int32_t error = ::pcre2_regcomp(&regex, expression.data(), REG_UTF);
-			// Если возникла ошибка компиляции
-			if(error > 0){
-				// Создаём буфер данных для извлечения данных ошибки
-				char buffer[0xFF];
-				// Выполняем заполнение нулями буфер данных
-				::memset(buffer, '\0', sizeof(buffer));
-				// Выполняем извлечение текста ошибки
-				const size_t size = ::pcre2_regerror(error, &regex, buffer, sizeof(buffer) - 1);
-				// Если текст ошибки получен
-				if(size > 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(expression, static_cast <uint16_t> (format)), log_t::flag_t::CRITICAL, string(buffer, size).c_str());
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, string(buffer, size).c_str());
-					#endif
-				}
-				// Выполняем удаление созданного объекта регулярного выражения
-				this->_expressions.erase(format);
-			}
-		}
-	}
-}
-/**
  * @brief Функция заполнения объекта даты и времени
  *
  * @param dt     объект даты и времени для заполнения
@@ -549,20 +1281,53 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 				const_cast <format_t &> (format) = format_t::A;
 			break;
 		}
-		// Выполняем поиск нужного нам регулярного выражения
-		auto i = this->_expressions.find(format);
-		// Если регулярное выражение получено
-		if(i != this->_expressions.end()){
-			// Выполняем блокировку потока
-			const locker_t <recursive_mutex> lock(this->_mtx.parse);
-			// Получаем объект регулярного выражения
-			const regex_t & regex = std::any_cast <const regex_t &> (i->second);
-			// Создаём объект матчинга
-			vector <regmatch_t> match(regex.re_nsub + 1);
-			// Выполняем разбор регулярного выражения
-			const int32_t error = ::pcre2_regexec(&regex, text.data() + pos, regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
-			// Если ошибок не получено
-			if(error == 0){
+		// Указатель на начало анализируемого текста
+		const char * src = (text.data() + pos);
+		// Длина анализируемого текста
+		const size_t len = (text.size() - pos);
+		// Список групп совпадения
+		vector <match_t> match;
+		/**
+		 * Выбираем нативный парсер в зависимости от формата
+		 */
+		switch(static_cast <uint8_t> (format)){
+			// Если формат соответствует %u (\d{1})
+			case static_cast <uint8_t> (format_t::u): match = ::parseDigits(src, len, 1, 1); break;
+			// Если формат соответствует %s (\d+)
+			case static_cast <uint8_t> (format_t::s): match = ::parseDigits(src, len, 1, static_cast <size_t> (-1)); break;
+			// Если формат соответствует %j (\d{3})
+			case static_cast <uint8_t> (format_t::j): match = ::parseDigits(src, len, 3, 3); break;
+			// Если формат соответствует %Y (\d{4})
+			case static_cast <uint8_t> (format_t::Y): match = ::parseDigits(src, len, 4, 4); break;
+			// Если формат соответствует %y (\d{1,2})
+			case static_cast <uint8_t> (format_t::y): match = ::parseDigits(src, len, 1, 2); break;
+			// Если формат соответствует %p ([A-Za-z]{2})
+			case static_cast <uint8_t> (format_t::p): match = ::parseAlpha2(src, len); break;
+			// Если формат соответствует %a ([A-Z][a-z]{2})
+			case static_cast <uint8_t> (format_t::a): match = ::parseName(src, len, 2, 2); break;
+			// Если формат соответствует %A ([A-Z][a-z]{2,})
+			case static_cast <uint8_t> (format_t::A): match = ::parseName(src, len, 2, static_cast <size_t> (-1)); break;
+			// Если формат соответствует %Z (\w+)
+			case static_cast <uint8_t> (format_t::Z): match = ::parseWord(src, len); break;
+			// Если формат соответствует %R ((\d{1,2}):(\d{1,2}))
+			case static_cast <uint8_t> (format_t::R): match = ::parseDigitGroups(src, len, ':', {{1, 2}, {1, 2}}); break;
+			// Если формат соответствует %T ((\d{1,2}):(\d{1,2}):(\d{1,2}))
+			case static_cast <uint8_t> (format_t::T): match = ::parseDigitGroups(src, len, ':', {{1, 2}, {1, 2}, {1, 2}}); break;
+			// Если формат соответствует %D ((\d{1,2})/(\d{1,2})/(\d{2}))
+			case static_cast <uint8_t> (format_t::D): match = ::parseDigitGroups(src, len, '/', {{1, 2}, {1, 2}, {2, 2}}); break;
+			// Если формат соответствует %F ((\d{4})-(\d{1,2})-(\d{1,2}))
+			case static_cast <uint8_t> (format_t::F): match = ::parseDigitGroups(src, len, '-', {{4, 4}, {1, 2}, {1, 2}}); break;
+			// Если формат соответствует %r ((\d{1,2}):(\d{1,2}):(\d{1,2})\s+([A-Za-z]{2}))
+			case static_cast <uint8_t> (format_t::r): match = ::parseTimeMeridiem(src, len); break;
+			// Если формат соответствует %c (asctime)
+			case static_cast <uint8_t> (format_t::c): match = ::parseAsctime(src, len); break;
+			// Если формат соответствует %z ((\+|\-)((\d{1,2}):(\d{1,2})|(\d{1,4})))
+			case static_cast <uint8_t> (format_t::z): match = ::parseZoneOffset(src, len); break;
+		}
+		// Если совпадение получено
+		if(!match.empty()){
+			// Обрабатываем полученные группы совпадения
+			{
 				/**
 				 * Определяем нужный нам формат
 				 */
@@ -590,11 +1355,11 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Получаем смещение в тексте
-								result = static_cast <ssize_t> (pos + match[j].rm_eo);
+								result = static_cast <ssize_t> (pos + match[j].end);
 								/**
 								 * Определяем тип входящих данных
 								 */
@@ -602,7 +1367,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер дня недели %w
 									case static_cast <uint8_t> (format_t::w): {
 										// Устанавливаем номер дня недели
-										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 										// Если день установлен как нулевой
 										if(dt.day == 0)
 											// Устанавливаем номер дня недели
@@ -611,22 +1376,22 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если мы определяем номер дня недели %W
 									case static_cast <uint8_t> (format_t::W):
 										// Устанавливаем количество недель прошедших с начала года
-										dt.weeks = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.weeks = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если мы определяем номер дня недели %j
 									case static_cast <uint8_t> (format_t::j):
 										// Устанавливаем номер дня недели
-										dt.days = (this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so) - 1);
+										dt.days = (this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin) - 1);
 									break;
 									// Если мы определяем номер дня недели %u
 									case static_cast <uint8_t> (format_t::u):
 										// Устанавливаем номер дня недели
-										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.day = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %y
 									case static_cast <uint8_t> (format_t::y): {
 										// Получаем значение указанного года
-										const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 										// Устанавливаем год
 										dt.year = (2000 + num);
 										// Устанавливаем флаг високосного года
@@ -635,56 +1400,56 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %Y
 									case static_cast <uint8_t> (format_t::Y): {
 										// Устанавливаем год
-										dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 										// Устанавливаем флаг високосного года
 										dt.leap = this->leap(dt.year);
 									} break;
 									// Если формат получен как %d
 									case static_cast <uint8_t> (format_t::d):
 										// Устанавливаем число месяца
-										dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %m
 									case static_cast <uint8_t> (format_t::m):
 										// Получаем значение номера месяца
-										dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %I
 									case static_cast <uint8_t> (format_t::I):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %H
 									case static_cast <uint8_t> (format_t::H):
 										// Устанавливаем полученный час времени
-										dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %M
 									case static_cast <uint8_t> (format_t::M):
 										// Устанавливаем значение указанного количества минут
-										dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %s
 									case static_cast <uint8_t> (format_t::s):
 										// Устанавливаем количество миллисекунд
-										dt.milliseconds = this->_fmk->atoi <uint32_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.milliseconds = this->_fmk->atoi <uint32_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %S
 									case static_cast <uint8_t> (format_t::S):
 										// Устанавливаем значение указанного количества секунд
-										dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+										dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									break;
 									// Если формат получен как %Z
 									case static_cast <uint8_t> (format_t::Z): {
 										// Выполняем матчинг временной зоны
-										dt.zone = this->matchTimeZone(string(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so));
+										dt.zone = this->matchTimeZone(string(text.data() + pos + match[j].begin, match[j].end - match[j].begin));
 										// Получаем название временной зоны
 										dt.offset = this->getTimeZone(dt.zone);
 									} break;
 									// Если формат получен как %a
 									case static_cast <uint8_t> (format_t::a): {
 										// Получаем название дня недели
-										const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string day(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 										/**
 										 * Выполняем перебор всего списка дней недели
 										 */
@@ -701,7 +1466,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %A
 									case static_cast <uint8_t> (format_t::A): {
 										// Получаем название дня недели
-										const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string day(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 										/**
 										 * Выполняем перебор всего списка дней недели
 										 */
@@ -718,7 +1483,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %b
 									case static_cast <uint8_t> (format_t::b): {
 										// Получаем название месяца
-										const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string month(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 										/**
 										 * Выполняем перебор всего списка месяцев
 										 */
@@ -735,7 +1500,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %B
 									case static_cast <uint8_t> (format_t::B): {
 										// Получаем название месяца
-										const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string month(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 										/**
 										 * Выполняем перебор всего списка месяцев
 										 */
@@ -752,7 +1517,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									// Если формат получен как %p
 									case static_cast <uint8_t> (format_t::p): {
 										// Получаем название времени суток
-										const string name(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+										const string name(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 										// Определяем 12-и часовой формат времени
 										dt.h12 = (this->_fmk->compare("pm", name) ? h12_t::PM : h12_t::AM);
 										// Если мы получили вечернее время
@@ -775,19 +1540,19 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 							// Выполняем сброс временной зоны
 							dt.offset = 0;
 						// Создаём массив собранных результатов
-						vector <string> data(regex.re_nsub + 1);
+						vector <string> data(match.size());
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Если это первый элемент
 								if(j == 0)
 									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].rm_eo);
+									result = static_cast <ssize_t> (pos + match[j].end);
 								// Выполняем установку результата
-								data[j].assign(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+								data[j].assign(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 							}
 						}
 						// Если название временной зоны указано
@@ -838,21 +1603,21 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Если это первый элемент
 								if(j == 0)
 									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].rm_eo);
+									result = static_cast <ssize_t> (pos + match[j].end);
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 							}
 						}
 					} break;
@@ -861,25 +1626,25 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Если это первый элемент
 								if(j == 0)
 									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].rm_eo);
+									result = static_cast <ssize_t> (pos + match[j].end);
 								// Если мы получили номер месяца
 								else if(j == 1)
 									// Устанавливаем полученный номер месяца
-									dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили число месяца
 								else if(j == 2)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили год
 								else if(j == 3) {
 									// Получаем значение указанного года
-									const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									const uint16_t num = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									// Устанавливаем год
 									dt.year = (2000 + num);
 									// Устанавливаем флаг високосного года
@@ -893,27 +1658,27 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Если это первый элемент
 								if(j == 0)
 									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].rm_eo);
+									result = static_cast <ssize_t> (pos + match[j].end);
 								// Если мы получили год
 								else if(j == 1) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								// Если мы получили номер месяца
 								} else if(j == 2)
 									// Получаем значение номера месяца
-									dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.month = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили число месяца
 								else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 							}
 						}
 					} break;
@@ -922,25 +1687,25 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Если это первый элемент
 								if(j == 0)
 									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].rm_eo);
+									result = static_cast <ssize_t> (pos + match[j].end);
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 							}
 						}
 					} break;
@@ -949,29 +1714,29 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Если это первый элемент
 								if(j == 0)
 									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].rm_eo);
+									result = static_cast <ssize_t> (pos + match[j].end);
 								// Если мы получили час
 								else if(j == 1)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили минуты
 								else if(j == 2)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили секунды
 								else if(j == 3)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили метку времени
 								else if(j == 4) {
 									// Получаем название времени суток
-									const string name(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									const string name(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 									// Определяем 12-и часовой формат времени
 									dt.h12 = (this->_fmk->compare("pm", name) ? h12_t::PM : h12_t::AM);
 									// Если мы получили вечернее время
@@ -991,17 +1756,17 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 						/**
 						 * Выполняем перебор всех полученных вариантов
 						 */
-						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+						for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 							// Если результат получен
-							if(match[j].rm_eo > match[j].rm_so){
+							if(match[j].end > match[j].begin){
 								// Если это первый элемент
 								if(j == 0)
 									// Получаем смещение в тексте
-									result = static_cast <ssize_t> (pos + match[j].rm_eo);
+									result = static_cast <ssize_t> (pos + match[j].end);
 								// Если мы получили название дня недели
 								else if(j == 1) {
 									// Получаем название дня недели
-									const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									const string day(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 									/**
 									 * Выполняем перебор всего списка дней недели
 									 */
@@ -1017,7 +1782,7 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили название месяца
 								} else if(j == 2) {
 									// Получаем название месяца
-									const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									const string month(text.data() + pos + match[j].begin, match[j].end - match[j].begin);
 									/**
 									 * Выполняем перебор всего списка месяцев
 									 */
@@ -1033,23 +1798,23 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								// Если мы получили число месяца
 								} else if(j == 3)
 									// Устанавливаем число месяца
-									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.date = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили час
 								else if(j == 4)
 									// Устанавливаем полученный час времени
-									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.hour = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили минуты
 								else if(j == 5)
 									// Устанавливаем значение указанного количества минут
-									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.minutes = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили секунды
 								else if(j == 6)
 									// Устанавливаем значение указанного количества секунд
-									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.seconds = this->_fmk->atoi <uint8_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 								// Если мы получили год
 								else if(j == 7) {
 									// Устанавливаем год
-									dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].rm_so), match[j].rm_eo - match[j].rm_so);
+									dt.year = this->_fmk->atoi <uint16_t> (text.data() + (pos + match[j].begin), match[j].end - match[j].begin);
 									// Устанавливаем флаг високосного года
 									dt.leap = this->leap(dt.year);
 								}
@@ -3370,20 +4135,12 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем поиск нужного нам регулярного выражения
-			auto i = this->_expressions.find(format_t::S);
-			// Если регулярное выражение получено
-			if(i != this->_expressions.end()){
-				// Выполняем блокировку потока
-				const locker_t <recursive_mutex> lock(this->_mtx.parse);
-				// Получаем объект регулярного выражения
-				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
-				// Создаём объект матчинга
-				vector <regmatch_t> match(regex.re_nsub + 1);
-				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, value.data(), regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
-				// Если ошибок не получено
-				if(error == 0){
+			// Выполняем нативный разбор строки размерности времени
+			const vector <match_t> match = ::parseSeconds(value.data(), value.size());
+			// Если совпадение получено
+			if(!match.empty()){
+				// Обрабатываем полученные группы совпадения
+				{
 					// Обозначение размерности числа
 					string label = "";
 					// Размерность времени и размерность секунд
@@ -3391,9 +4148,9 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 					/**
 					 * Выполняем перебор всех полученных вариантов
 					 */
-					for(uint8_t j = 1; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+					for(uint8_t j = 1; j < static_cast <uint8_t> (match.size()); j++){
 						// Если результат получен
-						if(match[j].rm_eo > match[j].rm_so){
+						if(match[j].end > match[j].begin){
 							/**
 							 * Определяем номер найденного элемента
 							 */
@@ -3401,12 +4158,12 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 								// Если мы получили само число
 								case 1:
 									// Получаем значение числа
-									seconds = this->_fmk->atoi <double> (value.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									seconds = this->_fmk->atoi <double> (value.data() + match[j].begin, match[j].end - match[j].begin);
 								break;
 								// Если мы получили размерность числа
 								case 2: {
 									// Получаем обозначение размерности числа
-									label.assign(value.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+									label.assign(value.data() + match[j].begin, match[j].end - match[j].begin);
 									// Если мы получили секунды
 									if(label.front() == 's')
 										// Выполняем установку множителя
@@ -5610,30 +6367,22 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем поиск нужного нам регулярного выражения
-			auto i = this->_expressions.find(format_t::Z);
-			// Если регулярное выражение получено
-			if(i != this->_expressions.end()){
-				// Выполняем блокировку потока
-				const locker_t <recursive_mutex> lock(this->_mtx.parse);
-				// Получаем объект регулярного выражения
-				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
-				// Создаём объект матчинга
-				vector <regmatch_t> match(regex.re_nsub + 1);
-				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
-				// Если ошибок не получено
-				if(error == 0){
+			// Выполняем нативный разбор названия временной зоны (\w+)
+			const vector <match_t> match = ::parseWord(zone.data(), zone.size());
+			// Если совпадение получено
+			if(!match.empty()){
+				// Обрабатываем полученные группы совпадения
+				{
 					// Создаём массив собранных результатов
-					vector <string> data(regex.re_nsub + 1);
+					vector <string> data(match.size());
 					/**
 					 * Выполняем перебор всех полученных вариантов
 					 */
-					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+					for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 						// Если результат получен
-						if(match[j].rm_eo > match[j].rm_so)
+						if(match[j].end > match[j].begin)
 							// Выполняем установку результата
-							data[j].assign(zone.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+							data[j].assign(zone.data() + match[j].begin, match[j].end - match[j].begin);
 					}
 					// Если временная зона извлечена
 					if(!data.empty() && !data.front().empty()){
@@ -6414,30 +7163,22 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Выполняем поиск нужного нам регулярного выражения
-			auto i = this->_expressions.find(format_t::e);
-			// Если регулярное выражение получено
-			if(i != this->_expressions.end()){
-				// Выполняем блокировку потока
-				const locker_t <recursive_mutex> lock(this->_mtx.parse);
-				// Получаем объект регулярного выражения
-				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
-				// Создаём объект матчинга
-				vector <regmatch_t> match(regex.re_nsub + 1);
-				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
-				// Если ошибок не получено
-				if(error == 0){
+			// Выполняем нативный разбор временной зоны со смещением (формат %e)
+			const vector <match_t> match = ::parseZoneFull(zone.data(), zone.size());
+			// Если совпадение получено
+			if(!match.empty()){
+				// Обрабатываем полученные группы совпадения
+				{
 					// Создаём массив собранных результатов
-					vector <string> data(regex.re_nsub + 1);
+					vector <string> data(match.size());
 					/**
 					 * Выполняем перебор всех полученных вариантов
 					 */
-					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
+					for(uint8_t j = 0; j < static_cast <uint8_t> (match.size()); j++){
 						// Если результат получен
-						if(match[j].rm_eo > match[j].rm_so)
+						if(match[j].end > match[j].begin)
 							// Выполняем установку результата
-							data[j].assign(zone.data() + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
+							data[j].assign(zone.data() + match[j].begin, match[j].end - match[j].begin);
 					}
 					// Если временная зона извлечена
 					if(!data.empty() && (data.size() > 1)){
@@ -9638,30 +10379,10 @@ awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
 	/**
 	 * Деактивируем мьютексы на время инициализации
 	 */
-	this->_mtx.tz.enabled    = false;
-	this->_mtx.date.enabled  = false;
-	this->_mtx.parse.enabled = false;
+	this->_mtx.tz.enabled   = false;
+	this->_mtx.date.enabled = false;
 	// Выполняем инициализацию локального объекта даты и времени
 	this->clear();
-	// Выполняем компиляцию регулярных выражений
-	this->compile("\\d+", format_t::s);
-	this->compile("\\w+", format_t::Z);
-	this->compile("\\d{3}", format_t::j);
-	this->compile("\\d{1}", format_t::u);
-	this->compile("\\d{4}", format_t::Y);
-	this->compile("\\d{1,2}", format_t::y);
-	this->compile("[A-Za-z]{2}", format_t::p);
-	this->compile("[A-Z][a-z]{2}", format_t::a);
-	this->compile("[A-Z][a-z]{2,}", format_t::A);
-	this->compile("(\\d{1,2})\\:(\\d{1,2})", format_t::R);
-	this->compile("([\\d\\.\\,]+)\\s*(s|m|h|d|w|M|y)$", format_t::S);
-	this->compile("(\\d{1,2})\\/(\\d{1,2})\\/(\\d{2})", format_t::D);
-	this->compile("(\\d{4})\\-(\\d{1,2})\\-(\\d{1,2})", format_t::F);
-	this->compile("(\\d{1,2})\\:(\\d{1,2})\\:(\\d{1,2})", format_t::T);
-	this->compile("(\\+|\\-)((\\d{1,2})\\:(\\d{1,2})|(\\d{1,4}))", format_t::z);
-	this->compile("(\\w+)?((\\+|\\-)((\\d{1,2})\\:(\\d{1,2})|\\d{1,4}))?", format_t::e);
-	this->compile("(\\d{1,2})\\:(\\d{1,2})\\:(\\d{1,2})\\s+([A-Za-z]{2})", format_t::r);
-	this->compile("([A-Z][a-z]{2})\\s+([A-Z][a-z]{2})\\s+(\\d{1,2})\\s+(\\d{1,2})\\:(\\d{1,2})\\:(\\d{1,2})\\s+(\\d{4})", format_t::c);
 }
 /**
  * @brief Деструктор
@@ -9669,12 +10390,6 @@ awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
  */
 awh::Chrono::~Chrono() noexcept {
 	/**
-	 * Выполняем перебор всего списка скомпилированных регулярных выражений
+	 * Нативные парсеры не требуют освобождения ресурсов
 	 */
-	for(auto i = this->_expressions.begin(); i != this->_expressions.end();){
-		// Выполняем удаление выделенной памяти
-		::pcre2_regfree(&std::any_cast <regex_t &> (i->second));
-		// Удаляем регулярное выражение
-		i = this->_expressions.erase(i);
-	}
 }

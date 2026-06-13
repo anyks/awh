@@ -21,6 +21,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <any>
 #include <array>
 #include <string>
 #include <vector>

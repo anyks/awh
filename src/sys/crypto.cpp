@@ -316,8 +316,10 @@ namespace driver {
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::MD5): {
 						// Выделяем память для буфера данных
 						result.resize(33, 0);
+						// Буфер для бинарного результата подписи
+						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
-						const uint8_t * digest = ::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
+						::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
 						/**
 						 * Заполняем строку данными MD5
 						 */
@@ -331,8 +333,10 @@ namespace driver {
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA1): {
 						// Выделяем память для буфера данных
 						result.resize(41, 0);
+						// Буфер для бинарного результата подписи
+						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
-						const uint8_t * digest = ::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
+						::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
 						/**
 						 * Заполняем строку данными SHA1
 						 */
@@ -346,8 +350,10 @@ namespace driver {
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA224): {
 						// Выделяем память для буфера данных
 						result.resize(57, 0);
+						// Буфер для бинарного результата подписи
+						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
-						const uint8_t * digest = ::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
+						::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
 						/**
 						 * Заполняем строку данными SHA224
 						 */
@@ -361,8 +367,10 @@ namespace driver {
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA256): {
 						// Выделяем память для буфера данных
 						result.resize(65, 0);
+						// Буфер для бинарного результата подписи
+						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
-						const uint8_t * digest = ::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
+						::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
 						/**
 						 * Заполняем строку данными SHA256
 						 */
@@ -376,8 +384,10 @@ namespace driver {
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA384): {
 						// Выделяем память для буфера данных
 						result.resize(97, 0);
+						// Буфер для бинарного результата подписи
+						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
-						const uint8_t * digest = ::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
+						::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
 						/**
 						 * Заполняем строку данными SHA384
 						 */
@@ -391,8 +401,10 @@ namespace driver {
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA512): {
 						// Выделяем память для буфера данных
 						result.resize(129, 0);
+						// Буфер для бинарного результата подписи
+						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
-						const uint8_t * digest = ::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), nullptr, nullptr);
+						::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
 						/**
 						 * Заполняем строку данными SHA512
 						 */
