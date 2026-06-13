@@ -145,6 +145,43 @@ namespace awh {
 			const fmk_t * _fmk;
 			// Объект для работы с логами
 			const log_t * _log;
+		private:
+			/**
+			 * @brief Метод определения стандартного порта для текущего типа URI
+			 *
+			 * @return стандартный порт или 0, если для типа URI он не определён
+			 */
+			uint16_t defaultPort() const noexcept;
+		private:
+			/**
+			 * @brief Метод добавления схемы URI в результат с разделителем, зависящим от типа URI
+			 *
+			 * @param result результат, в который добавляется схема URI
+			 */
+			void appendScheme(string & result) const noexcept;
+			/**
+			 * @brief Метод добавления параметров пользователя (логин и пароль) в результат
+			 *
+			 * @param result    результат, в который добавляются параметры пользователя
+			 * @param delimiter флаг добавления разделителя "@" после параметров пользователя
+			 */
+			void appendUser(string & result, const bool delimiter) const noexcept;
+		private:
+			/**
+			 * @brief Метод добавления хоста (и порта для сетевых адресов) в результат
+			 *
+			 * @param result результат, в который добавляется хост
+			 * @param format режим формата URI для генерации
+			 */
+			void appendHost(string & result, const format_t format) const noexcept;
+			/**
+			 * @brief Метод добавления порта хоста в результат с учётом формата генерации
+			 *
+			 * @param result результат, в который добавляется порт
+			 * @param port   порт хоста, заданный явно (0 — если не задан)
+			 * @param format режим формата URI для генерации
+			 */
+			void appendPort(string & result, const uint16_t port, const format_t format) const noexcept;
 		public:
 			/**
 			 * @brief Метод очистки URI
