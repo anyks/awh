@@ -23,7 +23,9 @@
  */
 #include <memory>
 #include <string>
+#include <vector>
 #include <cstring>
+#include <utility>
 #include <functional>
 #include <unordered_map>
 
@@ -88,13 +90,13 @@ namespace awh {
 				 * @brief Функция обратного вызова
 				 *
 				 */
-				function <A> fn;
+				std::function <A> fn;
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param fn функция обратного вызова для установки
 				 */
-				explicit BasicFunction(function <A> fn) noexcept : fn(std::move(fn)) {}
+				explicit BasicFunction(std::function <A> fn) noexcept : fn(std::move(fn)) {}
 			};
 		public:
 			/**
@@ -122,7 +124,7 @@ namespace awh {
 					using pointer           = fn_t *;
 					using reference         = fn_t &;
 					using difference_type   = std::ptrdiff_t;
-					using iterator_category = std::bidirectional_iterator_tag;
+					using iterator_category = std::forward_iterator_tag;
 				public:
 					/**
 					 * @brief Создаём тип данных итератора
@@ -141,7 +143,7 @@ namespace awh {
 					 *
 					 * @return указатель заголовка
 					 */
-					pointer operator -> () noexcept {
+					pointer operator -> () const noexcept {
 						// Возвращаем результат
 						return &this->_it->second;
 					}
@@ -188,6 +190,19 @@ namespace awh {
 						// Возвращаем результат
 						return (* this);
 					}
+					/**
+					 * @brief Оператор постинкрементного смещения вперед
+					 *
+					 * @return значение итератора до смещения
+					 */
+					Iterator operator ++ (int) noexcept {
+						// Сохраняем текущее состояние итератора
+						Iterator current(* this);
+						// Выполняем смещение текущего итератора вперёд
+						++(* this);
+						// Возвращаем сохранённое состояние итератора
+						return current;
+					}
 				public:
 					/**
 					 * @brief Оператор сравнения соответствия итератора
@@ -197,7 +212,7 @@ namespace awh {
 					 */
 					bool operator == (const Iterator & other) const noexcept {
 						// Возвращаем результат
-						return (this->_it->first == other._it->first);
+						return (this->_it == other._it);
 					}
 					/**
 					 * @brief Оператора сравнения несоответствия итератора
@@ -207,7 +222,7 @@ namespace awh {
 					 */
 					bool operator != (const Iterator & other) const noexcept {
 						// Возвращаем результат
-						return (this->_it->first != other._it->first);
+						return (this->_it != other._it);
 					}
 				public:
 					/**
@@ -235,12 +250,54 @@ namespace awh {
 			 * @param идентификатор функции
 			 * @param функция обратного вызова в чистом виде
 			 */
-			function <void (const event_t, const id_t, const fn_t &)> _callback;
+			std::function <void (const event_t, const id_t, const fn_t &)> _callback;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
 			// Объект работы с логами
 			const log_t * _log;
+		private:
+			/**
+			 * @brief Шаблон метода безопасного захвата сразу двух объектов блокировки
+			 *
+			 * @tparam Fn тип исполняемого функционала под захваченными блокировками
+			 */
+			template <typename Fn>
+			/**
+			 * @brief Метод безопасного захвата сразу двух объектов блокировки
+			 *
+			 * Блокировки захватываются в детерминированном порядке (по адресу объекта),
+			 * что исключает взаимоблокировку (deadlock) при встречных операциях над двумя контейнерами.
+			 *
+			 * @param first  первый объект блокировки
+			 * @param second второй объект блокировки
+			 * @param fn     исполняемый функционал под захваченными блокировками
+			 */
+			static void _dualLock(lock_state_t <std::recursive_mutex> & first, lock_state_t <std::recursive_mutex> & second, Fn && fn) {
+				// Если оба объекта блокировки совпадают (операция над одним и тем же контейнером)
+				if(&first == &second){
+					// Выполняем захват единственной блокировки
+					const locker_t <std::recursive_mutex> lock(first, locker_t <std::recursive_mutex>::mode_t::SHARED);
+					// Выполняем исполняемый функционал
+					fn();
+				// Если первый объект блокировки предшествует второму по адресу
+				} else if(std::less <const void *> {}(&first, &second)) {
+					// Выполняем захват первой блокировки
+					const locker_t <std::recursive_mutex> lock1(first, locker_t <std::recursive_mutex>::mode_t::SHARED);
+					// Выполняем захват второй блокировки
+					const locker_t <std::recursive_mutex> lock2(second, locker_t <std::recursive_mutex>::mode_t::SHARED);
+					// Выполняем исполняемый функционал
+					fn();
+				// Если второй объект блокировки предшествует первому по адресу
+				} else {
+					// Выполняем захват второй блокировки
+					const locker_t <std::recursive_mutex> lock1(second, locker_t <std::recursive_mutex>::mode_t::SHARED);
+					// Выполняем захват первой блокировки
+					const locker_t <std::recursive_mutex> lock2(first, locker_t <std::recursive_mutex>::mode_t::SHARED);
+					// Выполняем исполняемый функционал
+					fn();
+				}
+			}
 		public:
 			/**
 			 * @brief Метод генерации идентификатора функции
@@ -293,7 +350,7 @@ namespace awh {
 			 */
 			bool empty() const noexcept {
 				// Выполняем блокировку потока
-				const locker_t <std::recursive_mutex> lock(this->_mtx);
+				const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::SHARED);
 				// Возвращаем результат проверки
 				return this->_callbacks.empty();
 			}
@@ -330,7 +387,7 @@ namespace awh {
 					 */
 					try {
 						// Выполняем блокировку потока
-						const locker_t <std::recursive_mutex> lock(this->_mtx);
+						const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::EXCLUSIVE);
 						// Устанавливаем новые данные функциий обратного вызова
 						this->_callbacks = callbacks;
 					/**
@@ -364,7 +421,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
+					const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем очистку списка функций обратного вызова
 					this->_callbacks.clear();
 				/**
@@ -395,7 +452,7 @@ namespace awh {
 			 */
 			bool _is(const id_t id) const noexcept {
 				// Выполняем блокировку потока
-				const locker_t <std::recursive_mutex> lock(this->_mtx);
+				const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::SHARED);
 				// Возвращаем результат проверки
 				return ((id > 0) && (this->_callbacks.find(id) != this->_callbacks.end()));
 			}
@@ -444,7 +501,7 @@ namespace awh {
 			 */
 			bool is(const T id) const noexcept {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
+				if constexpr (std::is_arithmetic_v <T> || std::is_enum_v <T>)
 					// Выполняем првоерку существования функции обратного вызова
 					return this->_is(static_cast <id_t> (id));
 				// Возвращаем значение по умолчанию
@@ -469,7 +526,7 @@ namespace awh {
 				try {
 					{
 						// Выполняем блокировку потока
-						const locker_t <std::recursive_mutex> lock(this->_mtx);
+						const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::EXCLUSIVE);
 						// Выполняем поиск существующей функции обратного вызова
 						auto i = this->_callbacks.find(id);
 						// Если функция существует
@@ -543,7 +600,7 @@ namespace awh {
 			 */
 			void erase(const T id) noexcept {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
+				if constexpr (std::is_arithmetic_v <T> || std::is_enum_v <T>)
 					// Выполняем удаление функции обратного вызова
 					this->_erase(static_cast <id_t> (id));
 			}
@@ -566,7 +623,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
+					const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск первой функции
 					auto i = this->_callbacks.find(id1);
 					// Выполняем поиск второй функции
@@ -612,18 +669,17 @@ namespace awh {
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока для текущего контейнера
-					const locker_t <std::recursive_mutex> lock1(this->_mtx);
-					// Выполняем блокировку потока для стороннего контейнера
-					const locker_t <std::recursive_mutex> lock2(storage._mtx);
-					// Выполняем поиск первой функции
-					auto i = this->_callbacks.find(id1);
-					// Выполняем поиск второй функции
-					auto j = storage._callbacks.find(id2);
-					// Если функции обратных вызовов получены
-					if((i != this->_callbacks.end()) && (j != storage._callbacks.end()))
-						// Выполняем обмен функциями
-						std::swap(i->second, j->second);
+					// Выполняем безопасный захват блокировок текущего и стороннего контейнеров
+					Callback::_dualLock(this->_mtx, storage._mtx, [&]() {
+						// Выполняем поиск первой функции
+						auto i = this->_callbacks.find(id1);
+						// Выполняем поиск второй функции
+						auto j = storage._callbacks.find(id2);
+						// Если функции обратных вызовов получены
+						if((i != this->_callbacks.end()) && (j != storage._callbacks.end()))
+							// Выполняем обмен функциями
+							std::swap(i->second, j->second);
+					});
 				/**
 				 * Если возникает ошибка
 				 */
@@ -650,16 +706,19 @@ namespace awh {
 			 * @param storage хранилище функций откуда нужно получить функцию
 			 */
 			void swap(Callback & storage) noexcept {
+				// Если обмен выполняется с самим собой
+				if(this == &storage)
+					// Выходим из функции
+					return;
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока для текущего контейнера
-					const locker_t <std::recursive_mutex> lock1(this->_mtx);
-					// Выполняем блокировку потока для стороннего контейнера
-					const locker_t <std::recursive_mutex> lock2(storage._mtx);
-					// Выполняем обмен функциями
-					this->_callbacks.swap(storage._callbacks);
+					// Выполняем безопасный захват блокировок текущего и стороннего контейнеров
+					Callback::_dualLock(this->_mtx, storage._mtx, [&]() {
+						// Выполняем обмен функциями
+						this->_callbacks.swap(storage._callbacks);
+					});
 				/**
 				 * Если возникает ошибка
 				 */
@@ -725,7 +784,7 @@ namespace awh {
 			 */
 			void swap(const T id1, const T id2) noexcept {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
+				if constexpr (std::is_arithmetic_v <T> || std::is_enum_v <T>)
 					// Выполняем обмен функциями обратного вызова
 					this->_swap(static_cast <id_t> (id1), static_cast <id_t> (id2));
 			}
@@ -779,7 +838,7 @@ namespace awh {
 			 */
 			void swap(const T id1, const T id2, Callback & storage) noexcept {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
+				if constexpr (std::is_arithmetic_v <T> || std::is_enum_v <T>)
 					// Выполняем обмен функциями обратного вызова
 					this->_swap(static_cast <id_t> (id1), static_cast <id_t> (id2), storage);
 			}
@@ -798,38 +857,41 @@ namespace awh {
 				if((id == 0) || storage.empty())
 					// Выходим из функции
 					return 0;
+				// Переменная результата установки функции обратного вызова
+				id_t result = 0;
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
-					// Выполняем поиск функции обратного вызова
-					auto i = storage._callbacks.find(id);
-					// Если функция в внешнем хранилище найдена
-					if(i != storage._callbacks.end()){
-						// Выполняем поиск существующей функции обратного вызова
-						auto j = this->_callbacks.find(id);
-						// Если функция такая уже существует
-						if(j != this->_callbacks.end()){
-							// Устанавливаем новую функцию обратного вызова
-							j->second = i->second;
-							// Если системная функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем системную функцию обратного вызова
-								this->_callback(event_t::SET, id, j->second);
-						// Если функция ещё не существует
-						} else {
-							// Создаём новую функцию
-							auto ret = this->_callbacks.emplace(id, i->second);
-							// Если системная функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем системную функцию обратного вызова
-								this->_callback(event_t::SET, id, ret.first->second);
+					// Выполняем безопасный захват блокировок текущего и стороннего контейнеров
+					Callback::_dualLock(this->_mtx, const_cast <Callback &> (storage)._mtx, [&]() {
+						// Выполняем поиск функции обратного вызова
+						auto i = storage._callbacks.find(id);
+						// Если функция в внешнем хранилище найдена
+						if(i != storage._callbacks.end()){
+							// Выполняем поиск существующей функции обратного вызова
+							auto j = this->_callbacks.find(id);
+							// Если функция такая уже существует
+							if(j != this->_callbacks.end()){
+								// Устанавливаем новую функцию обратного вызова
+								j->second = i->second;
+								// Если системная функция обратного вызова установлена
+								if(this->_callback != nullptr)
+									// Выполняем системную функцию обратного вызова
+									this->_callback(event_t::SET, id, j->second);
+							// Если функция ещё не существует
+							} else {
+								// Создаём новую функцию
+								auto ret = this->_callbacks.emplace(id, i->second);
+								// Если системная функция обратного вызова установлена
+								if(this->_callback != nullptr)
+									// Выполняем системную функцию обратного вызова
+									this->_callback(event_t::SET, id, ret.first->second);
+							}
+							// Запоминаем идентификатор callback
+							result = id;
 						}
-						// Возвращаем идентификатор callback
-						return id;
-					}
+					});
 				/**
 				 * Если возникает ошибка
 				 */
@@ -848,8 +910,8 @@ namespace awh {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
-				// Выходим из функции
-				return 0;
+				// Выводим результат установки функции обратного вызова
+				return result;
 			}
 			/**
 			 * @brief Метод установки функции из одного хранилища в текущее
@@ -866,38 +928,46 @@ namespace awh {
 				if((id1 == 0) || (id2 == 0) || storage.empty())
 					// Выходим из функции
 					return 0;
+				// Переменная результата установки функции обратного вызова
+				id_t result = 0;
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
-					// Выполняем поиск указанной функции в переданном хранилище
-					auto i = storage._callbacks.find(id1);
-					// Если функция в хранилище получена
-					if(i != storage._callbacks.end()){
-						// Выполняем поиск существующей функции обратного вызова
-						auto j = this->_callbacks.find(id2);
-						// Если функция такая уже существует
-						if(j != this->_callbacks.end()){
-							// Устанавливаем новую функцию обратного вызова
-							j->second = i->second;
-							// Если системная функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем системную функцию обратного вызова
-								this->_callback(event_t::SET, id2, j->second);
-						// Если функция ещё не существует
-						} else {
-							// Создаём новую функцию
-							auto ret = this->_callbacks.emplace(id2, i->second);
-							// Если системная функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем системную функцию обратного вызова
-								this->_callback(event_t::SET, id2, ret.first->second);
+					// Выполняем безопасный захват блокировок текущего и стороннего контейнеров
+					Callback::_dualLock(this->_mtx, const_cast <Callback &> (storage)._mtx, [&]() {
+						// Выполняем поиск указанной функции в переданном хранилище
+						auto i = storage._callbacks.find(id1);
+						// Если функция в хранилище получена
+						if(i != storage._callbacks.end()){
+							/**
+							 * Копируем функцию обратного вызова локально, чтобы не зависеть от валидности
+							 * итератора при возможном рехэше контейнера (актуально при storage == this)
+							 */
+							const fn_t callback = i->second;
+							// Выполняем поиск существующей функции обратного вызова
+							auto j = this->_callbacks.find(id2);
+							// Если функция такая уже существует
+							if(j != this->_callbacks.end()){
+								// Устанавливаем новую функцию обратного вызова
+								j->second = callback;
+								// Если системная функция обратного вызова установлена
+								if(this->_callback != nullptr)
+									// Выполняем системную функцию обратного вызова
+									this->_callback(event_t::SET, id2, j->second);
+							// Если функция ещё не существует
+							} else {
+								// Создаём новую функцию
+								auto ret = this->_callbacks.emplace(id2, callback);
+								// Если системная функция обратного вызова установлена
+								if(this->_callback != nullptr)
+									// Выполняем системную функцию обратного вызова
+									this->_callback(event_t::SET, id2, ret.first->second);
+							}
+							// Запоминаем идентификатор callback
+							result = id2;
 						}
-						// Возвращаем идентификатор callback
-						return id2;
-					}
+					});
 				/**
 				 * Если возникает ошибка
 				 */
@@ -916,8 +986,8 @@ namespace awh {
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
 				}
-				// Выходим из функции
-				return 0;
+				// Выводим результат установки функции обратного вызова
+				return result;
 			}
 			/**
 			 * @brief Метод установки функции обратного вызова в чистом виде
@@ -938,7 +1008,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
+					const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск функции обратного вызова
 					auto i = this->_callbacks.find(id);
 					// Если функция найдена в списке
@@ -1030,7 +1100,7 @@ namespace awh {
 			 */
 			auto set(const T id, const Callback & storage) noexcept -> id_t {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <T> || is_enum_v<T>)
+				if constexpr (std::is_arithmetic_v <T> || std::is_enum_v<T>)
 					// Выполняем установку функции обратного вызова
 					return this->_set(static_cast <id_t> (id), storage);
 				// Возвращаем значение по умолчанию
@@ -1088,7 +1158,7 @@ namespace awh {
 			 */
 			auto set(const T id1, const T id2, const Callback & storage) noexcept -> id_t {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
+				if constexpr (std::is_arithmetic_v <T> || std::is_enum_v <T>)
 					// Выполняем установку функции обратного вызова
 					return this->_set(static_cast <id_t> (id1), static_cast <id_t> (id2), storage);
 				// Возвращаем значение по умолчанию
@@ -1142,7 +1212,7 @@ namespace awh {
 			 */
 			auto set(const T id, const fn_t & callback) noexcept -> id_t {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <T> || is_enum_v <T>)
+				if constexpr (std::is_arithmetic_v <T> || std::is_enum_v <T>)
 					// Выполняем установку функции обратного вызова
 					return this->_set(static_cast <id_t> (id), callback);
 				// Возвращаем значение по умолчанию
@@ -1171,7 +1241,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
+					const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::SHARED);
 					// Выполняем поиск фиункции обратного вызова
 					auto i = this->_callbacks.find(id);
 					// Если функция обратного вызова найдена
@@ -1286,7 +1356,7 @@ namespace awh {
 			 */
 			auto get(const A id) const noexcept -> function <B> {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+				if constexpr (std::is_arithmetic_v <A> || std::is_enum_v <A>)
 					// Выполняем получение функции обратного вызова
 					return this->_get <B> (static_cast <id_t>(id));
 				// Возвращаем значение по умолчанию
@@ -1316,7 +1386,7 @@ namespace awh {
 				 */
 				try {
 					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
+					const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::EXCLUSIVE);
 					// Выполняем поиск существующей функции обратного вызова
 					auto i = this->_callbacks.find(id);
 					// Если функция обратного вызова найдена
@@ -1396,8 +1466,14 @@ namespace awh {
 			 * @return         идентификатор подключённо функции обратного вызова
 			 */
 			id_t on(string_view name, Func && callback, Args &&... args) noexcept {
-				// Выполняем подключение функции обратного вызова
-				return (!std::empty(name) ? this->on <Signature> (name.data(), std::forward <Func> (callback), std::forward <Args> (args)...) : 0);
+				// Если название функции обратного вызова не передано
+				if(std::empty(name))
+					// Выходим из функции
+					return 0;
+				// Формируем функцию обратного вызова для подключения
+				std::function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
+				// Выполняем подключение функции обратного вызова (идентификатор получаем напрямую из string_view)
+				return this->_on <Signature> (this->id(name), std::move(fn));
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1441,7 +1517,7 @@ namespace awh {
 					// Выходим из функции
 					return 0;
 				// Формируем функцию обратного вызова для подключения
-				function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
+				std::function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
 				// Выполняем подключение функции обратного вызова
 				return this->_on <Signature> (this->id(name), std::move(fn));
 			}
@@ -1467,7 +1543,7 @@ namespace awh {
 					// Выходим из функции
 					return 0;
 				// Формируем функцию обратного вызова для подключения
-				function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
+				std::function <Signature> fn = std::bind(std::forward <Func> (callback), std::forward <Args> (args)...);
 				// Выполняем подключение функции обратного вызова
 				return this->_on <Signature> (id, std::move(fn));
 			}
@@ -1490,7 +1566,7 @@ namespace awh {
 			 */
 			id_t on(const A id, Func && callback, Args &&... args) noexcept {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+				if constexpr (std::is_arithmetic_v <A> || std::is_enum_v <A>)
 					// Выполняем подключение функции обратного вызова
 					return this->on <Signature> (static_cast <id_t> (id), std::forward <Func> (callback), std::forward <Args> (args)...);
 				// Возвращаем значение по умолчанию
@@ -1580,7 +1656,7 @@ namespace awh {
 			 */
 			id_t on(const A id, function <B> fn) noexcept {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+				if constexpr (std::is_arithmetic_v <A> || std::is_enum_v <A>)
 					// Выполняем подключение функции обратного вызова
 					return this->_on <B> (static_cast <id_t> (id), std::move(fn));
 				// Возвращаем значение по умолчанию
@@ -1593,7 +1669,7 @@ namespace awh {
 			 */
 			void on(function <void (const event_t, const id_t, const fn_t &)> callback) noexcept {
 				// Выполняем блокировку потока
-				const locker_t <std::recursive_mutex> lock(this->_mtx);
+				const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::EXCLUSIVE);
 				// Выполняем установку функции обратного вызова
 				this->_callback = std::move(callback);
 			}
@@ -1612,13 +1688,13 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto _call(const id_t id, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+			auto _call(const id_t id, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Формируем тип данных результата выполнения функции обратного вызова
-				using Result = invoke_result_t <function <Signature>, Args...>;
+				using Result = std::invoke_result_t <std::function <Signature>, Args...>;
 				// Если идентификатор функции обратного вызова не передан
 				if(id == 0){
 					// Если результат функции обратного вызова не возвращается
-					if constexpr (is_void_v <Result>)
+					if constexpr (std::is_void_v <Result>)
 						// Завершаем работу функции обратного вызова
 						return;
 					// Возвращаем пустое значение callback
@@ -1628,36 +1704,51 @@ namespace awh {
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
-					// Выполняем поиск функции обратного вызова
-					auto i = this->_callbacks.find(id);
-					// Если функция обратного вызова не найдена
-					if(i == this->_callbacks.end()){
-						// Если результат функции обратного вызова не возвращается
-						if constexpr (is_void_v <Result>)
-							// Завершаем работу функции обратного вызова
-							return;
-						// Возвращаем пустое значение callback
-						else return Result{};
+					/**
+					 * Удерживаем владение функцией обратного вызова, чтобы она не была удалена
+					 * во время её выполнения вне блокировки (в том числе при само-удалении из callback'а)
+					 */
+					fn_t holder;
+					// Извлечённая функция обратного вызова запрашиваемой сигнатуры
+					const BasicFunction <Signature> * callback = nullptr;
+					{
+						// Выполняем блокировку потока
+						const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::SHARED);
+						// Выполняем поиск функции обратного вызова
+						auto i = this->_callbacks.find(id);
+						// Если функция обратного вызова не найдена
+						if(i == this->_callbacks.end()){
+							// Если результат функции обратного вызова не возвращается
+							if constexpr (std::is_void_v <Result>)
+								// Завершаем работу функции обратного вызова
+								return;
+							// Возвращаем пустое значение callback
+							else return Result{};
+						}
+						// Выполняем извлечение функции обратного вызова
+						callback = awh_cast <const BasicFunction <Signature> *> (i->second.get());
+						// Если функция обратного вызова не содержит данных
+						if((callback == nullptr) || (callback->fn == nullptr)){
+							// Если результат функции обратного вызова не возвращается
+							if constexpr (std::is_void_v <Result>)
+								// Завершаем работу функции обратного вызова
+								return;
+							// Возвращаем пустое значение callback
+							else return Result{};
+						}
+						// Удерживаем владение функцией обратного вызова на время выполнения вне блокировки
+						holder = i->second;
+						// Если системная функция обратного вызова установлена
+						if(this->_callback != nullptr)
+							// Выполняем системную функцию обратного вызова
+							this->_callback(event_t::RUN, id, i->second);
 					}
-					// Выполняем извлечение функции обратного вызова
-					auto * callback = awh_cast <const BasicFunction <Signature> *> (i->second.get());
-					// Если функция обратного вызова не содержит данных
-					if((callback == nullptr) || (callback->fn == nullptr)){
-						// Если результат функции обратного вызова не возвращается
-						if constexpr (is_void_v <Result>)
-							// Завершаем работу функции обратного вызова
-							return;
-						// Возвращаем пустое значение callback
-						else return Result{};
-					}
-					// Если системная функция обратного вызова установлена
-					if(this->_callback != nullptr)
-						// Выполняем системную функцию обратного вызова
-						this->_callback(event_t::RUN, id, i->second);
+					/**
+					 * Выполняем функцию обратного вызова уже вне блокировки: holder удерживает её владение,
+					 * поэтому пользовательский код выполняется без удержания мьютекса (исключаем внешние дедлоки)
+					 */
 					// Если результат функции обратного вызова не возвращается
-					if constexpr (is_void_v <Result>)
+					if constexpr (std::is_void_v <Result>)
 						// Выполняем функцию обратного вызова
 						callback->fn(std::forward <Args> (args)...);
 					// Выполняем функцию обратного вызова с возвратом результата
@@ -1679,21 +1770,12 @@ namespace awh {
 						// Записываем ошибку в лог
 						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 					#endif
-					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
 					// Если результат функции обратного вызова не возвращается
-					if constexpr (is_void_v <Result>){
-						// Выполняем извлечение функции обратного вызова
-						auto * callback = awh_cast <const BasicFunction <void ()> *> (this->_callbacks.find(id)->second.get());
-						// Выполняем функцию обратного вызова
-						callback->fn();
-					// Если требуется вывод результата работы функции
-					} else {
-						// Выполняем извлечение функции обратного вызова
-						auto * callback = awh_cast <const BasicFunction <Result ()> *> (this->_callbacks.find(id)->second.get());
-						// Выполняем функцию обратного вызова с возвратом результата
-						return callback->fn();
-					}
+					if constexpr (std::is_void_v <Result>)
+						// Завершаем работу функции обратного вызова
+						return;
+					// Возвращаем пустое значение callback
+					else return Result{};
 				}
 			}
 		public:
@@ -1702,22 +1784,60 @@ namespace awh {
 			 *
 			 */
 			void call() const noexcept {
-				// Выполняем блокировку потока
-				const locker_t <std::recursive_mutex> lock(this->_mtx);
-				// Выполняем перебор всех функций обратного вызова в контейнере
-				for(const auto & [id, cb] : this->_callbacks){
-					// Если мы извлекли функцию обратного вызова
-					if(auto * callback = awh_cast <const BasicFunction <void ()> *>(cb.get())){
-						// Если функция обратного вызова установлена
-						if(callback->fn != nullptr){
-							// Если системная функция обратного вызова установлена
-							if(this->_callback != nullptr)
-								// Выполняем системную функцию обратного вызова
-								this->_callback(event_t::RUN, id, cb);
-							// Выполняем функцию обратного вызова
-							callback->fn();
+				/**
+				 * Выполняем отлов ошибок
+				 */
+				try {
+					/**
+					 * Снимаем копию списка функций обратного вызова. Снимок удерживает владение функциями
+					 * (shared_ptr), поэтому их можно безопасно выполнять уже вне блокировки, а изменение
+					 * контейнера из callback'а (добавление/удаление) не инвалидирует обход
+					 */
+					std::vector <std::pair <id_t, fn_t>> snapshot;
+					// Локальная копия системной функции обратного вызова (читаем её под блокировкой)
+					function <void (const event_t, const id_t, const fn_t &)> systemCallback;
+					{
+						// Выполняем блокировку потока
+						const locker_t <std::recursive_mutex> lock(this->_mtx, locker_t <std::recursive_mutex>::mode_t::SHARED);
+						// Формируем снимок контейнера функций обратного вызова
+						snapshot.assign(this->_callbacks.begin(), this->_callbacks.end());
+						// Сохраняем копию системной функции обратного вызова
+						systemCallback = this->_callback;
+					}
+					/**
+					 * Выполняем перебор всех функций обратного вызова в снимке контейнера (уже вне блокировки)
+					 */
+					for(const auto & [id, cb] : snapshot){
+						// Если мы извлекли функцию обратного вызова
+						if(auto * callback = awh_cast <const BasicFunction <void ()> *>(cb.get())){
+							// Если функция обратного вызова установлена
+							if(callback->fn != nullptr){
+								// Если системная функция обратного вызова установлена
+								if(systemCallback != nullptr)
+									// Выполняем системную функцию обратного вызова
+									systemCallback(event_t::RUN, id, cb);
+								// Выполняем функцию обратного вызова
+								callback->fn();
+							}
 						}
 					}
+				/**
+				 * Если возникает ошибка
+				 */
+				} catch(const exception & error) {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+					#endif
 				}
 			}
 		public:
@@ -1735,9 +1855,20 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(string_view name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
-				// Выполняем функцию обратного вызова
-				return this->call <Signature> (name.data(), std::forward <Args> (args)...);
+			auto call(string_view name, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
+				// Формируем тип данных результата выполнения функции обратного вызова
+				using Result = std::invoke_result_t <std::function <Signature>, Args...>;
+				// Если название функции обратного вызова не передано
+				if(std::empty(name)){
+					// Если результат функции обратного вызова не возвращается
+					if constexpr (std::is_void_v <Result>)
+						// Завершаем работу функции обратного вызова
+						return;
+					// Возвращаем пустое значение callback
+					else return Result{};
+				}
+				// Выполняем функцию обратного вызова (идентификатор получаем напрямую из string_view)
+				return this->_call <Signature> (this->id(name), std::forward <Args> (args)...);
 			}
 			/**
 			 * @brief Шаблон метода выполнения финкции обратного вызова
@@ -1753,7 +1884,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(const string & name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+			auto call(const string & name, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Выполняем функцию обратного вызова
 				return this->call <Signature> (name.c_str(), std::forward <Args> (args)...);
 			}
@@ -1771,13 +1902,13 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(const char * name, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+			auto call(const char * name, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Формируем тип данных результата выполнения функции обратного вызова
-				using Result = invoke_result_t <function <Signature>, Args...>;
+				using Result = std::invoke_result_t <std::function <Signature>, Args...>;
 				// Если название функции обратного вызова не передано
 				if(name == nullptr){
 					// Если результат функции обратного вызова не возвращается
-					if constexpr (is_void_v <Result>)
+					if constexpr (std::is_void_v <Result>)
 						// Завершаем работу функции обратного вызова
 						return;
 					// Возвращаем пустое значение callback
@@ -1800,7 +1931,7 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(const id_t id, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+			auto call(const id_t id, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Выполняем функцию обратного вызова
 				return this->_call <Signature> (id, std::forward <Args> (args)...);
 			}
@@ -1819,17 +1950,17 @@ namespace awh {
 			 * @param args аргументы функции обратного вызова
 			 * @return     результат выполнения функции обратного вызова
 			 */
-			auto call(const A id, Args &&... args) const noexcept -> invoke_result_t <function <Signature>, Args...> {
+			auto call(const A id, Args &&... args) const noexcept -> std::invoke_result_t <std::function <Signature>, Args...> {
 				// Если мы получили на вход число
-				if constexpr (is_arithmetic_v <A> || is_enum_v <A>)
+				if constexpr (std::is_arithmetic_v <A> || std::is_enum_v <A>)
 					// Выполняем функцию обратного вызова
 					return this->_call <Signature> (static_cast <id_t> (id), std::forward <Args> (args)...);
 				// Если на вход мы получили какое-то другое значение
 				else {
 					// Формируем тип данных результата выполнения функции обратного вызова
-					using Result = invoke_result_t <function <Signature>, Args...>;
+					using Result = std::invoke_result_t <std::function <Signature>, Args...>;
 					// Если результат функции обратного вызова не возвращается
-					if constexpr (is_void_v <Result>)
+					if constexpr (std::is_void_v <Result>)
 						// Завершаем работу функции обратного вызова
 						return;
 					// Возвращаем пустое значение callback
@@ -1863,16 +1994,19 @@ namespace awh {
 			 * @return        текущее значение объекта
 			 */
 			Callback & operator = (Callback && storage) noexcept {
+				// Если перемещение выполняется из самого себя
+				if(this == &storage)
+					// Возвращаем значение текущего объекта
+					return (* this);
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock1(this->_mtx);
-					// Выполняем блокировку потока для стороннего контейнера
-					const locker_t <std::recursive_mutex> lock2(storage._mtx);
-					// Выполняем копирование функций обратного вызова
-					this->_callbacks = std::move(storage._callbacks);
+					// Выполняем безопасный захват блокировок текущего и стороннего контейнеров
+					Callback::_dualLock(this->_mtx, storage._mtx, [&]() {
+						// Выполняем перемещение функций обратного вызова
+						this->_callbacks = std::move(storage._callbacks);
+					});
 				/**
 				 * Если возникает ошибка
 				 */
@@ -1901,14 +2035,19 @@ namespace awh {
 			 * @return        текущее значение объекта
 			 */
 			Callback & operator = (const Callback & storage) noexcept {
+				// Если копирование выполняется из самого себя
+				if(this == &storage)
+					// Возвращаем значение текущего объекта
+					return (* this);
 				/**
 				 * Выполняем отлов ошибок
 				 */
 				try {
-					// Выполняем блокировку потока
-					const locker_t <std::recursive_mutex> lock(this->_mtx);
-					// Выполняем копирование функций обратного вызова
-					this->_callbacks = storage._callbacks;
+					// Выполняем безопасный захват блокировок текущего и стороннего контейнеров
+					Callback::_dualLock(this->_mtx, const_cast <Callback &> (storage)._mtx, [&]() {
+						// Выполняем копирование функций обратного вызова
+						this->_callbacks = storage._callbacks;
+					});
 				/**
 				 * Если возникает ошибка
 				 */

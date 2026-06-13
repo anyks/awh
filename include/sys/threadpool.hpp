@@ -146,7 +146,9 @@ namespace awh {
 			void wait() noexcept {
 				// Устанавливаем флаг ожидания выполнения всех зада
 				this->_wait.store(true, std::memory_order_release);
-				// Ожидаем завершение работы каждого воркера
+				/**
+				 * Ожидаем завершение работы каждого воркера
+				 */
 				for(auto & worker: this->_workers)
 					// Выполняем ожидание завершения работы потоков
 					worker.join();		
@@ -168,7 +170,9 @@ namespace awh {
 				this->_stop.store(true, std::memory_order_release);
 				// Сообщаем всем что мы завершаем работу
 				this->_cv.notify_all();
-				// Ожидаем завершение работы каждого воркера
+				/**
+				 * Ожидаем завершение работы каждого воркера
+				 */
 				for(auto & worker: this->_workers)
 					// Выполняем ожидание завершения работы потоков
 					worker.join();
@@ -199,7 +203,9 @@ namespace awh {
 					this->_threads = count;
 				// Ели количество потоков передано
 				if(this->_threads > 0){
-					// Добавляем в список воркеров, новую задачу
+					/**
+					 * Добавляем в список воркеров, новую задачу
+					 */
 					for(uint16_t i = 0; i < this->_threads; ++i)
 						// Добавляем новую задачу
 						this->_workers.emplace_back(std::bind(&Threadpool::work, this));
