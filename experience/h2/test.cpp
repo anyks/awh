@@ -741,6 +741,148 @@ static void testServerPush() {
 	}
 }
 
+// ───────────────────── Реентерабельность callbacks и лимиты потоков ─────────────────────
+
+namespace {
+	struct reentr_ctx_t {
+		Session *   s        = nullptr; // для реентрантных вызовов из callback
+		int         begins   = 0;
+		int         headers  = 0;
+		int         closes   = 0;
+		uint32_t    lastClose = 0;
+		error_t     lastCloseCode = error_t::NO_ERROR;
+		bool        errored  = false;
+		bool        doRst    = false;   // onHeader: реентрантно сбросить свой поток
+		bool        doFeed   = false;   // onHeader: реентрантно скормить ещё байты
+		std::string extra;              // байты для реентрантного feed()
+	};
+	void reBegin(void * u, uint32_t) { static_cast <reentr_ctx_t *> (u)->begins++; }
+	void reHeader(void * u, uint32_t sid, std::string_view, std::string_view) {
+		auto * c = static_cast <reentr_ctx_t *> (u);
+		c->headers++;
+		if(c->doRst) c->s->submitRstStream(sid, error_t::CANCEL);
+		if(c->doFeed && !c->extra.empty()){
+			c->s->feed(reinterpret_cast <const uint8_t *> (c->extra.data()), c->extra.size());
+			c->extra.clear();
+		}
+	}
+	void reClose(void * u, uint32_t id, error_t code) {
+		auto * c = static_cast <reentr_ctx_t *> (u); c->closes++; c->lastClose = id; c->lastCloseCode = code;
+	}
+	void reError(void * u, error_t, const char *) { static_cast <reentr_ctx_t *> (u)->errored = true; }
+
+	/// Просканировать буфер на наличие RST_STREAM указанного потока с нужным кодом.
+	bool hasRstStream(std::string_view buf, uint32_t streamId, error_t code) {
+		size_t off = 0;
+		while((buf.size() - off) >= proto::FRAME_HEADER_SIZE){
+			frame::header_t h;
+			frame::parseHeader(reinterpret_cast <const uint8_t *> (buf.data()) + off, buf.size() - off, h);
+			if((buf.size() - off) < (proto::FRAME_HEADER_SIZE + h.length)) break;
+			if((h.type == frame_t::RST_STREAM) && (h.streamId == streamId)){
+				error_t got = error_t::NO_ERROR, err = error_t::NO_ERROR;
+				if(frame::parseRstStream(h, reinterpret_cast <const uint8_t *> (buf.data()) + off + proto::FRAME_HEADER_SIZE, got, err) == status_t::OK && got == code)
+					return true;
+			}
+			off += proto::FRAME_HEADER_SIZE + h.length;
+		}
+		return false;
+	}
+}
+
+static void testReentrancyAndLimits() {
+	std::printf("[Реентерабельность callbacks и лимиты потоков]\n");
+	const std::string PREFACE(proto::PREFACE);
+
+	// 1. onHeader реентрантно сбрасывает СВОЙ поток (submitRstStream) — без use-after-free.
+	{
+		reentr_ctx_t c; c.doRst = true;
+		callbacks_t cb; cb.onStreamBegin = reBegin; cb.onHeader = reHeader; cb.onStreamClose = reClose; cb.onError = reError;
+		Session srv(endpoint_t::SERVER, cb, &c); c.s = &srv; srv.submitPreface();
+		std::string in = PREFACE; appendRequest(in, 1, true);
+		const auto st = srv.feed(reinterpret_cast <const uint8_t *> (in.data()), in.size());
+		check((st == status_t::OK) && (c.headers == 4) && !c.errored,
+			"onHeader -> submitRstStream(свой поток): без сбоя, заголовки доставлены");
+	}
+
+	// 2. onHeader реентрантно вызывает feed() со вторым (большим) потоком — без висячего указателя _input.
+	{
+		reentr_ctx_t c; c.doFeed = true;
+		callbacks_t cb; cb.onStreamBegin = reBegin; cb.onHeader = reHeader; cb.onStreamClose = reClose; cb.onError = reError;
+		Session srv(endpoint_t::SERVER, cb, &c); c.s = &srv; srv.submitPreface();
+		std::vector <hpack::field_t> big = { { ":method", "GET" }, { ":scheme", "https" }, { ":path", "/big" }, { ":authority", "y" } };
+		for(int i = 0; i < 40; ++i) big.push_back({ "x-pad-" + std::to_string(i), std::string(300, 'z') });
+		appendFields(c.extra, 3, big, true); // второй поток дописывается в _input из callback
+		std::string in = PREFACE; appendRequest(in, 1, true);
+		const auto st = srv.feed(reinterpret_cast <const uint8_t *> (in.data()), in.size());
+		check((st == status_t::OK) && (c.begins == 2) && !c.errored,
+			"реентрантный feed() из onHeader: оба потока обработаны, без UAF _input");
+	}
+
+	// 3. MAX_CONCURRENT_STREAMS для входящих потоков: сверхлимитный поток => REFUSED_STREAM.
+	{
+		reentr_ctx_t c;
+		callbacks_t cb; cb.onStreamBegin = reBegin; cb.onError = reError;
+		Session srv(endpoint_t::SERVER, cb, &c); srv.submitPreface();
+		settings_t ss; ss.maxConcurrentStreams = 1; srv.submitSettings(ss);
+		srv.consumePending(srv.pending().size()); // отбрасываем исходящие SETTINGS
+		std::string in = PREFACE;
+		appendRequest(in, 1, false); // поток 1 остаётся открытым (без END_STREAM)
+		appendRequest(in, 3, false); // поток 3 — сверх лимита (1)
+		const auto st = srv.feed(reinterpret_cast <const uint8_t *> (in.data()), in.size());
+		check((st == status_t::OK) && (c.begins == 1) && !c.errored && hasRstStream(srv.pending(), 3, error_t::REFUSED_STREAM),
+			"входящий поток сверх MAX_CONCURRENT_STREAMS => RST_STREAM(REFUSED_STREAM), соединение живёт");
+	}
+
+	// 4. Новый поток пира после отправленного GOAWAY => REFUSED_STREAM, onStreamBegin не зовётся.
+	{
+		reentr_ctx_t c;
+		callbacks_t cb; cb.onStreamBegin = reBegin; cb.onError = reError;
+		Session srv(endpoint_t::SERVER, cb, &c); srv.submitPreface();
+		srv.submitGoaway(error_t::NO_ERROR);
+		srv.consumePending(srv.pending().size()); // отбрасываем preface+SETTINGS+GOAWAY
+		std::string in = PREFACE; appendRequest(in, 1, true);
+		const auto st = srv.feed(reinterpret_cast <const uint8_t *> (in.data()), in.size());
+		check((st == status_t::OK) && (c.begins == 0) && !c.errored && hasRstStream(srv.pending(), 1, error_t::REFUSED_STREAM),
+			"новый поток после GOAWAY => RST_STREAM(REFUSED_STREAM), поток не открыт");
+	}
+
+	// 5. PUSH_PROMISE сверх лимита (клиент объявил maxConcurrentStreams=0) => клиент отклоняет push.
+	{
+		push_ctx_t cc;
+		callbacks_t ccb; ccb.onPushPromise = pcPush; ccb.onHeader = pcHeader; ccb.onStreamClose = pcClose; ccb.onError = pcError;
+		Session client(endpoint_t::CLIENT, ccb, &cc);
+		Session server(endpoint_t::SERVER, callbacks_t{}, nullptr);
+		client.submitPreface();
+		settings_t cs; cs.maxConcurrentStreams = 0; client.submitSettings(cs); // не принимаем встречные потоки
+		server.submitPreface();
+		const std::vector <hpack::field_t> req = { { ":method", "GET" }, { ":scheme", "https" }, { ":path", "/" }, { ":authority", "x" } };
+		const std::vector <hpack::field_t> promisedReq = { { ":method", "GET" }, { ":scheme", "https" }, { ":path", "/a.css" }, { ":authority", "x" } };
+		client.submitHeaders(1, req, true);
+		exchange(client, server);
+		server.submitPushPromise(1, promisedReq);
+		exchange(client, server);
+		check((cc.pushPromises == 0) && (cc.promisedPath.empty()) && !cc.errored,
+			"PUSH_PROMISE сверх лимита клиента => push отклонён, соединение живёт");
+	}
+
+	// 6. Восстановление после fail() в середине блока заголовков: следующий feed() не залипает.
+	{
+		reentr_ctx_t c;
+		callbacks_t cb; cb.onError = reError;
+		Session srv(endpoint_t::SERVER, cb, &c); srv.submitPreface();
+		srv.setHeaderBlockLimits(100, 1000); // лимит блока 100 байт
+		std::string in = PREFACE;
+		frame::serializeHeaders(in, 1, std::string(200, '\0'), false, false); // мид-блок, превышение => fail()
+		const auto st1 = srv.feed(reinterpret_cast <const uint8_t *> (in.data()), in.size());
+		check((st1 == status_t::ERROR) && c.errored, "header block too large => fail()");
+		// После fail() состояние сборки сброшено: PING обрабатывается, а не «expected CONTINUATION».
+		std::string ping; const uint8_t opaque[8] = { 1,2,3,4,5,6,7,8 };
+		frame::serializePing(ping, opaque, false);
+		const auto st2 = srv.feed(reinterpret_cast <const uint8_t *> (ping.data()), ping.size());
+		check(st2 == status_t::OK, "после fail() состояние _hbc сброшено, следующий фрейм разбирается");
+	}
+}
+
 int main() {
 	testInteger();
 	testHuffman();
@@ -752,6 +894,7 @@ int main() {
 	testHttpSemantics();
 	testOutgoingHeaderBlock();
 	testServerPush();
+	testReentrancyAndLimits();
 	std::printf("\n%d/%d проверок пройдено\n", g_total - g_failed, g_total);
 	return (g_failed == 0) ? 0 : 1;
 }

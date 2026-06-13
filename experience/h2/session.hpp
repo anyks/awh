@@ -61,10 +61,10 @@ namespace awh {
 		struct settings_t {
 			uint32_t headerTableSize      = proto::DEFAULT_HEADER_TABLE_SIZE; // 4096
 			uint32_t enablePush           = 1;
-			uint32_t maxConcurrentStreams = 0xFFFFFFFF;                       // без лимита
+			uint32_t maxConcurrentStreams = 128;                             // безопасный дефолт (как nghttp2 ~100)
 			int32_t  initialWindowSize    = proto::DEFAULT_WINDOW_SIZE;       // 65535
 			uint32_t maxFrameSize         = proto::DEFAULT_MAX_FRAME_SIZE;    // 16384
-			uint32_t maxHeaderListSize    = 0;                               // 0 = без лимита
+			uint32_t maxHeaderListSize    = 0;                               // 0 = без лимита (но блок ограничен _maxHeaderBlockSize)
 		};
 
 		/**
@@ -292,6 +292,8 @@ namespace awh {
 				/// Признак того, что соединение помечено на завершение (отправлен/получен GOAWAY).
 				bool closed() const noexcept { return _goawaySent || _goawayReceived; }
 			private:
+				/// Разобрать накопленный _input (preface + поток фреймов). Без защиты реентерабельности.
+				status_t parseInput() noexcept;
 				/// Обработать один полный фрейм (заголовок + payload длиной h.length).
 				status_t dispatch(const frame::header_t & h, const uint8_t * payload) noexcept;
 				/// Декодировать накопленный блок заголовков (_hbcBuffer) и вызвать callbacks.
@@ -368,8 +370,10 @@ namespace awh {
 
 			uint32_t    _peerStreamCount = 0; // число активных потоков, открытых пиром (лимит MAX_CONCURRENT_STREAMS)
 
-				std::string _input;               // буфер неразобранного хвоста
-				std::string _output;              // буфер исходящих байтов
+			bool        _inFeed = false;      // защита от реентерабельного feed() (callback -> feed)
+
+			std::string _input;               // буфер неразобранного хвоста
+			std::string _output;              // буфер исходящих байтов
 				size_t      _outputPos = 0;       // префикс _output, уже отданный в сокет (вместо erase(0,..))
 
 				/// Логический объём ещё не отправленных исходящих байтов.

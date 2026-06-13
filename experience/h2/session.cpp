@@ -374,6 +374,14 @@ namespace awh {
 		}
 
 		status_t Session::fail(error_t code, const char * message) noexcept {
+			// Сбрасываем незавершённую сборку блока заголовков: иначе после onError любой
+			// следующий не-CONTINUATION фрейм залипал бы в PROTOCOL_ERROR без восстановления.
+			_hbcStream = 0;
+			_hbcPromised = 0;
+			_hbcEndStream = false;
+			_hbcRefused = false;
+			_hbcBuffer.clear();
+			_hbcFrames = 0;
 			if(_cb.onError != nullptr) _cb.onError(_user, code, message);
 			submitGoaway(code);
 			return status_t::ERROR;
@@ -381,15 +389,23 @@ namespace awh {
 
 		status_t Session::feed(const uint8_t * data, size_t size) noexcept {
 			if((data != nullptr) && (size > 0)) _input.append(reinterpret_cast <const char *> (data), size);
+			// Реентерабельный вызов из callback: данные уже добавлены в _input, а внешний разбор
+			// их подхватит (parseInput перечитывает _input на каждой итерации). Это исключает
+			// висячий указатель на _input при перевыделении из вложенного append.
+			if(_inFeed) return status_t::OK;
+			_inFeed = true;
+			const status_t st = parseInput();
+			_inFeed = false;
+			return st;
+		}
 
-			const uint8_t * buf = reinterpret_cast <const uint8_t *> (_input.data());
-			const size_t total = _input.size();
+		status_t Session::parseInput() noexcept {
 			size_t pos = 0;
 
 			// Сервер: сначала принимаем клиентский connection preface (24 октета).
 			if(!_prefaceReceived){
-				if(total - pos < proto::PREFACE.size()) return status_t::OK; // ждём больше данных
-				if(std::string_view(reinterpret_cast <const char *> (buf + pos), proto::PREFACE.size()) != proto::PREFACE){
+				if(_input.size() < proto::PREFACE.size()) return status_t::OK; // ждём больше данных
+				if(std::string_view(_input.data(), proto::PREFACE.size()) != proto::PREFACE){
 					_input.clear();
 					return fail(error_t::PROTOCOL_ERROR, "invalid connection preface");
 				}
@@ -397,8 +413,13 @@ namespace awh {
 				_prefaceReceived = true;
 			}
 
-			// Разбор потока фреймов.
-			while((total - pos) >= proto::FRAME_HEADER_SIZE){
+			// Разбор потока фреймов. buf/total перечитываем на каждой итерации: callback мог
+			// реентрантно вызвать feed() и дописать в _input, спровоцировав перевыделение.
+			while(true){
+				const uint8_t * buf = reinterpret_cast <const uint8_t *> (_input.data());
+				const size_t total = _input.size();
+				if((total - pos) < proto::FRAME_HEADER_SIZE) break;
+
 				frame::header_t h;
 				frame::parseHeader(buf + pos, total - pos, h);
 
@@ -669,6 +690,26 @@ namespace awh {
 					// Идентификатор обещанного потока: чётный (инициирует сервер) и строго возрастающий.
 					if(validateNewStream(pp.promisedStreamId, err) != status_t::OK) return fail(err, "invalid promised stream id");
 					_lastStreamId = pp.promisedStreamId;
+					// Отклоняем обещанный поток, если исчерпан лимит одновременных потоков
+					// (RFC 9113 §5.1.2) либо мы уже отправили GOAWAY. Те же правила, что для HEADERS:
+					// RST_STREAM(REFUSED_STREAM) на обещанном id, но блок всё равно декодируем для
+					// синхронизации HPACK. Поток не создаём, счётчик не увеличиваем.
+					const bool refusePush = _goawaySent || (_peerStreamCount >= _local.maxConcurrentStreams);
+					if(refusePush){
+						frame::serializeRstStream(_output, pp.promisedStreamId, error_t::REFUSED_STREAM);
+						_hbcStream    = h.streamId;
+						_hbcPromised  = 0;
+						_hbcEndStream = false;
+						_hbcRefused   = true;
+						_hbcBuffer.assign(pp.block.data(), pp.block.size());
+						_hbcFrames    = 1;
+						if(_hbcBuffer.size() > _maxHeaderBlockSize) return fail(error_t::ENHANCE_YOUR_CALM, "header block too large");
+						if(pp.endHeaders){
+							const status_t st = deliverHeaders();
+							if(st == status_t::ERROR) return status_t::ERROR;
+						}
+						return status_t::OK;
+					}
 					// Резервируем обещанный поток: reserved(remote). Он инициирован пиром (сервером)
 					// и учитывается в лимите одновременных потоков (RFC 9113 §5.1.2).
 					stream_t & ps = stream(pp.promisedStreamId);
@@ -702,7 +743,13 @@ namespace awh {
 
 			std::vector <hpack::field_t> fields;
 			error_t err = error_t::NO_ERROR;
-			const status_t st = _decoder.decode(_hbcBuffer, fields, _local.maxHeaderListSize, err);
+			// Если лимит распакованного списка не задан (0), применяем безопасный потолок,
+			// производный от лимита сжатого блока (защита от decompression-bomb даже при
+			// забытой настройке MAX_HEADER_LIST_SIZE). 32 — накладные расходы на запись HPACK.
+			const uint64_t listLimit = (_local.maxHeaderListSize != 0)
+			                         ? _local.maxHeaderListSize
+			                         : (static_cast <uint64_t> (_maxHeaderBlockSize) * 32);
+			const status_t st = _decoder.decode(_hbcBuffer, fields, listLimit, err);
 			// Сброс состояния сборки до возможного выхода.
 			_hbcStream = 0;
 			_hbcPromised = 0;
@@ -736,9 +783,14 @@ namespace awh {
 			if(_cb.onHeader != nullptr)
 				for(const hpack::field_t & f : fields) _cb.onHeader(_user, streamId, f.name, f.value);
 
+			// onHeader мог реентрантно закрыть поток (submitRstStream) и удалить его из карты —
+			// перечитываем указатель, иначе запись по нему = use-after-free.
+			s = findStream(streamId);
+			if(s == nullptr) return status_t::OK;
 			s->headersDone = true;
 			if(_cb.onHeadersComplete != nullptr) _cb.onHeadersComplete(_user, streamId, endStream);
-			// Переход по END_STREAM может закрыть и удалить поток — выполняем последним.
+			// Переход по END_STREAM может закрыть и удалить поток — выполняем последним
+			// и тоже после перечитывания (onHeadersComplete мог удалить поток).
 			if(endStream){
 				stream_t * s2 = findStream(streamId);
 				if(s2 != nullptr) applyRemoteEndStream(*s2);
