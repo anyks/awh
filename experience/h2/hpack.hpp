@@ -37,6 +37,10 @@ namespace awh {
 			struct field_t {
 				std::string name;
 				std::string value;
+				/// Чувствительное значение (RFC 7541 §7.1.3): кодировать как Literal Never Indexed
+				/// и не заносить в динамическую таблицу (защита от CRIME-подобных атак). Кодер
+				/// дополнительно автоматически считает чувствительными authorization/cookie.
+				bool        sensitive = false;
 			};
 
 			/**
@@ -134,7 +138,7 @@ namespace awh {
 			class Decoder {
 				public:
 					explicit Decoder(uint32_t maxTableSize = proto::DEFAULT_HEADER_TABLE_SIZE) noexcept
-					 : _table(maxTableSize) {}
+					 : _table(maxTableSize), _protocolMaxSize(maxTableSize) {}
 
 					/**
 					 * @brief Декодировать один блок заголовков целиком.
@@ -148,8 +152,16 @@ namespace awh {
 					status_t decode(std::string_view block, std::vector <field_t> & out, uint64_t maxListSize, error_t & err) noexcept;
 
 					DynamicTable & table() noexcept { return _table; }
+
+					/**
+					 * @brief Верхняя граница для Dynamic Table Size Update (RFC 7541 §6.3).
+					 *        Должна равняться объявленному нами SETTINGS_HEADER_TABLE_SIZE.
+					 *        Превышение пиром трактуется как COMPRESSION_ERROR.
+					 */
+					void setProtocolMaxSize(uint32_t size) noexcept { _protocolMaxSize = size; }
 				private:
 					DynamicTable _table;
+					uint32_t     _protocolMaxSize; // максимум, разрешённый нашим SETTINGS
 			};
 
 			/**
@@ -176,8 +188,20 @@ namespace awh {
 					void encode(const std::vector <field_t> & fields, std::string & out, bool useHuffman = true) noexcept;
 
 					DynamicTable & table() noexcept { return _table; }
+
+					/**
+					 * @brief Изменить максимальный размер своей динамической таблицы (RFC 7541 §4.2).
+					 *
+					 * Вызывается при получении SETTINGS_HEADER_TABLE_SIZE пира: наш кодер обязан
+					 * не превышать таблицу, которую готов держать декодер пира. Применяется сразу
+					 * (с вытеснением), а в начало следующего блока ставится Dynamic Table Size Update,
+					 * чтобы декодер пира остался синхронным.
+					 */
+					void setMaxTableSize(uint32_t size) noexcept;
 				private:
 					DynamicTable _table;
+					bool         _sizeUpdatePending = false; // нужно отправить Dynamic Table Size Update
+					uint32_t     _pendingSize       = 0;     // значение для этого update
 			};
 		}
 	}

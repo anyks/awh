@@ -22,6 +22,7 @@
 #include "hpack.hpp"
 
 #include <string>
+#include <vector>
 #include <cstdint>
 #include <unordered_map>
 
@@ -86,12 +87,21 @@ namespace awh {
 
 			// --- очередь отправки тела (flow control, этап 4) ---
 			std::string     sendBuffer;                 // ещё не нарезанные в DATA байты (ограничен high-water)
+			size_t          sendOffset   = 0;           // префикс sendBuffer, уже отправленный (вместо erase(0,..))
 			bool            endStreamPending = false;   // на последнем фрагменте выставить END_STREAM
 			bool            endStreamSent    = false;    // END_STREAM уже отправлен
 			bool            writableNotified = false;    // onStreamWritable уже вызван для текущего «провала»
 			data_provider_t provider     = nullptr;     // pull-источник (если задан вместо submitData)
 			void *          providerUser  = nullptr;
 			bool            providerEof   = false;
+
+			/// Логический объём ещё не отправленных данных (без учтённого префикса).
+			size_t pending() const noexcept { return sendBuffer.size() - sendOffset; }
+			/// Снять учтённый префикс: очистка при полном расходе, иначе амортизированная компактификация.
+			void compactSendBuffer() noexcept {
+				if(sendOffset == sendBuffer.size()){ sendBuffer.clear(); sendOffset = 0; }
+				else if(sendOffset >= (sendBuffer.size() - sendOffset)){ sendBuffer.erase(0, sendOffset); sendOffset = 0; }
+			}
 		};
 
 		/**
@@ -221,6 +231,14 @@ namespace awh {
 				void setOutputHighWater(size_t high) noexcept { _outputHighWater = high; }
 
 				/**
+				 * @brief Увеличить приёмное окно соединения (по умолчанию 65535 — узкое место).
+				 *
+				 * Поднимает целевой размер окна приёма всего соединения и сразу отправляет
+				 * WINDOW_UPDATE(0) на разницу. Только увеличение (уменьшить окно нельзя).
+				 */
+				void setConnectionReceiveWindow(int32_t size) noexcept;
+
+				/**
 				 * @brief Сообщить текущее монотонное время (в секундах) для пополнения rate-лимитов.
 				 *        Вызывайте периодически (например, перед feed); необязательно.
 				 */
@@ -257,13 +275,17 @@ namespace awh {
 				status_t feed(const uint8_t * data, size_t size) noexcept;
 
 				/**
-				 * @brief Буфер исходящих байтов, накопленных методами submit/feed (для отправки в сокет).
-				 *        После отправки очистите его методом consumePending().
+				 * @brief Ещё не отправленные исходящие байты (zero-copy view во внутренний буфер).
+				 *
+				 * View действителен до следующего вызова любого метода сессии. После записи в сокет
+				 * освободите отправленную часть методом consumePending().
 				 */
-				const std::string & pending() const noexcept { return _output; }
+				std::string_view pending() const noexcept {
+					return std::string_view(_output.data() + _outputPos, _output.size() - _outputPos);
+				}
 
 				/**
-				 * @brief Удалить из исходящего буфера n отправленных байт.
+				 * @brief Освободить n отправленных байт из исходящего буфера (амортизированно O(1)).
 				 */
 				void consumePending(size_t n) noexcept;
 
@@ -290,10 +312,17 @@ namespace awh {
 				void applyLocalEndStream(stream_t & s) noexcept;
 				/// Закрыть поток и вызвать onStreamClose.
 				void closeStream(uint32_t id, error_t code) noexcept;
+				/// Удалить поток из карты с корректным учётом счётчика встречных потоков.
+				void eraseStream(uint32_t id) noexcept;
+				/// true, если поток с таким id инициирован пиром (а не нами).
+				bool peerInitiated(uint32_t id) const noexcept {
+					const bool peerOdd = (_endpoint == endpoint_t::SERVER);
+					return (((id & 1u) != 0) == peerOdd);
+				}
 				/// Прокачать отправку по всем потокам с учётом окон и порога выходного буфера.
 				void pump() noexcept;
-				/// Прокачать отправку одного потока.
-				void pumpStream(stream_t & s) noexcept;
+				/// Отправить не более одного DATA-фрейма потока (round-robin). true — если был прогресс.
+				bool pumpStream(stream_t & s) noexcept;
 				/// Дозагрузить sendBuffer из pull-провайдера (если он задан).
 				void refillFromProvider(stream_t & s) noexcept;
 				/// При просадке буфера ниже low-water — вызвать onStreamWritable (один раз на «провал»).
@@ -315,8 +344,11 @@ namespace awh {
 
 				std::unordered_map <uint32_t, stream_t> _streams;
 
-				int32_t _localWindow  = proto::DEFAULT_WINDOW_SIZE; // окно соединения (приём)
-				int32_t _remoteWindow = proto::DEFAULT_WINDOW_SIZE; // окно соединения (отправка)
+			int32_t _localWindow    = proto::DEFAULT_WINDOW_SIZE; // окно соединения (приём, текущее)
+			int32_t _localWindowMax = proto::DEFAULT_WINDOW_SIZE; // целевой размер приёмного окна соединения
+			int32_t _remoteWindow   = proto::DEFAULT_WINDOW_SIZE; // окно соединения (отправка)
+
+			std::vector <uint32_t> _pumpIds;  // переиспользуемый снимок id для pump() (без аллокаций на вызов)
 
 				uint32_t _lastStreamId   = 0;     // наибольший принятый stream id (для GOAWAY)
 				uint32_t _nextStreamId   = 1;     // следующий инициируемый нами stream id
@@ -332,9 +364,16 @@ namespace awh {
 			std::string _hbcBuffer;           // накопленный фрагмент блока заголовков
 			uint32_t    _hbcFrames = 0;       // число фреймов в текущем блоке (HEADERS + CONTINUATION)
 			uint32_t    _hbcPromised = 0;     // != 0: собираемый блок принадлежит PUSH_PROMISE (id обещанного потока)
+			bool        _hbcRefused = false;  // поток отклонён (RST_STREAM), блок декодируем только для синхронизации HPACK
+
+			uint32_t    _peerStreamCount = 0; // число активных потоков, открытых пиром (лимит MAX_CONCURRENT_STREAMS)
 
 				std::string _input;               // буфер неразобранного хвоста
 				std::string _output;              // буфер исходящих байтов
+				size_t      _outputPos = 0;       // префикс _output, уже отданный в сокет (вместо erase(0,..))
+
+				/// Логический объём ещё не отправленных исходящих байтов.
+				size_t outputPending() const noexcept { return _output.size() - _outputPos; }
 
 				// --- flow control / backpressure (этап 4) ---
 				size_t _streamSendHighWater = 256 * 1024;  // ёмкость буфера отправки потока

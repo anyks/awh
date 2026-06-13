@@ -38,7 +38,7 @@ namespace {
 
 	/// Отправить накопленные сессией байты в сокет.
 	void flush(state_t & s) noexcept {
-		const std::string & out = s.session.pending();
+		const std::string_view out = s.session.pending();
 		if(!out.empty()){
 			s.client->send(out.data(), out.size());
 			s.session.consumePending(out.size());

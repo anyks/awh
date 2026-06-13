@@ -353,7 +353,9 @@ namespace awh {
 					const status_t st = decodeInteger(data + pos, size - pos, 7, len, used);
 					if(st != status_t::OK) { if(st == status_t::ERROR) err = error_t::COMPRESSION_ERROR; return st; }
 					pos += used;
-					if(pos + len > size) return status_t::INCOMPLETE;
+					// Без сложения pos + len: оно переполняет size_t при враждебно большом len
+					// (длина строки приходит из недоверенных данных) и обходит проверку границ.
+					if(len > static_cast <uint64_t> (size - pos)) return status_t::INCOMPLETE;
 					const uint8_t * str = data + pos;
 					if(huffman){
 						if(!huffmanDecode(str, static_cast <size_t> (len), out)){
@@ -436,7 +438,8 @@ namespace awh {
 						uint64_t newSize = 0; size_t used = 0;
 						if(decodeInteger(data + pos, size - pos, 5, newSize, used) != status_t::OK){ err = error_t::COMPRESSION_ERROR; return status_t::ERROR; }
 						pos += used;
-						// TODO(этап 2): проверить newSize <= согласованный SETTINGS_HEADER_TABLE_SIZE.
+						// RFC 7541 §6.3: значение не должно превышать наш SETTINGS_HEADER_TABLE_SIZE.
+						if(newSize > _protocolMaxSize){ err = error_t::COMPRESSION_ERROR; return status_t::ERROR; }
 						_table.setMaxSize(static_cast <uint32_t> (newSize));
 					}
 				}
@@ -446,6 +449,11 @@ namespace awh {
 			// ───────────────────── Кодер ─────────────────────
 
 			namespace {
+				/// Заголовки, которые кодер всегда трактует как чувствительные (RFC 7541 §7.1.3).
+				bool isSensitiveName(const std::string & n) noexcept {
+					return (n == "authorization") || (n == "proxy-authorization")
+					    || (n == "cookie") || (n == "set-cookie");
+				}
 				void encodeStringLiteral(std::string & out, std::string_view s, bool useHuffman) noexcept {
 					if(useHuffman && (huffmanLength(s) < s.size())){
 						std::string enc;
@@ -459,7 +467,20 @@ namespace awh {
 				}
 			}
 
+			void Encoder::setMaxTableSize(uint32_t size) noexcept {
+				if(size == _table.maxSize()) return;
+				_table.setMaxSize(size);     // применяем сразу (с вытеснением)
+				_sizeUpdatePending = true;   // отметим, что в начале блока нужен update
+				_pendingSize = size;
+			}
+
 			void Encoder::encode(const std::vector <field_t> & fields, std::string & out, bool useHuffman) noexcept {
+				// RFC 7541 §4.2: Dynamic Table Size Update обязан идти в самом начале блока.
+				if(_sizeUpdatePending){
+					encodeInteger(out, _pendingSize, 5, 0x20); // паттерн 001xxxxx
+					_sizeUpdatePending = false;
+				}
+
 				// Поиск заголовка в статической + динамической таблицах.
 				// Возвращает индекс полного совпадения (имя+значение) или, если его нет,
 				// индекс совпадения только по имени. 0 — совпадения нет.
@@ -483,7 +504,18 @@ namespace awh {
 				};
 
 				for(const field_t & f : fields){
+					const bool sensitive = f.sensitive || isSensitiveName(f.name);
 					uint64_t nameIndex = 0;
+					if(sensitive){
+						// 6.2.3 Literal Never Indexed (префикс 4 бита, паттерн 0001xxxx).
+						// Значение не индексируется и не попадает в динамическую таблицу;
+						// для имени допускается ссылка на индекс (только имя).
+						lookup(f, nameIndex); // нужен только индекс имени, не полное совпадение
+						encodeInteger(out, nameIndex, 4, 0x10);
+						if(nameIndex == 0) encodeStringLiteral(out, f.name, useHuffman);
+						encodeStringLiteral(out, f.value, useHuffman);
+						continue; // в таблицу НЕ добавляем
+					}
 					const uint64_t fullIndex = lookup(f, nameIndex);
 					if(fullIndex != 0){
 						// 6.1 Indexed Header Field — имя и значение уже в таблице.

@@ -385,7 +385,7 @@ namespace {
 	struct data_scan_t { size_t bytes = 0; bool endStream = false; int frames = 0; };
 
 	/// Просканировать буфер и собрать статистику DATA-фреймов указанного потока.
-	data_scan_t scanData(const std::string & buf, uint32_t streamId) {
+	data_scan_t scanData(std::string_view buf, uint32_t streamId) {
 		data_scan_t r;
 		size_t pos = 0;
 		while((buf.size() - pos) >= proto::FRAME_HEADER_SIZE){
@@ -621,13 +621,13 @@ namespace {
 		for(int i = 0; i < 10; ++i){
 			bool moved = false;
 			if(!a.pending().empty()){
-				const std::string s = a.pending();
+				const std::string s{a.pending()};
 				b.feed(reinterpret_cast <const uint8_t *> (s.data()), s.size());
 				a.consumePending(s.size());
 				moved = true;
 			}
 			if(!b.pending().empty()){
-				const std::string s = b.pending();
+				const std::string s{b.pending()};
 				a.feed(reinterpret_cast <const uint8_t *> (s.data()), s.size());
 				b.consumePending(s.size());
 				moved = true;

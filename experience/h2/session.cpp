@@ -35,13 +35,23 @@ namespace awh {
 
 		void Session::submitSettings(const settings_t & settings) noexcept {
 			_local = settings;
-			const frame::setting_entry_t items[] = {
-				{ setting_t::HEADER_TABLE_SIZE,      _local.headerTableSize },
-				{ setting_t::ENABLE_PUSH,            _local.enablePush },
-				{ setting_t::INITIAL_WINDOW_SIZE,    static_cast <uint32_t> (_local.initialWindowSize) },
-				{ setting_t::MAX_FRAME_SIZE,         _local.maxFrameSize }
-			};
-			frame::serializeSettings(_output, items, sizeof(items) / sizeof(items[0]), false);
+			// Наш декодер обязан держать таблицу не больше, чем мы анонсируем, и отвергать
+			// Dynamic Table Size Update пира свыше этого значения (RFC 7541 §6.3).
+			_decoder.setProtocolMaxSize(_local.headerTableSize);
+			_decoder.table().setMaxSize(_local.headerTableSize);
+			frame::setting_entry_t items[6];
+			size_t n = 0;
+			items[n++] = { setting_t::HEADER_TABLE_SIZE,   _local.headerTableSize };
+			items[n++] = { setting_t::ENABLE_PUSH,         _local.enablePush };
+			items[n++] = { setting_t::INITIAL_WINDOW_SIZE, static_cast <uint32_t> (_local.initialWindowSize) };
+			items[n++] = { setting_t::MAX_FRAME_SIZE,      _local.maxFrameSize };
+			// MAX_CONCURRENT_STREAMS: 0xFFFFFFFF — это «без лимита», анонсировать незачем.
+			if(_local.maxConcurrentStreams != 0xFFFFFFFF)
+				items[n++] = { setting_t::MAX_CONCURRENT_STREAMS, _local.maxConcurrentStreams };
+			// MAX_HEADER_LIST_SIZE: 0 у нас означает «без лимита» (нет sentinel'а в протоколе) — пропускаем.
+			if(_local.maxHeaderListSize != 0)
+				items[n++] = { setting_t::MAX_HEADER_LIST_SIZE, _local.maxHeaderListSize };
+			frame::serializeSettings(_output, items, n, false);
 		}
 
 		void Session::submitWindowUpdate(uint32_t streamId, uint32_t increment) noexcept {
@@ -50,7 +60,7 @@ namespace awh {
 
 		void Session::submitRstStream(uint32_t streamId, error_t code) noexcept {
 			frame::serializeRstStream(_output, streamId, code);
-			_streams.erase(streamId);
+			eraseStream(streamId);
 		}
 
 		void Session::submitGoaway(error_t code, std::string_view debug) noexcept {
@@ -59,10 +69,17 @@ namespace awh {
 		}
 
 		void Session::consumePending(size_t n) noexcept {
-			if(n >= _output.size()) _output.clear();
-			else _output.erase(0, n);
+			// Сдвигаем offset вместо erase(0,n); физическую память освобождаем амортизированно.
+			_outputPos += std::min(n, outputPending());
+			if(_outputPos >= _output.size()){          // всё отдано — сбрасываем буфер
+				_output.clear();
+				_outputPos = 0;
+			} else if(_outputPos >= (_output.size() - _outputPos)){ // отданный префикс >= остатка
+				_output.erase(0, _outputPos);
+				_outputPos = 0;
+			}
 			// Выходной буфер просел — возможно, освободилось место под отложенные данные.
-			if(_output.size() < _outputHighWater) pump();
+			if(outputPending() < _outputHighWater) pump();
 		}
 
 		stream_t & Session::stream(uint32_t id) noexcept {
@@ -143,9 +160,17 @@ namespace awh {
 			return status_t::OK;
 		}
 
+		void Session::eraseStream(uint32_t id) noexcept {
+			const auto it = _streams.find(id);
+			if(it == _streams.end()) return;
+			// Освобождаем слот в лимите одновременных потоков, открытых пиром.
+			if(peerInitiated(id) && (_peerStreamCount > 0)) --_peerStreamCount;
+			_streams.erase(it);
+		}
+
 		void Session::closeStream(uint32_t id, error_t code) noexcept {
 			if(_cb.onStreamClose != nullptr) _cb.onStreamClose(_user, id, code);
-			_streams.erase(id);
+			eraseStream(id);
 		}
 
 		void Session::applyRemoteEndStream(stream_t & s) noexcept {
@@ -175,9 +200,9 @@ namespace awh {
 		void Session::refillFromProvider(stream_t & s) noexcept {
 			if((s.provider == nullptr) || s.providerEof) return;
 			// Держим буфер наполненным до high-water, дёргая провайдер порциями.
-			while((s.sendBuffer.size() < _streamSendHighWater) && !s.providerEof){
+			while((s.pending() < _streamSendHighWater) && !s.providerEof){
 				uint8_t tmp[16384];
-				const size_t cap = std::min(sizeof(tmp), _streamSendHighWater - s.sendBuffer.size());
+				const size_t cap = std::min(sizeof(tmp), _streamSendHighWater - s.pending());
 				bool eof = false;
 				const int64_t r = s.provider(s.providerUser, s.id, tmp, cap, &eof);
 				if(r < 0){ // ошибка источника — сбрасываем поток
@@ -194,73 +219,87 @@ namespace awh {
 		void Session::maybeNotifyWritable(stream_t & s) noexcept {
 			// Сигнал отдаём только для push-модели (submitData), не для pull-провайдера.
 			if((s.provider != nullptr) || (_cb.onStreamWritable == nullptr)) return;
-			if(!s.writableNotified && (s.sendBuffer.size() <= _streamSendLowWater)){
+			if(!s.writableNotified && (s.pending() <= _streamSendLowWater)){
 				s.writableNotified = true;
 				_cb.onStreamWritable(_user, s.id);
 			}
 		}
 
-		void Session::pumpStream(stream_t & s) noexcept {
-			while(true){
-				refillFromProvider(s);
-				const size_t remaining = s.sendBuffer.size();
+		bool Session::pumpStream(stream_t & s) noexcept {
+			refillFromProvider(s);
+			const size_t remaining = s.pending();
 
-				// Backpressure TCP-стадии: не раздуваем выходной буфер.
-				if(_output.size() >= _outputHighWater) break;
+			// Backpressure TCP-стадии: не раздуваем выходной буфер (по логическому объёму).
+			if(outputPending() >= _outputHighWater) return false;
 
-				const int32_t win = std::min(_remoteWindow, s.remoteWindow);
-				const size_t cap = _outputHighWater - _output.size();
-				const size_t n = std::min({ remaining,
-				                            static_cast <size_t> (win > 0 ? win : 0),
-				                            static_cast <size_t> (_remote.maxFrameSize),
-				                            cap });
+			const int32_t win = std::min(_remoteWindow, s.remoteWindow);
+			const size_t cap = _outputHighWater - outputPending();
+			const size_t n = std::min({ remaining,
+			                            static_cast <size_t> (win > 0 ? win : 0),
+			                            static_cast <size_t> (_remote.maxFrameSize),
+			                            cap });
 
-				if(n == 0){
-					// Окно закрыто (данные остаются в sendBuffer) либо слать нечего.
-					// Завершение потока пустым DATA с END_STREAM не списывает окно (длина 0).
-					if((remaining == 0) && s.endStreamPending && providerDone(s) && !s.endStreamSent){
-						frame::serializeData(_output, s.id, std::string_view{}, true);
-						s.endStreamSent = true;
-						applyLocalEndStream(s); // ссылка s может стать недействительной
-					}
-					break;
-				}
-
-				const bool last = s.endStreamPending && (n == remaining) && providerDone(s);
-				frame::serializeData(_output, s.id, std::string_view(s.sendBuffer.data(), n), last);
-				s.sendBuffer.erase(0, n);     // снимаем отправленный префикс (sendBuffer = только неотправленное)
-				_remoteWindow  -= static_cast <int32_t> (n);
-				s.remoteWindow -= static_cast <int32_t> (n);
-
-				maybeNotifyWritable(s);
-
-				if(last){
+			if(n == 0){
+				// Окно закрыто (данные остаются в sendBuffer) либо слать нечего.
+				// Завершение потока пустым DATA с END_STREAM не списывает окно (длина 0).
+				if((remaining == 0) && s.endStreamPending && providerDone(s) && !s.endStreamSent){
+					frame::serializeData(_output, s.id, std::string_view{}, true);
 					s.endStreamSent = true;
 					applyLocalEndStream(s); // ссылка s может стать недействительной
-					break;
+					return true;
 				}
+				return false;
 			}
+
+			const bool last = s.endStreamPending && (n == remaining) && providerDone(s);
+			frame::serializeData(_output, s.id, std::string_view(s.sendBuffer.data() + s.sendOffset, n), last);
+			s.sendOffset += n;            // отмечаем отправленный префикс без сдвига всего буфера
+			s.compactSendBuffer();        // амортизированная очистка/компактификация
+			_remoteWindow  -= static_cast <int32_t> (n);
+			s.remoteWindow -= static_cast <int32_t> (n);
+
+			maybeNotifyWritable(s);
+
+			if(last){
+				s.endStreamSent = true;
+				applyLocalEndStream(s); // ссылка s может стать недействительной
+			}
+			return true;
 		}
 
 		void Session::pump() noexcept {
 			if(_inPump) return; // защита от реентерабельности (onStreamWritable -> submitData -> pump)
 			_inPump = true;
-			// Снимок идентификаторов: pumpStream может удалить поток из карты.
-			std::vector <uint32_t> ids;
-			ids.reserve(_streams.size());
-			for(const auto & kv : _streams) ids.push_back(kv.first);
-			for(const uint32_t id : ids){
-				stream_t * s = findStream(id);
-				if(s != nullptr) pumpStream(*s);
+			// Round-robin: за каждый проход отправляем не более одного DATA-фрейма с потока,
+			// пока хоть один поток делает прогресс. Это исключает голодание потоков, при котором
+			// первый в обходе забирал бы всё окно соединения (head-of-line blocking).
+			bool progress = true;
+			while(progress){
+				progress = false;
+				// Снимок id: pumpStream может удалить поток из карты.
+				_pumpIds.clear();
+				for(const auto & kv : _streams) _pumpIds.push_back(kv.first);
+				for(const uint32_t id : _pumpIds){
+					stream_t * s = findStream(id);
+					if((s != nullptr) && pumpStream(*s)) progress = true;
+				}
 			}
 			_inPump = false;
 		}
 
+		void Session::setConnectionReceiveWindow(int32_t size) noexcept {
+			if(size <= _localWindowMax) return; // только увеличение
+			const int32_t delta = size - _localWindowMax;
+			_localWindowMax = size;
+			frame::serializeWindowUpdate(_output, 0, static_cast <uint32_t> (delta));
+			_localWindow += delta;
+		}
+
 		void Session::replenishReceiveWindow(stream_t * s, uint32_t consumed) noexcept {
-			// Окно приёма соединения (всегда 65535, не зависит от SETTINGS пира).
+			// Окно приёма соединения (целевой размер настраивается, по умолчанию 65535).
 			_localWindow -= static_cast <int32_t> (consumed);
-			if(_localWindow < (proto::DEFAULT_WINDOW_SIZE / 2)){
-				const uint32_t delta = static_cast <uint32_t> (proto::DEFAULT_WINDOW_SIZE - _localWindow);
+			if(_localWindow < (_localWindowMax / 2)){
+				const uint32_t delta = static_cast <uint32_t> (_localWindowMax - _localWindow);
 				frame::serializeWindowUpdate(_output, 0, delta);
 				_localWindow += static_cast <int32_t> (delta);
 			}
@@ -310,13 +349,17 @@ namespace awh {
 		size_t Session::submitData(uint32_t streamId, const void * data, size_t len, bool endStream) noexcept {
 			stream_t * s = findStream(streamId);
 			if(s == nullptr) return 0; // неизвестный/закрытый поток
+			// Нельзя слать тело после уже поставленного/отправленного END_STREAM, а также из
+			// состояний, где наша половина закрыта (half-closed(local)/closed).
+			if(s->endStreamPending || s->endStreamSent) return 0;
+			if((s->state == stream_state_t::HALF_CLOSED_LOCAL) || (s->state == stream_state_t::CLOSED)) return 0;
 			// Принимаем столько, сколько влезает до high-water (частичный приём + счётчик).
-			const size_t room = (s->sendBuffer.size() < _streamSendHighWater) ? (_streamSendHighWater - s->sendBuffer.size()) : 0;
+			const size_t room = (s->pending() < _streamSendHighWater) ? (_streamSendHighWater - s->pending()) : 0;
 			const size_t take = std::min(len, room);
 			if(take > 0) s->sendBuffer.append(static_cast <const char *> (data), take);
 			// END_STREAM помечаем только когда принят весь финальный фрагмент.
 			if(endStream && (take == len)) s->endStreamPending = true;
-			if(s->sendBuffer.size() > _streamSendLowWater) s->writableNotified = false; // взвести сигнал снова
+			if(s->pending() > _streamSendLowWater) s->writableNotified = false; // взвести сигнал снова
 			pump();
 			return take;
 		}
@@ -399,7 +442,12 @@ namespace awh {
 					if(!_ctrlLimit.drain(1)) return fail(error_t::ENHANCE_YOUR_CALM, "SETTINGS flood");
 					for(const auto & e : items){
 						switch(e.id){
-							case setting_t::HEADER_TABLE_SIZE:      _remote.headerTableSize = e.value; break;
+							case setting_t::HEADER_TABLE_SIZE:
+								// RFC 7541 §4.2: пир сообщил, какую таблицу готов держать его декодер —
+								// ограничиваем свой кодер и ставим Dynamic Table Size Update.
+								_remote.headerTableSize = e.value;
+								_encoder.setMaxTableSize(e.value);
+								break;
 							case setting_t::ENABLE_PUSH:
 								if(e.value > 1) return fail(error_t::PROTOCOL_ERROR, "invalid ENABLE_PUSH");
 								_remote.enablePush = e.value; break;
@@ -491,7 +539,29 @@ namespace awh {
 					if(s == nullptr){
 						// Открытие нового потока пиром: проверяем чётность и монотонность id.
 						if(validateNewStream(h.streamId, err) != status_t::OK) return fail(err, "invalid new stream id");
+						// Отклоняем новый поток, если: исчерпан лимит одновременных потоков
+						// (RFC 9113 §5.1.2) либо мы уже отправили GOAWAY (§6.8) — новые потоки
+						// пира после этого не обслуживаются. Это потоковая ошибка REFUSED_STREAM,
+						// соединение остаётся живым; блок заголовков всё равно декодируем.
+						if(_goawaySent || (_peerStreamCount >= _local.maxConcurrentStreams)){
+							_lastStreamId = h.streamId;
+							frame::serializeRstStream(_output, h.streamId, error_t::REFUSED_STREAM);
+							// Блок заголовков всё равно нужно вычитать из HPACK, иначе таблица
+							// рассинхронизируется. Собираем и декодируем, но поток не создаём.
+							_hbcStream    = h.streamId;
+							_hbcEndStream = hd.endStream;
+							_hbcBuffer.assign(hd.block.data(), hd.block.size());
+							_hbcFrames    = 1;
+							_hbcRefused   = true;
+							if(_hbcBuffer.size() > _maxHeaderBlockSize) return fail(error_t::ENHANCE_YOUR_CALM, "header block too large");
+							if(hd.endHeaders){
+								const status_t st = deliverHeaders();
+								if(st == status_t::ERROR) return status_t::ERROR;
+							}
+							return status_t::OK;
+						}
 						_lastStreamId = h.streamId;
+						++_peerStreamCount;
 						stream_t & ns = stream(h.streamId);
 						ns.state = stream_state_t::OPEN;
 						if(_cb.onStreamBegin != nullptr) _cb.onStreamBegin(_user, h.streamId);
@@ -558,15 +628,20 @@ namespace awh {
 					if((s->state != stream_state_t::OPEN) && (s->state != stream_state_t::HALF_CLOSED_LOCAL))
 						return fail(error_t::STREAM_CLOSED, "DATA in non-open stream state");
 
-					// Защита от flood пустыми DATA-фреймами без END_STREAM (бесполезная нагрузка).
-					if((h.length == 0) && !d.endStream){
+					// Защита от flood DATA-фреймами без полезной нагрузки и без END_STREAM:
+					// учитываем фактические данные (после снятия padding), иначе padding-only
+					// кадры обходили бы лимит, прокачивая окно туда-обратно (бесполезная CPU-нагрузка).
+					if(d.data.empty() && !d.endStream){
 						_ctrlLimit.update(_now);
 						if(!_ctrlLimit.drain(1)) return fail(error_t::ENHANCE_YOUR_CALM, "empty DATA flood");
 					}
 
 					// Flow control приёма: учитывается ПОЛНАЯ длина payload, включая padding (§6.9.1).
+					// Проверяем окна и соединения, и потока (RFC 9113 §6.9.1).
 					if(static_cast <int32_t> (h.length) > _localWindow)
 						return fail(error_t::FLOW_CONTROL_ERROR, "connection receive window exhausted");
+					if(static_cast <int32_t> (h.length) > s->localWindow)
+						return fail(error_t::FLOW_CONTROL_ERROR, "stream receive window exhausted");
 					if(_cb.onData != nullptr)
 						_cb.onData(_user, h.streamId, reinterpret_cast <const uint8_t *> (d.data.data()), d.data.size(), d.endStream);
 					// Пополняем окно приёма и при просадке шлём WINDOW_UPDATE (потоку — только если он остаётся открыт).
@@ -594,9 +669,11 @@ namespace awh {
 					// Идентификатор обещанного потока: чётный (инициирует сервер) и строго возрастающий.
 					if(validateNewStream(pp.promisedStreamId, err) != status_t::OK) return fail(err, "invalid promised stream id");
 					_lastStreamId = pp.promisedStreamId;
-					// Резервируем обещанный поток: reserved(remote).
+					// Резервируем обещанный поток: reserved(remote). Он инициирован пиром (сервером)
+					// и учитывается в лимите одновременных потоков (RFC 9113 §5.1.2).
 					stream_t & ps = stream(pp.promisedStreamId);
 					ps.state = stream_state_t::RESERVED_REMOTE;
+					++_peerStreamCount;
 					// Начинаем сборку блока заголовков обещанного запроса; CONTINUATION придут
 					// на ассоциированном потоке (h.streamId), а заголовки относятся к обещанному.
 					_hbcStream    = h.streamId;
@@ -621,6 +698,8 @@ namespace awh {
 			const uint32_t promised = _hbcPromised;
 			const bool endStream = _hbcEndStream;
 
+			const bool refused = _hbcRefused;
+
 			std::vector <hpack::field_t> fields;
 			error_t err = error_t::NO_ERROR;
 			const status_t st = _decoder.decode(_hbcBuffer, fields, _local.maxHeaderListSize, err);
@@ -630,7 +709,11 @@ namespace awh {
 			_hbcEndStream = false;
 			_hbcBuffer.clear();
 			_hbcFrames = 0;
+			_hbcRefused = false;
+			// Ошибка HPACK — это всегда ошибка соединения (таблица рассинхронизирована).
 			if(st != status_t::OK) return fail(err, "HPACK decode failed");
+			// Поток отклонён по лимиту: блок декодирован (HPACK синхронен), но событий нет.
+			if(refused) return status_t::OK;
 
 			// Блок принадлежит PUSH_PROMISE — это обещанный запрос для отдельного потока.
 			if(promised != 0) return deliverPushPromise(streamId, promised, fields);

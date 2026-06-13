@@ -43,7 +43,7 @@ namespace {
 
 	/// Отправить накопленные сессией исходящие байты в сокет и очистить буфер.
 	void flush(conn_t & c) noexcept {
-		const std::string & out = c.session.pending();
+		const std::string_view out = c.session.pending();
 		if(!out.empty()){
 			c.server->send(c.eid, out.data(), out.size());
 			c.session.consumePending(out.size());
