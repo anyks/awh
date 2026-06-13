@@ -6,6 +6,20 @@ $ ./http_demo
 ```
 > Собирается без предупреждений, чисто проходит под -fsanitize=address,undefined.
 
+### Регрессионные тесты
+```bash
+# обычный прогон (код возврата 0 = все тесты прошли)
+$ c++ -std=c++17 -O2 -Wall -Wextra http.cpp http_test.cpp -o http_test && ./http_test
+
+# под санитайзерами (рекомендуется при доработке)
+$ c++ -std=c++17 -O1 -g -fsanitize=address,undefined -Wall -Wextra \
+      http.cpp http_test.cpp -o http_test_dbg && ./http_test_dbg
+```
+> `http_test.cpp` — 118 проверок: запросы/ответы, методы (вкл. WebDAV), chunked+трейлеры,
+> Transfer-Encoding/Content-Length, smuggling, лимиты/DoS, keep-alive, ответы без тела
+> (1xx/204/304/HEAD/CONNECT), инкрементальный разбор, конвейер, потоковый callback-API и
+> устойчивость к сбою аллокации. Все зелёные под ASan/UBSan.
+
 ### Ключевые свойства парсера
 - **Полнота HTTP/1.1**: все методы, произвольные заголовки, chunked-кодирование с `chunk-ext`, трейлеры, keep-alive, тело по `Content-Length` и «до закрытия соединения», конвейер (pipelining), корректная обработка ответов без тела (1xx/204/304/HEAD/CONNECT-туннель).
 - **Производительность**: байтовый конечный автомат, `constexpr`-таблицы классов символов, bulk-копирование тела/чанков через `memcpy`; `reset()` переиспользует ёмкость буферов (без переаллокаций на keep-alive). Микро-бенчмарк в демо — **~4 млн запросов/с (~680 МБ/с)** на одном ядре.
