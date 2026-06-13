@@ -82,7 +82,7 @@ namespace awh {
 				// ---- status-line ----
 				s_res_http_H, s_res_http_HT, s_res_http_HTT, s_res_http_HTTP, s_res_http_slash,
 				s_res_http_major, s_res_http_dot, s_res_http_minor,
-				s_res_first_space, s_res_status_code,
+				s_res_first_space, s_res_status_start, s_res_status_code,
 				s_res_reason_start, s_res_reason, s_res_line_lf,
 
 				// ---- заголовки ----
@@ -396,8 +396,9 @@ namespace awh {
 				}
 			}
 
-			/// Завершение текущего заголовка/трейлера: триминг, валидация, интерпретация.
-			bool finishHeader(Parser & p) noexcept {
+		/// Завершение текущего заголовка/трейлера: триминг, валидация, интерпретация.
+		/// Может бросить (push_back/append) — перехватывается в execute().
+		bool finishHeader(Parser & p) {
 				// Триминг хвостовых OWS у значения (ведущие уже пропущены состоянием _ows).
 				while (!p.curValue.empty() &&
 				       (p.curValue.back() == ' ' || p.curValue.back() == '\t')) {
@@ -455,16 +456,19 @@ namespace awh {
 			}
 
 			/// Решение о наличии тела для ответа по статус-коду / методу HEAD.
-			bool responseHasNoBody(const Parser & p) noexcept {
-				const uint16_t code = p.message.statusCode;
-				if (p.responseToHead) return true;
-				if (code >= 100 && code < 200) return true; // 1xx
-				if (code == 204 || code == 304) return true;
-				return false;
-			}
+		bool responseHasNoBody(const Parser & p) noexcept {
+			const uint16_t code = p.message.statusCode;
+			if (p.responseToHead) return true;
+			// Успешный (2xx) ответ на CONNECT открывает туннель — тела нет.
+			if (p.responseToConnect && code >= 200 && code < 300) return true;
+			if (code >= 100 && code < 200) return true; // 1xx
+			if (code == 204 || code == 304) return true;
+			return false;
+		}
 
-			/// Выбор способа кадрирования тела после завершения заголовков.
-			void beginBody(Parser & p) noexcept {
+		/// Выбор способа кадрирования тела после завершения заголовков.
+		/// Может бросить (reserve) — перехватывается в execute().
+		void beginBody(Parser & p) {
 				// Финальные семантические проверки безопасности.
 				if (p.teSeen && p.clSeen) {
 					setError(p, Error::CONTENT_LENGTH_CONFLICT); // защита от smuggling
@@ -495,42 +499,54 @@ namespace awh {
 					return;
 				}
 
-				if (p.message.chunked) {
-					p.chunkSize = 0;
-					p.chunkDigits = 0;
-					p.state = s_chunk_size;
-					return;
-				}
-
-				if (p.clSeen) {
-					if (p.clValue == 0) { completeMessage(p); return; }
-					if (p.clValue > p.limits.maxBodySize) {
-						setError(p, Error::BODY_OVERFLOW);
-						return;
-					}
-					p.bytesRemaining = p.clValue;
-					if (p.storeBody) p.message.body.reserve(static_cast<size_t>(p.clValue));
-					p.state = s_body_identity;
-					return;
-				}
-
-				// Transfer-Encoding есть, но не chunked-финальный.
-				if (p.teSeen) {
-					if (p.type == Type::REQUEST) {
-						setError(p, Error::INVALID_TRANSFER_ENCODING); // запрос нельзя кадрировать
-						return;
-					}
-					p.state = s_body_until_close; // ответ — читаем до закрытия
-					return;
-				}
-
-				// Нет ни CL, ни TE.
-				if (p.type == Type::REQUEST) {
-					completeMessage(p); // у запроса по умолчанию тела нет
-					return;
-				}
-				p.state = s_body_until_close; // у ответа тело до закрытия соединения
+			if (p.message.chunked) {
+				p.chunkSize = 0;
+				p.chunkDigits = 0;
+				p.chunkLineBytes = 0;
+				p.state = s_chunk_size;
+				return;
 			}
+
+			if (p.clSeen) {
+				if (p.clValue == 0) { completeMessage(p); return; }
+				if (p.clValue > p.limits.maxBodySize) {
+					setError(p, Error::BODY_OVERFLOW);
+					return;
+				}
+				p.bytesRemaining = p.clValue;
+				// Предвыделяем не больше maxBodyPrealloc, чтобы анонсированный
+				// (но ещё не доставленный) Content-Length не приводил к усилению
+				// потребления памяти; дальше буфер растёт по факту прихода данных.
+				if (p.storeBody) {
+					const uint64_t cap = p.clValue < p.limits.maxBodyPrealloc
+					                     ? p.clValue : static_cast<uint64_t>(p.limits.maxBodyPrealloc);
+					p.message.body.reserve(static_cast<size_t>(cap));
+				}
+				p.state = s_body_identity;
+				return;
+			}
+
+			// Transfer-Encoding есть, но не chunked-финальный.
+			if (p.teSeen) {
+				if (p.type == Type::REQUEST) {
+					setError(p, Error::INVALID_TRANSFER_ENCODING); // запрос нельзя кадрировать
+					return;
+				}
+				// Тело кадрируется закрытием соединения => оно не переиспользуемо.
+				p.message.keepAlive = false;
+				p.state = s_body_until_close; // ответ — читаем до закрытия
+				return;
+			}
+
+			// Нет ни CL, ни TE.
+			if (p.type == Type::REQUEST) {
+				completeMessage(p); // у запроса по умолчанию тела нет
+				return;
+			}
+			// Ответ: тело до закрытия соединения => keep-alive невозможен.
+			p.message.keepAlive = false;
+			p.state = s_body_until_close;
+		}
 
 			/// Завершение строки размера чанка.
 			void onChunkSizeComplete(Parser & p) noexcept {
@@ -538,12 +554,15 @@ namespace awh {
 					setError(p, Error::INVALID_CHUNK_SIZE);
 					return;
 				}
-				if (p.chunkSize == 0) {
-					// last-chunk -> трейлеры.
-					p.inTrailers = true;
-					p.state = s_trailer_start;
-					return;
-				}
+			if (p.chunkSize == 0) {
+				// last-chunk -> трейлеры. Даём трейлерам собственный бюджет лимитов
+				// (число/суммарный размер), но по-прежнему ограниченный — защита от DoS.
+				p.headerCount = 0;
+				p.headersTotalBytes = 0;
+				p.inTrailers = true;
+				p.state = s_trailer_start;
+				return;
+			}
 				if (p.chunkSize > p.limits.maxChunkSize) {
 					setError(p, Error::CHUNK_OVERFLOW);
 					return;
@@ -572,6 +591,7 @@ namespace awh {
 			p.message.type = type;
 			p.error = Error::NONE;
 			p.responseToHead = false;
+			p.responseToConnect = false;
 			p.handler = nullptr;
 			p.userData = nullptr;
 			p.storeBody = true;
@@ -584,6 +604,7 @@ namespace awh {
 			p.headerCount = 0;
 			p.headersTotalBytes = 0;
 			p.lineBytes = 0;
+			p.chunkLineBytes = 0;
 			p.bytesRemaining = 0;
 			p.chunkSize = 0;
 			p.chunkDigits = 0;
@@ -599,21 +620,39 @@ namespace awh {
 
 		void reset(Parser & p) noexcept {
 			// Сохраняем конфигурацию соединения (нужно для keep-alive/конвейера).
+			// Per-message флаги responseToHead/responseToConnect НЕ сохраняем —
+			// они относятся к конкретному запросу, а не к соединению.
 			const Limits limits = p.limits;
 			const Type type = p.type;
-			const bool toHead = p.responseToHead;
 			const Handler * handler = p.handler;
 			void * userData = p.userData;
 			const bool storeBody = p.storeBody;
 			const bool storeHeaders = p.storeHeaders;
 
-			p.message = Message{};
+			// Переиспользуем выделенную память контейнеров (clear сохраняет capacity)
+			// вместо пересоздания Message{} — меньше нагрузки на аллокатор в keep-alive.
+			p.message.method = Method::UNKNOWN;
+			p.message.methodName.clear();
+			p.message.target.clear();
+			p.message.statusCode = 0;
+			p.message.reason.clear();
+			p.message.versionMajor = 0;
+			p.message.versionMinor = 0;
+			p.message.headers.clear();
+			p.message.trailers.clear();
+			p.message.body.clear();
+			p.message.chunked = false;
+			p.message.keepAlive = true;
+			p.message.hasContentLength = false;
+			p.message.contentLength = 0;
+			p.message.complete = false;
 			p.message.type = type;
 			p.error = Error::NONE;
 
 			p.limits = limits;
 			p.type = type;
-			p.responseToHead = toHead;
+			p.responseToHead = false;
+			p.responseToConnect = false;
 			p.handler = handler;
 			p.userData = userData;
 			p.storeBody = storeBody;
@@ -625,6 +664,7 @@ namespace awh {
 			p.headerCount = 0;
 			p.headersTotalBytes = 0;
 			p.lineBytes = 0;
+			p.chunkLineBytes = 0;
 			p.bytesRemaining = 0;
 			p.chunkSize = 0;
 			p.chunkDigits = 0;
@@ -642,6 +682,12 @@ namespace awh {
 			if (p.error != Error::NONE) { status = Status::ERROR; return 0; }
 			if (p.state == s_message_done) { status = Status::COMPLETE; return 0; }
 
+			// Парсер копит токены/тело в std::string/std::vector, поэтому теоретически
+			// возможен std::bad_alloc. Чтобы не нарушать noexcept-контракт (и не ронять
+			// процесс через std::terminate), перехватываем всё и отдаём Error::INTERNAL.
+			size_t i = 0;
+			try {
+
 			// Признак конца потока.
 			if (len == 0) {
 				if (p.state == s_body_until_close) {
@@ -653,7 +699,6 @@ namespace awh {
 				return 0;
 			}
 
-			size_t i = 0;
 			while (i < len) {
 				const unsigned char ch = static_cast<unsigned char>(data[i]);
 
@@ -870,7 +915,11 @@ namespace awh {
 						p.message.versionMinor = static_cast<uint8_t>(ch - '0');
 						p.state = s_res_first_space; break;
 					case s_res_first_space:
-						if (ch == ' ') break; // пропускаем пробел(ы) перед кодом
+						// После версии обязателен ровно один SP (RFC 7230 §3.1.2).
+						if (ch != ' ') { setError(p, Error::INVALID_VERSION); break; }
+						p.state = s_res_status_start; break;
+					case s_res_status_start:
+						if (ch == ' ') break; // дополнительные пробелы перед кодом — толерантно
 						if (!isDigit(ch)) { setError(p, Error::INVALID_STATUS); break; }
 						p.message.statusCode = static_cast<uint16_t>(ch - '0');
 						p.chunkDigits = 1; // переиспользуем как счётчик цифр кода
@@ -944,6 +993,7 @@ namespace awh {
 
 					// ------------------- chunked -------------------
 					case s_chunk_size: {
+						if (++p.chunkLineBytes > p.limits.maxChunkLine) { setError(p, Error::CHUNK_OVERFLOW); break; }
 						const int hv = hexVal(ch);
 						if (hv >= 0) {
 							if (p.chunkSize > (UINT64_MAX >> 4)) { setError(p, Error::CHUNK_OVERFLOW); break; }
@@ -957,6 +1007,7 @@ namespace awh {
 						setError(p, Error::INVALID_CHUNK_SIZE); break;
 					}
 					case s_chunk_ext:
+						if (++p.chunkLineBytes > p.limits.maxChunkLine) { setError(p, Error::CHUNK_OVERFLOW); break; }
 						if (ch == '\r') { p.state = s_chunk_size_lf; break; }
 						if (ch == '\n') { onChunkSizeComplete(p); break; }
 						// chunk-ext игнорируем (валидируем только на печатаемость).
@@ -969,13 +1020,13 @@ namespace awh {
 						if (ch == '\r') { p.state = s_chunk_data_lf; break; }
 						if (ch == '\n') {
 							if (p.handler && !fireHook(p, p.handler->onChunkComplete)) break;
-							p.chunkSize = 0; p.chunkDigits = 0; p.state = s_chunk_size; break;
+							p.chunkSize = 0; p.chunkDigits = 0; p.chunkLineBytes = 0; p.state = s_chunk_size; break;
 						}
 						setError(p, Error::INVALID_CHUNK_TERMINATOR); break;
 					case s_chunk_data_lf:
 						if (ch != '\n') { setError(p, Error::INVALID_CHUNK_TERMINATOR); break; }
 						if (p.handler && !fireHook(p, p.handler->onChunkComplete)) break;
-						p.chunkSize = 0; p.chunkDigits = 0; p.state = s_chunk_size; break;
+						p.chunkSize = 0; p.chunkDigits = 0; p.chunkLineBytes = 0; p.state = s_chunk_size; break;
 
 					// ------------------- трейлеры -------------------
 					case s_trailer_start:
@@ -1025,6 +1076,13 @@ namespace awh {
 
 			status = Status::OK;
 			return i;
+
+			} catch (...) {
+				// Сбой аллокации или исключение из пользовательского callback'а.
+				setError(p, Error::INTERNAL);
+				status = Status::ERROR;
+				return i;
+			}
 		}
 
 		const char * methodName(Method m) noexcept {

@@ -103,6 +103,8 @@ namespace awh {
 			size_t   maxHeadersTotal = 64 * 1024;           // суммарный размер всех заголовков
 			uint64_t maxBodySize     = 64ull * 1024 * 1024; // макс. размер тела
 			uint64_t maxChunkSize    = 1ull * 1024 * 1024 * 1024; // макс. размер одного чанка
+			size_t   maxChunkLine    = 16 * 1024;           // макс. длина строки заголовка чанка (size + chunk-ext)
+			size_t   maxBodyPrealloc = 256 * 1024;          // верхняя граница предвыделения body по Content-Length
 		};
 
 		/**
@@ -165,6 +167,10 @@ namespace awh {
 		 * фрагменты тела как std::string_view прямо во входной буфер (zero-copy),
 		 * что позволяет обрабатывать тела любого размера без буферизации.
 		 * Указатели в callback'ах действительны ТОЛЬКО на время вызова.
+		 *
+		 * ВАЖНО: callback'и НЕ должны бросать исключения. execute() гарантирует
+		 * noexcept; исключение из пользовательского callback'а будет перехвачено
+		 * и преобразовано в Error::INTERNAL (разбор будет прерван).
 		 */
 		struct Handler {
 			HookCb   onMessageBegin    = nullptr; // начало нового сообщения
@@ -192,7 +198,13 @@ namespace awh {
 
 			// Установите true, если этот ответ соответствует запросу методом HEAD
 			// (тогда тело не читается, даже при наличии Content-Length).
+			// ВНИМАНИЕ: это свойство конкретного сообщения — reset() его сбрасывает,
+			// поэтому в keep-alive/конвейере выставляйте флаг перед КАЖДЫМ ответом.
 			bool responseToHead = false;
+
+			// Установите true для ответа на запрос методом CONNECT: успешный (2xx)
+			// ответ открывает туннель и тела не имеет. Также per-message (сбрасывается reset()).
+			bool responseToConnect = false;
 
 			// --- Потоковый режим (опционально) ---
 			// Необязательный набор callback'ов. Если задан, парсер вызывает их по ходу
@@ -216,6 +228,7 @@ namespace awh {
 			size_t   headerCount      = 0;
 			size_t   headersTotalBytes = 0;
 			size_t   lineBytes        = 0;
+			size_t   chunkLineBytes   = 0; // длина текущей строки заголовка чанка (size + chunk-ext)
 
 			uint64_t bytesRemaining = 0; // остаток тела/чанка
 			uint64_t chunkSize      = 0;
@@ -238,7 +251,9 @@ namespace awh {
 
 		/**
 		 * @brief Сброс парсера для разбора следующего сообщения в том же соединении.
-		 *        Сохраняет limits, type и флаг responseToHead.
+		 *        Сохраняет limits, type, handler/userData и storeBody/storeHeaders.
+		 *        Per-message флаги responseToHead/responseToConnect СБРАСЫВАЮТСЯ —
+		 *        выставляйте их заново перед каждым ответом в keep-alive/конвейере.
 		 */
 		void reset(Parser & p) noexcept;
 
