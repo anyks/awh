@@ -195,7 +195,7 @@ namespace awh {
 					 *
 					 * @return значение итератора до смещения
 					 */
-					Iterator operator ++ (int) noexcept {
+					Iterator operator ++ (const int32_t) noexcept {
 						// Сохраняем текущее состояние итератора
 						Iterator current(* this);
 						// Выполняем смещение текущего итератора вперёд
@@ -313,7 +313,7 @@ namespace awh {
 				 */
 				try {
 					// Если название функции передано
-					if(!std::empty(name)){
+					if(!name.empty()){
 						// Если размер имени умещается в 4 байт
 						if(name.size() <= 4)
 							// Выполняем копирование данных имени
@@ -1061,7 +1061,7 @@ namespace awh {
 			 */
 			auto set(string_view name, const Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return (!std::empty(name) ? this->_set(this->id(name), storage) : 0);
+				return (!name.empty() ? this->_set(this->id(name), storage) : 0);
 			}
 			/**
 			 * @brief Метод установки функции из одного хранилища в текущее
@@ -1116,7 +1116,7 @@ namespace awh {
 			 */
 			auto set(string_view name1, string_view name2, Callback & storage) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return ((!std::empty(name1) && !std::empty(name2)) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
+				return ((!name1.empty() && !name2.empty()) ? this->_set(this->id(name1), this->id(name2), storage) : 0);
 			}
 			/**
 			 * @brief Метод установки функции из одного хранилища в текущее
@@ -1173,7 +1173,7 @@ namespace awh {
 			 */
 			auto set(string_view name, const fn_t & callback) noexcept -> id_t {
 				// Выполняем установку функции обратного вызова
-				return (!std::empty(name) ? this->_set(this->id(name), callback) : 0);
+				return (!name.empty() ? this->_set(this->id(name), callback) : 0);
 			}
 			/**
 			 * @brief Метод установки функции обратного вызова в чистом виде
@@ -1467,7 +1467,7 @@ namespace awh {
 			 */
 			id_t on(string_view name, Func && callback, Args &&... args) noexcept {
 				// Если название функции обратного вызова не передано
-				if(std::empty(name))
+				if(name.empty())
 					// Выходим из функции
 					return 0;
 				// Формируем функцию обратного вызова для подключения
@@ -1587,7 +1587,7 @@ namespace awh {
 			 */
 			id_t on(string_view name, function <T> fn) noexcept {
 				// Выполняем подключение функции обратного вызова
-				return (!std::empty(name) ? this->_on <T> (this->id(name), std::move(fn)) : 0);
+				return (!name.empty() ? this->_on <T> (this->id(name), std::move(fn)) : 0);
 			}
 			/**
 			 * @brief Шаблон метода подключения финкции обратного вызова
@@ -1859,7 +1859,7 @@ namespace awh {
 				// Формируем тип данных результата выполнения функции обратного вызова
 				using Result = std::invoke_result_t <std::function <Signature>, Args...>;
 				// Если название функции обратного вызова не передано
-				if(std::empty(name)){
+				if(name.empty()){
 					// Если результат функции обратного вызова не возвращается
 					if constexpr (std::is_void_v <Result>)
 						// Завершаем работу функции обратного вызова

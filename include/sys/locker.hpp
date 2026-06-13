@@ -93,9 +93,6 @@ namespace awh {
 			 *
 			 */
 			friend class Locker;
-		private:
-			// Мютекс для защиты ленивой инициализации и сброса рабочего мьютекса
-			std::mutex _guard;
 		public:
 			// Флаг активации режима работы
 			std::atomic_bool enabled;
@@ -105,14 +102,47 @@ namespace awh {
 		private:
 			// Мютекс для блокировки потока
 			std::unique_ptr <MutexType> _mtx;
+		private:
+			/**
+			 * @brief Гарантирует существование рабочего мьютекса с учётом смены процесса
+			 * Выполняет ленивое создание мьютекса и его пересоздание после fork
+			 *
+			 * @return указатель на актуальный рабочий мьютекс
+			 */
+			MutexType * _ensure() noexcept {
+				// Если идентификатор процесса не совпадает (например, после fork)
+				if(this->_pid.load(std::memory_order_acquire) != ::getpid()){
+					// Устанавливаем идентификатор процесса
+					this->_pid.store(::getpid(), std::memory_order_release);
+					// Если мютекс уже создан ранее
+					if(this->_mtx != nullptr)
+						// Выполняем удаление унаследованного от родителя мютекса
+						this->_mtx.reset(nullptr);
+				}
+				// Если мютекс пустой
+				if(this->_mtx == nullptr)
+					// Создаём рабочий мьютекс по требованию
+					this->_mtx = std::make_unique <MutexType> ();
+				// Возвращаем актуальный рабочий мьютекс
+				return this->_mtx.get();
+			}
 		public:
 			/**
 			 * @brief Оператор преобразования к мютексу
+			 * Лениво создаёт мьютекс по требованию (например, для condition_variable)
 			 *
 			 */
 			operator MutexType & () noexcept {
+				// Лениво создаём (или пересоздаём после fork) рабочий мьютекс
+				MutexType & mtx = (* this->_ensure());
+				/**
+				 * Раз сам мьютекс отдаётся наружу (например, под condition_variable),
+				 * это подразумевает работу в многопоточном режиме. Поднимаем флаг,
+				 * чтобы исключить противоречивое состояние enabled == false при живом мьютексе
+				 */
+				this->enabled.store(true, std::memory_order_release);
 				// Возвращаем мютекс для блокировки потока
-				return (* this->_mtx);
+				return mtx;
 			}
 		public:
 			/**
@@ -324,33 +354,12 @@ namespace awh {
 			 */
 			explicit Locker(LockState <MutexType> & state, mode_t mode = mode_t::EXCLUSIVE) noexcept
 			 : _locked(false), _mode(mode), _state(state), _held(nullptr) {
-				/**
-				 * Ленивая инициализация и сброс мьютекса выполняются под _guard,
-				 * чтобы исключить гонку при одновременном захвате из нескольких потоков
-				 */
-				{
-					// Выполняем блокировку мьютекса инициализации
-					const std::lock_guard <std::mutex> guard(this->_state._guard);
-					// Если идентификатор процесса не совпадает
-					if(this->_state._pid.load(std::memory_order_relaxed) != ::getpid()){
-						// Устанавливаем идентификатор процесса
-						this->_state._pid.store(::getpid(), std::memory_order_relaxed);
-						// Если мютекс уже создан ранее
-						if(this->_state._mtx != nullptr)
-							// Выполняем удаление мютекса
-							this->_state._mtx.reset(nullptr);
-					}
-					// Если захватывать доступ к памяти нам не нужно
-					if(!this->_state.enabled.load(std::memory_order_relaxed))
-						// Выходим из конструктора
-						return;
-					// Если мютекс пустой
-					if(this->_state._mtx == nullptr)
-						// Пересоздаём мютекс
-						this->_state._mtx = std::make_unique <MutexType> ();
-					// Запоминаем мьютекс, который будет захвачен текущим локером
-					this->_held = this->_state._mtx.get();
-				}
+				// Если захватывать доступ к памяти нам не нужно (однопоточный режим)
+				if(!this->_state.enabled.load(std::memory_order_acquire))
+					// Выходим из конструктора, не создавая и не захватывая мьютекс
+					return;
+				// Лениво создаём (или пересоздаём после fork) рабочий мьютекс и запоминаем его
+				this->_held = this->_state._ensure();
 				// Выполняем блокировку
 				this->_locked = true;
 				// Выполняем блокировку потока

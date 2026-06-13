@@ -19,12 +19,13 @@
 #include <atomic>
 #include <bitset>
 #include <chrono>
+#include <memory>
+#include <random>
 #include <limits>
 #include <sstream>
 #include <cstring>
 #include <iomanip>
 #include <cstdlib>
-#include <codecvt>
 #include <iostream>
 #include <algorithm>
 #include <sys/types.h>
@@ -65,6 +66,265 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Функция декодирования буфера в кодировке UTF-8 в широкую строку
+	 *
+	 * @param data указатель на буфер данных в кодировке UTF-8
+	 * @param size размер буфера данных в байтах
+	 * @return     результирующая широкая строка (UTF-32 при 4-байтовом wchar_t, UTF-16 при 2-байтовом)
+	 */
+	wstring utf8ToWide(const char * data, const size_t size) noexcept {
+		// Если данные не переданы
+		if((data == nullptr) || (size == 0))
+			// Возвращаем пустой результат
+			return L"";
+		/**
+		 * @brief Ядро декодирования: пишет кодовые юниты в буфер out и возвращает их количество
+		 *
+		 * Размерная гарантия: число кодовых юнитов не превышает число входных байт (size),
+		 * поэтому буфер размером size всегда достаточен.
+		 *
+		 * @param out буфер для записи широких символов (вместимость не меньше size)
+		 * @return    количество записанных кодовых юнитов
+		 */
+		const auto decode = [data, size](wchar_t * out) noexcept -> size_t {
+			// Счётчик записанных символов
+			size_t count = 0;
+			// Начальный итератор указывает на первый байт данных
+			const u_char * begin = reinterpret_cast <const u_char *> (data);
+			// Конечный итератор указывает на байт за последним байтом данных
+			const u_char * end = (begin + size);
+			/**
+			 * Выполняем перебор всех байт буфера
+			 */
+			while(begin < end){
+				// Получаем ведущий байт последовательности
+				const u_char lead = (* begin);
+				/**
+				 * Быстрый путь: копируем прогон ASCII-символов целиком
+				 */
+				if(lead < 0x80){
+					// Находим конец ASCII-прогона
+					const u_char * run = begin;
+					/**
+					 * Продвигаем итератор run, пока он указывает на ASCII-байт и не достигнет конца данных
+					 */
+					while((run < end) && ((* run) < 0x80))
+						// Увеличиваем итератор run
+						++run;
+					/**
+					 * Копируем прогон с расширением до wchar_t
+					 */
+					while(begin < run)
+						// Копируем ASCII-байт в широкий символ
+						out[count++] = static_cast <wchar_t> (* begin++);
+					// Переходим к следующей итерации
+					continue;
+				}
+				// Текущая кодовая точка
+				uint32_t cp = 0;
+				// Количество байт в последовательности
+				uint8_t num = 0;
+				// Если это последовательность из двух байт
+				if((lead & 0xE0) == 0xC0){
+					// Устанавливаем количество байт в последовательности
+					num = 2;
+					// Извлекаем первые пять бит кодовой точки из ведущего байта
+					cp = (lead & 0x1F);
+				// Если это последовательность из трёх байт
+				} else if((lead & 0xF0) == 0xE0) {
+					// Устанавливаем количество байт в последовательности
+					num = 3;
+					// Извлекаем первые четыре бит кодовой точки из ведущего байта
+					cp = (lead & 0x0F);
+				// Если это последовательность из четырёх байт
+				} else if((lead & 0xF8) == 0xF0) {
+					// Устанавливаем количество байт в последовательности
+					num = 4;
+					// Извлекаем первые три бит кодовой точки из ведущего байта
+					cp = (lead & 0x07);
+				// Если ведущий байт некорректен, прекращаем разбор
+				} else break;
+				// Если последовательность выходит за границу буфера
+				if((begin + num) > end)
+					// Прекращаем разбор
+					break;
+				// Смещаемся к байтам продолжения
+				++begin;
+				// Флаг корректности последовательности
+				bool valid = true;
+				/**
+				 * Собираем кодовую точку из байт продолжения
+				 */
+				for(uint8_t i = 1; i < num; ++i, ++begin){
+					// Если это не байт продолжения, последовательность некорректна
+					if(((* begin) & 0xC0) != 0x80){
+						// Устанавливаем флаг некорректности последовательности
+						valid = false;
+						// Прекращаем разбор
+						break;
+					}
+					// Дописываем очередные шесть бит кодовой точки
+					cp = ((cp << 6) | ((* begin) & 0x3F));
+				}
+				// Если последовательность некорректна
+				if(!valid)
+					// Прекращаем разбор
+					break;
+				/**
+				 * Записываем кодовую точку в результат с учётом разрядности wchar_t
+				 */
+				if constexpr (sizeof(wchar_t) >= 4)
+					// Для 4-байтового wchar_t (UTF-32) пишем одну кодовую точку
+					out[count++] = static_cast <wchar_t> (cp);
+				// Для 2-байтового wchar_t (UTF-16) символ из BMP пишем как один кодовый юнит
+				else if(cp <= 0xFFFF)
+					// Записываем кодовую точку
+					out[count++] = static_cast <wchar_t> (cp);
+				// Символ вне BMP кодируем суррогатной парой
+				else {
+					// Переводим кодовую точку в диапазон суррогатов
+					cp -= 0x10000;
+					// Записываем старший суррогат
+					out[count++] = static_cast <wchar_t> (0xD800 + (cp >> 10));
+					// Записываем младший суррогат
+					out[count++] = static_cast <wchar_t> (0xDC00 + (cp & 0x3FF));
+				}
+			}
+			// Возвращаем количество записанных символов
+			return count;
+		};
+		/**
+		 * Если стандартная библиотека поддерживает запись напрямую в буфер строки
+		 */
+		#if defined(__cpp_lib_string_resize_and_overwrite)
+			// Результирующая широкая строка
+			wstring result = L"";
+			// Пишем результат сразу в буфер строки без обнуления и без промежуточного копирования (C++23)
+			result.resize_and_overwrite(size, [&decode](wchar_t * out, size_t) noexcept -> size_t {
+				// Выполняем декодирование напрямую в буфер результата
+				return decode(out);
+			});
+			// Возвращаем результат
+			return result;
+		/**
+		 * Иначе используем неинициализированный промежуточный буфер
+		 */
+		#else
+			// Выделяем неинициализированный буфер (число кодовых юнитов не превышает число байт)
+			unique_ptr <wchar_t []> scratch(new wchar_t[size]);
+			// Декодируем данные в промежуточный буфер
+			const size_t count = decode(scratch.get());
+			// Конструируем результат точной длины (одна аллокация, без обнуления)
+			return wstring(scratch.get(), scratch.get() + count);
+		#endif
+	}
+	/**
+	 * @brief Функция кодирования широкой строки в строку в кодировке UTF-8
+	 *
+	 * @param data буфер широких символов (UTF-32 при 4-байтовом wchar_t, UTF-16 при 2-байтовом)
+	 * @param size размер буфера данных в символах
+	 * @return     результирующая строка в кодировке UTF-8
+	 */
+	string wideToUtf8(const wchar_t * data, const size_t size) noexcept {
+		// Если данные не переданы
+		if((data == nullptr) || (size == 0))
+			// Возвращаем пустой результат
+			return "";
+		/**
+		 * @brief Ядро кодирования: пишет байты UTF-8 в буфер out и возвращает их количество
+		 *
+		 * Размерная гарантия: каждый входной кодовый юнит даёт не более 4 байт UTF-8,
+		 * поэтому буфер размером (size * 4) всегда достаточен.
+		 *
+		 * @param out буфер для записи байт UTF-8 (вместимость не меньше size * 4)
+		 * @return    количество записанных байт
+		 */
+		const auto encode = [data, size](char * out) noexcept -> size_t {
+			// Счётчик записанных байт
+			size_t count = 0;
+			// Начальный итератор указывает на первый символ данных
+			const wchar_t * begin = data;
+			// Конечный итератор указывает на символ за последним символом данных
+			const wchar_t * end = (data + size);
+			/**
+			 * Выполняем перебор всех символов буфера
+			 */
+			while(begin < end){
+				// Получаем текущую кодовую точку
+				uint32_t cp = static_cast <uint32_t> (* begin++);
+				/**
+				 * Для 2-байтового wchar_t (UTF-16) обрабатываем суррогатные пары
+				 */
+				if constexpr (sizeof(wchar_t) < 4){
+					// Если это старший суррогат
+					if((cp >= 0xD800) && (cp <= 0xDBFF)){
+						// Если следом идёт младший суррогат
+						if((begin < end) && (static_cast <uint32_t> (* begin) >= 0xDC00) && (static_cast <uint32_t> (* begin) <= 0xDFFF))
+							// Собираем полную кодовую точку из суррогатной пары
+							cp = (0x10000 + ((cp - 0xD800) << 10) + (static_cast <uint32_t> (* begin++) - 0xDC00));
+						// Одиночный суррогат некорректен, прекращаем разбор
+						else break;
+					}
+				}
+				/**
+				 * Кодируем кодовую точку в последовательность UTF-8
+				 */
+				if(cp <= 0x7F)
+					// Записываем одиночный байт (ASCII)
+					out[count++] = static_cast <char> (cp);
+				// Последовательность из двух байт
+				else if(cp <= 0x7FF) {
+					// Записываем ведущий байт
+					out[count++] = static_cast <char> (0xC0 | (cp >> 6));
+					// Записываем байт продолжения
+					out[count++] = static_cast <char> (0x80 | (cp & 0x3F));
+				// Последовательность из трёх байт
+				} else if(cp <= 0xFFFF) {
+					// Записываем ведущий байт
+					out[count++] = static_cast <char> (0xE0 | (cp >> 12));
+					// Записываем байты продолжения
+					out[count++] = static_cast <char> (0x80 | ((cp >> 6) & 0x3F));
+					out[count++] = static_cast <char> (0x80 | (cp & 0x3F));
+				// Последовательность из четырёх байт
+				} else if(cp <= 0x10FFFF) {
+					// Записываем ведущий байт
+					out[count++] = static_cast <char> (0xF0 | (cp >> 18));
+					// Записываем байты продолжения
+					out[count++] = static_cast <char> (0x80 | ((cp >> 12) & 0x3F));
+					out[count++] = static_cast <char> (0x80 | ((cp >> 6) & 0x3F));
+					out[count++] = static_cast <char> (0x80 | (cp & 0x3F));
+				// Кодовая точка вне диапазона Unicode, прекращаем разбор
+				} else break;
+			}
+			// Возвращаем количество записанных байт
+			return count;
+		};
+		/**
+		 * Если стандартная библиотека поддерживает запись напрямую в буфер строки
+		 */
+		#if defined(__cpp_lib_string_resize_and_overwrite)
+			// Результирующая строка
+			string result = "";
+			// Пишем результат сразу в буфер строки без обнуления и без промежуточного копирования (C++23)
+			result.resize_and_overwrite(size * 4, [&encode](char * out, size_t) noexcept -> size_t {
+				// Выполняем кодирование напрямую в буфер результата
+				return encode(out);
+			});
+			// Возвращаем результат
+			return result;
+		/**
+		 * Иначе используем неинициализированный промежуточный буфер
+		 */
+		#else
+			// Выделяем неинициализированный буфер (каждый кодовый юнит даёт не более 4 байт UTF-8)
+			unique_ptr <char []> scratch(new char[size * 4]);
+			// Кодируем данные в промежуточный буфер
+			const size_t count = encode(scratch.get());
+			// Конструируем результат точной длины (одна аллокация, без обнуления)
+			return string(scratch.get(), scratch.get() + count);
+		#endif
+	}
+	/**
 	 * @brief Функция определения количества знаков после запятой
 	 *
 	 * @param number число в котором нужно определить количество знаков
@@ -79,7 +339,7 @@ namespace {
 		 */
 		try {
 			// Результирующее число
-			double intpart = 0;
+			double intpart = 0.;
 			// Если у числа нет дробной части
 			if(::modf(number, &intpart) > 0){
 				// Получаем остаток от деления
@@ -1069,8 +1329,30 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 	// Переменная результата
 	bool result = false;
-	// Выполняем удаление пробелов вокруг текста
-	this->transform(text, transform_t::TRIM);
+	// Выполняем удаление пробелов вокруг представления текста (без копирования)
+	{
+		// Функция проверки символа на пробельность
+		auto isSpace = [](const char letter) noexcept -> bool {
+			// Выполняем проверку символа на наличие пробела
+			return (::isspace(static_cast <u_char> (letter)) || (letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\r') || (letter == '\f') || (letter == '\v'));
+		};
+		// Получаем границы представления текста
+		size_t begin = 0, end = text.size();
+		/**
+		 * Смещаем начало представления за пробелы
+		 */
+		while((begin < end) && isSpace(text[begin]))
+			// Выполняем смещение начала представления за пробелы
+			++begin;
+		/**
+		 * Смещаем конец представления за пробелы
+		 */
+		while((end > begin) && isSpace(text[end - 1]))
+			// Выполняем смещение конца представления за пробелы
+			--end;
+		// Обрезаем представление текста
+		text = text.substr(begin, end - begin);
+	}
 	// Если текст передан
 	if(!text.empty()){
 		/**
@@ -1207,10 +1489,12 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 					uint8_t num = 0;
 					// Получаем байты для сравнения
 					const u_char * bytes = reinterpret_cast <const u_char *> (text.data());
+					// Получаем границу буфера данных (представление может не иметь завершающего нуля)
+					const u_char * end = (bytes + text.size());
 					/**
 					 * Выполняем перебор всех символов
 					 */
-					while((* bytes) != 0x00){
+					while(bytes < end){
 						// Выполняем проверку первой позиции
 						if(((* bytes) & 0x80) == 0x00){
 							// U+0000 to U+007F
@@ -1247,8 +1531,8 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 						 * Выполняем перебор всех позиций
 						 */
 						for(uint8_t i = 1; i < num; ++i){
-							// Если байты в первой позиции нельзя сопоставить
-							if(((* bytes) & 0xC0) != 0x80)
+							// Если мы вышли за границу буфера или байты нельзя сопоставить
+							if((bytes >= end) || (((* bytes) & 0xC0) != 0x80))
 								// Возвращаем результат проверки
 								return false;
 							// Выполняем смещение в позиции
@@ -1426,8 +1710,30 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 	// Переменная результата
 	bool result = false;
-	// Выполняем удаление пробелов вокруг текста
-	this->transform(text, transform_t::TRIM);
+	// Выполняем удаление пробелов вокруг представления текста (без копирования)
+	{
+		// Функция проверки символа на пробельность
+		auto isSpace = [](const wchar_t letter) noexcept -> bool {
+			// Выполняем проверку символа на наличие пробела
+			return (::iswspace(letter) || (letter == 32) || (letter == 160) || (letter == 173) || (letter == L' ') || (letter == L'\t') || (letter == L'\n') || (letter == L'\r') || (letter == L'\f') || (letter == L'\v'));
+		};
+		// Получаем границы представления текста
+		size_t begin = 0, end = text.size();
+		/**
+		 * Смещаем начало представления за пробелы
+		 */
+		while((begin < end) && isSpace(text[begin]))
+			// Выполняем смещение начала представления за пробелы
+			++begin;
+		/**
+		 * Смещаем конец представления за пробелы
+		 */
+		while((end > begin) && isSpace(text[end - 1]))
+			// Выполняем смещение конца представления за пробелы
+			--end;
+		// Обрезаем представление текста
+		text = text.substr(begin, end - begin);
+	}
 	// Если текст передан
 	if(!text.empty()){
 		/**
@@ -1564,10 +1870,12 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 					uint8_t num = 0;
 					// Получаем байты для сравнения
 					const wchar_t * bytes = reinterpret_cast <const wchar_t *> (text.data());
+					// Получаем границу буфера данных (представление может не иметь завершающего нуля)
+					const wchar_t * end = (bytes + text.size());
 					/**
 					 * Выполняем перебор всех символов
 					 */
-					while((* bytes) != 0x00){
+					while(bytes < end){
 						// Выполняем проверку первой позиции
 						if(((* bytes) & 0x80) == 0x00){
 							// U+0000 to U+007F
@@ -1604,8 +1912,8 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 						 * Выполняем перебор всех позиций
 						 */
 						for(uint8_t i = 1; i < num; ++i){
-							// Если байты в первой позиции нельзя сопоставить
-							if(((* bytes) & 0xC0) != 0x80)
+							// Если мы вышли за границу буфера или байты нельзя сопоставить
+							if((bytes >= end) || (((* bytes) & 0xC0) != 0x80))
 								// Возвращаем результат проверки
 								return false;
 							// Выполняем смещение в позиции
@@ -2756,14 +3064,11 @@ wstring awh::Framework::convert(string_view str) const noexcept {
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
-				result = utf_to_utf <wchar_t> (str, str + ::strlen(str));
+				result = utf_to_utf <wchar_t> (str.data(), str.data() + str.size());
 			// Если нужно использовать стандартную библиотеку
 			#else
-				// Объявляем конвертер
-				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-				wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
-				// Выполняем конвертирование в utf-8 строку
-				result = conv.from_bytes(string{str});
+				// Выполняем конвертирование строки UTF-8 в широкую строку
+				result = ::utf8ToWide(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -2860,16 +3165,11 @@ string awh::Framework::convert(wstring_view str) const noexcept {
 				// Объявляем конвертер
 				using boost::locale::conv::utf_to_utf;
 				// Выполняем конвертирование в utf-8 строку
-				result = utf_to_utf <char> (str, str + ::wcslen(str));
+				result = utf_to_utf <char> (str.data(), str.data() + str.size());
 			// Если нужно использовать стандартную библиотеку
 			#else
-				// Устанавливаем тип для конвертера UTF-8
-				using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
-				// Объявляем конвертер
-				wstring_convert <convert_type, wchar_t> conv;
-				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-				// Выполняем конвертирование в utf-8 строку
-				result = conv.to_bytes(wstring{str});
+				// Выполняем конвертирование широкой строки в строку UTF-8
+				result = ::wideToUtf8(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -2969,11 +3269,8 @@ wstring awh::Framework::convert(const char * str) const noexcept {
 				result = utf_to_utf <wchar_t> (str, str + ::strlen(str));
 			// Если нужно использовать стандартную библиотеку
 			#else
-				// Объявляем конвертер
-				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-				wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
-				// Выполняем конвертирование в utf-8 строку
-				result = conv.from_bytes(str);
+				// Выполняем конвертирование строки UTF-8 в широкую строку
+				result = ::utf8ToWide(str, ::strlen(str));
 			#endif
 		}
 	/**
@@ -3073,13 +3370,8 @@ string awh::Framework::convert(const wchar_t * str) const noexcept {
 				result = utf_to_utf <char> (str, str + ::wcslen(str));
 			// Если нужно использовать стандартную библиотеку
 			#else
-				// Устанавливаем тип для конвертера UTF-8
-				using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
-				// Объявляем конвертер
-				wstring_convert <convert_type, wchar_t> conv;
-				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-				// Выполняем конвертирование в utf-8 строку
-				result = conv.to_bytes(str);
+				// Выполняем конвертирование широкой строки в строку UTF-8
+				result = ::wideToUtf8(str, ::wcslen(str));
 			#endif
 		}
 	/**
@@ -3179,11 +3471,8 @@ wstring awh::Framework::convert(const string & str) const noexcept {
 				result = utf_to_utf <wchar_t> (str.c_str(), str.c_str() + str.size());
 			// Если нужно использовать стандартную библиотеку
 			#else
-				// Объявляем конвертер
-				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-				wstring_convert <codecvt_utf8_utf16 <wchar_t, 0x10ffff, little_endian>> conv;
-				// Выполняем конвертирование в utf-8 строку
-				result = conv.from_bytes(str);
+				// Выполняем конвертирование строки UTF-8 в широкую строку
+				result = ::utf8ToWide(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -3283,13 +3572,8 @@ string awh::Framework::convert(const wstring & str) const noexcept {
 				result = utf_to_utf <char> (str.c_str(), str.c_str() + str.size());
 			// Если нужно использовать стандартную библиотеку
 			#else
-				// Устанавливаем тип для конвертера UTF-8
-				using convert_type = codecvt_utf8 <wchar_t, 0x10ffff, little_endian>;
-				// Объявляем конвертер
-				wstring_convert <convert_type, wchar_t> conv;
-				// wstring_convert <codecvt_utf8 <wchar_t>> conv;
-				// Выполняем конвертирование в utf-8 строку
-				result = conv.to_bytes(str);
+				// Выполняем конвертирование широкой строки в строку UTF-8
+				result = ::wideToUtf8(str.data(), str.size());
 			#endif
 		}
 	/**
@@ -3680,9 +3964,9 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						// Если бит установлен
 						if(byte.test(j))
 							// Выполняем добавление первого символа символа
-							result.insert(result.begin(), digits[1]);
+							result.push_back(digits[1]);
 						// Иначе добавлям нулевой символ
-						else result.insert(result.begin(), digits[0]);
+						else result.push_back(digits[0]);
 					}
 				}
 			// Если это другая система счисления
@@ -3700,13 +3984,13 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						// Особый случай: нулю соответствует не пустая строка, а "0"
 						if(num == 0)
 							// Выполняем добавление нулевого символа
-							result.insert(result.begin(), digits[0]);
+							result.push_back(digits[0]);
 						/**
 						 * Раскладываем число на цифры (младшими разрядами вперёд)
 						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
-							result.insert(result.begin(), digits[num % radix]);
+							result.push_back(digits[num % radix]);
 							// Выполняем финальное деление
 							num /= radix;
 						}
@@ -3720,13 +4004,13 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						// Особый случай: нулю соответствует не пустая строка, а "0"
 						if(num == 0)
 							// Выполняем добавление нулевого символа
-							result.insert(result.begin(), digits[0]);
+							result.push_back(digits[0]);
 						/**
 						 * Раскладываем число на цифры (младшими разрядами вперёд)
 						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
-							result.insert(result.begin(), digits[num % static_cast <uint16_t> (radix)]);
+							result.push_back(digits[num % static_cast <uint16_t> (radix)]);
 							// Выполняем финальное деление
 							num /= static_cast <uint16_t> (radix);
 						}
@@ -3740,13 +4024,13 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						// Особый случай: нулю соответствует не пустая строка, а "0"
 						if(num == 0)
 							// Выполняем добавление нулевого символа
-							result.insert(result.begin(), digits[0]);
+							result.push_back(digits[0]);
 						/**
 						 * Раскладываем число на цифры (младшими разрядами вперёд)
 						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
-							result.insert(result.begin(), digits[num % static_cast <uint32_t> (radix)]);
+							result.push_back(digits[num % static_cast <uint32_t> (radix)]);
 							// Выполняем финальное деление
 							num /= static_cast <uint32_t> (radix);
 						}
@@ -3760,13 +4044,13 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 						// Особый случай: нулю соответствует не пустая строка, а "0"
 						if(num == 0)
 							// Выполняем добавление нулевого символа
-							result.insert(result.begin(), digits[0]);
+							result.push_back(digits[0]);
 						/**
 						 * Раскладываем число на цифры (младшими разрядами вперёд)
 						 */
 						while(num != 0){
 							// Добавляем идентификатор числа
-							result.insert(result.begin(), digits[num % static_cast <uint64_t> (radix)]);
+							result.push_back(digits[num % static_cast <uint64_t> (radix)]);
 							// Выполняем финальное деление
 							num /= static_cast <uint64_t> (radix);
 						}
@@ -3791,6 +4075,8 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 					}
 				}
 			}
+			// Цифры формировались младшими разрядами вперёд, поэтому разворачиваем результат в правильный порядок
+			std::reverse(result.begin(), result.end());
 		/**
 		 * Если возникает ошибка
 		 */
@@ -4228,7 +4514,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 						// Если символ найден
 						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint8_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint8_t> (result * radix + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -4246,7 +4532,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 						// Если символ найден
 						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint16_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint16_t> (result * static_cast <uint16_t> (radix) + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -4264,7 +4550,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 						// Если символ найден
 						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint32_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint32_t> (result * static_cast <uint32_t> (radix) + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -4282,7 +4568,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 						// Если символ найден
 						if((pos = digits.find(number[i])) != string::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint64_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint64_t> (result * static_cast <uint64_t> (radix) + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -4796,9 +5082,9 @@ void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint
 					 */
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number[i])) != string::npos)
+						if((pos = digits.find(number[i])) != wstring::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint8_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint8_t> (result * radix + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -4814,9 +5100,9 @@ void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint
 					 */
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number[i])) != string::npos)
+						if((pos = digits.find(number[i])) != wstring::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint16_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint16_t> (result * static_cast <uint16_t> (radix) + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -4832,9 +5118,9 @@ void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint
 					 */
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number[i])) != string::npos)
+						if((pos = digits.find(number[i])) != wstring::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint32_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint32_t> (result * static_cast <uint32_t> (radix) + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -4850,9 +5136,9 @@ void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint
 					 */
 					for(uint8_t i = 0; i < count; i++){
 						// Если символ найден
-						if((pos = digits.find(number[i])) != string::npos)
+						if((pos = digits.find(number[i])) != wstring::npos)
 							// Выполняем перевод в 10-ю систему счисления
-							result += static_cast <uint64_t> (pos * static_cast <size_t> (::pow(static_cast <double> (radix), static_cast <int32_t> (count - i - 1))));
+							result = static_cast <uint64_t> (result * static_cast <uint64_t> (radix) + pos);
 						// Иначе выходим из цикла
 						else return;
 					}
@@ -5091,14 +5377,25 @@ string awh::Framework::noexp(const double number, const bool onlyNum) const noex
 			ss >> result;
 			// Если результат получен
 			if((count > 0) && !result.empty()){
-				// Флаг завершения перебора
-				bool end = false;
 				/**
-				 * Если последний символ является нулём
+				 * Удаляем хвостовые нули, а затем разделитель дробной части (если он остался)
 				 */
-				while(!end && (result.back() == '0') || (end = ((result.back() == '.') || (result.back() == ','))))
-					// Удаляем последний символ
-					result.pop_back();
+				while(!result.empty()){
+					// Получаем последний символ
+					const char letter = result.back();
+					// Если это хвостовой ноль
+					if(letter == '0')
+						// Удаляем последний символ
+						result.pop_back();
+					// Если это разделитель дробной части
+					else if((letter == '.') || (letter == ',')){
+						// Удаляем разделитель дробной части и завершаем перебор
+						result.pop_back();
+						// Выходим из цикла
+						break;
+					// В остальных случаях завершаем перебор
+					} else break;
+				}
 			}
 			// Если количество цифр после запятой больше нуля
 			if((count > 0) && (result.size() > 2)){
@@ -5199,6 +5496,10 @@ float awh::Framework::rate(const float a, const float b) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
+		// Если второе число равно нулю, относительный процент не определён
+		if(b == 0.f)
+			// Возвращаем нулевой результат
+			return 0.f;
 		// Возвращаем разницу в процентах
 		return ((a > b ? ((a - b) / b * 100.f) : ((b - a) / b * 100.f) * -1.f));
 	/**
@@ -6030,14 +6331,35 @@ size_t awh::Framework::countLetter(string_view word, const wchar_t letter) const
 		try {
 			// Ищем нашу букву
 			size_t pos = 0;
-			/**
-			 * Выполняем подсчёт количества указанных букв в слове
-			 */
-			while((pos = word.find(letter, pos)) != string::npos){
-				// Считаем количество букв
-				result++;
-				// Увеличиваем позицию
-				pos++;
+			// Если искомый символ принадлежит таблице ASCII
+			if(letter < 0x80){
+				// Получаем искомый символ в однобайтовом виде
+				const char target = static_cast <char> (letter);
+				/**
+				 * Выполняем подсчёт количества указанных букв в слове
+				 */
+				while((pos = word.find(target, pos)) != string::npos){
+					// Считаем количество букв
+					result++;
+					// Увеличиваем позицию
+					pos++;
+				}
+			// Если искомый символ является многобайтовым (UTF-8)
+			} else {
+				// Получаем искомый символ в виде UTF-8 последовательности
+				const string target = this->convert(wstring(1, letter));
+				// Если последовательность получена
+				if(!target.empty()){
+					/**
+					 * Выполняем подсчёт количества указанных букв в слове
+					 */
+					while((pos = word.find(target, pos)) != string::npos){
+						// Считаем количество букв
+						result++;
+						// Смещаем позицию на длину последовательности
+						pos += target.size();
+					}
+				}
 			}
 		/**
 		 * Если возникает ошибка
@@ -6160,8 +6482,10 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если позиция передана и длина слова тоже
-		result += (1 << pos);
+		// Если позиция в пределах разрядности счётчика
+		if(pos < 64)
+			// Устанавливаем бит регистра по указанной позиции
+			result += (static_cast <uint64_t> (1) << pos);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -6695,21 +7019,13 @@ bool awh::Framework::exists(string_view word, string_view text) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Индекс позиции символа в тексте
-			size_t index = 0;
-			// Выполняем поиск слова в тексте
-			(void) find_if_not(text.begin(), text.end(), [&index, &word](char c) noexcept -> bool {
-				// Если символы в слове совпадают
-				if(::tolower(c) == ::tolower(word[index]))
-					// Увеличиваем значение индекса
-					index++;
-				// Если символы не совпадают, выполняем сброс индекса
-				else index = 0;
-				// Если слово полностью было найдено
-				return (index != word.size());
+			// Выполняем регистронезависимый поиск слова в тексте
+			const auto i = std::search(text.begin(), text.end(), word.begin(), word.end(), [](const char first, const char second) noexcept -> bool {
+				// Выполняем сравнение символов без учёта регистра
+				return (::tolower(static_cast <u_char> (first)) == ::tolower(static_cast <u_char> (second)));
 			});
 			// Возвращаем результат проверки
-			return (index == word.size());
+			return (i != text.end());
 		/**
 		 * Если возникает ошибка
 		 */
@@ -6764,21 +7080,13 @@ bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Индекс позиции символа в тексте
-			size_t index = 0;
-			// Выполняем поиск слова в тексте
-			(void) find_if_not(text.begin(), text.end(), [&index, &word](wchar_t c) noexcept -> bool {
-				// Если символы в слове совпадают
-				if(::towlower(c) == ::towlower(word[index]))
-					// Увеличиваем значение индекса
-					index++;
-				// Если символы не совпадают, выполняем сброс индекса
-				else index = 0;
-				// Если слово полностью было найдено
-				return (index != word.size());
+			// Выполняем регистронезависимый поиск слова в тексте
+			const auto i = std::search(text.begin(), text.end(), word.begin(), word.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
+				// Выполняем сравнение символов без учёта регистра
+				return (::towlower(first) == ::towlower(second));
 			});
 			// Возвращаем результат проверки
-			return (index == word.size());
+			return (i != text.end());
 		/**
 		 * Если возникает ошибка
 		 */
@@ -7509,7 +7817,7 @@ std::unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const
  */
 string awh::Framework::icon(const bool end) const noexcept {
 	// Список иконок для начала работы
-	const vector <string> iconBegin = {
+	static const vector <string> iconBegin = {
 		"🎲","🎰","🏓","🎱","🥚","⚽️",
 		"🏀","🏈","⚾️","🥎","🏐","🪙",
 		"🎾","🏑","🧲","🏹","🧱","🏋‍♀️",
@@ -7526,7 +7834,7 @@ string awh::Framework::icon(const bool end) const noexcept {
 		"⏳","♨️","📉","💤","📊","🏳️"
 	};
 	// Список иконок для конца работы
-	const vector <string> iconEnd = {
+	static const vector <string> iconEnd = {
 		"🍾","🎉","🎊","🎈","🎁","🥳",
 		"🤩","😍","🥰","🤝","🙌","👐",
 		"👌","✌️","🤟","🐝","🎖","🥇",
@@ -7540,10 +7848,14 @@ string awh::Framework::icon(const bool end) const noexcept {
 		"🍫","🎂","💯","📰","❤️‍🔥","🎣",
 		"🏁","🧾","💶","💷","💴","💵"
 	};
-	// рандомизация генератора случайных чисел
-	::srand(this->timestamp <uint64_t> (chrono_t::NANOSECONDS));
+	// Потокобезопасный генератор случайных чисел (инициализируется один раз на поток)
+	static thread_local std::mt19937_64 engine(static_cast <uint64_t> (this->timestamp <uint64_t> (chrono_t::NANOSECONDS)) ^ static_cast <uint64_t> (reinterpret_cast <uintptr_t> (&engine)));
+	// Получаем список иконок в зависимости от флага завершения работы
+	const vector <string> & icons = (!end ? iconBegin : iconEnd);
+	// Создаём равномерное распределение по индексам списка
+	std::uniform_int_distribution <size_t> distribution(0, icons.size() - 1);
 	// Получаем иконку
-	return (!end ? iconBegin[::rand() % iconBegin.size()] : iconEnd[::rand() % iconEnd.size()]);
+	return icons[distribution(engine)];
 }
 /**
  * @brief Метод получения размера в байтах из строки
@@ -7561,11 +7873,11 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 		 */
 		try {
 			// Начало и конец позиции значения в строке
-			uint8_t start = 0, stop = 0;
+			size_t start = 0, stop = 0;
 			/**
 			 * Выполняем парсинг строки
 			 */
-			for(uint8_t i = 0; i < static_cast <uint8_t> (str.size()); i++){
+			for(size_t i = 0; i < str.size(); i++){
 				// Если текущий символ является пробельным
 				if(std::isspace(str[i])){
 					// Если позиция конца значения не установлена
@@ -7612,10 +7924,8 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 					else if(this->compare("b", handle) || this->compare("bytes", handle))
 						// Выполняем установку множителя
 						dimension = 1.;
-					// Если размерность установлена тогда расчитываем количество байт
-					if(result > -1.)
-						// Устанавливаем размер полученных данных
-						result *= dimension;
+					// Применяем множитель размерности к полученному значению
+					result *= dimension;
 					// Выходим из цикла
 					break;
 				}
@@ -7771,11 +8081,11 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 		 */
 		try {
 			// Начало и конец позиции значения в строке
-			uint8_t start = 0, stop = 0;
+			size_t start = 0, stop = 0;
 			/**
 			 * Выполняем парсинг строки
 			 */
-			for(uint8_t i = 0; i < static_cast <uint8_t> (str.size()); i++){
+			for(size_t i = 0; i < str.size(); i++){
 				// Если текущий символ является пробельным
 				if(std::isspace(str[i])){
 					// Если позиция конца значения не установлена
@@ -7902,11 +8212,11 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 		 */
 		try {
 			// Начало и конец позиции значения в строке
-			uint8_t start = 0, stop = 0;
+			size_t start = 0, stop = 0;
 			/**
 			 * Выполняем парсинг строки
 			 */
-			for(uint8_t i = 0; i < static_cast <uint8_t> (str.size()); i++){
+			for(size_t i = 0; i < str.size(); i++){
 				// Если текущий символ является пробельным
 				if(std::isspace(str[i])){
 					// Если позиция конца значения не установлена
