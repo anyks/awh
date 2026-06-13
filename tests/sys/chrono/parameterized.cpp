@@ -554,7 +554,25 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, OffsetParameterizedFixture,
 		// Уменьшаем дату (Sun, 06 Apr 2025 15:37:01 UTC+3) на 64 секунд
 		OffsetChronoTestParameter({1743943021520, 64, 1743942957520, awh::chrono_t::type_t::SECONDS, awh::chrono_t::offset_t::DECREMENT}),
 		// Уменьшаем дату (Sun, 06 Apr 2025 15:37:01 UTC+3) на 586432 миллисекунд
-		OffsetChronoTestParameter({1743943021520, 586432, 1743942435088, awh::chrono_t::type_t::MILLISECONDS, awh::chrono_t::offset_t::DECREMENT})
+		OffsetChronoTestParameter({1743943021520, 586432, 1743942435088, awh::chrono_t::type_t::MILLISECONDS, awh::chrono_t::offset_t::DECREMENT}),
+		// Увеличиваем дату января високосного года (Mon, 15 Jan 2024 12:00:00 UTC) на 1 год
+		OffsetChronoTestParameter({1705320000000, 1, 1736942400000, awh::chrono_t::type_t::YEAR, awh::chrono_t::offset_t::INCREMENT}),
+		// Увеличиваем дату февраля високосного года (Sat, 10 Feb 2024 12:00:00 UTC) на 1 год
+		OffsetChronoTestParameter({1707566400000, 1, 1739188800000, awh::chrono_t::type_t::YEAR, awh::chrono_t::offset_t::INCREMENT}),
+		// Уменьшаем дату апреля (Sun, 06 Apr 2025 12:00:00 UTC) на 1 год до високосного года
+		OffsetChronoTestParameter({1743940800000, 1, 1712404800000, awh::chrono_t::type_t::YEAR, awh::chrono_t::offset_t::DECREMENT}),
+		// Уменьшаем дату января (Wed, 15 Jan 2025 12:00:00 UTC) на 1 год до високосного года
+		OffsetChronoTestParameter({1736942400000, 1, 1705320000000, awh::chrono_t::type_t::YEAR, awh::chrono_t::offset_t::DECREMENT}),
+		// Прибавляем 1 месяц к 31 января 2025 (Fri, 31 Jan 2025 12:00:00 UTC) - ограничение до 28 февраля
+		OffsetChronoTestParameter({1738324800000, 1, 1740744000000, awh::chrono_t::type_t::MONTH, awh::chrono_t::offset_t::INCREMENT}),
+		// Прибавляем 1 месяц к 31 января 2024 (Wed, 31 Jan 2024 12:00:00 UTC) - ограничение до 29 февраля
+		OffsetChronoTestParameter({1706702400000, 1, 1709208000000, awh::chrono_t::type_t::MONTH, awh::chrono_t::offset_t::INCREMENT}),
+		// Прибавляем 1 месяц к 31 марта 2025 (Mon, 31 Mar 2025 12:00:00 UTC) - ограничение до 30 апреля
+		OffsetChronoTestParameter({1743422400000, 1, 1746014400000, awh::chrono_t::type_t::MONTH, awh::chrono_t::offset_t::INCREMENT}),
+		// Вычитаем 1 месяц из 31 марта 2025 (Mon, 31 Mar 2025 12:00:00 UTC) - ограничение до 28 февраля
+		OffsetChronoTestParameter({1743422400000, 1, 1740744000000, awh::chrono_t::type_t::MONTH, awh::chrono_t::offset_t::DECREMENT}),
+		// Прибавляем 2 месяца к 31 декабря 2025 (Wed, 31 Dec 2025 12:00:00 UTC) - ограничение до 28 февраля 2026
+		OffsetChronoTestParameter({1767182400000, 2, 1772280000000, awh::chrono_t::type_t::MONTH, awh::chrono_t::offset_t::INCREMENT})
 	)
 );
 
@@ -585,18 +603,28 @@ TEST_F(ChronoFixture, YearChronoTest){
 }
 
 /**
- * @brief Тестируем метод проверки принадлежит ли дата к лету
+ * @brief Тестируем метод проверки действия летнего времени (DST по правилам США/Канады)
  *
  */
 TEST_F(ChronoFixture, DSTChronoTest){
-	// Проверяем дату (Sun, 06 Apr 2025 15:37:01 UTC+3)
-	ASSERT_FALSE(this->_chrono->dst(1743943021520));
-	// Проверяем дату (Sun, 06 Aug 2026 15:37:01 UTC+3)
-	ASSERT_TRUE(this->_chrono->dst(1786019821000));
-	// Проверяем дату (Sun, 01 Jun 2023 03:00:00 UTC+3)
-	ASSERT_TRUE(this->_chrono->dst(1685577600000));
-	// Проверяем дату (Sun, 06 Apr 2029 15:37:01 UTC+3)
-	ASSERT_FALSE(this->_chrono->dst(1870173421000));
+	// Зима (Wed, 15 Jan 2025 12:00:00 UTC) - летнее время не действует
+	ASSERT_FALSE(this->_chrono->dst(1736942400000));
+	// Март до 2-го воскресенья (Sat, 01 Mar 2025 12:00:00 UTC) - не действует
+	ASSERT_FALSE(this->_chrono->dst(1740830400000));
+	// 2-е воскресенье марта, после 02:00 (Sun, 09 Mar 2025 12:00:00 UTC) - действует
+	ASSERT_TRUE(this->_chrono->dst(1741521600000));
+	// 2-е воскресенье марта, до 02:00 (Sun, 09 Mar 2025 01:00:00 UTC) - ещё не действует
+	ASSERT_FALSE(this->_chrono->dst(1741482000000));
+	// Лето (Tue, 15 Jul 2025 12:00:00 UTC) - действует
+	ASSERT_TRUE(this->_chrono->dst(1752580800000));
+	// 1-е воскресенье ноября, до 02:00 (Sun, 02 Nov 2025 01:00:00 UTC) - ещё действует
+	ASSERT_TRUE(this->_chrono->dst(1762045200000));
+	// 1-е воскресенье ноября, после 02:00 (Sun, 02 Nov 2025 12:00:00 UTC) - уже не действует
+	ASSERT_FALSE(this->_chrono->dst(1762084800000));
+	// Конец ноября (Sat, 15 Nov 2025 12:00:00 UTC) - не действует
+	ASSERT_FALSE(this->_chrono->dst(1763208000000));
+	// Зима (Thu, 25 Dec 2025 12:00:00 UTC) - не действует
+	ASSERT_FALSE(this->_chrono->dst(1766664000000));
 }
 
 /**

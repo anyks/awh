@@ -437,6 +437,39 @@ namespace awh {
 			void threadSafety(const bool mode) noexcept;
 		private:
 			/**
+			 * @brief Метод подсчёта количества десятичных разрядов числа
+			 *
+			 * @param value число для которого выполняется подсчёт разрядов
+			 * @return      количество десятичных разрядов
+			 */
+			uint8_t digits(const uint64_t value) const noexcept;
+			/**
+			 * @brief Метод подсчёта количества високосных лет, прошедших с 1970 года
+			 *
+			 * @param years количество прошедших лет с 1970 года
+			 * @return      количество високосных лет с учётом григорианского календаря
+			 */
+			uint16_t leapYears(const uint16_t years) const noexcept;
+			/**
+			 * @brief Метод получения штампа времени начала указанного года в миллисекундах
+			 *
+			 * @param year год для которого необходимо получить начало
+			 * @return     штамп времени начала года в миллисекундах
+			 */
+			uint64_t beginOfYear(const uint16_t year) const noexcept;
+		private:
+			/**
+			 * @brief Метод проверки действует ли летнее время (DST) по правилам США/Канады
+			 *
+			 * @param month номер месяца (1-12)
+			 * @param date  число месяца (1-31)
+			 * @param day   день недели (1 - понедельник, 7 - воскресенье)
+			 * @param hour  количество часов (0-23)
+			 * @return      результат проверки действия летнего времени
+			 */
+			bool isDST(const uint8_t month, const uint8_t date, const uint8_t day, const uint8_t hour) const noexcept;
+		private:
+			/**
 			 * @brief Метод получения штампа времени из объекта даты
 			 *
 			 * @param dt объект даты из которой необходимо получить штамп времени
@@ -598,14 +631,14 @@ namespace awh {
 			uint16_t year(const storage_t storage = storage_t::GLOBAL) const noexcept;
 		public:
 			/**
-			 * @brief Метод проверки принадлежит ли дата к лету
+			 * @brief Метод проверки действует ли на дату летнее время (DST)
 			 *
 			 * @param date дата для проверки
 			 * @return     результат проверки
 			 */
 			bool dst(const uint64_t date) const noexcept;
 			/**
-			 * @brief Метод проверки стоит ли на дворе лето
+			 * @brief Метод проверки действует ли летнее время (DST)
 			 *
 			 * @param storage хранение значение времени
 			 * @return        результат проверки

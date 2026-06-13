@@ -174,6 +174,108 @@ void awh::Chrono::threadSafety(const bool mode) noexcept {
 	this->_mtx.parse.enabled = mode;
 }
 /**
+ * @brief Метод подсчёта количества десятичных разрядов числа
+ *
+ * @param value число для которого выполняется подсчёт разрядов
+ * @return      количество десятичных разрядов
+ */
+uint8_t awh::Chrono::digits(const uint64_t value) const noexcept {
+	// Количество десятичных разрядов
+	uint8_t result = 0;
+	// Текущее значение для подсчёта разрядов
+	uint64_t number = value;
+	/**
+	 * Подсчитываем количество разрядов
+	 */
+	do {
+		// Увеличиваем количество разрядов
+		result++;
+		// Уменьшаем число на один разряд
+		number /= 10;
+	/**
+	 * Продолжаем пока число не закончится
+	 */
+	} while(number > 0);
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод подсчёта количества високосных лет, прошедших с 1970 года
+ *
+ * @param years количество прошедших лет с 1970 года
+ * @return      количество високосных лет с учётом григорианского календаря
+ */
+uint16_t awh::Chrono::leapYears(const uint16_t years) const noexcept {
+	// Получаем последний полный год перед началом искомого года
+	const uint32_t last = (1970 + static_cast <uint32_t> (years) - 1);
+	// Количество високосных лет от Рождества Христова до 1969 года включительно
+	constexpr uint32_t base = ((1969 / 4) - (1969 / 100) + (1969 / 400));
+	// Возвращаем количество високосных лет, прошедших с 1970 года
+	return static_cast <uint16_t> (((last / 4) - (last / 100) + (last / 400)) - base);
+}
+/**
+ * @brief Метод получения штампа времени начала указанного года в миллисекундах
+ *
+ * @param year год для которого необходимо получить начало
+ * @return     штамп времени начала года в миллисекундах
+ */
+uint64_t awh::Chrono::beginOfYear(const uint16_t year) const noexcept {
+	// Определяем количество прошедших лет
+	const uint16_t lastYears = (year > 1970 ? (year - 1970) : 0);
+	// Определяем количество прошедших високосных лет
+	const uint16_t leapCount = (lastYears > 0 ? this->leapYears(lastYears) : 0);
+	// Возвращаем штамп времени начала года
+	return (
+		(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
+		(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
+	);
+}
+/**
+ * @brief Метод проверки действует ли летнее время (DST) по правилам США/Канады
+ *
+ * @param month номер месяца (1-12)
+ * @param date  число месяца (1-31)
+ * @param day   день недели (1 - понедельник, 7 - воскресенье)
+ * @param hour  количество часов (0-23)
+ * @return      результат проверки действия летнего времени
+ */
+bool awh::Chrono::isDST(const uint8_t month, const uint8_t date, const uint8_t day, const uint8_t hour) const noexcept {
+	// До марта и после ноября летнее время не действует
+	if((month < 3) || (month > 11))
+		// Возвращаем отсутствие летнего времени
+		return false;
+	// С апреля по октябрь летнее время действует всегда
+	if((month > 3) && (month < 11))
+		// Возвращаем наличие летнего времени
+		return true;
+	// Получаем день недели первого числа месяца (0 - воскресенье, 6 - суббота)
+	const int8_t weekday = static_cast <int8_t> (day % 7);
+	// Вычисляем день недели первого числа месяца относительно текущего числа
+	const int8_t firstDow = static_cast <int8_t> (((((weekday - static_cast <int8_t> ((date - 1) % 7)) % 7) + 7) % 7));
+	// Получаем число первого воскресенья месяца
+	const uint8_t firstSunday = static_cast <uint8_t> (((7 - firstDow) % 7) + 1);
+	// Если на дворе март, летнее время начинается со 2-го воскресенья в 02:00
+	if(month == 3){
+		// Получаем число второго воскресенья марта
+		const uint8_t secondSunday = (firstSunday + 7);
+		// Если текущее число не совпадает с днём перехода
+		if(date != secondSunday)
+			// Летнее время действует после дня перехода
+			return (date > secondSunday);
+		// В день перехода летнее время наступает с 02:00
+		return (hour >= 2);
+	}
+	/**
+	 * Иначе на дворе ноябрь, летнее время заканчивается в 1-е воскресенье в 02:00
+	 * Если текущее число не совпадает с днём перехода
+	 */
+	if(date != firstSunday)
+		// Летнее время действует до дня перехода
+		return (date < firstSunday);
+	// В день перехода летнее время действует до 02:00
+	return (hour < 2);
+}
+/**
  * @brief Метод получения штампа времени из объекта даты
  *
  * @param dt объект даты из которой необходимо получить штамп времени
@@ -189,13 +291,15 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 		// Определяем количество прошедших лет
 		const uint16_t lastYears = (dt.year > 0 ? (dt.year - 1970) : 0);
 		// Определяем количество прошедших високосных лет
-		const uint16_t leapCount = (lastYears > 0 ? static_cast <uint16_t> (::round((lastYears - 1) / 4.)) : 0);
+		const uint16_t leapCount = (lastYears > 0 ? this->leapYears(lastYears) : 0);
 		// Получаем штамп времени начала года
 		result = (
 			(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
 			(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
 		);
-		// Выполняем подсчёт количества дней
+		/**
+		 * Выполняем подсчёт количества дней
+		 */
 		for(uint8_t i = 0; (i < params.daysInMonths.size()) && (i < (dt.month - 1)); i++){
 			// Если месяц февраль и год високосный
 			if((i == 1) && dt.leap)
@@ -204,12 +308,10 @@ uint64_t awh::Chrono::makeDate(const dt_t & dt) const noexcept {
 			// Увеличиваем смещение времени до указанного месяца
 			result += (static_cast <uint64_t> (params.daysInMonths[i]) * static_cast <uint64_t> (86400000));
 		}
-		// Если дата нулевая
-		if(dt.date == 0)
-			// Выполняем компенсацию
-			const_cast <dt_t &> (dt).date = 1;
+		// Получаем число месяца с компенсацией нулевого значения
+		const uint8_t date = (dt.date == 0 ? 1 : dt.date);
 		// Увеличиваем на количество прошедших дней
-		result += (static_cast <uint64_t> (dt.date - 1) * static_cast <uint64_t> (86400000));
+		result += (static_cast <uint64_t> (date - 1) * static_cast <uint64_t> (86400000));
 		// Увеличиваем на количество часов
 		result += (static_cast <uint64_t> (dt.hour) * static_cast <uint64_t> (3600000));
 		// Увеличиваем на указанное смещение времени
@@ -260,15 +362,8 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			dt.year = this->year(date);
 			// Устанавливаем флаг високосного года
 			dt.leap = this->leap(dt.year);
-			// Определяем количество прошедших лет
-			const uint16_t lastYears = (dt.year - 1970);
-			// Определяем количество прошедших високосных лет
-			const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 			// Получаем штамп времени начала года
-			const uint64_t beginYear = (
-				(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-				(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-			);
+			const uint64_t beginYear = this->beginOfYear(dt.year);
 			// Начало месяца и начало суток
 			uint64_t beginMonth = 0, beginDay = 0;
 			// Определяем сколько дней прошло с начала года
@@ -276,7 +371,9 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 			{
 				// Подсчитываем количество дней в предыдущих месяцах
 				uint16_t count = 0, days = 0;
-				// Выполняем перебор всех дней месяца
+				/**
+				 * Выполняем перебор всех дней месяца
+				 */
 				for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 					// Увеличиваем номер месяца
 					dt.month = (i + 1);
@@ -289,8 +386,6 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 					// Выходим из цикла
 					else break;
 				}
-				// Если у нас на дворе лето, устанавливаем флаг
-				dt.dst = ((dt.month > 5) && (dt.month < 9));
 				// Устанавливаем текущее значение даты
 				dt.date = static_cast <uint8_t> ((dt.days - count) + 1);
 				// Получаем начало месяца указанной даты
@@ -326,6 +421,8 @@ void awh::Chrono::makeDate(const uint64_t date, dt_t & dt) const noexcept {
 				dt.h12 = h12_t::AM;
 			// Устанавливаем время после полудня
 			else dt.h12 = h12_t::PM;
+			// Устанавливаем флаг летнего времени (DST) по правилам США/Канады
+			dt.dst = this->isDST(dt.month, dt.date, dt.day, dt.hour);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -461,9 +558,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 			// Получаем объект регулярного выражения
 			const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 			// Создаём объект матчинга
-			regmatch_t match[regex.re_nsub + 1];
+			vector <regmatch_t> match(regex.re_nsub + 1);
 			// Выполняем разбор регулярного выражения
-			const int32_t error = ::pcre2_regexec(&regex, text.data() + pos, regex.re_nsub + 1, match, REG_NOTEMPTY);
+			const int32_t error = ::pcre2_regexec(&regex, text.data() + pos, regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
 			// Если ошибок не получено
 			if(error == 0){
 				/**
@@ -490,7 +587,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					case static_cast <uint8_t> (format_t::Z):
 					// Если формат получен как %W
 					case static_cast <uint8_t> (format_t::W): {
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -586,7 +685,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									case static_cast <uint8_t> (format_t::a): {
 										// Получаем название дня недели
 										const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
-										// Выполняем перебор всего списка дней недели
+										/**
+										 * Выполняем перебор всего списка дней недели
+										 */
 										for(size_t i = 0; i < params.nameDays.size(); i++){
 											// Если мы нашли нужный нам день недели
 											if(this->_fmk->compare(day, params.nameDays[i].first)){
@@ -601,7 +702,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									case static_cast <uint8_t> (format_t::A): {
 										// Получаем название дня недели
 										const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
-										// Выполняем перебор всего списка дней недели
+										/**
+										 * Выполняем перебор всего списка дней недели
+										 */
 										for(size_t i = 0; i < params.nameDays.size(); i++){
 											// Если мы нашли нужный нам день недели
 											if(this->_fmk->compare(day, params.nameDays[i].second)){
@@ -616,7 +719,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									case static_cast <uint8_t> (format_t::b): {
 										// Получаем название месяца
 										const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
-										// Выполняем перебор всего списка месяцев
+										/**
+										 * Выполняем перебор всего списка месяцев
+										 */
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
 											// Если мы нашли нужный нам месяц
 											if(this->_fmk->compare(month, params.nameMonths[i].first)){
@@ -631,7 +736,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 									case static_cast <uint8_t> (format_t::B): {
 										// Получаем название месяца
 										const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
-										// Выполняем перебор всего списка месяцев
+										/**
+										 * Выполняем перебор всего списка месяцев
+										 */
 										for(size_t i = 0; i < params.nameMonths.size(); i++){
 											// Если мы нашли нужный нам месяц
 											if(this->_fmk->compare(month, params.nameMonths[i].second)){
@@ -669,7 +776,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 							dt.offset = 0;
 						// Создаём массив собранных результатов
 						vector <string> data(regex.re_nsub + 1);
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -726,7 +835,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					} break;
 					// Если формат получен как %R
 					case static_cast <uint8_t> (format_t::R): {
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -747,7 +858,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					} break;
 					// Если формат получен как %D
 					case static_cast <uint8_t> (format_t::D): {
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -777,7 +890,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					} break;
 					// Если формат получен как %F
 					case static_cast <uint8_t> (format_t::F): {
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -804,7 +919,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					} break;
 					// Если формат получен как %T
 					case static_cast <uint8_t> (format_t::T): {
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -829,7 +946,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					} break;
 					// Если формат получен как %r
 					case static_cast <uint8_t> (format_t::r): {
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -869,7 +988,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 					} break;
 					// Если формат получен как %c
 					case static_cast <uint8_t> (format_t::c): {
-						// Выполняем перебор всех полученных вариантов
+						/**
+						 * Выполняем перебор всех полученных вариантов
+						 */
 						for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 							// Если результат получен
 							if(match[j].rm_eo > match[j].rm_so){
@@ -881,7 +1002,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								else if(j == 1) {
 									// Получаем название дня недели
 									const string day(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
-									// Выполняем перебор всего списка дней недели
+									/**
+									 * Выполняем перебор всего списка дней недели
+									 */
 									for(size_t i = 0; i < params.nameDays.size(); i++){
 										// Если мы нашли нужный нам день недели
 										if(this->_fmk->compare(day, params.nameDays[i].first)){
@@ -895,7 +1018,9 @@ ssize_t awh::Chrono::prepare(dt_t & dt, string_view text, const format_t format,
 								} else if(j == 2) {
 									// Получаем название месяца
 									const string month(text.data() + pos + match[j].rm_so, match[j].rm_eo - match[j].rm_so);
-									// Выполняем перебор всего списка месяцев
+									/**
+									 * Выполняем перебор всего списка месяцев
+									 */
 									for(size_t i = 0; i < params.nameMonths.size(); i++){
 										// Если мы нашли нужный нам месяц
 										if(this->_fmk->compare(month, params.nameMonths[i].first)){
@@ -1029,21 +1154,16 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 				case static_cast <uint8_t> (type_t::YEAR): {
 					// Получаем значение текущего года
 					const uint16_t year = this->year(date);
-					// Определяем количество прошедших лет
-					const uint16_t lastYears = (year - 1970);
-					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
-					result = (
-						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-					);
-					// Выполняем перебор всех месяцев в году
+					result = this->beginOfYear(year);
+					/**
+					 * Выполняем перебор всех месяцев в году
+					 */
 					for(size_t i = 0; i < params.daysInMonths.size(); i++)
 						// Увеличиваем количество дней в месяце
 						result += (static_cast <uint64_t> (params.daysInMonths[i]) * static_cast <uint64_t> (86400000));
 					// Если год високосный
-					if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+					if(this->leap(year))
 						// Добавляем ещё один день
 						result += 86400000;
 				} break;
@@ -1051,23 +1171,18 @@ uint64_t awh::Chrono::end(const uint64_t date, const type_t type) const noexcept
 				case static_cast <uint8_t> (type_t::MONTH): {
 					// Получаем значение текущего года
 					const uint16_t year = this->year(date);
-					// Определяем количество прошедших лет
-					const uint16_t lastYears = (year - 1970);
-					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
-					const uint64_t beginYear = (
-						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-					);
+					const uint64_t beginYear = this->beginOfYear(year);
 					// Определяем сколько дней прошло с начала года
 					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 					{
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
-						const bool leap = this->leap(static_cast <uint16_t> (lastYears + 1970));
-						// Выполняем перебор всех дней месяца
+						const bool leap = this->leap(year);
+						/**
+						 * Выполняем перебор всех дней месяца
+						 */
 						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 							// Получаем текущее количество дней с компенсацией високосного года
 							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
@@ -1169,37 +1284,25 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 				case static_cast <uint8_t> (type_t::YEAR): {
 					// Получаем значение текущего года
 					const uint16_t year = this->year(date);
-					// Определяем количество прошедших лет
-					const uint16_t lastYears = (year - 1970);
-					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
-					result = (
-						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-					);
+					result = this->beginOfYear(year);
 				} break;
 				// Если нам нужно получить начало месяца
 				case static_cast <uint8_t> (type_t::MONTH): {
 					// Получаем значение текущего года
 					const uint16_t year = this->year(date);
-					// Определяем количество прошедших лет
-					const uint16_t lastYears = (year - 1970);
-					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
-					const uint64_t beginYear = (
-						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-					);
+					const uint64_t beginYear = this->beginOfYear(year);
 					// Определяем сколько дней прошло с начала года
 					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 					{
 						// Подсчитываем количество дней в предыдущих месяцах
 						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
-						const bool leap = this->leap(static_cast <uint16_t> (lastYears + 1970));
-						// Выполняем перебор всех дней месяца
+						const bool leap = this->leap(year);
+						/**
+						 * Выполняем перебор всех дней месяца
+						 */
 						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 							// Получаем текущее количество дней с компенсацией високосного года
 							days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
@@ -1218,15 +1321,8 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 				case static_cast <uint8_t> (type_t::WEEK): {
 					// Получаем значение текущего года
 					const uint16_t year = this->year(date);
-					// Определяем количество прошедших лет
-					const uint16_t lastYears = (year - 1970);
-					// Определяем количество прошедших високосных лет
-					const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 					// Получаем штамп времени начала года
-					const uint64_t beginYear = (
-						(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-						(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-					);
+					const uint64_t beginYear = this->beginOfYear(year);
 					// Определяем сколько дней прошло с начала года
 					const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 					{
@@ -1236,7 +1332,9 @@ uint64_t awh::Chrono::begin(const uint64_t date, const type_t type) const noexce
 						uint16_t count = 0, days = 0;
 						// Устанавливаем флаг високосного года
 						const bool leap = this->leap(year);
-						// Выполняем перебор всех дней месяца
+						/**
+						 * Выполняем перебор всех дней месяца
+						 */
 						for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 							// Увеличиваем номер месяца
 							month = (i + 1);
@@ -1365,15 +1463,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MONTH): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -1383,7 +1474,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -1404,19 +1497,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::WEEK): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Количество недель в году
 									uint8_t weeks = 0;
 									// Если год високосный
-									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+									if(this->leap(year))
 										// Получаем количество недель в году
 										weeks = static_cast <uint8_t> (::round(31622400000 / 604800000.L));
 									// Если год не високосный
@@ -1428,19 +1514,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::DAY): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									// Если год високосный
-									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+									if(this->leap(year))
 										// Определяем сколько осталось дней в году
 										result = static_cast <uint64_t> (366 - (lastDays + 1));
 									// Если год не високосный
@@ -1450,19 +1529,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество часов прошедших с начала года
 									const uint32_t hours = static_cast <uint32_t> (::ceil((date - beginYear) / 3600000.L));
 									// Если год високосный
-									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+									if(this->leap(year))
 										// Определяем количество оставшихся часов
 										result = static_cast <uint64_t> (static_cast <uint32_t> (31622400000 / 3600000) - hours);
 									// Если год не високосный
@@ -1472,19 +1544,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество минут прошедших с начала года
 									const uint64_t minutes = static_cast <uint64_t> (::ceil((date - beginYear) / 60000.));
 									// Если год високосный
-									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+									if(this->leap(year))
 										// Определяем количество оставшихся минут
 										result = (static_cast <uint64_t> (31622400000 / 60000) - minutes);
 									// Если год не високосный
@@ -1494,19 +1559,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество секунд прошедших с начала года
 									const uint64_t seconds = static_cast <uint64_t> (::ceil((date - beginYear) / 1000.));
 									// Если год високосный
-									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+									if(this->leap(year))
 										// Определяем количество оставшихся секунд
 										result = (static_cast <uint64_t> (31622400000 / 1000) - seconds);
 									// Если год не високосный
@@ -1516,19 +1574,12 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество миллисекунд прошедших с начала года
 									const uint64_t milliseconds = static_cast <uint64_t> (date - beginYear);
 									// Если год високосный
-									if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+									if(this->leap(year))
 										// Определяем количество оставшихся миллисекунд
 										result = (static_cast <uint64_t> (31622400000) - (milliseconds + 1));
 									// Если год не високосный
@@ -1537,26 +1588,19 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000))
-										);
+										// Получаем штамп времени начала года в микросекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
 										// Получаем количество микросекунд прошедших с начала года
 										const uint64_t microseconds = static_cast <uint64_t> (date - beginYear);
 										// Если год високосный
-										if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+										if(this->leap(year))
 											// Определяем количество оставшихся микросекунд
 											result = (static_cast <uint64_t> (31622400000000) - (microseconds + 1));
 										// Если год не високосный
@@ -1572,26 +1616,19 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000000))
-										);
+										// Получаем штамп времени начала года в наносекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
 										// Получаем количество наносекунд прошедших с начала года
 										const uint64_t nanoseconds = static_cast <uint64_t> (date - beginYear);
 										// Если год високосный
-										if(this->leap(static_cast <uint16_t> (lastYears + 1970)))
+										if(this->leap(year))
 											// Определяем количество оставшихся наносекунд
 											result = (static_cast <uint64_t> (31622400000000000) - (nanoseconds + 1));
 										// Если год не високосный
@@ -1616,15 +1653,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::WEEK): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -1634,7 +1664,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -1668,15 +1700,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::DAY): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -1686,7 +1711,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -1713,15 +1740,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -1731,7 +1751,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -1749,24 +1771,17 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся часов в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
+											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
 										// Получаем количество оставшихся часов в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
+										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 3600000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся минут
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -1776,7 +1791,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -1794,24 +1811,17 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся минут в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 60000);
+											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 60000);
 										// Получаем количество оставшихся минут в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 60000);
+										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 60000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся секунд
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -1821,7 +1831,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -1839,24 +1851,17 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся секунд в месяце
-											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 1000);
+											result = static_cast <uint64_t> ((static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 1000);
 										// Получаем количество оставшихся секунд в месяце
-										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth)) / 1000);
+										else result = static_cast <uint64_t> ((static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth)) / 1000);
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся миллисекунд
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -1866,7 +1871,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -1884,30 +1891,23 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										// Если год високосный и месяц февраль
 										if(leap && (month == 2))
 											// Получаем количество оставшихся миллисекунд в месяце
-											result = static_cast <uint64_t> (static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * 86400000) - static_cast <uint32_t> (date - beginMonth));
+											result = static_cast <uint64_t> (static_cast <uint32_t> ((params.daysInMonths[month - 1] + 1) * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth));
 										// Получаем количество оставшихся миллисекунд в месяце
-										else result = static_cast <uint64_t> (static_cast <uint32_t> (params.daysInMonths[month - 1] * 86400000) - static_cast <uint32_t> (date - beginMonth));
+										else result = static_cast <uint64_t> (static_cast <uint32_t> (params.daysInMonths[month - 1] * static_cast <uint64_t> (86400000)) - static_cast <uint32_t> (date - beginMonth));
 									}
 								} break;
 								// Если нам нужно получить количество оставшихся микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000))
-										);
+										// Получаем штамп времени начала года в микросекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
 										// Определяем сколько дней прошло с начала года
 										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000.L));
 										{
@@ -1917,7 +1917,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
 											const bool leap = this->leap(year);
-											// Выполняем перебор всех дней месяца
+											/**
+											 * Выполняем перебор всех дней месяца
+											 */
 											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
 												month = (i + 1);
@@ -1950,22 +1952,15 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество оставшихся наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000000))
-										);
+										// Получаем штамп времени начала года в наносекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
 										// Определяем сколько дней прошло с начала года
 										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000000.L));
 										{
@@ -1975,7 +1970,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
 											const bool leap = this->leap(year);
-											// Выполняем перебор всех дней месяца
+											/**
+											 * Выполняем перебор всех дней месяца
+											 */
 											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
 												month = (i + 1);
@@ -2240,15 +2237,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MONTH): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -2258,7 +2248,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -2279,15 +2271,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::WEEK): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество недель прошедших в году
 									result = static_cast <uint64_t> (::round((date - beginYear) / 604800000.L));
 								} break;
@@ -2295,15 +2280,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::DAY): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									result = static_cast <uint64_t> (::floor((date - beginYear) / 86400000.L));
 								} break;
@@ -2311,15 +2289,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество часов прошедших с начала года
 									result = static_cast <uint64_t> (::floor((date - beginYear) / 3600000.L));
 								} break;
@@ -2327,15 +2298,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество минут прошедших с начала года
 									result = static_cast <uint64_t> (::floor((date - beginYear) / 60000.));
 								} break;
@@ -2343,15 +2307,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество секунд прошедших с начала года
 									result = static_cast <uint64_t> (::floor((date - beginYear) / 1000.));
 								} break;
@@ -2359,37 +2316,23 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Получаем количество миллисекунд прошедших с начала года
 									result = (date - beginYear);
 								} break;
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000))
-										);
+										// Получаем штамп времени начала года в микросекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
 										// Получаем количество микросекунд прошедших с начала года
 										result = static_cast <uint64_t> (date - beginYear);
 									// Если текущее значение даты передано в других единицах
@@ -2403,22 +2346,15 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000000))
-										);
+										// Получаем штамп времени начала года в наносекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
 										// Получаем количество наносекунд прошедших с начала года
 										result = static_cast <uint64_t> (date - beginYear);
 									// Если текущее значение даты передано в других единицах
@@ -2441,15 +2377,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::WEEK): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -2459,7 +2388,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -2482,15 +2413,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::DAY): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -2500,7 +2424,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -2523,15 +2449,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::HOUR): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -2541,7 +2460,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -2564,15 +2485,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MINUTES): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -2582,7 +2496,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -2605,15 +2521,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::SECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -2623,7 +2532,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -2646,15 +2557,8 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								case static_cast <uint8_t> (type_t::MILLISECONDS): {
 									// Получаем значение текущего года
 									const uint16_t year = this->year(date);
-									// Определяем количество прошедших лет
-									const uint16_t lastYears = (year - 1970);
-									// Определяем количество прошедших високосных лет
-									const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
 									// Получаем штамп времени начала года
-									const uint64_t beginYear = (
-										(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-										(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-									);
+									const uint64_t beginYear = this->beginOfYear(year);
 									// Определяем сколько дней прошло с начала года
 									const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
 									{
@@ -2664,7 +2568,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 										uint16_t count = 0, days = 0;
 										// Устанавливаем флаг високосного года
 										const bool leap = this->leap(year);
-										// Выполняем перебор всех дней месяца
+										/**
+										 * Выполняем перебор всех дней месяца
+										 */
 										for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 											// Увеличиваем номер месяца
 											month = (i + 1);
@@ -2686,22 +2592,15 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество прошедших микросекунд
 								case static_cast <uint8_t> (type_t::MICROSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в микросекундах
 									if(current == (actual + 3)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000))
-										);
+										// Получаем штамп времени начала года в микросекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000));
 										// Определяем сколько дней прошло с начала года
 										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000.L));
 										{
@@ -2711,7 +2610,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
 											const bool leap = this->leap(year);
-											// Выполняем перебор всех дней месяца
+											/**
+											 * Выполняем перебор всех дней месяца
+											 */
 											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
 												month = (i + 1);
@@ -2740,22 +2641,15 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 								// Если нам нужно получить количество прошедших наносекунд
 								case static_cast <uint8_t> (type_t::NANOSECONDS): {
 									// Получаем текущее значение размерности даты
-									const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+									const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 									// Получаем размерность актуальной размерности даты
-									const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+									const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 									// Если текущее значение даты передано в наносекундах
 									if(current == (actual + 6)){
 										// Получаем значение текущего года
 										const uint16_t year = this->year(date);
-										// Определяем количество прошедших лет
-										const uint16_t lastYears = (year - 1970);
-										// Определяем количество прошедших високосных лет
-										const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-										// Получаем штамп времени начала года
-										const uint64_t beginYear = (
-											(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000000000)) +
-											(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000000000))
-										);
+										// Получаем штамп времени начала года в наносекундах
+										const uint64_t beginYear = (this->beginOfYear(year) * static_cast <uint64_t> (1000000));
 										// Определяем сколько дней прошло с начала года
 										const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000000000.L));
 										{
@@ -2765,7 +2659,9 @@ uint64_t awh::Chrono::actual(const uint64_t date, const type_t value, const type
 											uint16_t count = 0, days = 0;
 											// Устанавливаем флаг високосного года
 											const bool leap = this->leap(year);
-											// Выполняем перебор всех дней месяца
+											/**
+											 * Выполняем перебор всех дней месяца
+											 */
 											for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
 												// Увеличиваем номер месяца
 												month = (i + 1);
@@ -3078,12 +2974,20 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						case static_cast <uint8_t> (type_t::YEAR): {
 							// Устанавливаем текущее значение даты
 							result = date;
-							// Получаем значение текущего года
-							const uint16_t year = this->year(result);
-							// Выполняем перебор всех лет
+							// Создаём объект даты и времени
+							dt_t dt;
+							// Заполняем объект даты из переданного штампа времени
+							this->makeDate(date, dt);
+							// Определяем количество прошедших лет
+							const uint16_t year = dt.year;
+							// Для дат до марта 29-е февраля попадает в год начала интервала, иначе - в следующий год
+							const uint8_t shift = (dt.month > 2 ? 1 : 0);
+							/**
+							 * Выполняем перебор всех лет
+							 */
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
-								// Если будущий год является високосным
-								if(this->leap(static_cast <uint16_t> (year + (i + 1))))
+								// Если год, в который попадает 29-е февраля прибавляемого интервала, високосный
+								if(this->leap(static_cast <uint16_t> (year + i + shift)))
 									// Увеличиваем текущее значение года на 366 дней
 									result += 31622400000;
 								// Увеличиваем текущее значение года на 365 дней
@@ -3092,102 +2996,50 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						} break;
 						// Если нам нужно получить начало месяца
 						case static_cast <uint8_t> (type_t::MONTH): {
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Получаем значение текущего года
-							const uint16_t year = this->year(result);
-							// Определяем количество прошедших лет
-							const uint16_t lastYears = (year - 1970);
-							// Определяем количество прошедших високосных лет
-							const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-							// Получаем штамп времени начала года
-							const uint64_t beginYear = (
-								(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-								(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-							);
-							// Определяем сколько дней прошло с начала года
-							const uint16_t lastDays = static_cast <uint16_t> (::floor((result - beginYear) / 86400000.L));
-							{
-								// Номер текущего месяца
-								uint8_t month = 0;
-								// Подсчитываем количество дней в предыдущих месяцах
-								uint16_t count = 0, days = 0;
-								// Устанавливаем флаг високосного года
-								const bool leap = this->leap(year);
-								// Выполняем перебор всех дней месяца
-								for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-									// Увеличиваем номер месяца
-									month = (i + 1);
-									// Получаем текущее количество дней с компенсацией високосного года
-									days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-									// Если мы не дошли до предела
-									if(lastDays >= (days + count))
-										// Увеличиваем количество прошедших дней
-										count += days;
-									// Выходим из цикла
-									else break;
-								}
-								// Выполняем перебор всех месяцев
-								for(size_t i = 0; i < static_cast <size_t> (value); i++){
-									// Увеличиваем текущее значение месяца на указанное количество дней
-									result += (static_cast <uint64_t> (params.daysInMonths[month - 1]) * static_cast <uint64_t> (86400000));
-									// Если месяц февраль и год является високосным
-									if((month == 2) && this->leap(result))
-										// Увеличиваем текущее значение года на один день
-										result += 86400000;
-									// Увеличиваем текущее значение месяца
-									month++;
-									// Если месяц выше 12-го
-									if(month > 12)
-										// Выполняем сброс месяца на начало
-										month = 1;
-								}
-							}
+							// Создаём объект даты и времени
+							dt_t dt;
+							// Заполняем объект даты из переданного штампа времени
+							this->makeDate(date, dt);
+							// Вычисляем суммарный порядковый номер месяца и прибавляем смещение
+							const uint64_t total = ((static_cast <uint64_t> (dt.year) * 12) + (dt.month - 1) + value);
+							// Определяем новый год и месяц
+							dt.year = static_cast <uint16_t> (total / 12);
+							dt.month = static_cast <uint8_t> ((total % 12) + 1);
+							// Обновляем флаг високосного года
+							dt.leap = this->leap(dt.year);
+							// Получаем количество дней в новом месяце с учётом високосного года
+							const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && dt.leap) ? 1 : 0));
+							// Если число месяца отсутствует в новом месяце, ограничиваем его последним днём
+							if(dt.date > days)
+								// Ограничиваем число последним днём месяца
+								dt.date = days;
+							// Собираем итоговый штамп времени
+							result = this->makeDate(dt);
 						} break;
 						// Если нам нужно получить начало недели
-						case static_cast <uint8_t> (type_t::WEEK): {
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех недель
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Увеличиваем значение даты на указанное количество недель
-								result += 604800000;
-						} break;
+						case static_cast <uint8_t> (type_t::WEEK):
+							// Увеличиваем значение даты на указанное количество недель
+							result = (date + (value * static_cast <uint64_t> (604800000)));
+						break;
 						// Если нам нужно получить начало дня
 						case static_cast <uint8_t> (type_t::DAY):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех дней
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Увеличиваем значение даты на указанное количество дней
-								result += 86400000;
+							// Увеличиваем значение даты на указанное количество дней
+							result = (date + (value * static_cast <uint64_t> (86400000)));
 						break;
 						// Если нам нужно получить начало часа
 						case static_cast <uint8_t> (type_t::HOUR):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех часов
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Увеличиваем значение даты на указанное количество часов
-								result += 3600000;
+							// Увеличиваем значение даты на указанное количество часов
+							result = (date + (value * static_cast <uint64_t> (3600000)));
 						break;
 						// Если нам нужно получить начало минуты
 						case static_cast <uint8_t> (type_t::MINUTES):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех минут
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Увеличиваем значение даты на указанное количество минут
-								result += 60000;
+							// Увеличиваем значение даты на указанное количество минут
+							result = (date + (value * static_cast <uint64_t> (60000)));
 						break;
 						// Если нам нужно получить начало секунды
 						case static_cast <uint8_t> (type_t::SECONDS):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех секунд
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Увеличиваем значение даты на указанное количество секунд
-								result += 1000;
+							// Увеличиваем значение даты на указанное количество секунд
+							result = (date + (value * static_cast <uint64_t> (1000)));
 						break;
 						// Если нам нужно получить начало миллисекунды
 						case static_cast <uint8_t> (type_t::MILLISECONDS):
@@ -3197,9 +3049,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 							// Если текущее значение даты передано в микросекундах
 							if(current == (actual + 3))
 								// Увеличиваем значение даты на указанное количество микросекунд
@@ -3217,9 +3069,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 							// Если текущее значение даты передано в наносекундах
 							if(current == static_cast <uint8_t> (actual + 6))
 								// Увеличиваем значение даты на указанное количество наносекунд
@@ -3246,12 +3098,20 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						case static_cast <uint8_t> (type_t::YEAR): {
 							// Устанавливаем текущее значение даты
 							result = date;
-							// Получаем значение текущего года
-							const uint16_t year = this->year(result);
-							// Выполняем перебор всех лет
+							// Создаём объект даты и времени
+							dt_t dt;
+							// Заполняем объект даты из переданного штампа времени
+							this->makeDate(date, dt);
+							// Определяем количество прошедших лет
+							const uint16_t year = dt.year;
+							// Для дат до марта 29-е февраля попадает в предыдущий год, иначе - в текущий год
+							const uint8_t shift = (dt.month > 2 ? 0 : 1);
+							/**
+							 *  Выполняем перебор всех лет
+							 */
 							for(size_t i = 0; i < static_cast <size_t> (value); i++){
-								// Если предыдущий год является високосным
-								if(this->leap(static_cast <uint16_t> (year - (i + 1))))
+								// Если год, в который попадает 29-е февраля вычитаемого интервала, високосный
+								if(this->leap(static_cast <uint16_t> (year - i - shift)))
 									// Уменьшаем текущее значение года на 366 дней
 									result -= (result >= 31622400000 ? 31622400000 : 0);
 								// Уменьшаем текущее значение года на 365 дней
@@ -3260,103 +3120,66 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						} break;
 						// Если нам нужно получить начало месяца
 						case static_cast <uint8_t> (type_t::MONTH): {
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Получаем значение текущего года
-							const uint16_t year = this->year(result);
-							// Определяем количество прошедших лет
-							const uint16_t lastYears = (year - 1970);
-							// Определяем количество прошедших високосных лет
-							const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-							// Получаем штамп времени начала года
-							const uint64_t beginYear = (
-								(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-								(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-							);
-							// Определяем сколько дней прошло с начала года
-							const uint16_t lastDays = static_cast <uint16_t> (::floor((result - beginYear) / 86400000.L));
-							{
-								// Номер текущего месяца
-								uint8_t month = 0;
-								// Подсчитываем количество дней в предыдущих месяцах
-								uint16_t count = 0, days = 0;
-								// Устанавливаем флаг високосного года
-								const bool leap = this->leap(year);
-								// Выполняем перебор всех дней месяца
-								for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-									// Увеличиваем номер месяца
-									month = (i + 1);
-									// Получаем текущее количество дней с компенсацией високосного года
-									days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-									// Если мы не дошли до предела
-									if(lastDays >= (days + count))
-										// Увеличиваем количество прошедших дней
-										count += days;
-									// Выходим из цикла
-									else break;
-								}
-								// Выполняем перебор всех месяцев
-								for(size_t i = 0; i < static_cast <size_t> (value); i++){
-									// Уменьшаем текущее значение месяца
-									month--;
-									// Если месяц ниже 1-го
-									if(month < 1)
-										// Выполняем сброс месяца на начало
-										month = 12;
-									// Уменьшаем текущее значение месяца на указанное количество дней
-									result -= (static_cast <uint64_t> (params.daysInMonths[month - 1]) * static_cast <uint64_t> (86400000));
-									// Если месяц февраль и год является високосным
-									if((month == 2) && this->leap(result))
-										// Уменьшаем текущее значение года на один день
-										result -= (result >= 86400000 ? 86400000 : 0);
-								}
+							// Создаём объект даты и времени
+							dt_t dt;
+							// Заполняем объект даты из переданного штампа времени
+							this->makeDate(date, dt);
+							// Вычисляем суммарный порядковый номер месяца
+							const uint64_t base = ((static_cast <uint64_t> (dt.year) * 12) + (dt.month - 1));
+							// Если смещение не выходит за пределы эпохи
+							if(value <= base){
+								// Вычитаем смещение из порядкового номера месяца
+								const uint64_t total = (base - value);
+								// Определяем новый год и месяц
+								dt.year = static_cast <uint16_t> (total / 12);
+								dt.month = static_cast <uint8_t> ((total % 12) + 1);
+								// Обновляем флаг високосного года
+								dt.leap = this->leap(dt.year);
+								// Получаем количество дней в новом месяце с учётом високосного года
+								const uint8_t days = static_cast <uint8_t> (static_cast <uint16_t> (params.daysInMonths[dt.month - 1]) + (((dt.month == 2) && dt.leap) ? 1 : 0));
+								// Если число месяца отсутствует в новом месяце, ограничиваем его последним днём
+								if(dt.date > days)
+									// Ограничиваем число последним днём месяца
+									dt.date = days;
+								// Собираем итоговый штамп времени
+								result = this->makeDate(dt);
 							}
 						} break;
 						// Если нам нужно получить начало недели
 						case static_cast <uint8_t> (type_t::WEEK): {
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех недель
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Уменьшаем значение даты на указанное количество недель
-								result -= (result >= 604800000 ? 604800000 : 0);
+							// Определяем количество недель, не выходящее за пределы даты
+							const uint64_t count = (value < (date / 604800000) ? value : (date / 604800000));
+							// Уменьшаем значение даты на указанное количество недель
+							result = (date - (count * static_cast <uint64_t> (604800000)));
 						} break;
 						// Если нам нужно получить начало дня
-						case static_cast <uint8_t> (type_t::DAY):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех дней
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Уменьшаем значение даты на указанное количество дней
-								result -= (result >= 86400000 ? 86400000 : 0);
-						break;
+						case static_cast <uint8_t> (type_t::DAY): {
+							// Определяем количество дней, не выходящее за пределы даты
+							const uint64_t count = (value < (date / 86400000) ? value : (date / 86400000));
+							// Уменьшаем значение даты на указанное количество дней
+							result = (date - (count * static_cast <uint64_t> (86400000)));
+						} break;
 						// Если нам нужно получить начало часа
-						case static_cast <uint8_t> (type_t::HOUR):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех часов
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Уменьшаем значение даты на указанное количество часов
-								result -= (result >= 3600000 ? 3600000 : 0);
-						break;
+						case static_cast <uint8_t> (type_t::HOUR): {
+							// Определяем количество часов, не выходящее за пределы даты
+							const uint64_t count = (value < (date / 3600000) ? value : (date / 3600000));
+							// Уменьшаем значение даты на указанное количество часов
+							result = (date - (count * static_cast <uint64_t> (3600000)));
+						} break;
 						// Если нам нужно получить начало минуты
-						case static_cast <uint8_t> (type_t::MINUTES):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех минут
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Уменьшаем значение даты на указанное количество минут
-								result -= (result >= 60000 ? 60000 : 0);
-						break;
+						case static_cast <uint8_t> (type_t::MINUTES): {
+							// Определяем количество минут, не выходящее за пределы даты
+							const uint64_t count = (value < (date / 60000) ? value : (date / 60000));
+							// Уменьшаем значение даты на указанное количество минут
+							result = (date - (count * static_cast <uint64_t> (60000)));
+						} break;
 						// Если нам нужно получить начало секунды
-						case static_cast <uint8_t> (type_t::SECONDS):
-							// Устанавливаем текущее значение даты
-							result = date;
-							// Выполняем перебор всех секунд
-							for(size_t i = 0; i < static_cast <size_t> (value); i++)
-								// Уменьшаем значение даты на указанное количество секунд
-								result -= (result >= 1000 ? 1000 : 0);
-						break;
+						case static_cast <uint8_t> (type_t::SECONDS): {
+							// Определяем количество секунд, не выходящее за пределы даты
+							const uint64_t count = (value < (date / 1000) ? value : (date / 1000));
+							// Уменьшаем значение даты на указанное количество секунд
+							result = (date - (count * static_cast <uint64_t> (1000)));
+						} break;
 						// Если нам нужно получить начало миллисекунды
 						case static_cast <uint8_t> (type_t::MILLISECONDS):
 							// Уменьшаем значение даты на указанное количество миллисекунд
@@ -3365,9 +3188,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало микросекунды
 						case static_cast <uint8_t> (type_t::MICROSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 							// Если текущее значение даты передано в микросекундах
 							if(current == (actual + 3))
 								// Уменьшаем значение даты на указанное количество микросекунд
@@ -3385,9 +3208,9 @@ uint64_t awh::Chrono::offset(const uint64_t date, const uint64_t value, const ty
 						// Если нам нужно получить начало наносекунды
 						case static_cast <uint8_t> (type_t::NANOSECONDS): {
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (date))));
+							const uint8_t current = static_cast <uint8_t> (this->digits(date) - 1);
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 							// Если текущее значение даты передано в наносекундах
 							if(current == (actual + 6))
 								// Уменьшаем значение даты на указанное количество наносекунд
@@ -3463,8 +3286,8 @@ string awh::Chrono::seconds(const double seconds) const noexcept {
 			const double day = 86400.;
 			// Шаблон недели
 			const double week = 604800.;
-			// Шаблон месяца
-			const double month = 2628000.;
+			// Шаблон месяца (средняя длительность месяца по григорианскому календарю)
+			const double month = 2629746.;
 			// Шаблон года
 			const double year = 31536000.;
 			// Если переданное значение соответствует году
@@ -3556,16 +3379,18 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
-				regmatch_t match[regex.re_nsub + 1];
+				vector <regmatch_t> match(regex.re_nsub + 1);
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, value.data(), regex.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, value.data(), regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Обозначение размерности числа
 					string label = "";
 					// Размерность времени и размерность секунд
 					double dimension = 1., seconds = 0.;
-					// Выполняем перебор всех полученных вариантов
+					/**
+					 *  Выполняем перебор всех полученных вариантов
+					 */
 					for(uint8_t j = 1; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so){
@@ -3614,12 +3439,8 @@ double awh::Chrono::seconds(string_view value) const noexcept {
 							}
 						}
 					}
-					// Если время установлено тогда расчитываем количество секунд
-					if(seconds > -1.)
-						// Выполняем получение количества секунд
-						result = (seconds * dimension);
-					// Размер буфера по умолчанию
-					else result = seconds;
+					// Выполняем получение количества секунд
+					result = (seconds * dimension);
 				}
 			}
 		/**
@@ -3758,7 +3579,7 @@ uint16_t awh::Chrono::year(const uint64_t date) const noexcept {
 			)
 		);
 		// Определяем количество прошедших високосных лет
-		const uint16_t leaps = static_cast <uint16_t> (::round((result - 1) / 4.));
+		const uint16_t leaps = this->leapYears(result);
 		// Получаем штамп времени начала года
 		const uint64_t begin = (
 			(static_cast <uint64_t> (leaps) * static_cast <uint64_t> (31622400000)) +
@@ -3841,7 +3662,7 @@ uint16_t awh::Chrono::year(const storage_t storage) const noexcept {
 	return result;
 }
 /**
- * @brief Метод проверки принадлежит ли дата к лету
+ * @brief Метод проверки действует ли на дату летнее время (DST)
  *
  * @param date дата для проверки
  * @return     результат проверки
@@ -3853,42 +3674,12 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Получаем значение текущего года
-			const uint16_t year = this->year(date);
-			// Определяем количество прошедших лет
-			const uint16_t lastYears = (year - 1970);
-			// Определяем количество прошедших високосных лет
-			const uint16_t leapCount = static_cast <uint16_t> (::round((lastYears - 1) / 4.));
-			// Получаем штамп времени начала года
-			const uint64_t beginYear = (
-				(static_cast <uint64_t> (leapCount) * static_cast <uint64_t> (31622400000)) +
-				(static_cast <uint64_t> (lastYears - leapCount) * static_cast <uint64_t> (31536000000))
-			);
-			// Определяем сколько дней прошло с начала года
-			const uint16_t lastDays = static_cast <uint16_t> (::floor((date - beginYear) / 86400000.L));
-			{
-				// Номер текущего месяца
-				uint8_t month = 0;
-				// Подсчитываем количество дней в предыдущих месяцах
-				uint16_t count = 0, days = 0;
-				// Устанавливаем флаг високосного года
-				const bool leap = this->leap(year);
-				// Выполняем перебор всех дней месяца
-				for(uint8_t i = 0; i < params.daysInMonths.size(); i++){
-					// Увеличиваем номер месяца
-					month = (i + 1);
-					// Получаем текущее количество дней с компенсацией високосного года
-					days = (static_cast <uint16_t> (params.daysInMonths[i]) + ((i == 1) && leap ? 1 : 0));
-					// Если мы не дошли до предела
-					if(lastDays >= (days + count))
-						// Увеличиваем количество прошедших дней
-						count += days;
-					// Выходим из цикла
-					else break;
-				}
-				// Если у нас на дворе лето, устанавливаем флаг
-				return ((month > 5) && (month < 9));
-			}
+			// Создаём объект даты и времени
+			dt_t dt;
+			// Заполняем объект даты из переданного штампа времени
+			this->makeDate(date, dt);
+			// Возвращаем рассчитанный флаг летнего времени (DST)
+			return dt.dst;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -3912,13 +3703,13 @@ bool awh::Chrono::dst(const uint64_t date) const noexcept {
 	return false;
 }
 /**
- * @brief Метод проверки стоит ли на дворе лето
+ * @brief Метод проверки действует ли летнее время (DST)
  *
  * @param storage хранение значение времени
  * @return        результат проверки
  */
 bool awh::Chrono::dst(const storage_t storage) const noexcept {
-	// Выполняем проверку стоит ли на дворе лето
+	// Выполняем проверку действия летнего времени
 	return this->dst(this->timestamp(type_t::MILLISECONDS, storage));
 }
 /**
@@ -4081,7 +3872,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									this->_dt.day = num;
 							// Если день передан в виде названия
 							} else {
-								// Выполняем перебор всего списка дней недели
+								/**
+								 *  Выполняем перебор всего списка дней недели
+								 */
 								for(size_t i = 0; i < params.nameDays.size(); i++){
 									// Получаем название дня
 									const auto & name = params.nameDays[i];
@@ -4246,7 +4039,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 									this->_dt.month = num;
 							// Если день передан в виде названия
 							} else {
-								// Выполняем перебор всего списка месяцев
+								/**
+								 *  Выполняем перебор всего списка месяцев
+								 */
 								for(size_t i = 0; i < params.nameMonths.size(); i++){
 									// Получаем название месяца
 									const auto & name = params.nameMonths[i];
@@ -4391,9 +4186,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							reinterpret_cast <const string *> (buffer)->length()
 						);
 						// Получаем текущее значение размерности даты
-						const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (nanoseconds))));
+						const uint8_t current = static_cast <uint8_t> (this->digits(nanoseconds) - 1);
 						// Получаем размерность актуальной размерности даты
-						const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+						const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 						// Если текущее значение даты передано в наносекундах
 						if(current >= (actual + 6))
 							// Устанавливаем количество наносекунд
@@ -4409,9 +4204,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Выполняем получение наносекунд
 							::memcpy(&nanoseconds, buffer, sizeof(nanoseconds));
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (nanoseconds))));
+							const uint8_t current = static_cast <uint8_t> (this->digits(nanoseconds) - 1);
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 							// Если текущее значение даты передано в наносекундах
 							if(current >= (actual + 6))
 								// Устанавливаем количество наносекунд
@@ -4431,9 +4226,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							reinterpret_cast <const string *> (buffer)->length()
 						);
 						// Получаем текущее значение размерности даты
-						const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (microseconds))));
+						const uint8_t current = static_cast <uint8_t> (this->digits(microseconds) - 1);
 						// Получаем размерность актуальной размерности даты
-						const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+						const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 						// Если текущее значение даты передано в микросекундах
 						if(current >= (actual + 3))
 							// Устанавливаем количество микросекунд
@@ -4449,9 +4244,9 @@ void awh::Chrono::set(const void * buffer, const size_t size, const unit_t unit,
 							// Выполняем получение микросекунд
 							::memcpy(&microseconds, buffer, sizeof(microseconds));
 							// Получаем текущее значение размерности даты
-							const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (microseconds))));
+							const uint8_t current = static_cast <uint8_t> (this->digits(microseconds) - 1);
 							// Получаем размерность актуальной размерности даты
-							const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (this->timestamp(type_t::MILLISECONDS)))));
+							const uint8_t actual = static_cast <uint8_t> (this->digits(this->timestamp(type_t::MILLISECONDS)) - 1);
 							// Если текущее значение даты передано в микросекундах
 							if(current >= (actual + 3))
 								// Устанавливаем количество микросекунд
@@ -5824,14 +5619,16 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
-				regmatch_t match[regex.re_nsub + 1];
+				vector <regmatch_t> match(regex.re_nsub + 1);
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Создаём массив собранных результатов
 					vector <string> data(regex.re_nsub + 1);
-					// Выполняем перебор всех полученных вариантов
+					/**
+					 *  Выполняем перебор всех полученных вариантов
+					 */
 					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so)
@@ -5840,742 +5637,199 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 					}
 					// Если временная зона извлечена
 					if(!data.empty() && !data.front().empty()){
-						// Если название временной зоны Z
-						if(this->_fmk->compare("z", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::UTC;
-						// Если название временной зоны получено как CT
-						else if(this->_fmk->compare("ct", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CT;
-						// Если название временной зоны получено как ET
-						else if(this->_fmk->compare("et", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ET;
-						// Если название временной зоны получено как MT
-						else if(this->_fmk->compare("mt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MT;
-						// Если название временной зоны получено как NT
-						else if(this->_fmk->compare("nt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NT;
-						// Если название временной зоны получено как PT
-						else if(this->_fmk->compare("pt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PT;
-						// Если название временной зоны получено как GMT
-						else if(this->_fmk->compare("gmt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GMT;
-						// Если название временной зоны получено как UTC
-						else if(this->_fmk->compare("utc", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::UTC;
-						// Если название временной зоны получено как AT
-						else if(this->_fmk->compare("at", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AT;
-						// Если название временной зоны получено как ACDT
-						else if(this->_fmk->compare("acdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ACDT;
-						// Если название временной зоны получено как ACST
-						else if(this->_fmk->compare("acst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ACST;
-						// Если название временной зоны получено как ACT
-						else if(this->_fmk->compare("act", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ACT;
-						// Если название временной зоны получено как ADT
-						else if(this->_fmk->compare("adt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ADT;
-						// Если название временной зоны получено как AFT
-						else if(this->_fmk->compare("aft", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AFT;
-						// Если название временной зоны получено как ART
-						else if(this->_fmk->compare("art", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ART;
-						// Если название временной зоны получено как AZT
-						else if(this->_fmk->compare("azt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AZT;
-						// Если название временной зоны получено как BDT
-						else if(this->_fmk->compare("bdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::BDT;
-						// Если название временной зоны получено как BOT
-						else if(this->_fmk->compare("bot", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::BOT;
-						// Если название временной зоны получено как BRT
-						else if(this->_fmk->compare("brt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::BRT;
-						// Если название временной зоны получено как BTT
-						else if(this->_fmk->compare("btt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::BTT;
-						// Если название временной зоны получено как CAT
-						else if(this->_fmk->compare("cat", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CAT;
-						// Если название временной зоны получено как CCT
-						else if(this->_fmk->compare("cct", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CCT;
-						// Если название временной зоны получено как CET
-						else if(this->_fmk->compare("cet", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CET;
-						// Если название временной зоны получено как CIT
-						else if(this->_fmk->compare("cit", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CIT;
-						// Если название временной зоны получено как CKT
-						else if(this->_fmk->compare("ckt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CKT;
-						// Если название временной зоны получено как CLT
-						else if(this->_fmk->compare("clt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CLT;
-						// Если название временной зоны получено как COT
-						else if(this->_fmk->compare("cot", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::COT;
-						// Если название временной зоны получено как CVT
-						else if(this->_fmk->compare("cvt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CVT;
-						// Если название временной зоны получено как CXT
-						else if(this->_fmk->compare("cxt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CXT;
-						// Если название временной зоны получено как EAT
-						else if(this->_fmk->compare("eat", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EAT;
-						// Если название временной зоны получено как ECT
-						else if(this->_fmk->compare("ect", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ECT;
-						// Если название временной зоны получено как EDT
-						else if(this->_fmk->compare("edt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EDT;
-						// Если название временной зоны получено как EET
-						else if(this->_fmk->compare("eet", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EET;
-						// Если название временной зоны получено как EGT
-						else if(this->_fmk->compare("egt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EGT;
-						// Если название временной зоны получено как EIT
-						else if(this->_fmk->compare("eit", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EIT;
-						// Если название временной зоны получено как EST
-						else if(this->_fmk->compare("est", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EST;
-						// Если название временной зоны получено как FET
-						else if(this->_fmk->compare("fet", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::FET;
-						// Если название временной зоны получено как FJT
-						else if(this->_fmk->compare("fjt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::FJT;
-						// Если название временной зоны получено как FKT
-						else if(this->_fmk->compare("fkt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::FKT;
-						// Если название временной зоны получено как FNT
-						else if(this->_fmk->compare("fnt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::FNT;
-						// Если название временной зоны получено как GET
-						else if(this->_fmk->compare("get", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GET;
-						// Если название временной зоны получено как GFT
-						else if(this->_fmk->compare("gft", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GFT;
-						// Если название временной зоны получено как GIT
-						else if(this->_fmk->compare("git", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GIT;
-						// Если название временной зоны получено как GMT
-						else if(this->_fmk->compare("gmt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GMT;
-						// Если название временной зоны получено как GYT
-						else if(this->_fmk->compare("gyt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GYT;
-						// Если название временной зоны получено как HKT
-						else if(this->_fmk->compare("hkt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::HKT;
-						// Если название временной зоны получено как ICT
-						else if(this->_fmk->compare("ict", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ICT;
-						// Если название временной зоны получено как IDT
-						else if(this->_fmk->compare("idt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::IDT;
-						// Если название временной зоны получено как JST
-						else if(this->_fmk->compare("jst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::JST;
-						// Если название временной зоны получено как KGT
-						else if(this->_fmk->compare("kgt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::KGT;
-						// Если название временной зоны получено как KST
-						else if(this->_fmk->compare("kst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::KST;
-						// Если название временной зоны получено как MDT
-						else if(this->_fmk->compare("mdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MDT;
-						// Если название временной зоны получено как MHT
-						else if(this->_fmk->compare("mht", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MHT;
-						// Если название временной зоны получено как MIT
-						else if(this->_fmk->compare("mit", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MIT;
-						// Если название временной зоны получено как MMT
-						else if(this->_fmk->compare("mmt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MMT;
-						// Если название временной зоны получено как MSK
-						else if(this->_fmk->compare("msk", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MSK;
-						// Если название временной зоны получено как MSD
-						else if(this->_fmk->compare("msd", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MSD;
-						// Если название временной зоны получено как MUT
-						else if(this->_fmk->compare("mut", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MUT;
-						// Если название временной зоны получено как MVT
-						else if(this->_fmk->compare("mvt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MVT;
-						// Если название временной зоны получено как MYT
-						else if(this->_fmk->compare("myt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MYT;
-						// Если название временной зоны получено как NCT
-						else if(this->_fmk->compare("nct", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NCT;
-						// Если название временной зоны получено как NDT
-						else if(this->_fmk->compare("ndt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NDT;
-						// Если название временной зоны получено как NFT
-						else if(this->_fmk->compare("nft", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NFT;
-						// Если название временной зоны получено как NPT
-						else if(this->_fmk->compare("npt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NPT;
-						// Если название временной зоны получено как NRT
-						else if(this->_fmk->compare("nrt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NRT;
-						// Если название временной зоны получено как NST
-						else if(this->_fmk->compare("nst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NST;
-						// Если название временной зоны получено как NUT
-						else if(this->_fmk->compare("nut", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NUT;
-						// Если название временной зоны получено как PDT
-						else if(this->_fmk->compare("pdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PDT;
-						// Если название временной зоны получено как PET
-						else if(this->_fmk->compare("pet", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PET;
-						// Если название временной зоны получено как PGT
-						else if(this->_fmk->compare("pgt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PGT;
-						// Если название временной зоны получено как PHT
-						else if(this->_fmk->compare("pht", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PHT;
-						// Если название временной зоны получено как PKT
-						else if(this->_fmk->compare("pkt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PKT;
-						// Если название временной зоны получено как PST
-						else if(this->_fmk->compare("pst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PST;
-						// Если название временной зоны получено как PWT
-						else if(this->_fmk->compare("pwt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PWT;
-						// Если название временной зоны получено как PYT
-						else if(this->_fmk->compare("pyt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PYT;
-						// Если название временной зоны получено как RET
-						else if(this->_fmk->compare("ret", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::RET;
-						// Если название временной зоны получено как SBT
-						else if(this->_fmk->compare("sbt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SBT;
-						// Если название временной зоны получено как SCT
-						else if(this->_fmk->compare("sct", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SCT;
-						// Если название временной зоны получено как SGT
-						else if(this->_fmk->compare("sgt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SGT;
-						// Если название временной зоны получено как SRT
-						else if(this->_fmk->compare("srt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SRT;
-						// Если название временной зоны получено как SST
-						else if(this->_fmk->compare("sst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SST;
-						// Если название временной зоны получено как TFT
-						else if(this->_fmk->compare("tft", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TFT;
-						// Если название временной зоны получено как THA
-						else if(this->_fmk->compare("tha", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::THA;
-						// Если название временной зоны получено как TJT
-						else if(this->_fmk->compare("tjt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TJT;
-						// Если название временной зоны получено как TKT
-						else if(this->_fmk->compare("tkt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TKT;
-						// Если название временной зоны получено как TLT
-						else if(this->_fmk->compare("tlt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TLT;
-						// Если название временной зоны получено как TMT
-						else if(this->_fmk->compare("tmt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TMT;
-						// Если название временной зоны получено как TOT
-						else if(this->_fmk->compare("tot", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TOT;
-						// Если название временной зоны получено как TRT
-						else if(this->_fmk->compare("trt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TRT;
-						// Если название временной зоны получено как TVT
-						else if(this->_fmk->compare("tvt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TVT;
-						// Если название временной зоны получено как UTC
-						else if(this->_fmk->compare("utc", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::UTC;
-						// Если название временной зоны получено как UYT
-						else if(this->_fmk->compare("uyt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::UYT;
-						// Если название временной зоны получено как UZT
-						else if(this->_fmk->compare("uzt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::UZT;
-						// Если название временной зоны получено как VET
-						else if(this->_fmk->compare("vet", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::VET;
-						// Если название временной зоны получено как VUT
-						else if(this->_fmk->compare("vut", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::VUT;
-						// Если название временной зоны получено как WAT
-						else if(this->_fmk->compare("wat", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WAT;
-						// Если название временной зоны получено как WET
-						else if(this->_fmk->compare("wet", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WET;
-						// Если название временной зоны получено как WFT
-						else if(this->_fmk->compare("wft", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WFT;
-						// Если название временной зоны получено как WIB
-						else if(this->_fmk->compare("wib", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WIB;
-						// Если название временной зоны получено как WIT
-						else if(this->_fmk->compare("wit", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WIT;
-						// Если название временной зоны получено как AMT
-						else if(this->_fmk->compare("amt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AMTAM;
-						// Если название временной зоны получено как AST
-						else if(this->_fmk->compare("ast", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ASTAL;
-						// Если название временной зоны получено как BST
-						else if(this->_fmk->compare("bst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::BSTBR;
-						// Если название временной зоны получено как CDT
-						else if(this->_fmk->compare("cdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CDTNA;
-						// Если название временной зоны получено как CST
-						else if(this->_fmk->compare("cst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CSTNA;
-						// Если название временной зоны получено как GST
-						else if(this->_fmk->compare("gst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GSTPG;
-						// Если название временной зоны получено как IST
-						else if(this->_fmk->compare("ist", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ISTID;
-						// Если название временной зоны получено как MST
-						else if(this->_fmk->compare("mst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MSTNA;
-						// Если название временной зоны получено как AEDT
-						else if(this->_fmk->compare("aedt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AEDT;
-						// Если название временной зоны получено как AKDT
-						else if(this->_fmk->compare("akdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AKDT;
-						// Если название временной зоны получено как AKST
-						else if(this->_fmk->compare("akst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AKST;
-						// Если название временной зоны получено как AMST
-						else if(this->_fmk->compare("amst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AMST;
-						// Если название временной зоны получено как AWST
-						else if(this->_fmk->compare("awst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AWST;
-						// Если название временной зоны получено как AZOT
-						else if(this->_fmk->compare("azot", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AZOT;
-						// Если название временной зоны получено как BRST
-						else if(this->_fmk->compare("brst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::BRST;
-						// Если название временной зоны получено как CEST
-						else if(this->_fmk->compare("cest", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CEST;
-						// Если название временной зоны получено как AEST
-						else if(this->_fmk->compare("aest", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AEST;
-						// Если название временной зоны получено как CHOT
-						else if(this->_fmk->compare("chot", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CHOT;
-						// Если название временной зоны получено как CHST
-						else if(this->_fmk->compare("chst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CHST;
-						// Если название временной зоны получено как CHUT
-						else if(this->_fmk->compare("chut", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CHUT;
-						// Если название временной зоны получено как CLST
-						else if(this->_fmk->compare("clst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CLST;
-						// Если название временной зоны получено как COST
-						else if(this->_fmk->compare("cost", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::COST;
-						// Если название временной зоны получено как DAVT
-						else if(this->_fmk->compare("davt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::DAVT;
-						// Если название временной зоны получено как DDUT
-						else if(this->_fmk->compare("ddut", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::DDUT;
-						// Если название временной зоны получено как EAST
-						else if(this->_fmk->compare("east", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EAST;
-						// Если название временной зоны получено как EEST
-						else if(this->_fmk->compare("eest", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EEST;
-						// Если название временной зоны получено как EGST
-						else if(this->_fmk->compare("egst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EGST;
-						// Если название временной зоны получено как FKST
-						else if(this->_fmk->compare("fkst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::FKST;
-						// Если название временной зоны получено как GALT
-						else if(this->_fmk->compare("galt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GALT;
-						// Если название временной зоны получено как GAMT
-						else if(this->_fmk->compare("gamt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GAMT;
-						// Если название временной зоны получено как GILT
-						else if(this->_fmk->compare("gilt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::GILT;
-						// Если название временной зоны получено как HADT
-						else if(this->_fmk->compare("hadt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::HADT;
-						// Если название временной зоны получено как HAST
-						else if(this->_fmk->compare("hast", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::HAST;
-						// Если название временной зоны получено как HOVT
-						else if(this->_fmk->compare("hovt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::HOVT;
-						// Если название временной зоны получено как IRDT
-						else if(this->_fmk->compare("irdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::IRDT;
-						// Если название временной зоны получено как IRKT
-						else if(this->_fmk->compare("irkt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::IRKT;
-						// Если название временной зоны получено как IRST
-						else if(this->_fmk->compare("irst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::IRST;
-						// Если название временной зоны получено как KOST
-						else if(this->_fmk->compare("kost", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::KOST;
-						// Если название временной зоны получено как KRAT
-						else if(this->_fmk->compare("krat", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::KRAT;
-						// Если название временной зоны получено как LHDT
-						else if(this->_fmk->compare("lhdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::LHDT;
-						// Если название временной зоны получено как LHST
-						else if(this->_fmk->compare("lhst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::LHST;
-						// Если название временной зоны получено как LINT
-						else if(this->_fmk->compare("lint", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::LINT;
-						// Если название временной зоны получено как MAGT
-						else if(this->_fmk->compare("magt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MAGT;
-						// Если название временной зоны получено как MART
-						else if(this->_fmk->compare("mart", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MART;
-						// Если название временной зоны получено как MAWT
-						else if(this->_fmk->compare("mawt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MAWT;
-						// Если название временной зоны получено как MIST
-						else if(this->_fmk->compare("mist", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::MIST;
-						// Если название временной зоны получено как NZDT
-						else if(this->_fmk->compare("nzdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NZDT;
-						// Если название временной зоны получено как NZST
-						else if(this->_fmk->compare("nzst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::NZST;
-						// Если название временной зоны получено как OMST
-						else if(this->_fmk->compare("omst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::OMST;
-						// Если название временной зоны получено как ORAT
-						else if(this->_fmk->compare("orat", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ORAT;
-						// Если название временной зоны получено как PETT
-						else if(this->_fmk->compare("pett", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PETT;
-						// Если название временной зоны получено как PHOT
-						else if(this->_fmk->compare("phot", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PHOT;
-						// Если название временной зоны получено как PhST
-						else if(this->_fmk->compare("phst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PhST;
-						// Если название временной зоны получено как PMDT
-						else if(this->_fmk->compare("pmdt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PMDT;
-						// Если название временной зоны получено как PMST
-						else if(this->_fmk->compare("pmst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PMST;
-						// Если название временной зоны получено как PONT
-						else if(this->_fmk->compare("pont", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PONT;
-						// Если название временной зоны получено как PYST
-						else if(this->_fmk->compare("pyst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::PYST;
-						// Если название временной зоны получено как ROTT
-						else if(this->_fmk->compare("rott", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ROTT;
-						// Если название временной зоны получено как SAKT
-						else if(this->_fmk->compare("sakt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SAKT;
-						// Если название временной зоны получено как SAMT
-						else if(this->_fmk->compare("samt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SAMT;
-						// Если название временной зоны получено как SAST
-						else if(this->_fmk->compare("sast", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SAST;
-						// Если название временной зоны получено как SLST
-						else if(this->_fmk->compare("slst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SLST;
-						// Если название временной зоны получено как SYOT
-						else if(this->_fmk->compare("syot", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::SYOT;
-						// Если название временной зоны получено как TAHT
-						else if(this->_fmk->compare("taht", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::TAHT;
-						// Если название временной зоны получено как ULAT
-						else if(this->_fmk->compare("ulat", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ULAT;
-						// Если название временной зоны получено как USZ1
-						else if(this->_fmk->compare("usz1", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::USZ1;
-						// Если название временной зоны получено как UYST
-						else if(this->_fmk->compare("uyst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::UYST;
-						// Если название временной зоны получено как VLAT
-						else if(this->_fmk->compare("vlat", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::VLAT;
-						// Если название временной зоны получено как VOLT
-						else if(this->_fmk->compare("volt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::VOLT;
-						// Если название временной зоны получено как VOST
-						else if(this->_fmk->compare("vost", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::VOST;
-						// Если название временной зоны получено как WAKT
-						else if(this->_fmk->compare("wakt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WAKT;
-						// Если название временной зоны получено как WAST
-						else if(this->_fmk->compare("wast", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WAST;
-						// Если название временной зоны получено как WEST
-						else if(this->_fmk->compare("west", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WEST;
-						// Если название временной зоны получено как YAKT
-						else if(this->_fmk->compare("yakt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::YAKT;
-						// Если название временной зоны получено как YEKT
-						else if(this->_fmk->compare("yekt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::YEKT;
-						// Если название временной зоны получено как WGST
-						else if(this->_fmk->compare("wgst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::WGSTST;
-						// Если название временной зоны получено как CHADT
-						else if(this->_fmk->compare("chadt", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CHADT;
-						// Если название временной зоны получено как CHAST
-						else if(this->_fmk->compare("chast", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CHAST;
-						// Если название временной зоны получено как CHOST
-						else if(this->_fmk->compare("chost", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::CHOST;
-						// Если название временной зоны получено как ACWST
-						else if(this->_fmk->compare("acwst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ACWST;
-						// Если название временной зоны получено как AZOST
-						else if(this->_fmk->compare("azost", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::AZOST;
-						// Если название временной зоны получено как EASST
-						else if(this->_fmk->compare("easst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::EASST;
-						// Если название временной зоны получено как HOVST
-						else if(this->_fmk->compare("hovst", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::HOVST;
-						// Если название временной зоны получено как ULAST
-						else if(this->_fmk->compare("ulast", data.front()))
-							// Выполняем получение временной зоны
-							result = zone_t::ULAST;
+						// Статическая таблица соответствия названий временных зон их идентификаторам
+						static const std::unordered_map <string, zone_t> matches = {
+							{"z", zone_t::UTC},
+							{"ct", zone_t::CT},
+							{"et", zone_t::ET},
+							{"mt", zone_t::MT},
+							{"nt", zone_t::NT},
+							{"pt", zone_t::PT},
+							{"gmt", zone_t::GMT},
+							{"utc", zone_t::UTC},
+							{"at", zone_t::AT},
+							{"acdt", zone_t::ACDT},
+							{"acst", zone_t::ACST},
+							{"act", zone_t::ACT},
+							{"adt", zone_t::ADT},
+							{"aft", zone_t::AFT},
+							{"art", zone_t::ART},
+							{"azt", zone_t::AZT},
+							{"bdt", zone_t::BDT},
+							{"bot", zone_t::BOT},
+							{"brt", zone_t::BRT},
+							{"btt", zone_t::BTT},
+							{"cat", zone_t::CAT},
+							{"cct", zone_t::CCT},
+							{"cet", zone_t::CET},
+							{"cit", zone_t::CIT},
+							{"ckt", zone_t::CKT},
+							{"clt", zone_t::CLT},
+							{"cot", zone_t::COT},
+							{"cvt", zone_t::CVT},
+							{"cxt", zone_t::CXT},
+							{"eat", zone_t::EAT},
+							{"ect", zone_t::ECT},
+							{"edt", zone_t::EDT},
+							{"eet", zone_t::EET},
+							{"egt", zone_t::EGT},
+							{"eit", zone_t::EIT},
+							{"est", zone_t::EST},
+							{"fet", zone_t::FET},
+							{"fjt", zone_t::FJT},
+							{"fkt", zone_t::FKT},
+							{"fnt", zone_t::FNT},
+							{"get", zone_t::GET},
+							{"gft", zone_t::GFT},
+							{"git", zone_t::GIT},
+							{"gyt", zone_t::GYT},
+							{"hkt", zone_t::HKT},
+							{"ict", zone_t::ICT},
+							{"idt", zone_t::IDT},
+							{"jst", zone_t::JST},
+							{"kgt", zone_t::KGT},
+							{"kst", zone_t::KST},
+							{"mdt", zone_t::MDT},
+							{"mht", zone_t::MHT},
+							{"mit", zone_t::MIT},
+							{"mmt", zone_t::MMT},
+							{"msk", zone_t::MSK},
+							{"msd", zone_t::MSD},
+							{"mut", zone_t::MUT},
+							{"mvt", zone_t::MVT},
+							{"myt", zone_t::MYT},
+							{"nct", zone_t::NCT},
+							{"ndt", zone_t::NDT},
+							{"nft", zone_t::NFT},
+							{"npt", zone_t::NPT},
+							{"nrt", zone_t::NRT},
+							{"nst", zone_t::NST},
+							{"nut", zone_t::NUT},
+							{"pdt", zone_t::PDT},
+							{"pet", zone_t::PET},
+							{"pgt", zone_t::PGT},
+							{"pht", zone_t::PHT},
+							{"pkt", zone_t::PKT},
+							{"pst", zone_t::PST},
+							{"pwt", zone_t::PWT},
+							{"pyt", zone_t::PYT},
+							{"ret", zone_t::RET},
+							{"sbt", zone_t::SBT},
+							{"sct", zone_t::SCT},
+							{"sgt", zone_t::SGT},
+							{"srt", zone_t::SRT},
+							{"sst", zone_t::SST},
+							{"tft", zone_t::TFT},
+							{"tha", zone_t::THA},
+							{"tjt", zone_t::TJT},
+							{"tkt", zone_t::TKT},
+							{"tlt", zone_t::TLT},
+							{"tmt", zone_t::TMT},
+							{"tot", zone_t::TOT},
+							{"trt", zone_t::TRT},
+							{"tvt", zone_t::TVT},
+							{"uyt", zone_t::UYT},
+							{"uzt", zone_t::UZT},
+							{"vet", zone_t::VET},
+							{"vut", zone_t::VUT},
+							{"wat", zone_t::WAT},
+							{"wet", zone_t::WET},
+							{"wft", zone_t::WFT},
+							{"wib", zone_t::WIB},
+							{"wit", zone_t::WIT},
+							{"amt", zone_t::AMTAM},
+							{"ast", zone_t::ASTAL},
+							{"bst", zone_t::BSTBR},
+							{"cdt", zone_t::CDTNA},
+							{"cst", zone_t::CSTNA},
+							{"gst", zone_t::GSTPG},
+							{"ist", zone_t::ISTID},
+							{"mst", zone_t::MSTNA},
+							{"aedt", zone_t::AEDT},
+							{"akdt", zone_t::AKDT},
+							{"akst", zone_t::AKST},
+							{"amst", zone_t::AMST},
+							{"awst", zone_t::AWST},
+							{"azot", zone_t::AZOT},
+							{"brst", zone_t::BRST},
+							{"cest", zone_t::CEST},
+							{"aest", zone_t::AEST},
+							{"chot", zone_t::CHOT},
+							{"chst", zone_t::CHST},
+							{"chut", zone_t::CHUT},
+							{"clst", zone_t::CLST},
+							{"cost", zone_t::COST},
+							{"davt", zone_t::DAVT},
+							{"ddut", zone_t::DDUT},
+							{"east", zone_t::EAST},
+							{"eest", zone_t::EEST},
+							{"egst", zone_t::EGST},
+							{"fkst", zone_t::FKST},
+							{"galt", zone_t::GALT},
+							{"gamt", zone_t::GAMT},
+							{"gilt", zone_t::GILT},
+							{"hadt", zone_t::HADT},
+							{"hast", zone_t::HAST},
+							{"hovt", zone_t::HOVT},
+							{"irdt", zone_t::IRDT},
+							{"irkt", zone_t::IRKT},
+							{"irst", zone_t::IRST},
+							{"kost", zone_t::KOST},
+							{"krat", zone_t::KRAT},
+							{"lhdt", zone_t::LHDT},
+							{"lhst", zone_t::LHST},
+							{"lint", zone_t::LINT},
+							{"magt", zone_t::MAGT},
+							{"mart", zone_t::MART},
+							{"mawt", zone_t::MAWT},
+							{"mist", zone_t::MIST},
+							{"nzdt", zone_t::NZDT},
+							{"nzst", zone_t::NZST},
+							{"omst", zone_t::OMST},
+							{"orat", zone_t::ORAT},
+							{"pett", zone_t::PETT},
+							{"phot", zone_t::PHOT},
+							{"phst", zone_t::PhST},
+							{"pmdt", zone_t::PMDT},
+							{"pmst", zone_t::PMST},
+							{"pont", zone_t::PONT},
+							{"pyst", zone_t::PYST},
+							{"rott", zone_t::ROTT},
+							{"sakt", zone_t::SAKT},
+							{"samt", zone_t::SAMT},
+							{"sast", zone_t::SAST},
+							{"slst", zone_t::SLST},
+							{"syot", zone_t::SYOT},
+							{"taht", zone_t::TAHT},
+							{"ulat", zone_t::ULAT},
+							{"usz1", zone_t::USZ1},
+							{"uyst", zone_t::UYST},
+							{"vlat", zone_t::VLAT},
+							{"volt", zone_t::VOLT},
+							{"vost", zone_t::VOST},
+							{"wakt", zone_t::WAKT},
+							{"wast", zone_t::WAST},
+							{"west", zone_t::WEST},
+							{"yakt", zone_t::YAKT},
+							{"yekt", zone_t::YEKT},
+							{"wgst", zone_t::WGSTST},
+							{"chadt", zone_t::CHADT},
+							{"chast", zone_t::CHAST},
+							{"chost", zone_t::CHOST},
+							{"acwst", zone_t::ACWST},
+							{"azost", zone_t::AZOST},
+							{"easst", zone_t::EASST},
+							{"hovst", zone_t::HOVST},
+							{"ulast", zone_t::ULAST}
+						};
+						// Приводим извлечённое название временной зоны к нижнему регистру
+						string name = data.front();
+						// Выполняем поиск временной зоны в таблице соответствия
+						auto j = matches.find(this->_fmk->transform(name, fmk_t::transform_t::LOWER_CASE));
+						// Если временная зона найдена в таблице соответствия
+						if(j != matches.end())
+							// Устанавливаем найденную временную зону
+							result = j->second;
 					}
 				}
 			}
@@ -7169,14 +6423,16 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 				// Получаем объект регулярного выражения
 				const regex_t & regex = std::any_cast <const regex_t &> (i->second);
 				// Создаём объект матчинга
-				regmatch_t match[regex.re_nsub + 1];
+				vector <regmatch_t> match(regex.re_nsub + 1);
 				// Выполняем разбор регулярного выражения
-				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match, REG_NOTEMPTY);
+				const int32_t error = ::pcre2_regexec(&regex, zone.data(), regex.re_nsub + 1, match.data(), REG_NOTEMPTY);
 				// Если ошибок не получено
 				if(error == 0){
 					// Создаём массив собранных результатов
 					vector <string> data(regex.re_nsub + 1);
-					// Выполняем перебор всех полученных вариантов
+					/**
+					 *  Выполняем перебор всех полученных вариантов
+					 */
 					for(uint8_t j = 0; j < static_cast <uint8_t> (regex.re_nsub + 1); j++){
 						// Если результат получен
 						if(match[j].rm_eo > match[j].rm_so)
@@ -7244,742 +6500,8 @@ int32_t awh::Chrono::getTimeZone(string_view zone) const noexcept {
 								result += (this->_fmk->atoi <int32_t> (name) * 60 * 60);
 							// Если временная зона получена в виде названия
 							else {
-								// Если название временной зоны Z
-								if(this->_fmk->compare("z", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::UTC);
-								// Если название временной зоны получено как CT
-								else if(this->_fmk->compare("ct", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CT);
-								// Если название временной зоны получено как ET
-								else if(this->_fmk->compare("et", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ET);
-								// Если название временной зоны получено как MT
-								else if(this->_fmk->compare("mt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MT);
-								// Если название временной зоны получено как NT
-								else if(this->_fmk->compare("nt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NT);
-								// Если название временной зоны получено как PT
-								else if(this->_fmk->compare("pt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PT);
-								// Если название временной зоны получено как GMT
-								else if(this->_fmk->compare("gmt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GMT);
-								// Если название временной зоны получено как UTC
-								else if(this->_fmk->compare("utc", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::UTC);
-								// Если название временной зоны получено как AT
-								else if(this->_fmk->compare("at", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AT);
-								// Если название временной зоны получено как ACDT
-								else if(this->_fmk->compare("acdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ACDT);
-								// Если название временной зоны получено как ACST
-								else if(this->_fmk->compare("acst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ACST);
-								// Если название временной зоны получено как ACT
-								else if(this->_fmk->compare("act", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ACT);
-								// Если название временной зоны получено как ADT
-								else if(this->_fmk->compare("adt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ADT);
-								// Если название временной зоны получено как AFT
-								else if(this->_fmk->compare("aft", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AFT);
-								// Если название временной зоны получено как ART
-								else if(this->_fmk->compare("art", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ART);
-								// Если название временной зоны получено как AZT
-								else if(this->_fmk->compare("azt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AZT);
-								// Если название временной зоны получено как BDT
-								else if(this->_fmk->compare("bdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::BDT);
-								// Если название временной зоны получено как BOT
-								else if(this->_fmk->compare("bot", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::BOT);
-								// Если название временной зоны получено как BRT
-								else if(this->_fmk->compare("brt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::BRT);
-								// Если название временной зоны получено как BTT
-								else if(this->_fmk->compare("btt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::BTT);
-								// Если название временной зоны получено как CAT
-								else if(this->_fmk->compare("cat", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CAT);
-								// Если название временной зоны получено как CCT
-								else if(this->_fmk->compare("cct", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CCT);
-								// Если название временной зоны получено как CET
-								else if(this->_fmk->compare("cet", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CET);
-								// Если название временной зоны получено как CIT
-								else if(this->_fmk->compare("cit", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CIT);
-								// Если название временной зоны получено как CKT
-								else if(this->_fmk->compare("ckt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CKT);
-								// Если название временной зоны получено как CLT
-								else if(this->_fmk->compare("clt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CLT);
-								// Если название временной зоны получено как COT
-								else if(this->_fmk->compare("cot", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::COT);
-								// Если название временной зоны получено как CVT
-								else if(this->_fmk->compare("cvt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CVT);
-								// Если название временной зоны получено как CXT
-								else if(this->_fmk->compare("cxt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CXT);
-								// Если название временной зоны получено как EAT
-								else if(this->_fmk->compare("eat", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EAT);
-								// Если название временной зоны получено как ECT
-								else if(this->_fmk->compare("ect", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ECT);
-								// Если название временной зоны получено как EDT
-								else if(this->_fmk->compare("edt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EDT);
-								// Если название временной зоны получено как EET
-								else if(this->_fmk->compare("eet", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EET);
-								// Если название временной зоны получено как EGT
-								else if(this->_fmk->compare("egt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EGT);
-								// Если название временной зоны получено как EIT
-								else if(this->_fmk->compare("eit", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EIT);
-								// Если название временной зоны получено как EST
-								else if(this->_fmk->compare("est", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EST);
-								// Если название временной зоны получено как FET
-								else if(this->_fmk->compare("fet", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::FET);
-								// Если название временной зоны получено как FJT
-								else if(this->_fmk->compare("fjt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::FJT);
-								// Если название временной зоны получено как FKT
-								else if(this->_fmk->compare("fkt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::FKT);
-								// Если название временной зоны получено как FNT
-								else if(this->_fmk->compare("fnt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::FNT);
-								// Если название временной зоны получено как GET
-								else if(this->_fmk->compare("get", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GET);
-								// Если название временной зоны получено как GFT
-								else if(this->_fmk->compare("gft", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GFT);
-								// Если название временной зоны получено как GIT
-								else if(this->_fmk->compare("git", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GIT);
-								// Если название временной зоны получено как GMT
-								else if(this->_fmk->compare("gmt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GMT);
-								// Если название временной зоны получено как GYT
-								else if(this->_fmk->compare("gyt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GYT);
-								// Если название временной зоны получено как HKT
-								else if(this->_fmk->compare("hkt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::HKT);
-								// Если название временной зоны получено как ICT
-								else if(this->_fmk->compare("ict", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ICT);
-								// Если название временной зоны получено как IDT
-								else if(this->_fmk->compare("idt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::IDT);
-								// Если название временной зоны получено как JST
-								else if(this->_fmk->compare("jst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::JST);
-								// Если название временной зоны получено как KGT
-								else if(this->_fmk->compare("kgt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::KGT);
-								// Если название временной зоны получено как KST
-								else if(this->_fmk->compare("kst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::KST);
-								// Если название временной зоны получено как MDT
-								else if(this->_fmk->compare("mdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MDT);
-								// Если название временной зоны получено как MHT
-								else if(this->_fmk->compare("mht", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MHT);
-								// Если название временной зоны получено как MIT
-								else if(this->_fmk->compare("mit", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MIT);
-								// Если название временной зоны получено как MMT
-								else if(this->_fmk->compare("mmt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MMT);
-								// Если название временной зоны получено как MSK
-								else if(this->_fmk->compare("msk", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MSK);
-								// Если название временной зоны получено как MSD
-								else if(this->_fmk->compare("msd", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MSD);
-								// Если название временной зоны получено как MUT
-								else if(this->_fmk->compare("mut", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MUT);
-								// Если название временной зоны получено как MVT
-								else if(this->_fmk->compare("mvt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MVT);
-								// Если название временной зоны получено как MYT
-								else if(this->_fmk->compare("myt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MYT);
-								// Если название временной зоны получено как NCT
-								else if(this->_fmk->compare("nct", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NCT);
-								// Если название временной зоны получено как NDT
-								else if(this->_fmk->compare("ndt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NDT);
-								// Если название временной зоны получено как NFT
-								else if(this->_fmk->compare("nft", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NFT);
-								// Если название временной зоны получено как NPT
-								else if(this->_fmk->compare("npt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NPT);
-								// Если название временной зоны получено как NRT
-								else if(this->_fmk->compare("nrt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NRT);
-								// Если название временной зоны получено как NST
-								else if(this->_fmk->compare("nst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NST);
-								// Если название временной зоны получено как NUT
-								else if(this->_fmk->compare("nut", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NUT);
-								// Если название временной зоны получено как PDT
-								else if(this->_fmk->compare("pdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PDT);
-								// Если название временной зоны получено как PET
-								else if(this->_fmk->compare("pet", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PET);
-								// Если название временной зоны получено как PGT
-								else if(this->_fmk->compare("pgt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PGT);
-								// Если название временной зоны получено как PHT
-								else if(this->_fmk->compare("pht", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PHT);
-								// Если название временной зоны получено как PKT
-								else if(this->_fmk->compare("pkt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PKT);
-								// Если название временной зоны получено как PST
-								else if(this->_fmk->compare("pst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PST);
-								// Если название временной зоны получено как PWT
-								else if(this->_fmk->compare("pwt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PWT);
-								// Если название временной зоны получено как PYT
-								else if(this->_fmk->compare("pyt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PYT);
-								// Если название временной зоны получено как RET
-								else if(this->_fmk->compare("ret", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::RET);
-								// Если название временной зоны получено как SBT
-								else if(this->_fmk->compare("sbt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SBT);
-								// Если название временной зоны получено как SCT
-								else if(this->_fmk->compare("sct", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SCT);
-								// Если название временной зоны получено как SGT
-								else if(this->_fmk->compare("sgt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SGT);
-								// Если название временной зоны получено как SRT
-								else if(this->_fmk->compare("srt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SRT);
-								// Если название временной зоны получено как SST
-								else if(this->_fmk->compare("sst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SST);
-								// Если название временной зоны получено как TFT
-								else if(this->_fmk->compare("tft", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TFT);
-								// Если название временной зоны получено как THA
-								else if(this->_fmk->compare("tha", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::THA);
-								// Если название временной зоны получено как TJT
-								else if(this->_fmk->compare("tjt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TJT);
-								// Если название временной зоны получено как TKT
-								else if(this->_fmk->compare("tkt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TKT);
-								// Если название временной зоны получено как TLT
-								else if(this->_fmk->compare("tlt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TLT);
-								// Если название временной зоны получено как TMT
-								else if(this->_fmk->compare("tmt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TMT);
-								// Если название временной зоны получено как TOT
-								else if(this->_fmk->compare("tot", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TOT);
-								// Если название временной зоны получено как TRT
-								else if(this->_fmk->compare("trt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TRT);
-								// Если название временной зоны получено как TVT
-								else if(this->_fmk->compare("tvt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TVT);
-								// Если название временной зоны получено как UTC
-								else if(this->_fmk->compare("utc", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::UTC);
-								// Если название временной зоны получено как UYT
-								else if(this->_fmk->compare("uyt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::UYT);
-								// Если название временной зоны получено как UZT
-								else if(this->_fmk->compare("uzt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::UZT);
-								// Если название временной зоны получено как VET
-								else if(this->_fmk->compare("vet", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::VET);
-								// Если название временной зоны получено как VUT
-								else if(this->_fmk->compare("vut", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::VUT);
-								// Если название временной зоны получено как WAT
-								else if(this->_fmk->compare("wat", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WAT);
-								// Если название временной зоны получено как WET
-								else if(this->_fmk->compare("wet", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WET);
-								// Если название временной зоны получено как WFT
-								else if(this->_fmk->compare("wft", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WFT);
-								// Если название временной зоны получено как WIB
-								else if(this->_fmk->compare("wib", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WIB);
-								// Если название временной зоны получено как WIT
-								else if(this->_fmk->compare("wit", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WIT);
-								// Если название временной зоны получено как AMT
-								else if(this->_fmk->compare("amt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AMTAM);
-								// Если название временной зоны получено как AST
-								else if(this->_fmk->compare("ast", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ASTAL);
-								// Если название временной зоны получено как BST
-								else if(this->_fmk->compare("bst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::BSTBR);
-								// Если название временной зоны получено как CDT
-								else if(this->_fmk->compare("cdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CDTNA);
-								// Если название временной зоны получено как CST
-								else if(this->_fmk->compare("cst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CSTNA);
-								// Если название временной зоны получено как GST
-								else if(this->_fmk->compare("gst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GSTPG);
-								// Если название временной зоны получено как IST
-								else if(this->_fmk->compare("ist", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ISTID);
-								// Если название временной зоны получено как MST
-								else if(this->_fmk->compare("mst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MSTNA);
-								// Если название временной зоны получено как AEDT
-								else if(this->_fmk->compare("aedt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AEDT);
-								// Если название временной зоны получено как AKDT
-								else if(this->_fmk->compare("akdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AKDT);
-								// Если название временной зоны получено как AKST
-								else if(this->_fmk->compare("akst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AKST);
-								// Если название временной зоны получено как AMST
-								else if(this->_fmk->compare("amst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AMST);
-								// Если название временной зоны получено как AWST
-								else if(this->_fmk->compare("awst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AWST);
-								// Если название временной зоны получено как AZOT
-								else if(this->_fmk->compare("azot", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AZOT);
-								// Если название временной зоны получено как BRST
-								else if(this->_fmk->compare("brst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::BRST);
-								// Если название временной зоны получено как CEST
-								else if(this->_fmk->compare("cest", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CEST);
-								// Если название временной зоны получено как AEST
-								else if(this->_fmk->compare("aest", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AEST);
-								// Если название временной зоны получено как CHOT
-								else if(this->_fmk->compare("chot", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CHOT);
-								// Если название временной зоны получено как CHST
-								else if(this->_fmk->compare("chst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CHST);
-								// Если название временной зоны получено как CHUT
-								else if(this->_fmk->compare("chut", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CHUT);
-								// Если название временной зоны получено как CLST
-								else if(this->_fmk->compare("clst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CLST);
-								// Если название временной зоны получено как COST
-								else if(this->_fmk->compare("cost", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::COST);
-								// Если название временной зоны получено как DAVT
-								else if(this->_fmk->compare("davt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::DAVT);
-								// Если название временной зоны получено как DDUT
-								else if(this->_fmk->compare("ddut", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::DDUT);
-								// Если название временной зоны получено как EAST
-								else if(this->_fmk->compare("east", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EAST);
-								// Если название временной зоны получено как EEST
-								else if(this->_fmk->compare("eest", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EEST);
-								// Если название временной зоны получено как EGST
-								else if(this->_fmk->compare("egst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EGST);
-								// Если название временной зоны получено как FKST
-								else if(this->_fmk->compare("fkst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::FKST);
-								// Если название временной зоны получено как GALT
-								else if(this->_fmk->compare("galt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GALT);
-								// Если название временной зоны получено как GAMT
-								else if(this->_fmk->compare("gamt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GAMT);
-								// Если название временной зоны получено как GILT
-								else if(this->_fmk->compare("gilt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::GILT);
-								// Если название временной зоны получено как HADT
-								else if(this->_fmk->compare("hadt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::HADT);
-								// Если название временной зоны получено как HAST
-								else if(this->_fmk->compare("hast", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::HAST);
-								// Если название временной зоны получено как HOVT
-								else if(this->_fmk->compare("hovt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::HOVT);
-								// Если название временной зоны получено как IRDT
-								else if(this->_fmk->compare("irdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::IRDT);
-								// Если название временной зоны получено как IRKT
-								else if(this->_fmk->compare("irkt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::IRKT);
-								// Если название временной зоны получено как IRST
-								else if(this->_fmk->compare("irst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::IRST);
-								// Если название временной зоны получено как KOST
-								else if(this->_fmk->compare("kost", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::KOST);
-								// Если название временной зоны получено как KRAT
-								else if(this->_fmk->compare("krat", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::KRAT);
-								// Если название временной зоны получено как LHDT
-								else if(this->_fmk->compare("lhdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::LHDT);
-								// Если название временной зоны получено как LHST
-								else if(this->_fmk->compare("lhst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::LHST);
-								// Если название временной зоны получено как LINT
-								else if(this->_fmk->compare("lint", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::LINT);
-								// Если название временной зоны получено как MAGT
-								else if(this->_fmk->compare("magt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MAGT);
-								// Если название временной зоны получено как MART
-								else if(this->_fmk->compare("mart", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MART);
-								// Если название временной зоны получено как MAWT
-								else if(this->_fmk->compare("mawt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MAWT);
-								// Если название временной зоны получено как MIST
-								else if(this->_fmk->compare("mist", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::MIST);
-								// Если название временной зоны получено как NZDT
-								else if(this->_fmk->compare("nzdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NZDT);
-								// Если название временной зоны получено как NZST
-								else if(this->_fmk->compare("nzst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::NZST);
-								// Если название временной зоны получено как OMST
-								else if(this->_fmk->compare("omst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::OMST);
-								// Если название временной зоны получено как ORAT
-								else if(this->_fmk->compare("orat", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ORAT);
-								// Если название временной зоны получено как PETT
-								else if(this->_fmk->compare("pett", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PETT);
-								// Если название временной зоны получено как PHOT
-								else if(this->_fmk->compare("phot", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PHOT);
-								// Если название временной зоны получено как PhST
-								else if(this->_fmk->compare("phst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PhST);
-								// Если название временной зоны получено как PMDT
-								else if(this->_fmk->compare("pmdt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PMDT);
-								// Если название временной зоны получено как PMST
-								else if(this->_fmk->compare("pmst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PMST);
-								// Если название временной зоны получено как PONT
-								else if(this->_fmk->compare("pont", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PONT);
-								// Если название временной зоны получено как PYST
-								else if(this->_fmk->compare("pyst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::PYST);
-								// Если название временной зоны получено как ROTT
-								else if(this->_fmk->compare("rott", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ROTT);
-								// Если название временной зоны получено как SAKT
-								else if(this->_fmk->compare("sakt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SAKT);
-								// Если название временной зоны получено как SAMT
-								else if(this->_fmk->compare("samt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SAMT);
-								// Если название временной зоны получено как SAST
-								else if(this->_fmk->compare("sast", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SAST);
-								// Если название временной зоны получено как SLST
-								else if(this->_fmk->compare("slst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SLST);
-								// Если название временной зоны получено как SYOT
-								else if(this->_fmk->compare("syot", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::SYOT);
-								// Если название временной зоны получено как TAHT
-								else if(this->_fmk->compare("taht", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::TAHT);
-								// Если название временной зоны получено как ULAT
-								else if(this->_fmk->compare("ulat", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ULAT);
-								// Если название временной зоны получено как USZ1
-								else if(this->_fmk->compare("usz1", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::USZ1);
-								// Если название временной зоны получено как UYST
-								else if(this->_fmk->compare("uyst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::UYST);
-								// Если название временной зоны получено как VLAT
-								else if(this->_fmk->compare("vlat", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::VLAT);
-								// Если название временной зоны получено как VOLT
-								else if(this->_fmk->compare("volt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::VOLT);
-								// Если название временной зоны получено как VOST
-								else if(this->_fmk->compare("vost", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::VOST);
-								// Если название временной зоны получено как WAKT
-								else if(this->_fmk->compare("wakt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WAKT);
-								// Если название временной зоны получено как WAST
-								else if(this->_fmk->compare("wast", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WAST);
-								// Если название временной зоны получено как WEST
-								else if(this->_fmk->compare("west", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WEST);
-								// Если название временной зоны получено как YAKT
-								else if(this->_fmk->compare("yakt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::YAKT);
-								// Если название временной зоны получено как YEKT
-								else if(this->_fmk->compare("yekt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::YEKT);
-								// Если название временной зоны получено как WGST
-								else if(this->_fmk->compare("wgst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::WGSTST);
-								// Если название временной зоны получено как CHADT
-								else if(this->_fmk->compare("chadt", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CHADT);
-								// Если название временной зоны получено как CHAST
-								else if(this->_fmk->compare("chast", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CHAST);
-								// Если название временной зоны получено как CHOST
-								else if(this->_fmk->compare("chost", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::CHOST);
-								// Если название временной зоны получено как ACWST
-								else if(this->_fmk->compare("acwst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ACWST);
-								// Если название временной зоны получено как AZOST
-								else if(this->_fmk->compare("azost", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::AZOST);
-								// Если название временной зоны получено как EASST
-								else if(this->_fmk->compare("easst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::EASST);
-								// Если название временной зоны получено как HOVST
-								else if(this->_fmk->compare("hovst", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::HOVST);
-								// Если название временной зоны получено как ULAST
-								else if(this->_fmk->compare("ulast", name))
-									// Выполняем получение временной зоны
-									result = this->getTimeZone(zone_t::ULAST);
+								// Получаем смещение времени по найденной в таблице соответствия временной зоне
+								result = this->getTimeZone(this->matchTimeZone(name));
 								// Если смещение времени указано
 								if((data.size() > 5) && !data[4].empty()){
 									// Получаем смещение времени
@@ -8251,7 +6773,9 @@ void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zone
 	const locker_t <> lock(this->_mtx.tz);
 	// Название временной зоны
 	string name = "";
-	// Выполняем перебор всего списка временных зон
+	/**
+	 *  Выполняем перебор всего списка временных зон
+	 */
 	for(auto & zone : zones){
 		// Получаем название временной зоны
 		name = zone.first;
@@ -8323,14 +6847,14 @@ void awh::Chrono::timestamp(const uint64_t date, const type_t type) noexcept {
 					// Устанавливаем количество микросекунд
 					this->_dt.microseconds = (date % 1000);
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date / 1000.L);
+					stamp = (date / 1000);
 				} break;
 				// Если единицы измерения штампа времени требуется установить в наносекундах
 				case static_cast <uint8_t> (type_t::NANOSECONDS): {
 					// Устанавливаем количество наносекунд
 					this->_dt.nanoseconds = (date % 1000000);
 					// Получаем текущий штамп времени
-					stamp = static_cast <uint64_t> (date / 1000000.L);
+					stamp = (date / 1000000);
 				} break;
 			}
 			// Выполняем блокировку потока
@@ -8646,7 +7170,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				// Получаем текущее значение штампа времени
 				result = this->makeDate(this->_dt);
 				// Получаем количество минут прошедших с 1970-го года
-				lastMinutes = static_cast <uint64_t> (result / 1000.L / 60.L);
+				lastMinutes = (result / 60000);
 			} break;
 			// Если хранилище глобальное
 			case static_cast <uint8_t> (storage_t::GLOBAL): {
@@ -8655,10 +7179,12 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				// Устанавливаем количество миллисекунд
 				this->makeDate(result, dt);
 				// Получаем количество минут прошедших с 1970-го года
-				lastMinutes = static_cast <uint64_t> (result / 1000.L / 60.L);
+				lastMinutes = (result / 60000);
 			} break;
 		}
-		// Выполняем перебор формата
+		/**
+		 *  Выполняем перебор формата
+		 */
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
 			letter = format[i];
@@ -9202,7 +7728,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 					this->_dt.offset = offset;
 				}
 				// Если количество минут переданной даты с начала 1970-го года выше чем текущее количество минут
-				if(!flags[1] && (static_cast <uint64_t> (result / 1000.L / 60.L) > lastMinutes)){
+				if(!flags[1] && ((result / 60000) > lastMinutes)){
 					// Уменьшаем значение текущего года
 					this->_dt.year--;
 					// Устанавливаем флаг високосного года
@@ -9237,7 +7763,7 @@ uint64_t awh::Chrono::parse(string_view date, string_view format, const storage_
 				// Выполняем формирование UnixTimestamp
 				result = this->makeDate(dt);
 				// Если количество минут переданной даты с начала 1970-го года выше чем текущее количество минут
-				if(!flags[1] && (static_cast <uint64_t> (result / 1000.L / 60.L) > lastMinutes)){
+				if(!flags[1] && ((result / 60000) > lastMinutes)){
 					// Уменьшаем значение текущего года
 					dt.year--;
 					// Устанавливаем флаг високосного года
@@ -10187,7 +8713,9 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 		char letter = 0;
 		// Режим детекции переменной формата
 		bool mode = false;
-		// Выполняем перебор формата
+		/**
+		 *  Выполняем перебор формата
+		 */
 		for(size_t i = 0; i < format.length(); i++){
 			// Получаем символ для обработки
 			letter = format[i];
@@ -10437,14 +8965,14 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							} break;
 							// Если мы нашли переменную (I)
 							case 'I': {
-								// Номер часа времени
-								string hour = "";
-								// Если время до полудня
-								if(dt.h12 == h12_t::AM)
-									// Получаем час времени
-									hour = std::to_string(dt.hour);
-								// Добавляем время с учётом 12-и часового формата
-								else hour = std::to_string(dt.hour - 12);
+								// Преобразуем час в 12-и часовой формат (полночь и полдень обозначаются как 12)
+								uint8_t value = (dt.hour % 12);
+								// Если час кратен 12, выставляем значение 12
+								if(value == 0)
+									// Устанавливаем час равный 12
+									value = 12;
+								// Получаем час времени
+								string hour = std::to_string(value);
 								// Если первого нуля нет
 								if(hour.length() == 1)
 									// Добавляем предстоящий ноль
@@ -10550,14 +9078,14 @@ string awh::Chrono::format(const dt_t & dt, string_view format) const noexcept {
 							} break;
 							// Если мы нашли переменную (r)
 							case 'r': {
-								// Номер часа времени
-								string num = "";
-								// Если время до полудня
-								if(dt.h12 == h12_t::AM)
-									// Получаем час времени
-									num = std::to_string(dt.hour);
-								// Добавляем время с учётом 12-и часового формата
-								else num = std::to_string(dt.hour - 12);
+								// Преобразуем час в 12-и часовой формат (полночь и полдень обозначаются как 12)
+								uint8_t value = (dt.hour % 12);
+								// Если час кратен 12, выставляем значение 12
+								if(value == 0)
+									// Устанавливаем час равный 12
+									value = 12;
+								// Получаем час времени
+								string num = std::to_string(value);
 								// Если первого нуля нет
 								if(num.length() == 1)
 									// Добавляем предстоящий ноль
@@ -11140,7 +9668,9 @@ awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), 
  *
  */
 awh::Chrono::~Chrono() noexcept {
-	// Выполняем перебор всего списка скомпилированных регулярных выражений
+	/**
+	 *  Выполняем перебор всего списка скомпилированных регулярных выражений
+	 */
 	for(auto i = this->_expressions.begin(); i != this->_expressions.end();){
 		// Выполняем удаление выделенной памяти
 		::pcre2_regfree(&std::any_cast <regex_t &> (i->second));
