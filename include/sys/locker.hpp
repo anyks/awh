@@ -93,6 +93,9 @@ namespace awh {
 			 *
 			 */
 			friend class Locker;
+		private:
+			// Мютекс для защиты ленивой инициализации и сброса рабочего мьютекса
+			std::mutex _guard;
 		public:
 			// Флаг активации режима работы
 			std::atomic_bool enabled;
@@ -173,6 +176,9 @@ namespace awh {
 		private:
 			// Сохраняем временно объект состояния блокировок
 			LockState <MutexType> & _state;
+		private:
+			// Указатель на мьютекс, который был фактически захвачен текущим локером
+			MutexType * _held;
 		public:
 			/**
 			 * @brief Оператор копирования
@@ -198,7 +204,7 @@ namespace awh {
 			 */
 			void _lockImpl(std::false_type) noexcept {
 				// Выполняем обычную блокировку
-				this->_state._mtx->lock();
+				this->_held->lock();
 			}
 			/**
 			 * @brief Шаблон метода разблокировки в эксклюзивном режиме
@@ -212,7 +218,7 @@ namespace awh {
 			 */
 			void _unlockImpl(std::false_type) noexcept {
 				// Выполняем обычную разблокировку
-				this->_state._mtx->unlock();
+				this->_held->unlock();
 			}
 		private:
 			/**
@@ -228,7 +234,7 @@ namespace awh {
 			 */
 			typename std::enable_if <has_shared_lock <M>::value, void>::type _lockImpl(std::true_type) noexcept {
 				// Выполняем разделённую блокировку
-				this->_state._mtx->lock_shared();
+				this->_held->lock_shared();
 			}
 			/**
 			 * @brief Шаблон метода уникальной блокировки при поддержке shared_lock
@@ -243,7 +249,7 @@ namespace awh {
 			 */
 			typename std::enable_if <!has_shared_lock <M>::value, void>::type _lockImpl(std::true_type) noexcept {
 				// Выполняем обычную блокировку, так как мьютекс не поддерживает разделённую блокировку
-				this->_state._mtx->lock();
+				this->_held->lock();
 			}
 		private:
 			/**
@@ -259,7 +265,7 @@ namespace awh {
 			 */
 			typename std::enable_if <has_shared_lock <M>::value, void>::type _unlockImpl(std::true_type) noexcept {
 				// Выполняем разделённую разблокировку
-				this->_state._mtx->unlock_shared();
+				this->_held->unlock_shared();
 			}
 			/**
 			 * @brief Шаблон метода уникальной разблокировки при поддержке shared_lock
@@ -274,7 +280,7 @@ namespace awh {
 			 */
 			typename std::enable_if <!has_shared_lock <M>::value, void>::type _unlockImpl(std::true_type) noexcept {
 				// Выполняем обычную разблокировку, так как мьютекс не поддерживает разделённую блокировку
-				this->_state._mtx->unlock();
+				this->_held->unlock();
 			}
 		private:
 			/**
@@ -285,9 +291,9 @@ namespace awh {
 				/**
 				 * Вычисляем константное выражение для определения поддержки shared_lock
 				 */
-				constexpr bool has_shared = has_shared_lock <MutexType>::value;
+				constexpr bool hasShared = has_shared_lock <MutexType>::value;
 				// Если режим блокировки SHARED и мьютекс поддерживает shared_lock
-				if((this->_mode == mode_t::SHARED) && has_shared)
+				if((this->_mode == mode_t::SHARED) && hasShared)
 					// Выполняем разделённую блокировку
 					this->_lockImpl(std::true_type{});
 				// Выполняем обычную блокировку
@@ -301,9 +307,9 @@ namespace awh {
 				/**
 				 * Вычисляем константное выражение для определения поддержки shared_lock
 				 */
-				constexpr bool has_shared = has_shared_lock <MutexType>::value;
+				constexpr bool hasShared = has_shared_lock <MutexType>::value;
 				// Если режим блокировки SHARED и мьютекс поддерживает shared_lock
-				if((this->_mode == mode_t::SHARED) && has_shared)
+				if((this->_mode == mode_t::SHARED) && hasShared)
 					// Выполняем разделённую разблокировку
 					this->_unlockImpl(std::true_type{});
 				// Выполняем обычную разблокировку
@@ -317,24 +323,34 @@ namespace awh {
 			 * @param mode  режим блокировки (по умолчанию Exclusive для обратной совместимости)
 			 */
 			explicit Locker(LockState <MutexType> & state, mode_t mode = mode_t::EXCLUSIVE) noexcept
-			 : _locked(false), _mode(mode), _state(state) {
-				// Если идентификатор процесса не совпадает
-				if(this->_state._pid.load(std::memory_order_acquire) != ::getpid()){
-					// Устанавливаем идентификатор процесса
-					this->_state._pid.store(::getpid(), std::memory_order_release);
-					// Если мютекс уже создан ранее
-					if(this->_state._mtx != nullptr)
-						// Выполняем удаление мютекса
-						this->_state._mtx.reset(nullptr);
+			 : _locked(false), _mode(mode), _state(state), _held(nullptr) {
+				/**
+				 * Ленивая инициализация и сброс мьютекса выполняются под _guard,
+				 * чтобы исключить гонку при одновременном захвате из нескольких потоков
+				 */
+				{
+					// Выполняем блокировку мьютекса инициализации
+					const std::lock_guard <std::mutex> guard(this->_state._guard);
+					// Если идентификатор процесса не совпадает
+					if(this->_state._pid.load(std::memory_order_relaxed) != ::getpid()){
+						// Устанавливаем идентификатор процесса
+						this->_state._pid.store(::getpid(), std::memory_order_relaxed);
+						// Если мютекс уже создан ранее
+						if(this->_state._mtx != nullptr)
+							// Выполняем удаление мютекса
+							this->_state._mtx.reset(nullptr);
+					}
+					// Если захватывать доступ к памяти нам не нужно
+					if(!this->_state.enabled.load(std::memory_order_relaxed))
+						// Выходим из конструктора
+						return;
+					// Если мютекс пустой
+					if(this->_state._mtx == nullptr)
+						// Пересоздаём мютекс
+						this->_state._mtx = std::make_unique <MutexType> ();
+					// Запоминаем мьютекс, который будет захвачен текущим локером
+					this->_held = this->_state._mtx.get();
 				}
-				// Если захватывать доступ к памяти нам не нужно
-				if(!this->_state.enabled.load(std::memory_order_acquire))
-					// Выходим из конструктора
-					return;
-				// Если мютекс пустой
-				if(this->_state._mtx == nullptr)
-					// Пересоздаём мютекс
-					this->_state._mtx = std::make_unique <MutexType> ();
 				// Выполняем блокировку
 				this->_locked = true;
 				// Выполняем блокировку потока
@@ -346,8 +362,8 @@ namespace awh {
 			 *
 			 */
 			~Locker() noexcept {
-				// Если мютекс не пустой и захвачен
-				if((this->_state._mtx != nullptr) && this->_locked)
+				// Если мьютекс был захвачен текущим локером
+				if(this->_locked && (this->_held != nullptr))
 					// Выполняем разблокировку потока
 					this->_unlock();
 			}

@@ -526,11 +526,13 @@ namespace driver {
 										log->print("Error during data decoding", awh::log_t::flag_t::WARNING);
 									#endif
 								}
-								// Очищаем всю выделенную память
-								::BIO_free_all(bio);
 							}
-							// Очищаем объект BASE64
-							::BIO_free(b64);
+							/**
+							 * Очищаем всю цепочку BIO одним вызовом от головы:
+							 * после BIO_push(b64, bio) объект b64 владеет ссылкой на bio и освобождает его в своём деструкторе.
+							 * Раздельное освобождение bio и b64 приводит к двойному освобождению bio.
+							 */
+							::BIO_free_all(b64);
 						}
 					} break;
 					// Если производится работы с AES128
