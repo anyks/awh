@@ -76,7 +76,7 @@ TEST_P(BufferParameterizedFixture, BufferTest){
 	// Проверяем совпадание первых элементов буфера
 	ASSERT_EQ(this->_parameter.items.front().front(), this->_buffer->front <char> ());
 	// Создаём временный буфер для проверки индексов
-	std::vector <char> tempBuffer1, tempBuffer2;
+	std::vector <uint8_t> tempBuffer1, tempBuffer2;
 	// Переход по всем данным для проверки индексов буфера
 	for(auto & item : this->_buffer->as <char>())
 		// Добавляем данные во временный буфер
@@ -107,7 +107,7 @@ TEST_P(BufferParameterizedFixture, BufferTest){
 		// Удаляем первые данные из буфера
 		this->_buffer->erase(this->_parameter.items.front().size());
 	// Проверяем что первые данные буфера совпадают с исходными данными
-	ASSERT_EQ(static_cast <const char *> (* this->_buffer.get()), static_cast <const std::vector <char> &> (* this->_buffer.get()).data() + static_cast <size_t> (* this->_buffer.get()));
+	ASSERT_EQ(static_cast <const uint8_t *> (* this->_buffer.get()), static_cast <const std::vector <uint8_t> &> (* this->_buffer.get()).data() + static_cast <size_t> (* this->_buffer.get()));
 	// Инициализируем ещё одну копию буфера
 	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
 	// Переход по всем числам для добавления в буфер

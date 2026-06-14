@@ -43,12 +43,14 @@
  */
 #include <vector>
 #include <cstdint>
+#include <condition_variable>
 
 /**
  * Подключаем заголовочные файлы проекта
  */
 #include "fmk.hpp"
 #include "log.hpp"
+#include "locker.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -112,10 +114,15 @@ namespace awh {
 			// Буфер данных выделенной памяти
 			vector <uint8_t> _buffer;
 		private:
+			// Условная переменная ожидания появления данных в очереди
+			mutable std::condition_variable _cv;
+			// Объект состояния блокировки для обеспечения потокобезопасности
+			mutable lock_state_t <std::mutex> _mtx;
+		private:
 			// Объект фреймворка
-			const fmk_t * _fmk = nullptr;
+			const fmk_t * _fmk;
 			// Объект работы с логами
-			const log_t * _log = nullptr;
+			const log_t * _log;
 		private:
 			/**
 			 * @brief Метод контроля памяти
@@ -124,6 +131,15 @@ namespace awh {
 			 * @return     результат выполнения операции
 			 */
 			bool rss(const size_t size) noexcept;
+		private:
+			/**
+			 * @brief Метод вывода сообщения об ошибке
+			 *
+			 * @param func    название функции, в которой произошла ошибка
+			 * @param size    размер данных, связанный с ошибкой
+			 * @param message текст сообщения об ошибке
+			 */
+			void error(const char * func, const size_t size, const char * message) const noexcept;
 		public:
 			/**
 			 * @brief Метод удаления записи в очереди
@@ -181,6 +197,9 @@ namespace awh {
 			/**
 			 * @brief Метод проверки на заполненность очереди
 			 *
+			 * @note При установленном таймауте и активной потокобезопасности метод блокирует
+			 *       поток до появления данных в очереди либо до истечения времени ожидания.
+			 *
 			 * @param timeout время ожидания в миллисекундах
 			 * @return        результат проверки
 			 */
@@ -224,6 +243,13 @@ namespace awh {
 			void swap(Queue & queue) noexcept;
 		public:
 			/**
+			 * @brief Метод установки безопасности работы потоков
+			 *
+			 * @param mode флаг режима безопасности работы потоков
+			 */
+			void threadSafety(const bool mode) noexcept;
+		public:
+			/**
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
@@ -242,6 +268,12 @@ namespace awh {
 			 * @return бинарные данные очереди
 			 */
 			operator const char * () const noexcept;
+			/**
+			 * @brief Получения бинарных данных очереди
+			 *
+			 * @return бинарные данные очереди
+			 */
+			operator const uint8_t * () const noexcept;
 		public:
 			/**
 			 * @brief Оператор перемещения
@@ -268,9 +300,9 @@ namespace awh {
 		public:
 			/**
 			 * @brief Разрешаем пустое значение объекта
-			 * 
+			 *
 			 */
-			explicit Queue() = default;
+			explicit Queue() noexcept;
 			/**
 			 * @brief Конструктор перемещения
 			 *

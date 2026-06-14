@@ -257,12 +257,12 @@ namespace awh {
 			size_t _maxMemory;
 		private:
 			// Буфер данных выделенной памяти
-			vector <char> _buffer;
+			vector <uint8_t> _buffer;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk = nullptr;
+			const fmk_t * _fmk;
 			// Объект работы с логами
-			const log_t * _log = nullptr;
+			const log_t * _log;
 		private:
 			/**
 			 * @brief Метод контроля памяти
@@ -326,7 +326,7 @@ namespace awh {
 			 *
 			 * @return буфер сырых данных
 			 */
-			const vector <char> & raw() const noexcept;
+			const vector <uint8_t> & raw() const noexcept;
 		public:
 			/**
 			 * @brief Шаблон для метода получения конечного итератора
@@ -541,7 +541,7 @@ namespace awh {
 			 * @param buffer бинарный буфер для добавления
 			 * @return       результат добавления данных
 			 */
-			bool push(const vector <char> & buffer) noexcept;
+			bool push(const vector <uint8_t> & buffer) noexcept;
 			/**
 			 * @brief Метод добавления бинарного буфера данных в буфер
 			 *
@@ -589,7 +589,13 @@ namespace awh {
 			 *
 			 * @return бинарные данные буфера
 			 */
-			operator const vector <char> & () const noexcept;
+			operator const uint8_t * () const noexcept;
+			/**
+			 * @brief Получения бинарных данных буфера
+			 *
+			 * @return бинарные данные буфера
+			 */
+			operator const vector <uint8_t> & () const noexcept;
 		public:
 			/**
 			 * @brief Оператор копирования
@@ -620,14 +626,14 @@ namespace awh {
 			 * @param buffer бинарный буфер для перемещения
 			 * @return       текущий контейнер буфера
 			 */
-			Buffer & operator = (vector <char> && buffer) noexcept;
+			Buffer & operator = (vector <uint8_t> && buffer) noexcept;
 			/**
 			 * @brief Оператор копирования
 			 *
 			 * @param buffer бинарный буфер для копирования
 			 * @return       текущий контейнер буфера
 			 */
-			Buffer & operator = (const vector <char> & buffer) noexcept;
+			Buffer & operator = (const vector <uint8_t> & buffer) noexcept;
 		public:
 			/**
 			 * @brief Оператор перемещения
@@ -654,9 +660,9 @@ namespace awh {
 		public:
 			/**
 			 * @brief Разрешаем пустое значение объекта
-			 * 
+			 *
 			 */
-			explicit Buffer() = default;
+			explicit Buffer() noexcept;
 			/**
 			 * @brief Конструктор перемещения
 			 *

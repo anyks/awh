@@ -118,12 +118,12 @@ awh::Buffer::Writer::Writer(Writer && other) noexcept :
 	other._applied = true;
 }
 /**
-* @brief Конструктор
-*
-* @param buffer   буфер для записи
-* @param data     указатель на зарезервированную область
-* @param capacity размер зарезервированной области
-*/
+ * @brief Конструктор
+ *
+ * @param buffer   буфер для записи
+ * @param data     указатель на зарезервированную область
+ * @param capacity размер зарезервированной области
+ */
 awh::Buffer::Writer::Writer(Buffer * buffer, void * data, const size_t capacity) noexcept :
  _applied(false), _capacity(capacity), _committed(0), _data(data), _buffer(buffer) {}
 /**
@@ -167,7 +167,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 			// Если есть что перемещать
 			if(payload > 0)
 				// Сдвигаем полезные данные в начало буфера
-				::memmove(this->_buffer.data(), this->_buffer.data() + this->_range.begin, payload);
+				::memmove(&this->_buffer[0], &this->_buffer[0] + this->_range.begin, payload);
 			// Сбрасываем начало буфера
 			this->_range.begin = 0;
 			// Смещаем конец буфера на размер полезных данных
@@ -298,7 +298,7 @@ size_t awh::Buffer::capacity() const noexcept {
  *
  * @return буфер сырых данных
  */
-const vector <char> & awh::Buffer::raw() const noexcept {
+const vector <uint8_t> & awh::Buffer::raw() const noexcept {
 	// Получаем неконстантный указатель на текущий объект
 	buffer_t * self = const_cast <buffer_t *> (this);
 	/**
@@ -320,7 +320,7 @@ const vector <char> & awh::Buffer::raw() const noexcept {
 			// Если данные смещены от начала буфера
 			if(this->_range.begin > 0)
 				// Переносим полезные данные в начало буфера
-				::memmove(self->_buffer.data(), self->_buffer.data() + this->_range.begin, payload);
+				::memmove(&self->_buffer[0], &self->_buffer[0] + this->_range.begin, payload);
 			// Усекаем буфер до размера полезных данных
 			self->_buffer.resize(payload);
 			// Сбрасываем начало буфера
@@ -351,7 +351,7 @@ template <typename T>
  */
 awh::Buffer::Iterator <T> awh::Buffer::end() noexcept {
 	// Выполняем установку конечного значения итератора
-	return Iterator <T> (reinterpret_cast <T *> (this->_buffer.data() + this->_range.end));
+	return Iterator <T> (reinterpret_cast <T *> (&this->_buffer[0] + this->_range.end));
 }
 /**
  * Объявляем прототипы для метода получения конечного итератора
@@ -392,7 +392,7 @@ template <typename T>
  */
 awh::Buffer::Iterator <T> awh::Buffer::begin() noexcept {
 	// Выполняем установку начального значения итератора
-	return Iterator <T> (reinterpret_cast <T *> (this->_buffer.data() + this->_range.begin));
+	return Iterator <T> (reinterpret_cast <T *> (&this->_buffer[0] + this->_range.begin));
 }
 /**
  * Объявляем прототипы для метода получение начального итератора
@@ -528,7 +528,7 @@ T awh::Buffer::back() const noexcept {
 		// Если данных достаточно в буфере
 		if((this->_range.end - this->_range.begin) >= size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + (this->_range.end - size), size);
+			::memcpy(&result, &this->_buffer[0] + (this->_range.end - size), size);
 	}
 	// Возвращаем результат
 	return result;
@@ -580,7 +580,7 @@ T awh::Buffer::front() const noexcept {
 		// Если данные есть в буфере
 		if((this->_range.end - this->_range.begin) >= size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + this->_range.begin, size);
+			::memcpy(&result, &this->_buffer[0] + this->_range.begin, size);
 	}
 	// Возвращаем результат
 	return result;
@@ -635,7 +635,7 @@ T awh::Buffer::at(const size_t index) const noexcept {
 		// Если в буфере данных есть данные
 		if((offset + size) <= this->_range.end)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, this->_buffer.data() + offset, size);
+			::memcpy(&result, &this->_buffer[0] + offset, size);
 		// Если данных нет в буфере
 		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), log_t::flag_t::WARNING);
 	}
@@ -690,7 +690,7 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 		// Если в буфере данных есть данные
 		if((offset + size) <= this->_range.end)
 			// Выполняем установку значения
-			::memcpy(this->_buffer.data() + offset, &value, size);
+			::memcpy(&this->_buffer[0] + offset, &value, size);
 		// Если данных нет в буфере
 		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), log_t::flag_t::WARNING);
 	}
@@ -730,7 +730,7 @@ const void * awh::Buffer::data() const noexcept {
 	// Если буфер данных не пустой
 	if(!this->empty())
 		// Возвращаем текущий результат
-		return (this->_buffer.data() + this->_range.begin);
+		return (&this->_buffer[0] + this->_range.begin);
 	// Возвращаем значение по умолчанию
 	return nullptr;
 }
@@ -770,7 +770,7 @@ void awh::Buffer::consume(const size_t size) noexcept {
  *
  * @param size требуемое количество свободных байт в хвосте буфера
  * @return     указатель на начало свободной области либо nullptr при ошибке
-*/
+ */
 void * awh::Buffer::prepare(const size_t size) noexcept {
 	// Если размер выделения не передан
 	if(size == 0)
@@ -791,7 +791,7 @@ void * awh::Buffer::prepare(const size_t size) noexcept {
 		return nullptr;
 	}
 	// Возвращаем указатель на начало свободной области в хвосте буфера
-	return (this->_buffer.data() + this->_range.end);
+	return (&this->_buffer[0] + this->_range.end);
 }
 /**
  * @brief Метод фиксации записанных в хвост буфера данных (zero-copy)
@@ -986,7 +986,7 @@ bool awh::Buffer::push(const buffer_t & buffer) noexcept {
 	// Если буфер данных передан не пустой
 	if(!buffer.empty())
 		// Выполняем добавление бинарного буфера данных
-		return this->push(static_cast <const char *> (buffer), static_cast <size_t> (buffer));
+		return this->push(static_cast <const uint8_t *> (buffer), static_cast <size_t> (buffer));
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -996,11 +996,11 @@ bool awh::Buffer::push(const buffer_t & buffer) noexcept {
  * @param buffer бинарный буфер для добавления
  * @return       результат добавления данных
  */
-bool awh::Buffer::push(const vector <char> & buffer) noexcept {
+bool awh::Buffer::push(const vector <uint8_t> & buffer) noexcept {
 	// Если буфер данных передан не пустой
 	if(!buffer.empty())
 		// Выполняем добавление бинарного буфера данных
-		return this->push(buffer.data(), buffer.size());
+		return this->push(&buffer[0], buffer.size());
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -1025,7 +1025,7 @@ bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
 			// Сообщаем что данные добавить не удалось (существующие данные сохраняются)
 			return false;
 		// Выполняем добавление самих данных полезной нагрузки
-		::memcpy(this->_buffer.data() + this->_range.end, buffer, size);
+		::memcpy(&this->_buffer[0] + this->_range.end, buffer, size);
 		// Увеличиваем смещение конца данных буфера
 		this->_range.end += size;
 		// Сообщаем об успешном добавлении данных
@@ -1112,7 +1112,16 @@ awh::Buffer::operator const char * () const noexcept {
  *
  * @return бинарные данные буфера
  */
-awh::Buffer::operator const vector <char> & () const noexcept {
+awh::Buffer::operator const uint8_t * () const noexcept {
+	// Возвращаем буфер данных
+	return reinterpret_cast <const uint8_t *> (this->data());
+}
+/**
+ * @brief Получения бинарных данных буфера
+ *
+ * @return бинарные данные буфера
+ */
+awh::Buffer::operator const vector <uint8_t> & () const noexcept {
 	// Возвращаем результат
 	return this->raw();
 }
@@ -1214,7 +1223,7 @@ awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
  * @param buffer бинарный буфер для перемещения
  * @return       текущий контейнер буфера
  */
-awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
+awh::Buffer & awh::Buffer::operator = (vector <uint8_t> && buffer) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1241,7 +1250,7 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
  * @param buffer бинарный буфер для копирования
  * @return       текущий контейнер буфера
  */
-awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
+awh::Buffer & awh::Buffer::operator = (const vector <uint8_t> & buffer) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1362,7 +1371,7 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 			// Сообщаем что буферы равны
 			return true;
 		// Сравниваем полезные данные буферов
-		return (::memcmp(this->_buffer.data() + this->_range.begin, buffer._buffer.data() + buffer._range.begin, size) == 0);
+		return (::memcmp(&this->_buffer[0] + this->_range.begin, &buffer._buffer[0] + buffer._range.begin, size) == 0);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -1373,6 +1382,11 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 	// Возвращаем результат
 	return false;
 }
+/**
+ * @brief Разрешаем пустое значение объекта
+ *
+ */
+awh::Buffer::Buffer() noexcept : _maxMemory(AWH_MAX_MEMORY_BUFFER), _fmk(nullptr), _log(nullptr) {}
 /**
  * @brief Конструктор перемещения
  *
