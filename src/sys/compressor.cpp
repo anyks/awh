@@ -1697,8 +1697,8 @@ namespace driver {
 	/**
 	 * @brief Функция компрессии/декомпрессии данных в формате Zlib (RFC 1950)
 	 *
-	 * Формат: 2-байтовый zlib-заголовок (CMF/FLG) + DEFLATE-поток + 4-байтовая
-	 * контрольная сумма Adler-32. В отличие от GZip не добавляет gzip-заголовок.
+	 * @details Формат: 2-байтовый zlib-заголовок (CMF/FLG) + DEFLATE-поток + 4-байтовая
+	 *          контрольная сумма Adler-32. В отличие от GZip не добавляет gzip-заголовок.
 	 *
 	 * @param buffer буфер входных данных
 	 * @param size   размер входных данных
@@ -1898,13 +1898,13 @@ namespace driver {
 	/**
 	 * @brief Функция компрессии/декомпрессии данных в формате raw deflate
 	 *
-	 * Поддерживает два режима:
-	 * - streaming == false: каждый вызов независим (контекст создаётся и уничтожается внутри).
-	 * - streaming == true:  контекст (z_stream) переиспользуется между вызовами (должен быть проинициализирован извне).
+	 * @details Поддерживает два режима:
+	 *           - streaming == false: каждый вызов независим (контекст создаётся и уничтожается внутри).
+	 *           - streaming == true:  контекст (z_stream) переиспользуется между вызовами (должен быть проинициализирован извне).
 	 *
-	 * Для WebSocket:
-	 * - streaming = true  → permessage-deflate с context takeover.
-	 * - streaming = false → permessage-deflate без context takeover (каждое сообщение независимо).
+	 * @details Для WebSocket:
+	 *           - streaming = true  → permessage-deflate с context takeover.
+	 *           - streaming = false → permessage-deflate без context takeover (каждое сообщение независимо).
 	 *
 	 * @param buffer    буфер входных данных
 	 * @param size      размер входных данных

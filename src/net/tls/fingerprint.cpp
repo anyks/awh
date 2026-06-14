@@ -1442,7 +1442,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Внутренняя функция парсинга QUIC Transport Parameters (RFC 9000 §19, RFC 9001)
-	 * Заполняет map<type_id, value>. Значение читается как QUIC varint если помещается (≤8 байт), иначе 0.
+	 *
+	 * @note Заполняет map<type_id, value>. Значение читается как QUIC varint если помещается (≤8 байт), иначе 0.
 	 *
 	 * @param buffer бинарный буфер данных расширения
 	 * @param size   размер буфера
@@ -3042,7 +3043,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения tls_flags (draft-ietf-tls-tlsflags, 0x003E)
-	 * Данные — битовое поле флагов: байт i содержит флаги с номерами i*8 .. i*8+7.
+	 *
+	 * @note Данные — битовое поле флагов: байт i содержит флаги с номерами i*8 .. i*8+7.
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3061,8 +3063,9 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения next_proto_neg / NPN (0x3374)
-	 * В ClientHello NPN обычно пустое (сигнализирует поддержку). Если данные присутствуют,
-	 * разбираем как список протоколов: 1-байтовая длина + имя (без внешнего поля длины).
+	 *
+	 * @details В ClientHello NPN обычно пустое (сигнализирует поддержку). Если данные присутствуют,
+	 *          разбираем как список протоколов: 1-байтовая длина + имя (без внешнего поля длины).
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3092,7 +3095,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения application_settings / ALPS new (0x44CD)
-	 * Формат (draft-vvv-tls-alps): 2-байтовая длина списка + записи (1-байтовая длина + имя).
+	 *
+	 * @note Формат (draft-vvv-tls-alps): 2-байтовая длина списка + записи (1-байтовая длина + имя).
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3134,7 +3138,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения application_settings_old / ALPS legacy (0x4469)
-	 * Формат идентичен application_settings (0x44CD).
+	 *
+	 * @note Формат идентичен application_settings (0x44CD).
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3176,7 +3181,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения channel_id (BoringSSL/Chrome, 0x7550)
-	 * В ClientHello всегда пустое — сигнализирует поддержку Channel ID.
+	 *
+	 * @note В ClientHello всегда пустое — сигнализирует поддержку Channel ID.
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3189,7 +3195,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения trust_anchors (BoringSSL draft, 0xCA34)
-	 * В ClientHello присутствие расширения сигнализирует поддержку.
+	 *
+	 * @note В ClientHello присутствие расширения сигнализирует поддержку.
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3202,7 +3209,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения ech_outer_extensions (ECH draft, 0xFD00)
-	 * Формат: 1-байтовый счётчик байт + список 2-байтовых ExtensionType (счётчик должен быть чётным).
+	 *
+	 * @note Формат: 1-байтовый счётчик байт + список 2-байтовых ExtensionType (счётчик должен быть чётным).
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3233,7 +3241,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения Encrypted Client Hello / ECH (0xFE0D)
-	 * Данные — непрозрачный двоичный blob (opaque).
+	 *
+	 * @note Данные — непрозрачный двоичный blob (opaque).
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3252,7 +3261,8 @@ namespace fingerprint {
 
 	/**
 	 * @brief Вспомогательная функция для парсинга расширения renegotiation_info (RFC 5746, 0xFF01)
-	 * Формат: 1-байтовая длина + renegotiated_connection. В начальном ClientHello длина = 0.
+	 *
+	 * @note Формат: 1-байтовая длина + renegotiated_connection. В начальном ClientHello длина = 0.
 	 *
 	 * @param buffer  бинарный буфер с данными расширения
 	 * @param size    размер данных в буфере
@@ -3283,11 +3293,11 @@ namespace http2 {
 	/**
 	 * @brief Вспомогательная функция возвращения односимвольных сокращений псевдо-заголовка по индексу HPACK статической таблицы
 	 *
-	 * Согласно RFC 7541 Appendix A, псевдо-заголовки занимают индексы 1-7:
-	 *   1 = :authority → 'a'
-	 *   2 = :method GET / 3 = :method POST → 'm'
-	 *   4 = :path / / 5 = :path /index.html → 'p'
-	 *   6 = :scheme http / 7 = :scheme https → 's'
+	 * @details Согласно RFC 7541 Appendix A, псевдо-заголовки занимают индексы 1-7:
+	 *           1 = :authority → 'a'
+	 *           2 = :method GET / 3 = :method POST → 'm'
+	 *           4 = :path / / 5 = :path /index.html → 'p'
+	 *           6 = :scheme http / 7 = :scheme https → 's'
 	 *
 	 * @param index индекс в статической таблице HPACK
 	 * @return      'a'/'m'/'p'/'s' или '\0' если не псевдо-заголовок / индекс вне диапазона
@@ -3378,9 +3388,9 @@ namespace http2 {
 	/**
 	 * @brief Вспомогательная функция декодирования HPACK строки из буфера (RFC 7541 §5.2)
 	 *
-	 * Поддерживает только raw (не Huffman) кодирование. Для Huffman возвращает пустую строку
-	 * и продвигает offset за строку — это нормально: псевдо-заголовки в реальных браузерах
-	 * передаются через indexed header fields из статической таблицы, без Huffman-кодирования имён.
+	 * @details Поддерживает только raw (не Huffman) кодирование. Для Huffman возвращает пустую строку
+	 *          и продвигает offset за строку — это нормально: псевдо-заголовки в реальных браузерах
+	 *          передаются через indexed header fields из статической таблицы, без Huffman-кодирования имён.
 	 *
 	 * @param buffer буфер с HPACK-блоком
 	 * @param size   размер буфера
@@ -4644,9 +4654,9 @@ bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const
 /**
  * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера
  *
- * @note Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
- * @note Handshake, ClientHello, Cipher Suites, Compressors, Extensions), а также
- * @note вычисляет и печатает все отпечатки imprint_t (JA3, JA4, JA4_r, PeetPrint).
+ * @details Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
+ *          Handshake, ClientHello, Cipher Suites, Compressors, Extensions), а также
+ *          вычисляет и печатает все отпечатки imprint_t (JA3, JA4, JA4_r, PeetPrint).
  *
  * @param browser объект с распарсенными данными ClientHello
  * @return        форматированная строка с полным описанием отпечатка
@@ -5362,11 +5372,11 @@ string awh::tls::Fingerprint::print(const browser_t & browser) const noexcept {
 /**
  * @brief Метод вычисления Akamai HTTP/2 fingerprint
  *
- * Формат: "{settings}|{windowUpdate}|{priorities}|{pseudoHeaders}"
- *   - settings:      id:value пары через ';' в порядке wire
- *   - windowUpdate:  десятичный инкремент WINDOW_UPDATE (stream 0)
- *   - priorities:    streamId:exclusive:dependency:weight через ',' (weight = raw+1)
- *   - pseudoHeaders: m/p/s/a через ','
+ * @details Формат: "{settings}|{windowUpdate}|{priorities}|{pseudoHeaders}"
+ *           - settings:      id:value пары через ';' в порядке wire
+ *           - windowUpdate:  десятичный инкремент WINDOW_UPDATE (stream 0)
+ *           - priorities:    streamId:exclusive:dependency:weight через ',' (weight = raw+1)
+ *           - pseudoHeaders: m/p/s/a через ','
  *
  * @param h2 объект с распарсенными данными HTTP/2-соединения (из parseH2())
  * @return   строка Akamai fingerprint, пустая строка если h2.settings пуст
@@ -7068,9 +7078,9 @@ bool awh::tls::Fingerprint::parse(const uint8_t * buffer, const size_t size, bro
 /**
  * @brief Метод парсинга connection preface и начальных фреймов HTTP/2-соединения
  *
- * Разбирает бинарный буфер, содержащий HTTP/2 client connection preface (magic + начальные фреймы).
- * Извлекает SETTINGS, WINDOW_UPDATE (stream 0), PRIORITY-фреймы и порядок псевдо-заголовков
- * из первого HEADERS-фрейма для построения Akamai HTTP/2 fingerprint.
+ * @details Разбирает бинарный буфер, содержащий HTTP/2 client connection preface (magic + начальные фреймы).
+ *          Извлекает SETTINGS, WINDOW_UPDATE (stream 0), PRIORITY-фреймы и порядок псевдо-заголовков
+ *          из первого HEADERS-фрейма для построения Akamai HTTP/2 fingerprint.
  *
  * @param buffer бинарный буфер с данными HTTP/2-соединения
  * @param size   размер буфера в байтах
@@ -7574,10 +7584,10 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		/**
 		 * @brief Вспомогательная функция: проверяет, присутствует ли шифр cipher в списке ciphers
 		 *
-		 * Правила:
-		 *   - Порядок определяется шаблоном browser.ciphers
-		 *   - Включаем шифр, если он присутствует в src.ciphers (пересечение)
-		 *   - Для GREASE: используем wire-коды из исходного буфера в том же порядке
+		 * @details Правила:
+		 *           - Порядок определяется шаблоном browser.ciphers
+		 *           - Включаем шифр, если он присутствует в src.ciphers (пересечение)
+		 *           - Для GREASE: используем wire-коды из исходного буфера в том же порядке
 		 *
 		 * @param ciphers список шифров для проверки
 		 * @param cipher  шифр для поиска
@@ -7632,14 +7642,14 @@ vector <uint8_t> awh::tls::Fingerprint::apply(const uint8_t * buffer, const size
 		/**
 		 * @brief Вспомогательная функция: ищет расширение с типом type в src.extensions
 		 *
-		 * Правила:
-		 *   - Порядок определяется шаблоном browser.extensions
-		 *   - Включаем расширение, если оно присутствует в src.extensions (пересечение)
-		 *   - GREASE-расширения: используем wire-коды из исходного буфера в том же порядке
-		 *   - Для "filter-list" расширений (supported_groups, sig_algs и пр.):
-		 *       пересекаем список шаблона со списком из src, порядок — из шаблона
-		 *   - Для "blob" расширений (SNI, session_ticket и пр.):
-		 *       используем сырые байты из исходного буфера без изменений
+		 * @details Правила:
+		 *           - Порядок определяется шаблоном browser.extensions.
+		 *           - Включаем расширение, если оно присутствует в src.extensions (пересечение).
+		 *           - GREASE-расширения: используем wire-коды из исходного буфера в том же порядке.
+		 *           - Для "filter-list" расширений (supported_groups, sig_algs и пр.):
+		 *             пересекаем список шаблона со списком из src, порядок — из шаблона.
+		 *           - Для "blob" расширений (SNI, session_ticket и пр.):
+		 *             используем сырые байты из исходного буфера без изменений.
 		 *
 		 * @param type тип расширения для поиска
 		 * @return     объект найденного расширения или nullptr, если не найдено

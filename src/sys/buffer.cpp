@@ -15,8 +15,10 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <string>
 #include <cstring>
 #include <cstdlib>
+#include <utility>
 #include <algorithm>
 
 /**
@@ -30,124 +32,236 @@
 using namespace std;
 
 /**
+ * @brief Метод получения указателя на зарезервированную область
+ *
+ * @return указатель для записи данных либо nullptr при ошибке резервирования
+ */
+void * awh::Buffer::Writer::get() noexcept {
+	// Возвращаем указатель на зарезервированную область
+	return this->_data;
+}
+/**
+ * @brief Метод получения размера зарезервированной области
+ *
+ * @return размер доступного для записи места
+ */
+size_t awh::Buffer::Writer::size() const noexcept {
+	// Возвращаем размер зарезервированной области
+	return this->_capacity;
+}
+/**
+ * @brief Метод проверки корректности резервирования
+ *
+ * @return результат проверки
+ */
+bool awh::Buffer::Writer::valid() const noexcept {
+	// Возвращаем результат проверки
+	return (this->_data != nullptr);
+}
+/**
+ * @brief Метод отмены записи (зафиксировано не будет ничего)
+ *
+ */
+void awh::Buffer::Writer::cancel() noexcept {
+	// Сбрасываем количество фиксируемых данных
+	this->_committed = 0;
+}
+/**
+ * @brief Метод немедленной фиксации записанных данных в буфер
+ *
+ * @return количество зафиксированных байт
+ */
+size_t awh::Buffer::Writer::apply() noexcept {
+	// Результат фиксации
+	size_t result = 0;
+	// Если фиксация ещё не выполнялась и буфер установлен
+	if(!this->_applied && (this->_buffer != nullptr)){
+		// Выполняем фиксацию записанных данных в буфер
+		result = this->_buffer->commit(this->_committed);
+		// Помечаем фиксацию как выполненную
+		this->_applied = true;
+	}
+	// Возвращаем количество зафиксированных байт
+	return result;
+}
+/**
+ * @brief Метод указания количества фактически записанных байт
+ *
+ * @param size количество записанных байт
+ * @return     количество байт которое будет зафиксировано
+ */
+size_t awh::Buffer::Writer::commit(const size_t size) noexcept {
+	// Ограничиваем количество фиксируемых данных зарезервированным размером
+	this->_committed = ((size < this->_capacity) ? size : this->_capacity);
+	// Возвращаем количество фиксируемых данных
+	return this->_committed;
+}
+/**
+ * @brief Конструктор перемещения
+ *
+ * @param other обёртка для перемещения
+ */
+awh::Buffer::Writer::Writer(Writer && other) noexcept :
+ _applied(other._applied),
+ _capacity(other._capacity),
+ _committed(other._committed),
+ _data(other._data), _buffer(other._buffer) {
+	// Помечаем источник как отработавший
+	other._buffer = nullptr;
+	// Сбрасываем указатель источника
+	other._data = nullptr;
+	// Сбрасываем размер источника
+	other._capacity = 0;
+	// Сбрасываем количество фиксируемых данных источника
+	other._committed = 0;
+	// Помечаем фиксацию источника как выполненную
+	other._applied = true;
+}
+/**
+* @brief Конструктор
+*
+* @param buffer   буфер для записи
+* @param data     указатель на зарезервированную область
+* @param capacity размер зарезервированной области
+*/
+awh::Buffer::Writer::Writer(Buffer * buffer, void * data, const size_t capacity) noexcept :
+ _applied(false), _capacity(capacity), _committed(0), _data(data), _buffer(buffer) {}
+/**
+ * @brief Деструктор (автоматически фиксирует записанные данные)
+ *
+ */
+awh::Buffer::Writer::~Writer() noexcept {
+	// Выполняем фиксацию записанных данных
+	this->apply();
+}
+
+/**
  * @brief Метод контроля памяти
  *
- * @param size желаемый размер выделения памяти
+ * @details Гарантирует наличие как минимум size свободных байт в хвосте буфера.
+ *          При необходимости переиспользует уже извлечённое место в начале буфера
+ *          (компактизация) и/или увеличивает буфер в пределах максимального лимита.
+ *
+ * @param size желаемый размер свободного места в хвосте буфера
  * @return     результат выполнения операции
  */
 bool awh::Buffer::rss(const size_t size) noexcept {
-	// Переменная результата
-	bool result = false;
-	// Если размер данных передан и буфер данных не достиг предела
-	if(size > 0){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если буфер данных не пустой
-			if(!this->_buffer.empty()){
-				// Определяем количество свободного места в буфере
-				size_t available = 0;
-				// Если для записи в буфере ещё есть место
-				if(this->_buffer.size() > this->_range.end)
-					// Определяем количество свободного места в буфере
-					available = (this->_buffer.size() - this->_range.end);
-				// Если в буфере больше нет места для добавления данных
-				if(!(result = (available >= size))){
-					// Если в начале буфера есть освобождённое место
-					if(this->_range.begin > 0){
-						// Определяем размер данных в буфере для перемещения
-						const size_t bytes = (this->_range.end - this->_range.begin);
-						// Если нам есть чего перемещать
-						if(bytes > 0)
-							// Выполняем перемещение верхней границы памяти
-							::memmove(&this->_buffer[0], &this->_buffer[this->_range.begin], bytes);
-						// Выполняем смещение верхней границы буфера
-						this->_range.begin = 0;
-						// Выполняем смещение нижней границы буфера
-						this->_range.end = bytes;
-						// Определяем количество свободного места в буфере
-						available = (this->_buffer.size() - this->_range.end);
-					}
-					// Если в буфере больше нет места для добавления данных
-					if(!(result = (available >= size))){
-						// Если при добавлении новых данных мы не переходим через лимит
-						if((result = ((this->_buffer.size() + (size - available)) < this->_maxMemory)))
-							// Выделяем ещё памяти
-							this->_buffer.resize(this->_buffer.size() + (size - available), 0);
-					}
-				}
-			// Если буфер данных пустой
-			} else if((result = (size <= this->_maxMemory)))
-				// Увеличиваем размер вектора
-				this->_buffer.resize(size, 0);
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+	// Если выделять ничего не требуется
+	if(size == 0)
+		// Сообщаем что место уже есть
+		return true;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Определяем количество свободного места в хвосте буфера
+		size_t tail = ((this->_buffer.size() > this->_range.end) ? (this->_buffer.size() - this->_range.end) : 0);
+		// Если в хвосте уже достаточно места
+		if(tail >= size)
+			// Сообщаем что выделение не требуется
+			return true;
+		// Определяем размер полезных (ещё не извлечённых) данных
+		const size_t payload = (this->_range.end - this->_range.begin);
+		// Если в начале буфера есть освобождённое место — выполняем компактизацию
+		if(this->_range.begin > 0){
+			// Если есть что перемещать
+			if(payload > 0)
+				// Сдвигаем полезные данные в начало буфера
+				::memmove(this->_buffer.data(), this->_buffer.data() + this->_range.begin, payload);
+			// Сбрасываем начало буфера
+			this->_range.begin = 0;
+			// Смещаем конец буфера на размер полезных данных
+			this->_range.end = payload;
+			// Пересчитываем количество свободного места в хвосте
+			tail = (this->_buffer.size() - this->_range.end);
+			// Если после компактизации места стало достаточно
+			if(tail >= size)
+				// Сообщаем что выделение не требуется
+				return true;
 		}
+		// Определяем требуемый итоговый размер буфера данных
+		const size_t required = (payload + size);
+		// Если требуемый размер выходит за пределы максимального лимита
+		if(required > this->_maxMemory)
+			// Сообщаем что выделить память невозможно
+			return false;
+		// Увеличиваем буфер данных до требуемого размера
+		this->_buffer.resize(required);
+		// Сообщаем об успешном выделении памяти
+		return true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем результат
-	return result;
+	return false;
+}
+/**
+ * @brief Метод вывода сообщения об ошибке в лог
+ *
+ * @param func    название функции в которой произошла ошибка
+ * @param message текст сообщения об ошибке
+ * @param flag    флаг важности сообщения
+ */
+void awh::Buffer::error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
+	// Если объект лога установлен
+	if(this->_log != nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", func, {}, flag, message);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", flag, message);
+		#endif
+	// Если объект логирования не установлен
+	} else {
+		// Определяем текстовый префикс важности сообщения
+		const char * prefix = ((flag == log_t::flag_t::WARNING) ? "WARNING" : "ERROR");
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в поток ошибок
+			::fprintf(stderr, "%s! Called function:\n%s\n\nMessage:\n%s\n\n", prefix, func, message);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в поток ошибок
+			::fprintf(stderr, "%s! %s\n\n", prefix, message);
+		#endif
+	}
 }
 /**
  * @brief Метод очистки всех данных буфера
  *
  */
 void awh::Buffer::clear() noexcept {
-	// Если буфер данных не пустой и записи есть
-	if(!this->_buffer.empty() && (this->_range.end > 0)){
-		// Выполняем сброс конца буфера
-		this->_range.end = 0;
-		// Выполняем сброс начала буфера
-		this->_range.begin = 0;
-		// Выполняем зануление всего буфера данных
-		::memset(&this->_buffer[0], 0, this->_buffer.size());
-	}
+	// Выполняем сброс конца буфера
+	this->_range.end = 0;
+	// Выполняем сброс начала буфера
+	this->_range.begin = 0;
 }
 /**
  * @brief Метод полной очистки памяти
  *
  */
 void awh::Buffer::reset() noexcept {
-	// Если буфер данных не пустой
-	if(!this->_buffer.empty()){
-		// Выполняем очистку буфера данных
-		this->clear();
-		// Выполняем освобождение памяти
-		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
-	}
+	// Выполняем сброс конца буфера
+	this->_range.end = 0;
+	// Выполняем сброс начала буфера
+	this->_range.begin = 0;
+	// Выполняем освобождение памяти
+	vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 }
 /**
  * @brief Метод проверки на заполненность буфера
@@ -156,10 +270,7 @@ void awh::Buffer::reset() noexcept {
  */
 bool awh::Buffer::empty() const noexcept {
 	// Возвращаем результат проверки
-	return (
-		(this->_range.end == 0) ||
-		(this->_range.end == this->_range.begin)
-	);
+	return (this->_range.end == this->_range.begin);
 }
 /**
  * @brief Метод получения размера добавленных данных
@@ -182,69 +293,47 @@ size_t awh::Buffer::capacity() const noexcept {
 /**
  * @brief Метод извлечения буфера сырых данных
  *
+ * @details Нормализует внутреннее хранилище: переносит полезные данные в начало
+ *          и усекает буфер до их размера, после чего возвращает его как есть.
+ *
  * @return буфер сырых данных
  */
 const vector <char> & awh::Buffer::raw() const noexcept {
-	// Если буфер данных не пустой
-	if(!this->_buffer.empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если буфер не соответствует итераторам
-			if((this->_range.begin > 0) || (this->_range.end < this->_buffer.size())){
-				// Выполняем усечение буфера
-				vector <decltype(this->_buffer)::value_type> (
-					this->_buffer.begin() + this->_range.begin,
-					this->_buffer.begin() + this->_range.end
-				).swap(const_cast <buffer_t *> (this)->_buffer);
-				// Выполняем сброс верхнего итератора
-				const_cast <buffer_t *> (this)->_range.begin = 0;
-				// Выполняем сброс нижнего итератора
-				const_cast <buffer_t *> (this)->_range.end = this->_buffer.size();
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
+	// Получаем неконстантный указатель на текущий объект
+	buffer_t * self = const_cast <buffer_t *> (this);
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Определяем размер полезных данных
+		const size_t payload = this->size();
+		// Если полезных данных нет
+		if(payload == 0){
+			// Освобождаем память буфера данных
+			vector <decltype(this->_buffer)::value_type> ().swap(self->_buffer);
+			// Сбрасываем начало буфера
+			self->_range.begin = 0;
+			// Сбрасываем конец буфера
+			self->_range.end = 0;
+		// Если буфер не соответствует диапазону данных
+		} else if((this->_range.begin > 0) || (this->_range.end < this->_buffer.size())) {
+			// Если данные смещены от начала буфера
+			if(this->_range.begin > 0)
+				// Переносим полезные данные в начало буфера
+				::memmove(self->_buffer.data(), self->_buffer.data() + this->_range.begin, payload);
+			// Усекаем буфер до размера полезных данных
+			self->_buffer.resize(payload);
+			// Сбрасываем начало буфера
+			self->_range.begin = 0;
+			// Устанавливаем конец буфера на размер полезных данных
+			self->_range.end = payload;
 		}
-	// Если буфер пустой
-	} else {
-		// Выполняем сброс нижнего итератора
-		const_cast <buffer_t *> (this)->_range.end = 0;
-		// Выполняем сброс верхнего итератора
-		const_cast <buffer_t *> (this)->_range.begin = 0;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем значение буфера как есть
 	return this->_buffer;
@@ -262,7 +351,7 @@ template <typename T>
  */
 awh::Buffer::Iterator <T> awh::Buffer::end() noexcept {
 	// Выполняем установку конечного значения итератора
-	return Iterator <T> (reinterpret_cast <T *> (&this->_buffer[0] + this->_range.end));
+	return Iterator <T> (reinterpret_cast <T *> (this->_buffer.data() + this->_range.end));
 }
 /**
  * Объявляем прототипы для метода получения конечного итератора
@@ -303,7 +392,7 @@ template <typename T>
  */
 awh::Buffer::Iterator <T> awh::Buffer::begin() noexcept {
 	// Выполняем установку начального значения итератора
-	return Iterator <T> (reinterpret_cast <T *> (&this->_buffer[0] + this->_range.begin));
+	return Iterator <T> (reinterpret_cast <T *> (this->_buffer.data() + this->_range.begin));
 }
 /**
  * Объявляем прототипы для метода получение начального итератора
@@ -437,9 +526,9 @@ T awh::Buffer::back() const noexcept {
 		// Получаем размер данных
 		const size_t size = sizeof(result);
 		// Если данных достаточно в буфере
-		if(this->_range.end > size)
+		if((this->_range.end - this->_range.begin) >= size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, &this->_buffer[this->_range.end - size], size);
+			::memcpy(&result, this->_buffer.data() + (this->_range.end - size), size);
 	}
 	// Возвращаем результат
 	return result;
@@ -491,7 +580,7 @@ T awh::Buffer::front() const noexcept {
 		// Если данные есть в буфере
 		if((this->_range.end - this->_range.begin) >= size)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, &this->_buffer[this->_range.begin], size);
+			::memcpy(&result, this->_buffer.data() + this->_range.begin, size);
 	}
 	// Возвращаем результат
 	return result;
@@ -546,38 +635,9 @@ T awh::Buffer::at(const size_t index) const noexcept {
 		// Если в буфере данных есть данные
 		if((offset + size) <= this->_range.end)
 			// Выполняем копирование данных контейнера
-			::memcpy(&result, &this->_buffer[offset], size);
+			::memcpy(&result, this->_buffer.data() + offset, size);
 		// Если данных нет в буфере
-		else if(this->_log != nullptr) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, make_tuple(index), log_t::flag_t::WARNING, index);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("There is no data in the buffer at INDEX=%zu", log_t::flag_t::WARNING, index);
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\nThere is no data in the buffer at INDEX=%zu\n\n", __PRETTY_FUNCTION__, index);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "WARNING! There is no data in the buffer at INDEX=%zu\n\n", index);
-			#endif
-		}
+		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), log_t::flag_t::WARNING);
 	}
 	// Возвращаем результат
 	return result;
@@ -630,38 +690,9 @@ void awh::Buffer::set(const T value, const size_t index) noexcept {
 		// Если в буфере данных есть данные
 		if((offset + size) <= this->_range.end)
 			// Выполняем установку значения
-			::memcpy(const_cast <char *> (&this->_buffer[offset]), &value, size);
+			::memcpy(this->_buffer.data() + offset, &value, size);
 		// Если данных нет в буфере
-		else if(this->_log != nullptr) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("There is no data in the buffer at INDEX=%zu", __PRETTY_FUNCTION__, make_tuple(value, index), log_t::flag_t::WARNING, index);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("There is no data in the buffer at INDEX=%zu", log_t::flag_t::WARNING, index);
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "WARNING! Called function:\n%s\n\nMessage:\nThere is no data in the buffer at INDEX=%zu\n\n", __PRETTY_FUNCTION__, index);
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "WARNING! There is no data in the buffer at INDEX=%zu\n\n", index);
-			#endif
-		}
+		else this->error(__PRETTY_FUNCTION__, ("There is no data in the buffer at INDEX=" + to_string(index)).c_str(), log_t::flag_t::WARNING);
 	}
 }
 /**
@@ -699,65 +730,96 @@ const void * awh::Buffer::data() const noexcept {
 	// Если буфер данных не пустой
 	if(!this->empty())
 		// Возвращаем текущий результат
-		return (&this->_buffer[0] + this->_range.begin);
+		return (this->_buffer.data() + this->_range.begin);
 	// Возвращаем значение по умолчанию
 	return nullptr;
 }
 /**
- * @brief Метод удаления указанного количества байт
+ * @brief Метод удаления указанного количества байт из начала буфера
  *
  * @param size количество байт для удаления
  */
 void awh::Buffer::erase(const size_t size) noexcept {
 	// Если буфер данных не пустой
 	if(!this->empty()){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если размер удаляемых данных не выше максимального буфера
-			if((this->_range.end - this->_range.begin) >= size)
-				// Выполняем удаление указанного количества данных
-				this->_range.begin += size;
-			// Удаляем все что есть
-			else this->_range.begin = this->_range.end;
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
+		// Если удаляется весь объём полезных данных
+		if(size >= (this->_range.end - this->_range.begin)){
+			// Сбрасываем конец буфера (переиспользуем хранилище с начала)
+			this->_range.end = 0;
+			// Сбрасываем начало буфера
+			this->_range.begin = 0;
+		// Иначе смещаем начало буфера на размер удаляемых данных
+		} else this->_range.begin += size;
 	}
+}
+/**
+ * @brief Метод извлечения (удаления) указанного количества уже обработанных байт из начала буфера
+ *
+ * @param size количество байт для извлечения
+ */
+void awh::Buffer::consume(const size_t size) noexcept {
+	// Выполняем удаление указанного количества байт из начала буфера
+	this->erase(size);
+}
+/**
+ * @brief Метод подготовки места в хвосте буфера для прямой записи (zero-copy)
+ *
+ * @details После записи данных по полученному указателю необходимо вызвать commit(n).
+ *          Указатель действителен только до следующей модификации буфера.
+ *          Для безопасной работы рекомендуется использовать метод write().
+ *
+ * @param size требуемое количество свободных байт в хвосте буфера
+ * @return     указатель на начало свободной области либо nullptr при ошибке
+*/
+void * awh::Buffer::prepare(const size_t size) noexcept {
+	// Если размер выделения не передан
+	if(size == 0)
+		// Возвращаем пустое значение
+		return nullptr;
+	// Если не удалось выделить запрошенное количество памяти
+	if(!this->rss(size)){
+		// Формируем сообщение об ошибке
+		string message = "There is not enough memory in the reserved buffer to add a new portion of data";
+		// Если объект фреймворка установлен
+		if(this->_fmk != nullptr)
+			// Формируем подробное сообщение об ошибке
+			message = "You are trying to map " + this->_fmk->bytes(static_cast <double> (this->size() + size)) +
+				" of data into a " + this->_fmk->bytes(static_cast <double> (this->_maxMemory)) + " data buffer, which is impossible";
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, message.c_str());
+		// Возвращаем пустое значение
+		return nullptr;
+	}
+	// Возвращаем указатель на начало свободной области в хвосте буфера
+	return (this->_buffer.data() + this->_range.end);
+}
+/**
+ * @brief Метод фиксации записанных в хвост буфера данных (zero-copy)
+ *
+ * @param size количество фактически записанных в хвост байт
+ * @return     количество зафиксированных байт
+ */
+size_t awh::Buffer::commit(const size_t size) noexcept {
+	// Определяем количество свободного места в хвосте буфера
+	const size_t tail = ((this->_buffer.size() > this->_range.end) ? (this->_buffer.size() - this->_range.end) : 0);
+	// Ограничиваем количество фиксируемых данных доступным местом
+	const size_t count = ((size < tail) ? size : tail);
+	// Увеличиваем смещение конца данных буфера
+	this->_range.end += count;
+	// Возвращаем количество зафиксированных данных
+	return count;
+}
+/**
+ * @brief Метод получения RAII-обёртки для безопасной прямой записи в хвост буфера (zero-copy)
+ *
+ * @param size требуемое количество свободных байт в хвосте буфера
+ * @return     объект записи с автоматической фиксацией данных
+ */
+awh::Buffer::Writer awh::Buffer::write(const size_t size) noexcept {
+	// Выполняем подготовку места в хвосте буфера
+	void * data = this->prepare(size);
+	// Возвращаем объект записи с автоматической фиксацией данных
+	return Writer(this, data, ((data != nullptr) ? size : 0));
 }
 /**
  * @brief Метод резервирования размера буфера
@@ -775,37 +837,8 @@ void awh::Buffer::reserve(const size_t size) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -895,66 +928,53 @@ bool awh::Buffer::push(const string & text) noexcept {
 /**
  * @brief Метод добавления бинарного буфера данных в буфер
  *
+ * @details Если текущий буфер пуст — выполняется перемещение хранилища (zero-copy),
+ *          иначе данные дописываются в хвост.
+ *
  * @param buffer бинарный буфер для добавления
  * @return       результат добавления данных
  */
 bool awh::Buffer::push(buffer_t && buffer) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Выполняем перемещение буфера данных
-		this->_buffer = ::move(buffer._buffer);
-		// Выполняем копирование последнего итератора
-		this->_range.end = buffer._range.end;
-		// Выполняем копирование начального итератора
-		this->_range.begin = buffer._range.begin;
-		// Выполняем копирование максимального размера памяти
-		this->_maxMemory = buffer._maxMemory;
-		// Выполняем сброс последнего итератора стороннего буфера
-		buffer._range.end = 0;
-		// Выполняем сброс начального итератора стороннего буфера
-		buffer._range.begin = 0;
-		// Возвращаем true
-		return true;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
+	// Если сторонний буфер пустой
+	if(buffer.empty())
+		// Возвращаем значение по умолчанию
+		return false;
+	// Если текущий буфер пустой — выполняем перемещение хранилища
+	if(this->empty()){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Выполняем перемещение буфера данных
+			this->_buffer = ::move(buffer._buffer);
+			// Копируем последний итератор
+			this->_range.end = buffer._range.end;
+			// Копируем начальный итератор
+			this->_range.begin = buffer._range.begin;
+			// Сбрасываем последний итератор стороннего буфера
+			buffer._range.end = 0;
+			// Сбрасываем начальный итератор стороннего буфера
+			buffer._range.begin = 0;
+			// Возвращаем результат
+			return true;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			// Записываем ошибку в лог
+			this->error(__PRETTY_FUNCTION__, error.what());
+			// Возвращаем значение по умолчанию
+			return false;
 		}
 	}
-	// Возвращаем значение по умолчанию
-	return false;
+	// Дописываем данные стороннего буфера в хвост текущего
+	const bool result = this->push(static_cast <const char *> (buffer), static_cast <size_t> (buffer));
+	// Если данные успешно добавлены
+	if(result)
+		// Очищаем сторонний буфер
+		buffer.clear();
+	// Возвращаем результат
+	return result;
 }
 /**
  * @brief Метод добавления бинарного буфера данных в буфер
@@ -980,7 +1000,7 @@ bool awh::Buffer::push(const vector <char> & buffer) noexcept {
 	// Если буфер данных передан не пустой
 	if(!buffer.empty())
 		// Выполняем добавление бинарного буфера данных
-		return this->push(&buffer[0], buffer.size());
+		return this->push(buffer.data(), buffer.size());
 	// Возвращаем значение по умолчанию
 	return false;
 }
@@ -992,150 +1012,33 @@ bool awh::Buffer::push(const vector <char> & buffer) noexcept {
  * @return       результат добавления данных
  */
 bool awh::Buffer::push(const void * buffer, const size_t size) noexcept {
-	// Переменная результата
-	bool result = false;
-	// Если данные переданы верные
-	if((buffer != nullptr) && (size > 0)){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Определяем помещаются ли данные в буфер
-			if((this->size() + size) <= this->_maxMemory){
-				// Выполняем выделение памяти
-				if((result = this->rss(size))){
-					// Выполняем добавление самих данных полезной нагрузки
-					::memcpy(&this->_buffer[this->_range.end], buffer, size);
-					// Увеличиваем смещение конца данных буфера
-					this->_range.end += size;
-				// Выполняем сброс буфера
-				} else {
-					// Если объект лога установлен
-					if(this->_log != nullptr){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, "Binary data buffer is corrupted");
-						#endif
-					// Если объект логирования не установлен
-					} else {
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "Binary data buffer is corrupted");
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							::fprintf(stderr, "ERROR! %s\n\n", "Binary data buffer is corrupted");
-						#endif
-					}
-					// Выполняем сброс конца буфера
-					this->_range.end = 0;
-					// Выполняем сброс начала буфера
-					this->_range.begin = 0;
-					// Выполняем зануление всего буфера данных
-					::memset(&this->_buffer[0], 0, this->_buffer.size());
-				}
-			// Если данные больше не помещаются в буфер
-			} else {
-				// Если объект лога установлен
-				if(this->_log != nullptr){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug(
-							"You are trying to map %s of data into a %s data buffer, which is impossible",
-							__PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL,
-							this->_fmk->bytes(static_cast <double> (this->size() + size)).c_str(),
-							this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print(
-							"You are trying to map %s of data into a %s data buffer, which is impossible",
-							log_t::flag_t::CRITICAL, this->_fmk->bytes(static_cast <double> (this->size() + size)).c_str(),
-							this->_fmk->bytes(static_cast <double> (this->_maxMemory)).c_str()
-						);
-					#endif
-				// Если объект логирования не установлен
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, "There is not enough memory in the reserved buffer to add a new portion of data");
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						::fprintf(stderr, "ERROR! %s\n\n", "There is not enough memory in the reserved buffer to add a new portion of data");
-					#endif
-				}
-				// Выполняем сброс конца буфера
-				this->_range.end = 0;
-				// Выполняем сброс начала буфера
-				this->_range.begin = 0;
-				// Выполняем зануление всего буфера данных
-				::memset(&this->_buffer[0], 0, this->_buffer.size());
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			// Если объект лога установлен
-			if(this->_log != nullptr){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size), log_t::flag_t::CRITICAL, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-				#endif
-			// Если объект логирования не установлен
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					::fprintf(stderr, "ERROR! %s\n\n", error.what());
-				#endif
-			}
-		}
+	// Если данные переданы неверные
+	if((buffer == nullptr) || (size == 0))
+		// Возвращаем значение по умолчанию
+		return false;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Выполняем выделение памяти под новую порцию данных
+		if(!this->prepare(size))
+			// Сообщаем что данные добавить не удалось (существующие данные сохраняются)
+			return false;
+		// Выполняем добавление самих данных полезной нагрузки
+		::memcpy(this->_buffer.data() + this->_range.end, buffer, size);
+		// Увеличиваем смещение конца данных буфера
+		this->_range.end += size;
+		// Сообщаем об успешном добавлении данных
+		return true;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
-	// Возвращаем результат
-	return result;
+	// Возвращаем значение по умолчанию
+	return false;
 }
 /**
  * @brief Метод установки максимального размера потребления памяти
@@ -1154,70 +1057,28 @@ void awh::Buffer::setMaxMemory(const size_t size) noexcept {
  * @param buffer бинарный буфер для обмена
  */
 void awh::Buffer::swap(Buffer & buffer) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Если объект фреймворка установлен
-		if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
-			// Копируем объект фреймворка
-			this->_fmk = buffer._fmk;
-		// Если объект для работы с логами установлен
-		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
-			this->_log = buffer._log;
-		// Если объект фреймворка установлен
-		if((this->_fmk != nullptr) && (buffer._fmk == nullptr))
-			// Копируем объект фреймворка
-			buffer._fmk = this->_fmk;
-		// Если объект для работы с логами установлен
-		if((this->_log != nullptr) && (buffer._log == nullptr))
-			// Копируем объект для работы с логами установлен
-			buffer._log = this->_log;
-		// Выполняем обмен буферами данных
-		this->_buffer.swap(buffer._buffer);
-		// Выполняем обмен последними итераторами
-		this->_range.end += (buffer._range.end - (buffer._range.end = this->_range.end));
-		// Выполняем обмен начальными итераторами
-		this->_range.begin += (buffer._range.begin - (buffer._range.begin = this->_range.begin));
-		// Выполняем обмен максимальными размерами памяти
-		this->_maxMemory += (buffer._maxMemory - (buffer._maxMemory = this->_maxMemory));
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
-	}
+	// Если объект фреймворка установлен у стороннего буфера
+	if((buffer._fmk != nullptr) && (this->_fmk == nullptr))
+		// Копируем объект фреймворка
+		this->_fmk = buffer._fmk;
+	// Если объект для работы с логами установлен у стороннего буфера
+	if((buffer._log != nullptr) && (this->_log == nullptr))
+		// Копируем объект для работы с логами
+		this->_log = buffer._log;
+	// Если объект фреймворка установлен у текущего буфера
+	if((this->_fmk != nullptr) && (buffer._fmk == nullptr))
+		// Копируем объект фреймворка
+		buffer._fmk = this->_fmk;
+	// Если объект для работы с логами установлен у текущего буфера
+	if((this->_log != nullptr) && (buffer._log == nullptr))
+		// Копируем объект для работы с логами
+		buffer._log = this->_log;
+	// Выполняем обмен буферами данных
+	this->_buffer.swap(buffer._buffer);
+	// Выполняем обмен диапазонами записей
+	::swap(this->_range, buffer._range);
+	// Выполняем обмен максимальными размерами памяти
+	::swap(this->_maxMemory, buffer._maxMemory);
 }
 /**
  * @brief Метод установки объекта логирования
@@ -1266,49 +1127,27 @@ awh::Buffer & awh::Buffer::operator = (const char * buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем копирование начального итератора
+		// Сбрасываем начальный итератор
 		this->_range.begin = 0;
-		// Выполняем копирование последнего итератора
-		this->_range.end = ::strlen(buffer);
-		// Выделяем нужный нам размер памяти
-		this->_buffer.reserve(this->_range.end);
-		// Перемещаем данные (на самом деле — копируем, но эффективно)
-		this->_buffer.assign(buffer, buffer + this->_range.end);
+		// Если строка для копирования не передана
+		if(buffer == nullptr){
+			// Сбрасываем последний итератор
+			this->_range.end = 0;
+			// Очищаем буфер данных
+			this->_buffer.clear();
+		// Если строка для копирования передана
+		} else {
+			// Устанавливаем последний итератор
+			this->_range.end = ::strlen(buffer);
+			// Копируем данные из строки в буфер
+			this->_buffer.assign(buffer, buffer + this->_range.end);
+		}
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий объект
 	return (* this);
@@ -1324,13 +1163,11 @@ awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем копирование начального итератора
+		// Сбрасываем начальный итератор
 		this->_range.begin = 0;
-		// Выполняем копирование последнего итератора
+		// Устанавливаем последний итератор
 		this->_range.end = buffer.length();
-		// Выделяем нужный нам размер памяти
-		this->_buffer.reserve(buffer.length());
-		// Перемещаем данные (на самом деле — копируем, но эффективно)
+		// Копируем данные из строки в буфер
 		this->_buffer.assign(buffer.begin(), buffer.end());
 		// Очищаем исходную строку
 		buffer.clear();
@@ -1338,37 +1175,8 @@ awh::Buffer & awh::Buffer::operator = (string && buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий объект
 	return (* this);
@@ -1384,49 +1192,18 @@ awh::Buffer & awh::Buffer::operator = (const string & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем копирование начального итератора
+		// Сбрасываем начальный итератор
 		this->_range.begin = 0;
-		// Выполняем копирование последнего итератора
+		// Устанавливаем последний итератор
 		this->_range.end = buffer.length();
-		// Выделяем нужный нам размер памяти
-		this->_buffer.reserve(buffer.length());
 		// Копируем данные из строки в буфер
 		this->_buffer.assign(buffer.begin(), buffer.end());
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий объект
 	return (* this);
@@ -1442,9 +1219,9 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем копирование начального итератора
+		// Сбрасываем начальный итератор
 		this->_range.begin = 0;
-		// Выполняем копирование последнего итератора
+		// Устанавливаем последний итератор
 		this->_range.end = buffer.size();
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer);
@@ -1452,37 +1229,8 @@ awh::Buffer & awh::Buffer::operator = (vector <char> && buffer) noexcept {
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий объект
 	return (* this);
@@ -1498,47 +1246,18 @@ awh::Buffer & awh::Buffer::operator = (const vector <char> & buffer) noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Выполняем копирование начального итератора
+		// Сбрасываем начальный итератор
 		this->_range.begin = 0;
-		// Выполняем копирование последнего итератора
+		// Устанавливаем последний итератор
 		this->_range.end = buffer.size();
-		// Выполняем перемещение буфера данных
+		// Копируем данные из буфера
 		this->_buffer.assign(buffer.begin(), buffer.end());
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий объект
 	return (* this);
@@ -1560,55 +1279,26 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 			this->_fmk = buffer._fmk;
 		// Если объект для работы с логами установлен
 		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
+			// Копируем объект для работы с логами
 			this->_log = buffer._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
-		// Выполняем копирование последнего итератора
+		// Копируем последний итератор
 		this->_range.end = buffer._range.end;
-		// Выполняем копирование начального итератора
+		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
-		// Выполняем копирование максимального размера памяти
+		// Копируем максимальный размер памяти
 		this->_maxMemory = buffer._maxMemory;
-		// Выполняем сброс последнего итератора стороннего буфера
+		// Сбрасываем последний итератор стороннего буфера
 		buffer._range.end = 0;
-		// Выполняем сброс начального итератора стороннего буфера
+		// Сбрасываем начальный итератор стороннего буфера
 		buffer._range.begin = 0;
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий объект
 	return (* this);
@@ -1630,51 +1320,22 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 			this->_fmk = buffer._fmk;
 		// Если объект для работы с логами установлен
 		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
+			// Копируем объект для работы с логами
 			this->_log = buffer._log;
-		// Выполняем копирование последнего итератора
+		// Копируем последний итератор
 		this->_range.end = buffer._range.end;
-		// Выполняем копирование начального итератора
+		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
-		// Выполняем копирование максимального размера памяти
+		// Копируем максимальный размер памяти
 		this->_maxMemory = buffer._maxMemory;
-		// Выполняем перемен буферами данных
+		// Копируем данные буфера
 		this->_buffer.assign(buffer._buffer.begin(), buffer._buffer.end());
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий объект
 	return (* this);
@@ -1690,50 +1351,24 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		/**
-		 * Выполняем сравнения всей внутренней составляющей
-		 */
-		return (
-			(this->_range.end == buffer._range.end) &&
-			(this->_range.begin == buffer._range.begin) &&
-			(this->_buffer.size() == buffer._buffer.size()) &&
-			(::memcmp(&this->_buffer[0], &buffer._buffer[0], this->_buffer.size()) == 0)
-		);
+		// Получаем размер полезных данных текущего буфера
+		const size_t size = this->size();
+		// Если размеры полезных данных не совпадают
+		if(size != buffer.size())
+			// Сообщаем что буферы не равны
+			return false;
+		// Если оба буфера пустые
+		if(size == 0)
+			// Сообщаем что буферы равны
+			return true;
+		// Сравниваем полезные данные буферов
+		return (::memcmp(this->_buffer.data() + this->_range.begin, buffer._buffer.data() + buffer._range.begin, size) == 0);
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем результат
 	return false;
@@ -1754,55 +1389,26 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 			this->_fmk = buffer._fmk;
 		// Если объект для работы с логами установлен
 		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
+			// Копируем объект для работы с логами
 			this->_log = buffer._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(buffer._buffer);
-		// Выполняем копирование последнего итератора
+		// Копируем последний итератор
 		this->_range.end = buffer._range.end;
-		// Выполняем копирование начального итератора
+		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
-		// Выполняем копирование максимального размера памяти
+		// Копируем максимальный размер памяти
 		this->_maxMemory = buffer._maxMemory;
-		// Выполняем сброс последнего итератора стороннего буфера
+		// Сбрасываем последний итератор стороннего буфера
 		buffer._range.end = 0;
-		// Выполняем сброс начального итератора стороннего буфера
+		// Сбрасываем начальный итератор стороннего буфера
 		buffer._range.begin = 0;
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -1821,51 +1427,22 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 			this->_fmk = buffer._fmk;
 		// Если объект для работы с логами установлен
 		if((buffer._log != nullptr) && (this->_log == nullptr))
-			// Копируем объект для работы с логами установлен
+			// Копируем объект для работы с логами
 			this->_log = buffer._log;
-		// Выполняем копирование последнего итератора
+		// Копируем последний итератор
 		this->_range.end = buffer._range.end;
-		// Выполняем копирование начального итератора
+		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
-		// Выполняем копирование максимального размера памяти
+		// Копируем максимальный размер памяти
 		this->_maxMemory = buffer._maxMemory;
-		// Выполняем перемен буферами данных
+		// Копируем данные буфера
 		this->_buffer.assign(buffer._buffer.begin(), buffer._buffer.end());
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
-		// Если объект лога установлен
-		if(this->_log != nullptr){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		// Если объект логирования не установлен
-		} else {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				::fprintf(stderr, "ERROR! %s\n\n", error.what());
-			#endif
-		}
+		// Записываем ошибку в лог
+		this->error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -1881,6 +1458,7 @@ awh::Buffer::Buffer(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::Buffer::~Buffer() noexcept {}
+
 /**
  * @brief Оператор [>>] чтения из потока буфера
  *
@@ -1906,8 +1484,12 @@ istream & awh::operator >> (istream & is, buffer_t & buffer) noexcept {
  * @param buffer буфер извлечения
  */
 ostream & awh::operator << (ostream & os, const buffer_t & buffer) noexcept {
-	// Записываем в поток версию
-	os << string(static_cast <const char *> (buffer), static_cast <size_t> (buffer));
+	// Получаем размер полезных данных буфера
+	const size_t size = static_cast <size_t> (buffer);
+	// Если в буфере есть данные
+	if(size > 0)
+		// Записываем в поток данные буфера
+		os.write(static_cast <const char *> (buffer), static_cast <streamsize> (size));
 	// Возвращаем результат
 	return os;
 }

@@ -1179,9 +1179,9 @@ namespace awh {
 				/**
 				 * @brief Данные HTTP/2-соединения клиента, собранные из connection preface
 				 *
-				 * Содержит параметры, необходимые для вычисления Akamai HTTP/2 fingerprint:
-				 * SETTINGS-фрейм, WINDOW_UPDATE уровня соединения, PRIORITY-фреймы
-				 * и порядок псевдо-заголовков из первого HEADERS-фрейма.
+				 * @details Содержит параметры, необходимые для вычисления Akamai HTTP/2 fingerprint:
+				 *          SETTINGS-фрейм, WINDOW_UPDATE уровня соединения, PRIORITY-фреймы
+				 *          и порядок псевдо-заголовков из первого HEADERS-фрейма.
 				 */
 				typedef struct H2Browser {
 					// Инкремент от фрейма WINDOW_UPDATE уровня соединения (stream 0); 0 если фрейм не отправлялся
@@ -1293,9 +1293,9 @@ namespace awh {
 				/**
 				 * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера
 				 *
-				 * @note Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
-				 * @note Handshake, ClientHello, Cipher Suites, Compressors, Extensions), а также
-				 * @note вычисляет и печатает все отпечатки imprint_t (JA3, JA4, JA4_r, PeetPrint).
+				 * @details Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
+				 *          Handshake, ClientHello, Cipher Suites, Compressors, Extensions), а также
+				 *          вычисляет и печатает все отпечатки imprint_t (JA3, JA4, JA4_r, PeetPrint).
 				 *
 				 * @param browser объект с распарсенными данными ClientHello
 				 * @return        форматированная строка с полным описанием отпечатка
@@ -1305,11 +1305,11 @@ namespace awh {
 				/**
 				 * @brief Метод вычисления Akamai HTTP/2 fingerprint
 				 *
-				 * Формат: "{settings}|{windowUpdate}|{priorities}|{pseudoHeaders}"
-				 *   - settings:      id:value пары через ';' в порядке wire
-				 *   - windowUpdate:  десятичный инкремент WINDOW_UPDATE (stream 0)
-				 *   - priorities:    streamId:exclusive:dependency:weight через ',' (weight = raw+1)
-				 *   - pseudoHeaders: m/p/s/a через ','
+				 * @details Формат: "{settings}|{windowUpdate}|{priorities}|{pseudoHeaders}"
+				 *           - settings:      id:value пары через ';' в порядке wire
+				 *           - windowUpdate:  десятичный инкремент WINDOW_UPDATE (stream 0)
+				 *           - priorities:    streamId:exclusive:dependency:weight через ',' (weight = raw+1)
+				 *           - pseudoHeaders: m/p/s/a через ','
 				 *
 				 * @param h2 объект с распарсенными данными HTTP/2-соединения (из parseH2())
 				 * @return   строка Akamai fingerprint, пустая строка если h2.settings пуст
@@ -1344,9 +1344,9 @@ namespace awh {
 				/**
 				 * @brief Метод парсинга connection preface и начальных фреймов HTTP/2-соединения
 				 *
-				 * Разбирает бинарный буфер, содержащий HTTP/2 client connection preface (magic + начальные фреймы).
-				 * Извлекает SETTINGS, WINDOW_UPDATE (stream 0), PRIORITY-фреймы и порядок псевдо-заголовков
-				 * из первого HEADERS-фрейма для построения Akamai HTTP/2 fingerprint.
+				 * @details Разбирает бинарный буфер, содержащий HTTP/2 client connection preface (magic + начальные фреймы).
+				 *          Извлекает SETTINGS, WINDOW_UPDATE (stream 0), PRIORITY-фреймы и порядок псевдо-заголовков
+				 *          из первого HEADERS-фрейма для построения Akamai HTTP/2 fingerprint.
 				 *
 				 * @param buffer бинарный буфер с данными HTTP/2-соединения
 				 * @param size   размер буфера в байтах
