@@ -3824,7 +3824,7 @@ bool awh::Framework::isGreater(const void * value1, const void * value2, const s
 		 */
 		try {
 			// Значений чисел для сравнения
-			bitset <8> num1(0), num2(0);
+			std::bitset <8> num1(0), num2(0);
 			// Индекс перебора всех бит числа
 			size_t count = 0, index = size;
 			/**
@@ -3950,7 +3950,7 @@ string awh::Framework::itoa(const void * value, const size_t size, const uint8_t
 			// Если запись в бинарном виде
 			if(radix == 2){
 				// Результат с которым будем работать
-				bitset <8> byte(0);
+				std::bitset <8> byte(0);
 				/**
 				 * Выполняем перебор всего буфера данных
 				 */
@@ -4582,7 +4582,7 @@ void awh::Framework::atoi(const char * value, const size_t length, const uint8_t
 						// Значение байта для установки
 						uint8_t byte = 0;
 						// Результат с которым будем работать
-						bitset <8> result(0);
+						std::bitset <8> result(0);
 						// Получаем первоначальное значение индексов
 						size_t i = length, j = 0, offset = 0;
 						/**
@@ -5152,7 +5152,7 @@ void awh::Framework::atoi(const wchar_t * value, const size_t length, const uint
 						// Значение байта для установки
 						uint8_t byte = 0;
 						// Результат с которым будем работать
-						bitset <8> result(0);
+						std::bitset <8> result(0);
 						// Получаем первоначальное значение индексов
 						size_t i = length, j = 0, offset = 0;
 						/**

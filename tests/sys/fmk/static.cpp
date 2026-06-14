@@ -72,7 +72,7 @@ TEST_F(FmkFixture, CaseFmkTest){
 	// Проверяем что объект фреймворка создан
 	ASSERT_TRUE(this->_fmk != nullptr);
 	// Тестируем установку регистра строк
-	ASSERT_EQ(this->_fmk->setCase(289), 2);
+	ASSERT_EQ(this->_fmk->setCase(2, 4), 8);
 }
 
 /**
