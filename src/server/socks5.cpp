@@ -1472,7 +1472,7 @@ void awh::server::Socks5::connectClient(const event::id_t eid, const bool ok) no
 	}
 }
 /**
- * @brief Метод обработки событий записи данных клиентом
+ * @brief Метод обработки событий изменения состояния клиента
  *
  * @param eid    идентификатор события клиента
  * @param status новый статус события

@@ -188,7 +188,7 @@ namespace awh {
 			 */
 			uintmax_t size(string_view addr, string_view ext = "", const bool recurse = true) const noexcept;
 			/**
-			 * @brief Метод подсчёта количество файлов в каталоге
+			 * @brief Метод подсчёта количества файлов в каталоге
 			 *
 			 * @param addr    адрес для подсчёта количества файлов
 			 * @param ext     расширение файла если требуется фильтрация

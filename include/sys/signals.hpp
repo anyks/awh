@@ -123,9 +123,9 @@ namespace awh {
 			/**
 			 * @brief Функция обратного вызова
 			 *
-			 * @param sid идентификатор сигнала
+			 * @param sig идентификатор сигнала
 			 */
-			void callback(const int32_t sid) noexcept;
+			void callback(const int32_t sig) noexcept;
 		public:
 			/**
 			 * @brief Метод остановки обработки сигналов

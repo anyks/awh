@@ -450,7 +450,7 @@ void awh::unit::ICMP::error(const event::id_t eid, const event::error_t error, c
 		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
- * @brief Метод обработки событий таймаута при ожидании ответа от ICMP-клиента
+ * @brief Метод обработки таймаута ожидания ответа ICMP-сервера
  *
  * @param eid    идентификатор события ICMP-клиента
  * @param action действие события таймера ICMP-клиента
@@ -962,7 +962,7 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 /**
  * @brief Метод установки функций обратного вызова
  *
- * @param callback функции обратного вызова
+ * @param callback функции обратного вызова (ping, timeout, datagram)
  */
 void awh::unit::ICMP::callback(const callback_t & callback) noexcept {
 	// Устанавливаем функцию обратного вызова для родительского юнита

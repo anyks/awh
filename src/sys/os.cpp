@@ -1217,7 +1217,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
  */
 #if !_WIN32 && !_WIN64
 	/**
-	 * @brief Метод получения идентификатора текущего пользвоателя
+	 * @brief Метод получения идентификатора текущего пользователя
 	 *
 	 * @return идентификатор текущего пользователя
 	 */
@@ -1622,7 +1622,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * @brief Метод запуска приложения от имени указанного пользователя
 	 *
-	 * @param gid идентификатор группы пользователя
+	 * @param uid идентификатор пользователя
 	 * @return    результат выполнения операции
 	 */
 	bool awh::Operating_System::chown(const uid_t uid) const noexcept {

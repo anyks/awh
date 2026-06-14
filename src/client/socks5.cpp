@@ -1126,8 +1126,8 @@ void awh::client::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder
  *
  * @param id     идентификатор TLS
  * @param event  тип события TLS
- * @param size   размер данных для события шифрования/дешифрования TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
+ * @param size   размер данных для события шифрования/дешифрования TLS
  */
 void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
@@ -1512,11 +1512,11 @@ bool awh::client::Socks5::recv() noexcept {
 	return false;
 }
 /**
- * @brief Метод отправки данных клиенту
+ * @brief Метод отправки данных серверу
  *
  * @param buffer буфер данных для отправки
  * @param size   размер данных для отправки
- * @return       количество байт данных, отправленных клиенту
+ * @return       количество байт данных, отправленных серверу
  */
 size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер или клиент находятся в рабочем состоянии

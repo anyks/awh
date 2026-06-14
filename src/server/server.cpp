@@ -518,10 +518,10 @@ void awh::Server::failure(const unit::dns_t::id_t id, const unit::dns_t::record_
 /**
  * @brief Метод обработки события невозможности отправки данных клиенту
  *
- * @param eid   идентификатор клиента
- * @param error тип ошибки отправки данных
- * @param data  данные, которые не получилось отправить
- * @param size  размер данных, которые не получилось отправить
+ * @param eid    идентификатор клиента
+ * @param error  тип ошибки отправки данных
+ * @param buffer данные, которые не получилось отправить
+ * @param size   размер данных, которые не получилось отправить
  */
 void awh::Server::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
@@ -533,7 +533,7 @@ void awh::Server::spool(const event::id_t eid, const event::send_error_t error, 
 	}
 }
 /**
- * @brief Метод разрешения доменного имени в сетевой адрес
+ * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
  *
  * @param family семейство адресов (IPv4/IPv6)
  * @param domain доменное имя для разрешения
@@ -802,8 +802,8 @@ void awh::Server::errorTLS(const tls::coder_t::id_t id, const event::id_t eid, c
  * @param id     идентификатор TLS
  * @param eid    идентификатор клиента
  * @param event  тип события TLS
- * @param size   размер данных для события шифрования/дешифрования TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
+ * @param size   размер данных для события шифрования/дешифрования TLS
  */
 void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
@@ -1126,7 +1126,7 @@ bool awh::Server::resume(const event::id_t eid) noexcept {
 	return false;
 }
 /**
- * @brief Метод уничтожения события клиента
+ * @brief Метод уничтожения события клиента или сервера
  *
  * @param eid идентификатор события клиента для уничтожения
  */

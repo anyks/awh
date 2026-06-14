@@ -1502,7 +1502,8 @@ bool awh::Network_Address::strict() const noexcept {
 /**
  * @brief Метод установки строгого режима парсинга/проверки адресов
  *
- * @param mode флаг строгого режима (запрещает legacy и не-десятичные формы IPv4)
+ * @param mode флаг строгого режима (в строгом режиме для IPv4 запрещены legacy-формы
+ *             [a.b.c, a.b, a] и не-десятичные системы счисления [0x..., 0...])
  */
 void awh::Network_Address::strict(const bool mode) noexcept {
 	// Выполняем установку флага строгого режима
@@ -1659,7 +1660,7 @@ void awh::Network_Address::mac(const std::array <uint8_t, 6> & addr) noexcept {
 	} else this->_buffer.clear();
 }
 /**
- * @brief Извлечения адреса IPv4 в чистом виде
+ * @brief Метод извлечения адреса IPv4 в чистом виде
  *
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       адрес IPv4 в чистом виде
@@ -1768,7 +1769,7 @@ void awh::Network_Address::v4(const uint32_t addr, const endian_t endian) noexce
 	}
 }
 /**
- * @brief Извлечения адреса IPv6 в чистом виде
+ * @brief Метод извлечения адреса IPv6 в чистом виде
  *
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       адрес IPv6 в чистом виде

@@ -10416,7 +10416,7 @@ string awh::Chrono::strip(string_view date, string_view format1, string_view for
  * @brief Конструктор
  *
  * @param fmk объект фреймворка
- * @param log объект работы с логами
+ * @param log объект для работы с логами
  */
 awh::Chrono::Chrono(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
 	/**

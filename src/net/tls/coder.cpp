@@ -4615,6 +4615,11 @@ string awh::tls::Coder::certificateExtract(const id_t id) const noexcept {
  *
  * @param id идентификатор события
  * @return   результат проверки валидности сертификата
+ *
+ * @note Только для CTL. На CLIENT проверяет сертификат пира (сервера)
+ *       по member->host.name (ожидаемое имя/SNI). На SERVER peer-сертификат —
+ *       сертификат клиента, host.name — SNI клиента; вызывающий код должен
+ *       понимать эту семантику (mTLS и т.п.).
  */
 bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 	/**
@@ -5475,6 +5480,9 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
  *
  * @param id идентификатор транспортного уровня или шаблона контекста безопасности
  * @return   результат выполнения удаления
+ *
+ * @note После destroy() id помечается GARBAGE_MODE; дальнейшие вызовы методов
+ *       с этим id недопустимы. Физическое удаление из реестра — при refs==0.
  */
 bool awh::tls::Coder::destroy(const id_t id) noexcept {
 	// Переменная результата
@@ -5652,6 +5660,9 @@ bool awh::tls::Coder::shutdown(const id_t id) noexcept {
  *
  * @param id идентификатор события
  * @return   результат выполнения рукопожатия
+ *
+ * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
+ *       Параллельные вызовы на один id должен сериализовать вызывающий код.
  */
 bool awh::tls::Coder::handshake(const id_t id) noexcept {
 	// Переменная результата
@@ -7166,6 +7177,9 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
  * @param buffer буфер данных для шифрования
  * @param size   размер буфера данных для шифрования
  * @return       результат выполнения шифрования
+ *
+ * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
+ *       Параллельные вызовы на один id должен сериализовать вызывающий код.
  */
 bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -7389,6 +7403,9 @@ bool awh::tls::Coder::encrypt(const id_t id, const void * buffer, const size_t s
  * @param buffer буфер данных для расшифровки
  * @param size   размер буфера данных для расшифровки
  * @return       результат выполнения расшифровки
+ *
+ * @note Hot path: id — валидный CTL из transport(); __awh_ssl_ids__ не проверяется.
+ *       Параллельные вызовы на один id должен сериализовать вызывающий код.
  */
 bool awh::tls::Coder::decrypt(const id_t id, const void * buffer, const size_t size) noexcept {
 	// Переменная результата
@@ -11510,7 +11527,7 @@ void awh::tls::Coder::privateKey(const id_t id, string_view filename, const type
  *
  * @param id       идентификатор транспортного уровня или шаблона контекста безопасности
  * @param filename путь к файлу клиентского сертификата
- * @param type     тип файла приватного ключа клиента
+ * @param type     тип файла клиентского сертификата
  */
 void awh::tls::Coder::certificate(const id_t id, string_view filename, const type_t type) noexcept {
 	/**

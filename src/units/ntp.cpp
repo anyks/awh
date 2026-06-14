@@ -679,12 +679,12 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 	}
 }
 /**
- * @brief Метод обработки таймаута ожидания ответа от NTP-сервера
+ * @brief Метод обработки истечения таймаута NTP-запроса
  *
  * @param eid    идентификатор события NTP-клиента
- * @param action действие события таймера NTP-клиента
- * @param delay  задержка таймера NTP-клиента
- * @return       нужно ли завершить клиента после истечения таймаута
+ * @param action тип действия для истекшего таймаута
+ * @param delay  длительность таймаута в миллисекундах
+ * @return       нужно ли завершить обработчик после истечения таймаута
  */
 bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если число попыток запроса не превышает максимально допустимое значение

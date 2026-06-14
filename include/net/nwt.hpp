@@ -84,14 +84,14 @@ namespace awh {
 					/**
 					 * @brief Оператор перемещения
 					 *
-					 * @param url параметры падреса
+					 * @param url параметры адреса
 					 * @return    параметры URL-запроса
 					 */
 					URL & operator = (URL && url) noexcept;
 					/**
 					 * @brief Оператор присванивания
 					 *
-					 * @param url параметры падреса
+					 * @param url параметры адреса
 					 * @return    параметры URL-запроса
 					 */
 					URL & operator = (const URL & url) noexcept;
@@ -99,7 +99,7 @@ namespace awh {
 					/**
 					 * @brief Оператор сравнения
 					 *
-					 * @param url параметры падреса
+					 * @param url параметры адреса
 					 * @return    результат сравнения
 					 */
 					bool operator == (const URL & url) noexcept;
@@ -107,13 +107,13 @@ namespace awh {
 					/**
 					 * @brief Конструктор перемещения
 					 *
-					 * @param url параметры падреса
+					 * @param url параметры адреса
 					 */
 					URL(URL && url) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
-					 * @param url параметры падреса
+					 * @param url параметры адреса
 					 */
 					URL(const URL & url) noexcept;
 				public:

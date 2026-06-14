@@ -4894,9 +4894,9 @@ void awh::unit::DNS::setPrefixEnvironment(string_view prefix) noexcept {
 	else this->_resolver.prefix.clear();
 }
 /**
- * @brief Метод установки адреса файла локальных хостов
+ * @brief Метод установки пути к файлу локальных хостов
  *
- * @param filename путь к файлу
+ * @param filename путь к файлу /etc/hosts или аналогу
  */
 void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 	/**
@@ -4980,9 +4980,9 @@ void awh::unit::DNS::setHostsAddress(string_view filename) noexcept {
 	}
 }
 /**
- * @brief Метод установки адреса файлового дампа кэша
+ * @brief Метод установки пути к файлу дампа кэша
  *
- * @param filename путь к файлу
+ * @param filename путь к файлу дампа кэша
  * @param interval интервал сохранения дампа кэша в миллисекундах
  */
 void awh::unit::DNS::setDumpAddress(string_view filename, const uint32_t interval) noexcept {
@@ -5460,18 +5460,18 @@ bool awh::unit::DNS::init(const event::family_t family, const uint16_t count) no
 	return result;
 }
 /**
- * @brief Метод получения порта сервера DNS-резолвера
+ * @brief Метод получения UDP-порта DNS-сервера
  *
- * @return порт сервера DNS-резолвера
+ * @return UDP-порт DNS-сервера
  */
 uint16_t awh::unit::DNS::getTargetPort() const noexcept {
 	// Получаем порт события
 	return this->_resolver.port;
 }
 /**
- * @brief Метод установки порта сервера DNS-резолвера
+ * @brief Метод установки UDP-порта DNS-сервера
  *
- * @param port порт сервера DNS-резолвера
+ * @param port UDP-порт DNS-сервера
  */
 void awh::unit::DNS::setTargetPort(const uint16_t port) noexcept {
 	// Если порт для установки передан
@@ -6343,9 +6343,9 @@ void awh::unit::DNS::setSource(const event::family_t family, string_view source)
 	}
 }
 /**
- * @brief Метод получения идентификатора DNS-запроса
+ * @brief Метод генерации идентификатора DNS-запроса
  *
- * @return идентификатор DNS-запроса
+ * @return уникальный идентификатор DNS-запроса
  */
 awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
 	// Создаём идентификатор DNS-запроса
@@ -6355,7 +6355,7 @@ awh::unit::DNS::id_t awh::unit::DNS::issue() const noexcept {
  * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
  *
  * @param id    идентификатор DNS-запроса
- * @param ip    адрес для поиска доменного имени
+ * @param ip    адрес для обратного DNS-запроса
  * @param alive срок ожидания ответа (в миллисекундах)
  * @return      результат постановки запроса в очередь
  */
@@ -6375,7 +6375,7 @@ bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t alive)
  * @brief Метод обратного DNS-разрешения (поиск доменного имени по IP-адресу)
  *
  * @param id    идентификатор DNS-запроса
- * @param ip    адрес для поиска доменного имени
+ * @param ip    адрес для обратного DNS-запроса
  * @param alive срок ожидания ответа (в миллисекундах)
  * @return      результат постановки запроса в очередь
  */
@@ -6613,7 +6613,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
  *
  * @param id     идентификатор DNS-запроса
  * @param family семейство IP-адресов IPv4/IPv6
- * @param ip     адрес для поиска доменного имени
+ * @param ip     адрес для обратного DNS-запроса
  * @param alive  срок ожидания ответа (в миллисекундах)
  * @return       результат постановки запроса в очередь
  */

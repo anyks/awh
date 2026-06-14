@@ -145,8 +145,8 @@ namespace awh {
 				 *
 				 * @param id     идентификатор TLS
 				 * @param event  тип события TLS
-				 * @param size   размер данных для события шифрования/дешифрования TLS
 				 * @param buffer буфер данных для события шифрования/дешифрования TLS
+				 * @param size   размер данных для события шифрования/дешифрования TLS
 				 */
 				void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 			public:

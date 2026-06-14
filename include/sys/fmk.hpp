@@ -253,17 +253,17 @@ namespace awh {
 			/**
 			 * @brief Метод проверки текста на соответствие флагу
 			 *
-			 * @param text текст для проверки
-			 * @param flag флаг проверки
-			 * @return     результат проверки
+			 * @param letter текст для проверки
+			 * @param flag   флаг проверки
+			 * @return       результат проверки
 			 */
 			bool is(const char letter, const check_t flag) const noexcept;
 			/**
 			 * @brief Метод проверки текста на соответствие флагу
 			 *
-			 * @param text текст для проверки
-			 * @param flag флаг проверки
-			 * @return     результат проверки
+			 * @param letter текст для проверки
+			 * @param flag   флаг проверки
+			 * @return       результат проверки
 			 */
 			bool is(const wchar_t letter, const check_t flag) const noexcept;
 		public:

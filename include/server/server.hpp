@@ -227,10 +227,10 @@ namespace awh {
 			/**
 			 * @brief Метод обработки события невозможности отправки данных клиенту
 			 *
-			 * @param eid   идентификатор клиента
-			 * @param error тип ошибки отправки данных
-			 * @param data  данные, которые не получилось отправить
-			 * @param size  размер данных, которые не получилось отправить
+			 * @param eid    идентификатор клиента
+			 * @param error  тип ошибки отправки данных
+			 * @param buffer данные, которые не получилось отправить
+			 * @param size   размер данных, которые не получилось отправить
 			 */
 			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
 			/**
@@ -333,8 +333,8 @@ namespace awh {
 			 * @param id     идентификатор TLS
 			 * @param eid    идентификатор клиента
 			 * @param event  тип события TLS
-			 * @param size   размер данных для события шифрования/дешифрования TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
+			 * @param size   размер данных для события шифрования/дешифрования TLS
 			 */
 			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 		public:

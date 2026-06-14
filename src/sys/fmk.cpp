@@ -1130,9 +1130,9 @@ uint32_t awh::Framework::identifier() const noexcept {
 /**
  * @brief Метод проверки текста на соответствие флагу
  *
- * @param text текст для проверки
- * @param flag флаг проверки
- * @return     результат проверки
+ * @param letter текст для проверки
+ * @param flag   флаг проверки
+ * @return       результат проверки
  */
 bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 	// Переменная результата
@@ -1226,9 +1226,9 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 /**
  * @brief Метод проверки текста на соответствие флагу
  *
- * @param text текст для проверки
- * @param flag флаг проверки
- * @return     результат проверки
+ * @param letter текст для проверки
+ * @param flag   флаг проверки
+ * @return       результат проверки
  */
 bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept {
 	// Переменная результата

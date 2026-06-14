@@ -2048,7 +2048,7 @@ bool awh::Client::setDifferentiatedServicesCodePoint(const event::dscp_t dscp) c
 	return false;
 }
 /**
- * @brief Метод получения обнаружения максимального размера пакета (MTU)
+ * @brief Метод получения режима обнаружения максимального размера пакета (MTU)
  *
  * @return режим обнаружения максимального размера пакета (MTU)
  */

@@ -26,7 +26,7 @@ using namespace std;
 /**
  * @brief Оператор перемещения
  *
- * @param url параметры падреса
+ * @param url параметры адреса
  * @return    параметры URL-запроса
  */
 awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noexcept {
@@ -58,7 +58,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (url_t && url) noe
 /**
  * @brief Оператор присванивания
  *
- * @param url параметры падреса
+ * @param url параметры адреса
  * @return    параметры URL-запроса
  */
 awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url) noexcept {
@@ -90,7 +90,7 @@ awh::Network_Types::URL & awh::Network_Types::URL::operator = (const url_t & url
 /**
  * @brief Оператор сравнения
  *
- * @param url параметры падреса
+ * @param url параметры адреса
  * @return    результат сравнения
  */
 bool awh::Network_Types::URL::operator == (const url_t & url) noexcept {
@@ -112,7 +112,7 @@ bool awh::Network_Types::URL::operator == (const url_t & url) noexcept {
 /**
  * @brief Конструктор перемещения
  *
- * @param uri параметры падреса
+ * @param url параметры адреса
  */
 awh::Network_Types::URL::URL(url_t && url) noexcept {
 	// Выполняем копирование тип URL-адреса
@@ -141,7 +141,7 @@ awh::Network_Types::URL::URL(url_t && url) noexcept {
 /**
  * @brief Конструктор копирования
  *
- * @param url параметры падреса
+ * @param url параметры адреса
  */
 awh::Network_Types::URL::URL(const url_t & url) noexcept {
 	// Выполняем копирование тип URL-адреса
