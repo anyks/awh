@@ -115,8 +115,8 @@ namespace awh {
 			 *
 			 */
 			typedef struct Zlib {
-				// Размер скользящего окна
-				int16_t wbits;
+				// Размер скользящего окна (атомарный для потокобезопасного доступа)
+				std::atomic <int16_t> wbits;
 				/**
 				 * @brief Конструктор
 				 *
@@ -128,12 +128,12 @@ namespace awh {
 			 *
 			 */
 			typedef struct GZip {
-				// Размер скользящего окна
-				int16_t wbits;
 				// Флаги переиспользования контекста компрессии/декомпрессии
 				takeover_t takeover;
 				// Буфер GZip
 				buffer_gzip_t buffer;
+				// Размер скользящего окна (атомарный для потокобезопасного доступа)
+				std::atomic <int16_t> wbits;
 				/**
 				 * @brief Конструктор
 				 *
@@ -141,8 +141,8 @@ namespace awh {
 				explicit GZip() noexcept : wbits(0) {}
 			} gzip_t;
 		private:
-			// Уровни компрессии
-			uint32_t _level[5];
+			// Уровни компрессии (атомарные для потокобезопасного доступа)
+			std::atomic <uint32_t> _level[5];
 		private:
 			// Структура Zlib
 			mutable zlib_t _zlib;

@@ -386,7 +386,7 @@ namespace awh {
 	 *
 	 * @tparam MutexType данные локера
 	 */
-	 template <typename MutexType = std::mutex>
+	template <typename MutexType = std::mutex>
 	/**
 	 * Создаём тип данных работы с локом
 	 */
