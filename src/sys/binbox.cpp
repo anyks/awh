@@ -64,10 +64,14 @@ namespace binbox {
 	static void extract(const vector <uint8_t> & buffer, vector <T> & result) noexcept {
 		// Если буфер данных передан
 		if(!buffer.empty()){
+			// Получаем количество элементов, которое поместится в результирующий буфер
+			const size_t count = (buffer.size() / sizeof(T));
 			// Выделяем память для результирующего буфера данных
-			result.resize(buffer.size() / sizeof(T));
-			// Выполняем копирование полученного буфера данных
-			::memcpy(reinterpret_cast <uint8_t *> (result.data()), buffer.data(), buffer.size());
+			result.resize(count, 0);
+			// Если есть хотя бы один полный элемент для копирования
+			if(count > 0)
+				// Выполняем копирование только кратного типу количества байт, чтобы не выйти за границы выделенной памяти
+				::memcpy(reinterpret_cast <uint8_t *> (&result[0]), &buffer[0], count * sizeof(T));
 		}
 	}
 	/**
@@ -85,8 +89,8 @@ namespace binbox {
 	static void extract(const vector <uint8_t> & buffer, T & result) noexcept {
 		// Если данные являются основными
 		if(!buffer.empty())
-			// Выполняем копирование полученных данных
-			::memcpy(&result, buffer.data(), sizeof(result));
+			// Выполняем копирование полученных данных, ограничивая размер копирования размером буфера, чтобы не выйти за его границы
+			::memcpy(&result, buffer.data(), (buffer.size() < sizeof(result) ? buffer.size() : sizeof(result)));
 	}
 	/**
 	 * @brief dump Функция создания дампов записей
@@ -105,16 +109,44 @@ namespace binbox {
 			 * Выполняем обработку ошибки
 			 */
 			try {
-				// Размер одной записи бинарных данных
-				uintmax_t size = 0;
 				// Получаем количество бинарных данных
 				uint32_t count = 0;
+				// Суммарный размер полезной нагрузки всех записей
+				uintmax_t payload = 0;
+				/**
+				 * Выполняем предварительный подсчёт количества записей и суммарного размера полезной нагрузки
+				 */
+				for(auto & record : records){
+					// Если размер записи установлен
+					if(record.second.size > 0){
+						// Выполняем увеличение количества установленных записей бинарных данных
+						count++;
+						// Увеличиваем суммарный размер полезной нагрузки (идентификатор + размер + данные)
+						payload += (sizeof(record.first) + sizeof(record.second.size) + record.second.size);
+					}
+				}
+				// Получаем размер тела дампа (версия + количество записей + полезная нагрузка)
+				const uintmax_t bodySize = (sizeof(version) + sizeof(count) + payload);
+				// Получаем заголовок контейнера
+				const string header = fmk->format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
+				// Выполняем очистку результирующего буфера данных
+				result.clear();
+				// Резервируем память под весь дамп целиком, чтобы избежать повторных реаллокаций
+				result.reserve(header.size() + sizeof(bodySize) + bodySize);
+				// Выполняем установку заголовка бинарного контейнера
+				result.insert(result.end(), header.begin(), header.end());
+				// Выполняем установку размера тела дампа
+				result.insert(result.end(), reinterpret_cast <const uint8_t *> (&bodySize), reinterpret_cast <const uint8_t *> (&bodySize) + sizeof(bodySize));
+				// Выполняем установку версии контейнера
+				result.insert(result.end(), reinterpret_cast <const uint8_t *> (&version), reinterpret_cast <const uint8_t *> (&version) + sizeof(version));
+				// Выполняем установку количества бинарных данных
+				result.insert(result.end(), reinterpret_cast <const uint8_t *> (&count), reinterpret_cast <const uint8_t *> (&count) + sizeof(count));
 				/**
 				 * Выполняем перебор всех бинарных данных
 				 */
 				for(auto & record : records){
 					// Получаем размер одной записи бинарных данных
-					size = record.second.size;
+					const uintmax_t size = record.second.size;
 					// Если размер записи установлен
 					if(size > 0){
 						// Выполняем установку идентификатора записи бинарных данных
@@ -123,24 +155,8 @@ namespace binbox {
 						result.insert(result.end(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
 						// Выполняем установку полезной нагрузки бинарных данных
 						result.insert(result.end(), record.second.buffer.get(), record.second.buffer.get() + size);
-						// Выполняем увеличение количества установленных записей бинарных данных
-						count++;
 					}
 				}
-				// Выполняем установку количество бинарных данных
-				result.insert(result.begin(), reinterpret_cast <const uint8_t *> (&count), reinterpret_cast <const uint8_t *> (&count) + sizeof(count));
-				// Получаем версию контейнера
-				const uint32_t version = static_cast <uint32_t> (version_t(AWH_VERSION));
-				// Выполняем установку версии контейнера
-				result.insert(result.begin(), reinterpret_cast <const uint8_t *> (&version), reinterpret_cast <const uint8_t *> (&version) + sizeof(version));
-				// Получаем размер итогового дампа
-				size = result.size();
-				// Добавляем размер итогового дампа в начало бинарного буфера
-				result.insert(result.begin(), reinterpret_cast <const uint8_t *> (&size), reinterpret_cast <const uint8_t *> (&size) + sizeof(size));
-				// Получаем заголовок контейнера
-				const string header = fmk->format("%s/%s", name.c_str(), static_cast <string> (version_t(version)).c_str());
-				// Выполняем установку заголовка бинарного контейнера
-				result.insert(result.begin(), header.begin(), header.end());
 			/**
 			 * Если возникает ошибка
 			 */
@@ -200,6 +216,13 @@ namespace binbox {
 				result.clear();
 				// Размер бинарных данных
 				uintmax_t size = 0;
+				// Если в буфере недостаточно данных для извлечения размера тела дампа
+				if((buffer.size() - offset) < sizeof(size)){
+					// Записываем ошибку в лог
+					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container size is invalid");
+					// Завершаем извлечение данных из бинарного контейнера
+					return;
+				}
 				// Выполняем извлечение размера бинарных данных
 				::memcpy(reinterpret_cast <void *> (&size), &buffer[0] + offset, sizeof(size));
 				// Выполняем смещение в буфере
@@ -211,8 +234,17 @@ namespace binbox {
 					// Завершаем извлечение данных из бинарного контейнера
 					return;
 				}
+				// Общее количество бинарных данных
+				uint32_t count = 0;
 				// Получаем версию контейнера
 				uint32_t version = 0;
+				// Если в буфере недостаточно данных для извлечения версии контейнера и количества записей
+				if((buffer.size() - offset) < (sizeof(version) + sizeof(count))){
+					// Записываем ошибку в лог
+					log->print("%s", log_t::flag_t::CRITICAL, "BinBox container size is invalid");
+					// Завершаем извлечение данных из бинарного контейнера
+					return;
+				}
 				// Выполняем извлечение версии контейнера
 				::memcpy(reinterpret_cast <void *> (&version), &buffer[0] + offset, sizeof(version));
 				// Выполняем смещение в буфере
@@ -221,8 +253,6 @@ namespace binbox {
 				if(version_t(AWH_VERSION) > version_t(version))
 					// Записываем ошибку в лог
 					log->print("Extracted BinBox container v%s is lower than the current container v%s", log_t::flag_t::WARNING, static_cast <string> (version_t(version)).c_str(), AWH_VERSION);
-				// Общее количество бинарных данных
-				uint32_t count = 0;
 				// Выполняем извлечение количества записей бинарных данных
 				::memcpy(reinterpret_cast <void *> (&count), &buffer[0] + offset, sizeof(count));
 				// Выполняем смещение в буфере
@@ -235,6 +265,13 @@ namespace binbox {
 					 * Выполняем перебор всех записей бинарных данных
 					 */
 					for(uint32_t i = 0; i < count; i++){
+						// Если в буфере недостаточно данных для извлечения идентификатора и размера записи
+						if((buffer.size() - offset) < (sizeof(idw) + sizeof(size))){
+							// Записываем ошибку в лог
+							log->print("%s", log_t::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
+							// Завершаем извлечение данных из бинарного контейнера
+							return;
+						}
 						// Выполняем извлечение идентификатора записи
 						::memcpy(reinterpret_cast <void *> (&idw), &buffer[0] + offset, sizeof(idw));
 						// Выполняем смещение в буфере
@@ -245,6 +282,13 @@ namespace binbox {
 						offset += sizeof(size);
 						// Если идентификатор записи и размер в буфере данных получены
 						if((idw > 0) && (size > 0)){
+							// Если в буфере недостаточно данных для извлечения полезной нагрузки записи
+							if(static_cast <uintmax_t> (buffer.size() - offset) < size){
+								// Записываем ошибку в лог
+								log->print("%s", log_t::flag_t::CRITICAL, "BinBox record entry cannot be retrieved");
+								// Завершаем извлечение данных из бинарного контейнера
+								return;
+							}
 							// Выполняем добавление данных записи
 							auto ret = result.emplace(idw, binbox_t::record_t());
 							// Выполняем установку размера буфера данных
@@ -453,8 +497,8 @@ string awh::BinBox::getVersion() const noexcept {
  * @param version версия контейнера для установки
  */
 void awh::BinBox::setVersion(string_view version) noexcept {
-	// Получаем версию контейнера
-	this->_version = static_cast <uint32_t> (version_t(version.data()));
+	// Получаем версию контейнера (создаём строку, так как string_view не гарантирует нуль-терминацию)
+	this->_version = static_cast <uint32_t> (version_t(string(version)));
 }
 /**
  * @brief Метод удаления записи по ключу
@@ -941,8 +985,8 @@ bool awh::BinBox::get(string_view key, uint8_t ** buffer, size_t * size) noexcep
 bool awh::BinBox::get(const uint64_t idw, uint8_t ** buffer, size_t * size) noexcept {
 	// Переменная результата
 	bool result = false;
-	// Если ключ передан
-	if(idw > 0){
+	// Если ключ передан и указатели для возврата данных корректны
+	if((idw > 0) && (buffer != nullptr) && (size != nullptr)){
 		/**
 		 * Выполняем обработку ошибки
 		 */
