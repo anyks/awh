@@ -38,7 +38,11 @@
  * Стандартные заголовочные файлы
  */
 #include <tuple>
+#include <vector>
+#include <memory>
+#include <atomic>
 #include <string>
+#include <cstdint>
 #include <functional>
 
 /**
@@ -74,6 +78,16 @@ namespace awh {
 				INFO     = 0x01, // Информационное сообщение
 				WARNING  = 0x02, // Предупреждающее сообщение
 				CRITICAL = 0x03  // Критическое сообщение
+			};
+			/**
+			 * @brief Политика поведения при переполнении очереди асинхронного вывода
+			 *
+			 * @note значения совпадают с awh::Screen::overflow_t для прямого преобразования
+			 */
+			enum class overflow_t : uint8_t {
+				WAIT     = 0x00, // Блокировать поставщика до появления свободного места
+				DROP_NEW = 0x01, // Отбрасывать новое поступившее сообщение
+				DROP_OLD = 0x02  // Вытеснять самое старое сообщение из очереди
 			};
 			/**
 			 * @brief Флаги работы логов
@@ -120,6 +134,8 @@ namespace awh {
 					flag_t flag;
 					// Текст полезной нагрузки
 					string text;
+					// Дата формирования сообщения (фиксируется в момент вызова)
+					string date;
 				public:
 					/**
 					 * @brief Оператор перемещающего присваивания параметров полезной нагрузки
@@ -170,25 +186,163 @@ namespace awh {
 					~Payload() noexcept {}
 			} payload_t;
 		private:
-			// Идентификатор родительского процесса
-			pid_t _pid;
+			/**
+			 * @brief Базовый абстрактный приёмник вывода логов
+			 *
+			 */
+			class Sink {
+				protected:
+					// Указатель на владеющий объект логирования
+					const Logging * _log;
+				public:
+					/**
+					 * @brief Метод записи полезной нагрузки в приёмник
+					 *
+					 * @param payload объект полезной нагрузки
+					 */
+					virtual void write(const payload_t & payload) const noexcept = 0;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param log объект логирования
+					 */
+					explicit Sink(const Logging * log) noexcept : _log(log) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~Sink() noexcept {}
+			};
+			/**
+			 * @brief Приёмник вывода логов в консоль
+			 *
+			 */
+			class ConsoleSink : public Sink {
+				public:
+					/**
+					 * @brief Метод записи полезной нагрузки в консоль
+					 *
+					 * @param payload объект полезной нагрузки
+					 */
+					void write(const payload_t & payload) const noexcept override;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param log объект логирования
+					 */
+					explicit ConsoleSink(const Logging * log) noexcept : Sink(log) {}
+			};
+			/**
+			 * @brief Приёмник вывода логов в файл
+			 *
+			 */
+			class FileSink : public Sink {
+				private:
+					// Идентификатор процесса, владеющего дескриптором
+					mutable pid_t _pid;
+				private:
+					// Постоянный дескриптор записи (на POSIX - файловый дескриптор, на Windows - HANDLE)
+					mutable intptr_t _fd;
+				private:
+					// Путь к файлу, который сейчас открыт
+					mutable string _opened;
+					// Текущий размер открытого файла лога
+					mutable uintmax_t _size;
+				private:
+					/**
+					 * @brief Метод (пере)открытия постоянного дескриптора записи
+					 *
+					 */
+					void reopen() const noexcept;
+					/**
+					 * @brief Метод выполнения ротации файла лога
+					 *
+					 */
+					void rotate() const noexcept;
+					/**
+					 * @brief Метод удаления устаревших архивов логов (retention)
+					 *
+					 */
+					void retention() const noexcept;
+				private:
+					/**
+					 * @brief Метод формирования уникального имени архива логов
+					 *
+					 * @return путь к файлу архива, гарантированно не конфликтующий с существующими
+					 */
+					string nextArchive() const noexcept;
+				public:
+					/**
+					 * @brief Метод записи полезной нагрузки в файл
+					 *
+					 * @param payload объект полезной нагрузки
+					 */
+					void write(const payload_t & payload) const noexcept override;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param log объект логирования
+					 */
+					explicit FileSink(const Logging * log) noexcept :
+					 Sink(log), _pid(0), _fd(-1), _opened{""}, _size(0) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~FileSink() noexcept;
+			};
+			/**
+			 * @brief Приёмник отправки логов в SysLog
+			 *
+			 */
+			class SyslogSink : public Sink {
+				public:
+					/**
+					 * @brief Метод отправки полезной нагрузки в SysLog
+					 *
+					 * @param payload объект полезной нагрузки
+					 */
+					void write(const payload_t & payload) const noexcept override;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param log объект логирования
+					 */
+					explicit SyslogSink(const Logging * log) noexcept : Sink(log) {}
+			};
+			/**
+			 * @brief Приёмник передачи логов в функцию обратного вызова
+			 *
+			 */
+			class CallbackSink : public Sink {
+				public:
+					/**
+					 * @brief Метод передачи полезной нагрузки в функцию обратного вызова
+					 *
+					 * @param payload объект полезной нагрузки
+					 */
+					void write(const payload_t & payload) const noexcept override;
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param log объект логирования
+					 */
+					explicit CallbackSink(const Logging * log) noexcept : Sink(log) {}
+			};
 		private:
 			// Флаг асинхронного режима работы
 			bool _async;
-		private:
-			// Максимальный размер файла лога
-			size_t _maxSize;
-			// Размер сообщения для формирования разделителя
-			size_t _sepSize;
 		private:
 			// Уровень логирования
 			level_t _level;
 		private:
 			// Флаг формирования разделителя
 			separator_t _sep;
-		private:
-			// Объект работы с датой и временем
-			chrono_t _chrono;
 		private:
 			// Название сервиса для вывода лога
 			string _name;
@@ -197,8 +351,26 @@ namespace awh {
 			// Адрес файла для сохранения логов
 			string _filename;
 		private:
+			// Максимальный размер файла лога
+			size_t _maxSize;
+			// Размер сообщения для формирования разделителя
+			size_t _sepSize;
+			// Максимальный размер очереди асинхронного вывода (0 - без ограничения)
+			size_t _maxQueue;
+			// Максимальное количество хранимых архивов логов (0 - без ограничения)
+			size_t _maxFiles;
+		private:
+			// Объект работы с датой и временем
+			chrono_t _chrono;
+		private:
+			// Политика поведения при переполнении очереди асинхронного вывода
+			overflow_t _overflow;
+		private:
 			// Счётчик для сброса накопленных логов
 			mutable atomic_uint8_t _counter;
+		private:
+			// Идентификатор процесса, владеющего асинхронным потоком
+			mutable std::atomic <pid_t> _pid;
 		private:
 			// Список доступных флагов
 			std::unordered_set <mode_t> _mode;
@@ -209,8 +381,8 @@ namespace awh {
 			// Мютекс для блокировки потока
 			mutable lock_state_t <std::mutex> _mtx;
 		private:
-			// Список проинициализированных процессов
-			mutable std::unordered_set <pid_t> _initialized;
+			// Набор приёмников вывода логов, построенный по текущему списку режимов
+			mutable std::vector <std::unique_ptr <Sink>> _sinks;
 		private:
 			/**
 			 * Функция обратного вызова которая срабатывает при появлении лога
@@ -234,7 +406,7 @@ namespace awh {
 			 */
 			size_t count(TupType) const noexcept {
 				// Возвращаем количество переданных аргументов
-				return tuple_size_v <TupType>;
+				return std::tuple_size_v <TupType>;
 			}
 		private:
 			/**
@@ -280,18 +452,33 @@ namespace awh {
 			}
 		private:
 			/**
-			 * @brief Метод выполнения ротации логов
+			 * @brief Метод перестроения набора приёмников по текущему списку режимов
 			 *
 			 */
-			void rotate() const noexcept;
+			void rebuild() noexcept;
+		private:
+			/**
+			 * @brief Метод проверки разрешён ли вывод лога для указанного флага
+			 *
+			 * @param flag флаг типа логирования
+			 * @return     результат проверки соответствия уровню логирования
+			 */
+			bool allowed(const flag_t flag) const noexcept;
 		private:
 			/**
 			 * @brief Метод очистки строки от символов форматирования
 			 *
 			 * @param text текст для очистки
-			 * @return     ощиченный текста
+			 * @return     очищенный текст
 			 */
 			string & cleaner(string & text) const noexcept;
+		private:
+			/**
+			 * @brief Метод маршрутизации полезной нагрузки в приёмники (синхронно или асинхронно)
+			 *
+			 * @param payload объект полезной нагрузки
+			 */
+			void dispatch(payload_t && payload) const noexcept;
 		private:
 			/**
 			 * @brief Метод получения данных
@@ -307,6 +494,15 @@ namespace awh {
 			 * @return         параметры компонента (адрес, название файла без расширения)
 			 */
 			std::pair <string, string> components(string_view filename) const noexcept;
+		private:
+			/**
+			 * @brief Метод формирования итоговой строки лога
+			 *
+			 * @param payload объект полезной нагрузки
+			 * @param colored нужно ли добавлять символы цветового форматирования
+			 * @return        сформированная строка лога
+			 */
+			string compose(const payload_t & payload, const bool colored) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода вывода текстовой информации в консоль или файл
@@ -525,17 +721,11 @@ namespace awh {
 			void print(wstring_view format, flag_t flag, const vector <wstring> & args) const noexcept;
 		public:
 			/**
-			 * @brief Метод получения установленных режимов вывода логов
+			 * @brief Метод установки безопасности работы потоков
 			 *
-			 * @return список режимов вывода логов
+			 * @param mode флаг режима безопасности потоков
 			 */
-			const std::unordered_set <mode_t> & mode() const noexcept;
-			/**
-			 * @brief Метод добавления режимов вывода логов
-			 *
-			 * @param mode список режимов вывода логов
-			 */
-			void mode(const std::unordered_set <mode_t> & mode) noexcept;
+			void threadSafety(const bool mode) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения установленного формата лога
@@ -551,17 +741,30 @@ namespace awh {
 			void format(string_view format) noexcept;
 		public:
 			/**
-			 * @brief Метод установки флага асинхронного режима работы
+			 * @brief Метод получения установленных режимов вывода логов
 			 *
-			 * @param mode флаг асинхронного режима работы
+			 * @return список режимов вывода логов
 			 */
-			void async(const bool mode) noexcept;
+			const std::unordered_set <mode_t> & mode() const noexcept;
+			/**
+			 * @brief Метод добавления режимов вывода логов
+			 *
+			 * @param mode список режимов вывода логов
+			 */
+			void mode(const std::unordered_set <mode_t> & mode) noexcept;
+		public:
 			/**
 			 * @brief Метод установки название сервиса для вывода лога
 			 *
 			 * @param name название сервиса для вывода лога
 			 */
 			void name(string_view name) noexcept;
+			/**
+			 * @brief Метод установки флага асинхронного режима работы
+			 *
+			 * @param mode флаг асинхронного режима работы
+			 */
+			void async(const bool mode) noexcept;
 			/**
 			 * @brief Метод установки максимального размера файла логов
 			 *
@@ -581,11 +784,23 @@ namespace awh {
 			 */
 			void level(const level_t level) noexcept;
 			/**
-			 * @brief Метод установки безопасности работы потоков
+			 * @brief Метод установки максимального размера очереди асинхронного вывода
 			 *
-			 * @param mode флаг режима безопасности потоков
+			 * @param size максимальный размер очереди (0 - без ограничения)
 			 */
-			void threadSafety(const bool mode) noexcept;
+			void maxQueue(const size_t size) noexcept;
+			/**
+			 * @brief Метод установки максимального количества хранимых архивов логов
+			 *
+			 * @param count максимальное количество архивов (0 - без ограничения)
+			 */
+			void maxFiles(const size_t count) noexcept;
+			/**
+			 * @brief Метод установки файла для сохранения логов
+			 *
+			 * @param filename путь к файлу для сохранения логов
+			 */
+			void filename(string_view filename) noexcept;
 			/**
 			 * @brief Метод установки разделителя сообщений логирования
 			 *
@@ -593,11 +808,11 @@ namespace awh {
 			 */
 			void separator(const separator_t sep) noexcept;
 			/**
-			 * @brief Метод установки файла для сохранения логов
+			 * @brief Метод установки политики поведения при переполнении очереди асинхронного вывода
 			 *
-			 * @param filename путь к файлу для сохранения логов
+			 * @param overflow политика поведения при переполнении очереди
 			 */
-			void filename(string_view filename) noexcept;
+			void overflow(const overflow_t overflow) noexcept;
 		public:
 			/**
 			 * @brief Метод подписки на события логов

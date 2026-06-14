@@ -4644,9 +4644,9 @@ bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const
 /**
  * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера
  *
- * Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
- * Handshake, ClientHello, Cipher Suites, Compressors, Extensions), а также
- * вычисляет и печатает все отпечатки imprint_t (JA3, JA4, JA4_r, PeetPrint).
+ * @note Распечатывает в читаемом текстовом виде все поля browser_t (Record Layer,
+ * @note Handshake, ClientHello, Cipher Suites, Compressors, Extensions), а также
+ * @note вычисляет и печатает все отпечатки imprint_t (JA3, JA4, JA4_r, PeetPrint).
  *
  * @param browser объект с распарсенными данными ClientHello
  * @return        форматированная строка с полным описанием отпечатка
