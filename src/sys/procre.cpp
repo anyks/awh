@@ -230,8 +230,6 @@ void awh::Process_Resolver::scanning() noexcept {
 				while(::fgets(buffer, sizeof(buffer), fp)){
 					// Индексный дескриптор сокета
 					ino_t inode = 0;
-					// Состояние сокета
-					int32_t state = 0;
 					// Объект для хранения информации о сокете
 					info_t info{};
 					// Устанавливаем семейство адресов сокета
@@ -251,7 +249,7 @@ void awh::Process_Resolver::scanning() noexcept {
 							// Буферы для хранения портов (для предотвращения переполнения стека при sscanf %x)
 							uint32_t srcPort = 0, dstPort = 0;
 							// Извлекаем информацию о сокете из строки
-							if(::sscanf(buffer, "%*d: %x:%x %x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu", &source, &srcPort, &target, &dstPort, &state, &inode) == 6){
+							if(::sscanf(buffer, "%*d: %x:%x %x:%x %*x %*x:%*x %*x:%*x %*x %*d %*d %lu", &source, &srcPort, &target, &dstPort, &inode) == 5){
 								// Устанавливаем порты
 								info.ports.src = static_cast <uint16_t> (srcPort);
 								info.ports.dst = static_cast <uint16_t> (dstPort);
@@ -276,9 +274,9 @@ void awh::Process_Resolver::scanning() noexcept {
 							// Буферы для хранения портов (для предотвращения переполнения стека при sscanf %x)
 							uint32_t srcPort = 0, dstPort = 0;
 							// Извлекаем информацию о сокете из строки
-							if(::sscanf(buffer, "%*d: %8x%8x%8x%8x:%x %8x%8x%8x%8x:%x %x %*x:%*x %*x:%*x %*x %*d %*d %lu",
+							if(::sscanf(buffer, "%*d: %8x%8x%8x%8x:%x %8x%8x%8x%8x:%x %*x %*x:%*x %*x:%*x %*x %*d %*d %lu",
 							   &source[0], &source[1], &source[2], &source[3], &srcPort,
-							   &target[0], &target[1], &target[2], &target[3], &dstPort, &state, &inode) == 12){
+							   &target[0], &target[1], &target[2], &target[3], &dstPort, &inode) == 11){
 								// Устанавливаем порты
 								info.ports.src = static_cast <uint16_t> (srcPort);
 								info.ports.dst = static_cast <uint16_t> (dstPort);
@@ -317,7 +315,7 @@ void awh::Process_Resolver::scanning() noexcept {
 			parse("/proc/net/raw6", event::protocol_t::RAW, event::family_t::IPV6);
 			// Выполняем извлечение информации о сокете из файла /proc/net/icmp6 для протокола ICMP и семейства IPv6
 			parse("/proc/net/icmp6", event::protocol_t::ICMP, event::family_t::IPV6);
-			// Выполняем извлечение информации о сокете из файла /proc/net/igmp для протокола IGMP и семейства IPv6
+			// Выполняем извлечение информации о сокете из файла /proc/net/igmp6 для протокола IGMP и семейства IPv6
 			parse("/proc/net/igmp6", event::protocol_t::IGMP, event::family_t::IPV6);
 			/**
 			 * Открываем файл для чтения информации о сокете из файловой системы /proc/net/unix для протокола NONE и семейства UDS
@@ -370,7 +368,7 @@ void awh::Process_Resolver::scanning() noexcept {
 				 */
 				while((entry = ::readdir(dir)) != nullptr){
 					// Если запись является каталогом и её имя начинается с цифры
-					if((entry->d_type == DT_DIR) && ::isdigit(entry->d_name[0])){
+					if((entry->d_type == DT_DIR) && ::isdigit(static_cast <unsigned char> (entry->d_name[0]))){
 						// Получаем идентификатор процесса из имени каталога
 						pid_t pid = ::atoi(entry->d_name);
 						// Буфер для хранения названия приложения которому принадлежит процесс
@@ -410,56 +408,9 @@ void awh::Process_Resolver::scanning() noexcept {
 											// Если информация о сокете найдена
 											if(i != socketsInfo.end()){
 												// Если функция обратного вызова установлена
-												if(this->_callback != nullptr){
-													// Объект для хранения информации о сокете
-													info_t info{};
-													// Устанавливаем порты процесса
-													info.ports = i->second.ports;
-													// Устанавливаем семейство адресов процесса
-													info.family = i->second.family;
-													// Устанавливаем протокол процесса
-													info.protocol = i->second.protocol;
-													/**
-													 * Определяем семейство IP-адресов сокета
-													 */
-													switch(static_cast <uint8_t> (info.family)){
-														// Для семейства UDS
-														case static_cast <uint8_t> (event::family_t::UDS): {
-															// Выполняем инициализацию объекта UNIX-адреса источника процесса
-															info.addresses.src = make_unique <net::addr_fs_t> ();
-															// Выполняем инициализацию объекта UNIX-адреса назначения процесса
-															info.addresses.dst = make_unique <net::addr_fs_t> ();
-															// Устанавливаем UNIX-адрес источника процесса
-															awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = awh_cast <net::addr_fs_t *> (i->second.addresses.src.get())->address;
-															// Устанавливаем UNIX-адрес назначения процесса
-															awh_cast <net::addr_fs_t *> (info.addresses.dst.get())->address = awh_cast <net::addr_fs_t *> (i->second.addresses.dst.get())->address;
-														} break;
-														// Для семейства IPv4
-														case static_cast <uint8_t> (event::family_t::IPV4): {
-															// Выполняем инициализацию объекта IP-адреса источника процесса
-															info.addresses.src = make_unique <net::addr_net_ipv4_t> ();
-															// Выполняем инициализацию объекта IP-адреса назначения процесса
-															info.addresses.dst = make_unique <net::addr_net_ipv4_t> ();
-															// Устанавливаем IP-адрес источника процесса
-															awh_cast <net::addr_net_ipv4_t *> (info.addresses.src.get())->address = awh_cast <net::addr_net_ipv4_t *> (i->second.addresses.src.get())->address;
-															// Устанавливаем IP-адрес назначения процесса
-															awh_cast <net::addr_net_ipv4_t *> (info.addresses.dst.get())->address = awh_cast <net::addr_net_ipv4_t *> (i->second.addresses.dst.get())->address;
-														} break;
-														// Для семейства IPv6
-														case static_cast <uint8_t> (event::family_t::IPV6): {
-															// Выполняем инициализацию объекта IP-адреса источника процесса
-															info.addresses.src = make_unique <net::addr_net_ipv6_t> ();
-															// Выполняем инициализацию объекта IP-адреса назначения процесса
-															info.addresses.dst = make_unique <net::addr_net_ipv6_t> ();
-															// Устанавливаем IP-адрес источника процесса
-															::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.src.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (i->second.addresses.src.get())->address[0], 16);
-															// Устанавливаем IP-адрес назначения процесса
-															::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.dst.get())->address[0], &awh_cast <net::addr_net_ipv6_t *> (i->second.addresses.dst.get())->address[0], 16);
-														} break;
-													}
-													// Выполняем функцию обратного вызова
-													this->_callback(pid, info);
-												}
+												if(this->_callback != nullptr)
+													// Выполняем функцию обратного вызова, передавая информацию о сокете по константной ссылке (без лишнего копирования и аллокаций)
+													this->_callback(pid, i->second);
 											}
 										}
 									}
@@ -657,12 +608,18 @@ void awh::Process_Resolver::scanning() noexcept {
 		 * Для операционной системы MacOS X
 		 */
 		#elif __APPLE__ || __MACH__
-			// Список идентификаторов процессов
-			pid_t pids[0x1000];
-			// Получаем список идентификаторов процессов
-			const int32_t count = ::proc_listpids(PROC_ALL_PIDS, 0, pids, sizeof(pid_t) * 0x1000);
+			// Узнаём требуемый размер буфера под список идентификаторов процессов (функция возвращает размер данных в байтах)
+			int32_t listSize = ::proc_listpids(PROC_ALL_PIDS, 0, nullptr, 0);
+			// Если размер буфера для списка идентификаторов процессов получен
+			if(listSize > 0)
+				// Увеличиваем размер буфера на 16 дополнительных процессов (каждый процесс идентифицируется с помощью PID, который является целым числом)
+				listSize += static_cast <int32_t> (16 * sizeof(pid_t));
+			// Выделяем память под список идентификаторов процессов
+			auto pids = make_unique <pid_t []> ((listSize > 0 ? listSize : 0) / sizeof(pid_t));
+			// Получаем список идентификаторов процессов (функция возвращает размер заполненных данных в байтах)
+			const int32_t bytes = ((listSize > 0) ? ::proc_listpids(PROC_ALL_PIDS, 0, pids.get(), listSize) : -1);
 			// Если список идентификаторов процессов получен
-			if(count < 0){
+			if(bytes < 0){
 				/**
 				 * Если включён режим отладки
 				 */
@@ -677,15 +634,19 @@ void awh::Process_Resolver::scanning() noexcept {
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			// Если список идентификаторов процессов получен
-			} else if(count > 0) {
+			} else if(bytes > 0) {
 				// Объект информации о процессе
 				info_t info{};
 				// Идентификатор процесса
 				pid_t pid = 0;
 				// Общее и актуальное количество файловых дескрипторов процесса
 				int32_t fds = 0, actual = 0;
-				// Список файловых дескрипторов процесса
-				struct proc_fdinfo fdinfo[0x1000];
+				// Текущая ёмкость буфера файловых дескрипторов (в байтах)
+				int32_t fdsCapacity = 0;
+				// Вычисляем количество идентификаторов процессов (функция возвращает размер данных в байтах, а не количество PID)
+				const int32_t count = (bytes / static_cast <int32_t> (sizeof(pid_t)));
+				// Динамический буфер списка файловых дескрипторов процесса (переиспользуется между процессами, растёт по мере необходимости)
+				unique_ptr <struct proc_fdinfo []> fdinfo = nullptr;
 				/**
 				 * Переходим по всему списку идентификаторов процессов
 				 */
@@ -702,8 +663,15 @@ void awh::Process_Resolver::scanning() noexcept {
 					if(fds <= 0)
 						// Продолжем выполнение цикла
 						continue;
-					// Получаем список актуальных файловых дескрипторов процесса
-					actual = ::proc_pidinfo(pid, PROC_PIDLISTFDS, 0, fdinfo, fds * sizeof(struct proc_fdinfo));
+					// Если требуемый размер буфера превышает текущую ёмкость
+					if(fds > fdsCapacity){
+						// Запоминаем новую ёмкость буфера
+						fdsCapacity = fds;
+						// Выделяем память под список файловых дескрипторов процесса
+						fdinfo = make_unique <struct proc_fdinfo []> (fdsCapacity / sizeof(struct proc_fdinfo));
+					}
+					// Получаем список актуальных файловых дескрипторов процесса (ограничиваем фактическим размером буфера во избежание переполнения)
+					actual = ::proc_pidinfo(pid, PROC_PIDLISTFDS, 0, fdinfo.get(), fdsCapacity);
 					// Если список актуальных файловых дескрипторов получен
 					if(actual > 0){
 						// Вычисляем количество файловых дескрипторов процесса
@@ -883,9 +851,9 @@ void awh::Process_Resolver::scanning() noexcept {
 											// Устанавливаем семейство протокола сокета
 											info.family = event::family_t::UDS;
 											// Устанавливаем исходный порт сокета
-											info.ports.src = ntohs(0);
+											info.ports.src = 0;
 											// Устанавливаем целевой порт сокета
-											info.ports.dst = ntohs(0);
+											info.ports.dst = 0;
 											// Выполняем инициализацию объекта UNIX-адреса источника процесса
 											info.addresses.src = make_unique <net::addr_fs_t> ();
 											// Выполняем инициализацию объекта UNIX-адреса назначения процесса
@@ -920,6 +888,8 @@ void awh::Process_Resolver::scanning() noexcept {
 			size_t length = 0;
 			// Узнаем размер необходимых данных для kinfo_proc
 			if((::sysctl(mib, 3, nullptr, &length, nullptr, 0) == 0) && (length > 0)){
+				// Добавляем запас на случай появления новых процессов между двумя вызовами sysctl
+				length += ((length / 8) + sizeof(struct kinfo_proc));
 				// Выделяем память под процессы
 				auto procs = make_unique <struct kinfo_proc []> (length / sizeof(struct kinfo_proc));
 				// Получаем список всех процессов
@@ -945,6 +915,8 @@ void awh::Process_Resolver::scanning() noexcept {
 						};
 						// Узнаем размер необходимых данных для файловых дескрипторов процесса
 						if((::sysctl(fmib, 4, nullptr, &length, nullptr, 0) == 0) && (length > 0)){
+							// Добавляем запас на случай открытия новых дескрипторов между двумя вызовами sysctl
+							length += (length / 8);
 							// Выделяем память под файловые дескрипторы процесса
 							auto files = make_unique <char []> (length);
 							// Получаем список файловых дескрипторов процесса
@@ -1054,9 +1026,9 @@ void awh::Process_Resolver::scanning() noexcept {
 												// Если семейство адресов сокета принадлежит к семейству UNIX-сокетов
 												if(source->sa_family == AF_UNIX){
 													// Устанавливаем исходный порт сокета
-													info.ports.src = ntohs(0);
+													info.ports.src = 0;
 													// Устанавливаем целевой порт сокета
-													info.ports.dst = ntohs(0);
+													info.ports.dst = 0;
 													// Выполняем инициализацию объекта UNIX-адреса источника процесса
 													info.addresses.src = make_unique <net::addr_fs_t> ();
 													// Выполняем инициализацию объекта UNIX-адреса назначения процесса
@@ -1067,8 +1039,8 @@ void awh::Process_Resolver::scanning() noexcept {
 													auto remote = reinterpret_cast <struct sockaddr_un *> (destination);
 													// Устанавливаем UNIX-адрес источника процесса
 													awh_cast <net::addr_fs_t *> (info.addresses.src.get())->address = local->sun_path;
-													// Если адрес назначения существует
-													if(remote != nullptr)
+													// Если адрес назначения существует (сокет соединён)
+													if(destination->sa_family == AF_UNIX)
 														// Устанавливаем UNIX-адрес назначения процесса
 														awh_cast <net::addr_fs_t *> (info.addresses.dst.get())->address = remote->sun_path;
 												}
@@ -1085,14 +1057,16 @@ void awh::Process_Resolver::scanning() noexcept {
 													auto local = reinterpret_cast <struct sockaddr_in *> (source);
 													// Получаем объект подключения для удалённого адреса
 													auto remote = reinterpret_cast <struct sockaddr_in *> (destination);
+													// Определяем, соединён ли сокет (есть ли валидный адрес назначения)
+													const bool connected = (destination->sa_family == AF_INET);
 													// Устанавливаем порт локального адреса
 													info.ports.src = ntohs(local->sin_port);
 													// Устанавливаем порт удалённого адреса
-													info.ports.dst = (remote != nullptr ? ntohs(remote->sin_port) : 0);
+													info.ports.dst = (connected ? ntohs(remote->sin_port) : 0);
 													// Устанавливаем IP-адрес источника процесса
 													awh_cast <net::addr_net_ipv4_t *> (info.addresses.src.get())->address = local->sin_addr.s_addr;
 													// Если адрес назначения существует
-													if(remote != nullptr)
+													if(connected)
 														// Устанавливаем IP-адрес назначения процесса
 														awh_cast <net::addr_net_ipv4_t *> (info.addresses.dst.get())->address = remote->sin_addr.s_addr;
 												}
@@ -1109,14 +1083,16 @@ void awh::Process_Resolver::scanning() noexcept {
 													auto local = reinterpret_cast <struct sockaddr_in6 *> (source);
 													// Получаем объект подключения для удалённого адреса
 													auto remote = reinterpret_cast <struct sockaddr_in6 *> (destination);
+													// Определяем, соединён ли сокет (есть ли валидный адрес назначения)
+													const bool connected = (destination->sa_family == AF_INET6);
 													// Устанавливаем порт локального адреса
 													info.ports.src = ntohs(local->sin6_port);
 													// Устанавливаем порт удалённого адреса
-													info.ports.dst = (remote != nullptr ? ntohs(remote->sin6_port) : 0);
+													info.ports.dst = (connected ? ntohs(remote->sin6_port) : 0);
 													// Устанавливаем IP-адрес источника процесса
 													::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.src.get())->address[0], &local->sin6_addr, 16);
 													// Если адрес назначения существует
-													if(remote != nullptr)
+													if(connected)
 														// Устанавливаем IP-адрес назначения процесса
 														::memcpy(&awh_cast <net::addr_net_ipv6_t *> (info.addresses.dst.get())->address[0], &remote->sin6_addr, 16);
 												}
@@ -1638,7 +1614,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 			// Заполняем нулями буфер данных
 			::memset(buffer, 0, sizeof(buffer));
 			// Заполняем адрес процесса
-			::sprintf(buffer, "/proc/%d/comm", pid);
+			::snprintf(buffer, sizeof(buffer), "/proc/%d/comm", pid);
 			// Структура проверка статистики
 			struct stat info;
 			// Выполняем извлечение данных статистики
@@ -1718,8 +1694,8 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 				char buffer[1024];
 				// Заполняем нулями буфер данных
 				::memset(buffer, 0, sizeof(buffer));
-				// Выполняем извлечение данных в буфер
-				const int32_t size = static_cast <int32_t> (::readlink(ss.str().c_str(), buffer, sizeof(buffer)));
+				// Выполняем извлечение данных в буфер (резервируем место под нуль-терминатор, readlink его не добавляет)
+				const int32_t size = static_cast <int32_t> (::readlink(ss.str().c_str(), buffer, sizeof(buffer) - 1));
 				// Выполняем чтение данных в бинарный буфер
 				if(size > 0) {
 					// Устанавливаем последний символ
@@ -1731,7 +1707,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 					// Выполняем получение названия приложения
 					else result = buffer;
 					// Если последний символ является переносом строки
-					if(result.rbegin()[0] == '\n')
+					if(!result.empty() && (result.rbegin()[0] == '\n'))
 						// Выполняем удаление последнего символа
 						result.pop_back();
 				}
