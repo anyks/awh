@@ -21,7 +21,9 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <mutex>
 #include <atomic>
+#include <thread>
 #include <cstdlib>
 #include <csignal>
 #include <functional>
@@ -40,6 +42,14 @@
 	 * Системный заголовочный файл
 	 */
 	#include <tchar.h>
+/**
+ * Для операционной системы не являющейся MS Windows
+ */
+#else
+	/**
+	 * Системный заголовочный файл для типов pid_t/uid_t
+	 */
+	#include <sys/types.h>
 #endif
 
 /**
@@ -67,18 +77,28 @@ namespace awh {
 				 *
 				 */
 				typedef struct Events {
-					struct sigaction sigint;  // Перехватчик сигнала SIGINT
-					struct sigaction sigfpe;  // Перехватчик сигнала SIGFPE
-					struct sigaction sigill;  // Перехватчик сигнала SIGILL
-					struct sigaction sigbus;  // Перехватчик сигнала SIGBUS
-					struct sigaction sigabrt; // Перехватчик сигнала SIGABRT
-					struct sigaction sigterm; // Перехватчик сигнала SIGTERM
-					struct sigaction sigsegv; // Перехватчик сигнала SIGSEGV
+					// Перехватчик сигнала SIGINT
+					struct sigaction sigint;
+					// Перехватчик сигнала SIGFPE
+					struct sigaction sigfpe;
+					// Перехватчик сигнала SIGILL
+					struct sigaction sigill;
+					// Перехватчик сигнала SIGBUS
+					struct sigaction sigbus;
+					// Перехватчик сигнала SIGABRT
+					struct sigaction sigabrt;
+					// Перехватчик сигнала SIGTERM
+					struct sigaction sigterm;
+					// Перехватчик сигнала SIGSEGV
+					struct sigaction sigsegv;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Events() noexcept {}
+					Events() noexcept :
+					 sigint{}, sigfpe{},
+					 sigill{}, sigbus{},
+					 sigabrt{}, sigterm{}, sigsegv{} {}
 				} events_t;
 			/**
 			 * Для операционной системы MS Windows
@@ -95,25 +115,55 @@ namespace awh {
 				 *
 				 */
 				typedef struct Events {
-					SignalHandlerPointer sigint;  // Перехватчик сигнала SIGINT
-					SignalHandlerPointer sigfpe;  // Перехватчик сигнала SIGFPE
-					SignalHandlerPointer sigill;  // Перехватчик сигнала SIGILL
-					SignalHandlerPointer sigabrt; // Перехватчик сигнала SIGABRT
-					SignalHandlerPointer sigterm; // Перехватчик сигнала SIGTERM
-					SignalHandlerPointer sigsegv; // Перехватчик сигнала SIGSEGV
+					// Перехватчик сигнала SIGINT
+					SignalHandlerPointer sigint;
+					// Перехватчик сигнала SIGFPE
+					SignalHandlerPointer sigfpe;
+					// Перехватчик сигнала SIGILL
+					SignalHandlerPointer sigill;
+					// Перехватчик сигнала SIGABRT
+					SignalHandlerPointer sigabrt;
+					// Перехватчик сигнала SIGTERM
+					SignalHandlerPointer sigterm;
+					// Перехватчик сигнала SIGSEGV
+					SignalHandlerPointer sigsegv;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Events() noexcept {}
+					Events() noexcept :
+					 sigint(nullptr), sigfpe(nullptr),
+					 sigill(nullptr), sigabrt(nullptr),
+					 sigterm(nullptr), sigsegv(nullptr) {}
 				} events_t;
 			#endif
+		private:
+			// Мьютекс защиты операций запуска/останова/установки колбэка
+			std::mutex _mtx;
 		private:
 			// Объект работы с событиями сигналов
 			events_t _events;
 		private:
-			// Флаг запуска отслежиявания сигналов
+			// Флаг запуска отслеживания сигналов
 			atomic_bool _mode;
+			// Флаг запроса остановки рабочего потока
+			atomic_bool _exit;
+		private:
+			// Рабочий поток для асинхронной обработки полученных сигналов
+			std::thread _worker;
+		private:
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				// Дескрипторы самопайпа: [0] - чтение, [1] - запись
+				int32_t _pipe[2];
+			#endif
+		private:
+			// Объект фреймворка
+			const fmk_t * _fmk;
+			// Объект для работы с логами
+			const log_t * _log;
 		private:
 			/**
 			 * Функция обратного вызова при получении сигнала
@@ -121,11 +171,39 @@ namespace awh {
 			function <void (const int32_t)> _callback;
 		private:
 			/**
-			 * @brief Функция обратного вызова
+			 * @brief Метод восстановления обработчиков сигналов по умолчанию
 			 *
-			 * @param sig идентификатор сигнала
 			 */
-			void callback(const int32_t sig) noexcept;
+			void disarm() noexcept;
+			/**
+			 * @brief Метод рабочего потока асинхронной обработки сигналов
+			 *
+			 */
+			void worker() noexcept;
+		private:
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#if !_WIN32 && !_WIN64
+				/**
+				 * @brief Метод обработки полученного сигнала вне контекста обработчика
+				 *
+				 * @param sig номер полученного сигнала
+				 * @param pid идентификатор процесса-отправителя
+				 * @param uid идентификатор пользователя-отправителя
+				 */
+				void process(const int32_t sig, const pid_t pid, const uid_t uid) noexcept;
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#else
+				/**
+				 * @brief Метод обработки полученного сигнала вне контекста обработчика
+				 *
+				 * @param sig номер полученного сигнала
+				 */
+				void process(const int32_t sig) noexcept;
+			#endif
 		public:
 			/**
 			 * @brief Метод остановки обработки сигналов

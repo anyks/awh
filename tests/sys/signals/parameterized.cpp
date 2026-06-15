@@ -90,6 +90,13 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, SignalsTestParameterizedFixture,
 		SignalsTestParameter({SIGINT}),
 		SignalsTestParameter({SIGFPE}),
 		SignalsTestParameter({SIGILL}),
-		SignalsTestParameter({SIGSEGV})
+		SignalsTestParameter({SIGSEGV}),
+		/**
+		 * Сигнал SIGBUS отсутствует на MS Windows
+		 */
+		#if !_WIN32 && !_WIN64
+			SignalsTestParameter({SIGBUS}),
+		#endif
+		SignalsTestParameter({SIGTERM})
 	)
 );
