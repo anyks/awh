@@ -51,12 +51,11 @@ TEST_P(RegTestParameterizedFixture, RegTestingTest){
 	auto exp = this->_reg->build(this->_parameter.pattern, this->_parameter.options);
 	// Проверяем результат тестирования регулярного выражения
 	ASSERT_EQ(this->_parameter.result, this->_reg->test(this->_parameter.text, exp));
-	// Если тест должен пройти успешно, проверяем отсутствие ошибок
-	if(this->_parameter.result)
-		// Проверяем отсутствие ошибок
-		ASSERT_TRUE(this->_reg->error().empty());
-	// Иначе проверяем наличие ошибок
-	else ASSERT_FALSE(this->_reg->error().empty());
+	/**
+	 * Шаблон валиден в обоих случаях, поэтому ошибок быть не должно:
+	 * отсутствие совпадения ошибкой не является
+	 */
+	ASSERT_TRUE(this->_reg->error().empty());
 }
 
 /**

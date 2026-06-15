@@ -21,11 +21,11 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <map>
-#include <mutex>
 #include <string>
 #include <vector>
 #include <cstdint>
+#include <utility>
+#include <unordered_map>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -54,17 +54,6 @@ namespace awh {
 	 *
 	 */
 	typedef class __AWH_SHARED_EXPORT__ Regular_Expressions {
-		private:
-			/**
-			 * @brief структура рабочих мютексов
-			 *
-			 */
-			typedef struct Mutex {
-				// Мютекс контроля матчинга
-				lock_state_t <std::mutex> match;
-				// Мютекс контроля записи в кэш
-				lock_state_t <std::mutex> cache;
-			} mtx_t;
 		public:
 			/**
 			 * @brief Опции работы с регулярными выражениями
@@ -97,14 +86,28 @@ namespace awh {
 			 */
 			using exp_weak_t = std::weak_ptr <Expression>;
 		private:
-			// Текст ошибки
+			/**
+			 * @brief Хэш-функция для ключа кэша регулярных выражений
+			 *
+			 */
+			struct CacheHash {
+				/**
+				 * @brief Оператор вычисления хэша ключа кэша
+				 *
+				 * @param key ключ кэша (пара из набора опций и текста регулярного выражения)
+				 * @return    вычисленное значение хэша
+				 */
+				size_t operator () (const std::pair <int32_t, string> & key) const noexcept;
+			};
+		private:
+			// Текст ошибки последней операции
 			string _error;
 		private:
 			// Мютексы для блокировки потоков
-			mutable mtx_t _mtx;
+			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Кэш собранных регулярных выражений
-			mutable std::map <std::pair <int32_t, string>, exp_weak_t> _cache;
+			mutable unordered_map <std::pair <int32_t, string>, exp_weak_t, CacheHash> _cache;
 		private:
 			// Объект логирования
 			const Logging * _log;

@@ -18,6 +18,8 @@
 #include <memory>
 #include <cstring>
 #include <iostream>
+#include <algorithm>
+#include <functional>
 
 /**
  * Подключаем заголовочный файл для работы с PCRE2
@@ -34,6 +36,21 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * @brief Оператор вычисления хэша ключа кэша
+ *
+ * @param key ключ кэша (пара из набора опций и текста регулярного выражения)
+ * @return    вычисленное значение хэша
+ */
+size_t awh::Regular_Expressions::CacheHash::operator () (const std::pair <int32_t, string> & key) const noexcept {
+	// Вычисляем хэш для набора опций
+	const size_t h1 = std::hash <int32_t> {}(key.first);
+	// Вычисляем хэш для текста регулярного выражения
+	const size_t h2 = std::hash <string> {}(key.second);
+	// Выполняем смешивание хэшей и возвращаем результат
+	return (h1 ^ (h2 + 0x9E3779B9 + (h1 << 6) + (h1 >> 2)));
+}
 
 /**
  * @brief Класс регулярного выражения
@@ -128,11 +145,10 @@ const string & awh::Regular_Expressions::error() const noexcept {
  * @param mode флаг режима безопасности потоков
  */
 void awh::Regular_Expressions::threadSafety(const bool mode) noexcept {
-	/** 
+	/**
 	 * Активируем или деактивируем мьютексы в зависимости от переданного флага
 	 */
-	this->_mtx.match.enabled = mode;
-	this->_mtx.cache.enabled = mode;
+	this->_mtx.enabled = mode;
 }
 /**
  * @brief Метод проверки регулярного выражения
@@ -160,8 +176,6 @@ bool awh::Regular_Expressions::test(string_view text, const exp_t & exp) const n
 bool awh::Regular_Expressions::test(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Переменная результата
 	bool result = false;
-	// Выполняем блокировку потока
-	const locker_t <> lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
@@ -172,20 +186,26 @@ bool awh::Regular_Expressions::test(const char * text, const size_t size, const 
 			regmatch_t match[1];
 			// Выполняем разбор регулярного выражения
 			const int32_t error = ::pcre2_regexec(&exp->reg, text, 1, match, REG_NOTEMPTY);
-			// Если возникла ошибка
-			if(!(result = (error == 0))){
+			// Если регулярное выражение успешно сопоставлено
+			if(error == 0)
+				// Запоминаем результат сопоставления
+				result = (match[0].rm_eo > 0);
+			// Если получена реальная ошибка (отсутствие совпадения ошибкой не считаем)
+			else if(error != REG_NOMATCH) {
 				// Создаём буфер данных для извлечения данных ошибки
 				char buffer[0xFF];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
-				const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
+				const size_t length = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer));
 				// Если текст ошибки получен
-				if(size > 0)
-					// Выполняем установку кода ошибки
-					const_cast <regexp_t *> (this)->_error.assign(buffer, size);
-			// Если ошибок не получено
-			} else result = (match[0].rm_eo > 0);
+				if(length > 0){
+					// Выполняем блокировку потока на время записи текста ошибки
+					const locker_t <> lock(this->_mtx);
+					// Выполняем установку кода ошибки (длина включает завершающий ноль)
+					const_cast <regexp_t *> (this)->_error.assign(buffer, std::min(length - 1, sizeof(buffer) - 1));
+				}
+			}
 		/**
 		 * Если возникает ошибка
 		 */
@@ -252,42 +272,56 @@ vector <string> awh::Regular_Expressions::exec(string_view text, const exp_t & e
 vector <string> awh::Regular_Expressions::exec(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Переменная результата
 	vector <string> result;
-	// Выполняем блокировку потока
-	const locker_t <> lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаём объект матчинга
-			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
+			// Небольшой буфер на стеке для типичных случаев, чтобы избежать аллокации в куче
+			regmatch_t stack[16];
+			// По умолчанию используем буфер на стеке
+			regmatch_t * match = stack;
+			// Указатель на динамический буфер совпадений (используется только при большом числе групп)
+			std::unique_ptr <regmatch_t []> heap;
+			// Получаем количество ожидаемых групп совпадений
+			const size_t count = (exp->reg.re_nsub + 1);
+			// Если число групп превышает размер стекового буфера
+			if(count > (sizeof(stack) / sizeof(stack[0]))){
+				// Выделяем буфер совпадений в куче
+				heap.reset(new regmatch_t [count]);
+				// Используем буфер в куче
+				match = heap.get();
+			}
 			// Выполняем разбор регулярного выражения
-			const int32_t error = ::pcre2_regexec(&exp->reg, text, exp->reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
-			// Если возникла ошибка
-			if(error > 0){
+			const int32_t error = ::pcre2_regexec(&exp->reg, text, count, match, REG_NOTEMPTY);
+			// Если регулярное выражение успешно сопоставлено
+			if(error == 0){
+				// Выполняем создание результата
+				result.resize(count);
+				/**
+				 * Выполняем перебор всех полученных вариантов
+				 */
+				for(size_t i = 0; i < count; i++){
+					// Если результат получен
+					if((match[i].rm_so >= 0) && (match[i].rm_eo > match[i].rm_so) && (static_cast <size_t> (match[i].rm_eo) <= size))
+						// Добавляем полученный результат в список результатов
+						result[i].assign(text + match[i].rm_so, match[i].rm_eo - match[i].rm_so);
+				}
+			// Если получена реальная ошибка (отсутствие совпадения ошибкой не считаем)
+			} else if(error != REG_NOMATCH) {
 				// Создаём буфер данных для извлечения данных ошибки
 				char buffer[0xFF];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
-				const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
+				const size_t length = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer));
 				// Если текст ошибки получен
-				if(size > 0)
-					// Выполняем установку кода ошибки
-					const_cast <regexp_t *> (this)->_error.assign(buffer, size);
-			// Если ошибок не получено
-			} else {
-				// Выполняем создание результата
-				result.resize(exp->reg.re_nsub + 1);
-				/**
-				 * Выполняем перебор всех полученных вариантов
-				 */
-				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->reg.re_nsub + 1); i++){
-					// Если результат получен
-					if((match[i].rm_eo > 0) && (static_cast <size_t> (match[i].rm_eo) <= size) && (match[i].rm_so >= 0))
-						// Добавляем полученный результат в список результатов
-						result[i].assign(text + match[i].rm_so, match[i].rm_eo - match[i].rm_so);
+				if(length > 0){
+					// Выполняем блокировку потока на время записи текста ошибки
+					const locker_t <> lock(this->_mtx);
+					// Выполняем установку кода ошибки (длина включает завершающий ноль)
+					const_cast <regexp_t *> (this)->_error.assign(buffer, std::min(length - 1, sizeof(buffer) - 1));
 				}
 			}
 		/**
@@ -393,44 +427,58 @@ vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(string_view 
 vector <std::pair <size_t, size_t>> awh::Regular_Expressions::match(const char * text, const size_t size, const exp_t & exp) const noexcept {
 	// Переменная результата
 	vector <std::pair <size_t, size_t>> result;
-	// Выполняем блокировку потока
-	const locker_t <> lock(this->_mtx.match);
 	// Если данные переданы верные
 	if((text != nullptr) && (size > 0) && static_cast <bool> (exp)){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Создаём объект матчинга
-			std::unique_ptr <regmatch_t []> match(new regmatch_t [exp->reg.re_nsub + 1]);
+			// Небольшой буфер на стеке для типичных случаев, чтобы избежать аллокации в куче
+			regmatch_t stack[16];
+			// По умолчанию используем буфер на стеке
+			regmatch_t * match = stack;
+			// Указатель на динамический буфер совпадений (используется только при большом числе групп)
+			std::unique_ptr <regmatch_t []> heap;
+			// Получаем количество ожидаемых групп совпадений
+			const size_t count = (exp->reg.re_nsub + 1);
+			// Если число групп превышает размер стекового буфера
+			if(count > (sizeof(stack) / sizeof(stack[0]))){
+				// Выделяем буфер совпадений в куче
+				heap.reset(new regmatch_t [count]);
+				// Используем буфер в куче
+				match = heap.get();
+			}
 			// Выполняем разбор регулярного выражения
-			const int32_t error = ::pcre2_regexec(&exp->reg, text, exp->reg.re_nsub + 1, match.get(), REG_NOTEMPTY);
-			// Если возникла ошибка
-			if(error > 0){
+			const int32_t error = ::pcre2_regexec(&exp->reg, text, count, match, REG_NOTEMPTY);
+			// Если регулярное выражение успешно сопоставлено
+			if(error == 0){
+				// Выполняем создание результата
+				result.resize(count);
+				/**
+				 * Выполняем перебор всех полученных вариантов
+				 */
+				for(size_t i = 0; i < count; i++){
+					// Если результат получен
+					if((match[i].rm_so >= 0) && (match[i].rm_eo > match[i].rm_so) && (static_cast <size_t> (match[i].rm_eo) <= size))
+						// Добавляем полученный результат в список результатов
+						result[i] = std::make_pair(static_cast <size_t> (match[i].rm_so), static_cast <size_t> (match[i].rm_eo - match[i].rm_so));
+					// Добавляем пустое значение
+					else result[i] = std::make_pair(static_cast <size_t> (0), static_cast <size_t> (0));
+				}
+			// Если получена реальная ошибка (отсутствие совпадения ошибкой не считаем)
+			} else if(error != REG_NOMATCH) {
 				// Создаём буфер данных для извлечения данных ошибки
 				char buffer[0xFF];
 				// Выполняем заполнение нулями буфер данных
 				::memset(buffer, '\0', sizeof(buffer));
 				// Выполняем извлечение текста ошибки
-				const size_t size = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer) - 1);
+				const size_t length = ::pcre2_regerror(error, &exp->reg, buffer, sizeof(buffer));
 				// Если текст ошибки получен
-				if(size > 0)
-					// Выполняем установку кода ошибки
-					const_cast <regexp_t *> (this)->_error.assign(buffer, size);
-			// Если ошибок не получено
-			} else {
-				// Выполняем создание результата
-				result.resize(exp->reg.re_nsub + 1);
-				/**
-				 * Выполняем перебор всех полученных вариантов
-				 */
-				for(uint8_t i = 0; i < static_cast <uint8_t> (exp->reg.re_nsub + 1); i++){
-					// Если результат получен
-					if((match[i].rm_eo > 0) && (static_cast <size_t> (match[i].rm_eo) <= size) && (match[i].rm_so >= 0))
-						// Добавляем полученный результат в список результатов
-						result[i] = std::make_pair(static_cast <size_t> (match[i].rm_so), static_cast <size_t> (match[i].rm_eo - match[i].rm_so));
-					// Добавляем пустое значение
-					else result[i] = std::make_pair(static_cast <size_t> (0), static_cast <size_t> (0));
+				if(length > 0){
+					// Выполняем блокировку потока на время записи текста ошибки
+					const locker_t <> lock(this->_mtx);
+					// Выполняем установку кода ошибки (длина включает завершающий ноль)
+					const_cast <regexp_t *> (this)->_error.assign(buffer, std::min(length - 1, sizeof(buffer) - 1));
 				}
 			}
 		/**
@@ -538,6 +586,11 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 					 * Определяем тип переданной опции
 					 */
 					switch(static_cast <uint8_t> (item)){
+						// Если передан флаг поддержки свойств Юникода
+						case static_cast <uint8_t> (option_t::UCP):
+							// Выполняем установку флага
+							option |= REG_UCP;
+						break;
 						// Если передан флаг запуска в режиме UTF-8
 						case static_cast <uint8_t> (option_t::UTF8):
 							// Выполняем установку флага
@@ -577,19 +630,24 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				}
 			}
 			// Создаём ключ регулярного выражения
-			const auto & key = std::make_pair(option, string{pattern});
-			// Выполняем поиск уже ранее созданного регулярного выражения
-			auto i = this->_cache.find(key);
-			// Если регулярное выражение уже созданно
-			if(i != this->_cache.end()){
-				// Выполняем получение скомпилированного регулярного выражения
-				result = i->second.lock();
-				// Если регулярное выражение уже устарело и удалено
-				if(result == nullptr){
-					// Выполняем блокировку потока
-					const locker_t <> lock(this->_mtx.cache);
-					// Удаляем запись
-					this->_cache.erase(key);
+			const auto key = std::make_pair(option, string{pattern});
+			/**
+			 * Выполняем поиск уже ранее созданного регулярного выражения под блокировкой,
+			 * чтобы исключить гонку данных с конкурентными вставками и удалениями
+			 */
+			{
+				// Выполняем блокировку потока
+				const locker_t <> lock(this->_mtx);
+				// Выполняем поиск уже ранее созданного регулярного выражения
+				auto i = this->_cache.find(key);
+				// Если регулярное выражение уже созданно
+				if(i != this->_cache.end()){
+					// Выполняем получение скомпилированного регулярного выражения
+					result = i->second.lock();
+					// Если регулярное выражение уже устарело и удалено
+					if(result == nullptr)
+						// Удаляем устаревшую запись по итератору
+						this->_cache.erase(i);
 				}
 			}
 			// Выполняем генерацию нового регулярного выражения
@@ -598,8 +656,11 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				result = exp_t(new Expression);
 				// Выполняем инициализацию объекта регулярного выражения
 				result->reg = regex_t();
-				// Выполняем компиляцию регулярного выражения
-				const int32_t error = ::pcre2_regcomp(&result->reg, pattern.data(), option);
+				/**
+				 * Выполняем компиляцию регулярного выражения из null-терминированной строки
+				 * (string_view может не иметь завершающего нуля, что недопустимо для POSIX-API)
+				 */
+				const int32_t error = ::pcre2_regcomp(&result->reg, key.second.c_str(), option);
 				// Если возникла ошибка компиляции
 				if(!((* result.get()) = static_cast <bool> (error == 0))){
 					// Создаём буфер данных для извлечения данных ошибки
@@ -607,11 +668,14 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 					// Выполняем заполнение нулями буфер данных
 					::memset(buffer, '\0', sizeof(buffer));
 					// Выполняем извлечение текста ошибки
-					const size_t size = ::pcre2_regerror(error, &result->reg, buffer, sizeof(buffer) - 1);
+					const size_t length = ::pcre2_regerror(error, &result->reg, buffer, sizeof(buffer));
 					// Если текст ошибки получен
-					if(size > 0)
-						// Выполняем установку кода ошибки
-						const_cast <regexp_t *> (this)->_error.assign(buffer, size);
+					if(length > 0){
+						// Выполняем блокировку потока на время записи текста ошибки
+						const locker_t <> lock(this->_mtx);
+						// Выполняем установку кода ошибки (длина включает завершающий ноль)
+						const_cast <regexp_t *> (this)->_error.assign(buffer, std::min(length - 1, sizeof(buffer) - 1));
+					}
 					// Выполняем удаление скомпилированного регулярного выражения
 					::pcre2_regfree(&result->reg);
 					// Выполняем сброс блока результата
@@ -619,9 +683,21 @@ awh::Regular_Expressions::exp_t awh::Regular_Expressions::build(string_view patt
 				// Если регулярное выражение удачно созданно
 				} else {
 					// Выполняем блокировку потока
-					const locker_t <> lock(this->_mtx.cache);
-					// Добавляем регулярное выражение в список
-					this->_cache.emplace(key, result);
+					const locker_t <> lock(this->_mtx);
+					/**
+					 * Выполняем повторную проверку: другой поток мог успеть скомпилировать
+					 * и закэшировать такой же паттерн, пока шла компиляция
+					 */
+					auto res = this->_cache.emplace(key, result);
+					// Если запись с таким ключом уже существует
+					if(!res.second){
+						// Пытаемся получить уже закэшированное регулярное выражение
+						if(auto existing = res.first->second.lock())
+							// Используем уже закэшированный объект
+							result = existing;
+						// Если закэшированная запись устарела, заменяем её на новую
+						else res.first->second = result;
+					}
 				}
 			}
 		/**
@@ -718,8 +794,7 @@ awh::Regular_Expressions::Regular_Expressions() noexcept : _error{""}, _log(null
 	/**
 	 * Деактивируем мьютексы на время инициализации
 	 */
-	this->_mtx.match.enabled = false;
-	this->_mtx.cache.enabled = false;
+	this->_mtx.enabled = false;
 }
 /**
  * @brief Конструктор
@@ -730,8 +805,7 @@ awh::Regular_Expressions::Regular_Expressions(const log_t * log) noexcept : _err
 	/**
 	 * Деактивируем мьютексы на время инициализации
 	 */
-	this->_mtx.match.enabled = false;
-	this->_mtx.cache.enabled = false;
+	this->_mtx.enabled = false;
 }
 /**
  * @brief Деструктор
