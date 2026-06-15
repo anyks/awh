@@ -11,7 +11,7 @@
  *
  * @copyright: Copyright © 2026
  */
-	
+
 /**
  * Заголовочные файлы OpenSSL
  */
@@ -104,6 +104,32 @@ namespace {
  */
 namespace driver {
 	/**
+	 * @brief Шаблон функции преобразования бинарного буфера в HEX-строку
+	 *
+	 * @tparam T тип результирующего буфера
+	 */
+	template <typename T>
+	/**
+	 * @brief Функция преобразования бинарного буфера в HEX-строку
+	 *
+	 * @param digest бинарный буфер для преобразования
+	 * @param length размер бинарного буфера в байтах
+	 * @param result результирующий буфер (должен быть выделен под length * 2 байт)
+	 */
+	static void hex(const uint8_t * digest, const size_t length, T & result) noexcept {
+		// Таблица символов для формирования HEX-строки (кросс-платформенно, без sprintf/snprintf)
+		static constexpr char alphabet[] = "0123456789abcdef";
+		/**
+		 * Выполняем перебор всех байт бинарного буфера
+		 */
+		for(size_t i = 0; i < length; i++){
+			// Формируем старший полубайт
+			result[i * 2] = alphabet[(digest[i] >> 4) & 0x0F];
+			// Формируем младший полубайт
+			result[(i * 2) + 1] = alphabet[digest[i] & 0x0F];
+		}
+	}
+	/**
 	 * @brief Шаблон функции хэширования текста
 	 *
 	 * @tparam A тип возвращаемого результата
@@ -142,19 +168,13 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(16, 0);
 						// Выделяем память для буфера данных
-						result.resize(33, 0);
+						result.resize(32, 0);
 						// Выполняем расчет суммы
 						::MD5_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::MD5_Final(digest.data(), &ctx);
-						/**
-						 * Заполняем строку данными MD5
-						 */
-						for(uint8_t i = 0; i < 16; i++)
-							// Формируем данные MD5-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные MD5-хэша
+						driver::hex(digest.data(), 16, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA1
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA1): {
@@ -165,19 +185,13 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(20, 0);
 						// Выделяем память для буфера данных
-						result.resize(41, 0);
+						result.resize(40, 0);
 						// Выполняем расчет суммы
 						::SHA1_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA1_Final(digest.data(), &ctx);
-						/**
-						 * Заполняем строку данными SHA1
-						 */
-						for(uint8_t i = 0; i < 20; i++)
-							// Формируем данные SHA1-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA1-хэша
+						driver::hex(digest.data(), 20, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA224
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA224): {
@@ -188,19 +202,13 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(28, 0);
 						// Выделяем память для буфера данных
-						result.resize(57, 0);
+						result.resize(56, 0);
 						// Выполняем расчет суммы
 						::SHA224_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA224_Final(digest.data(), &ctx);
-						/**
-						 * Заполняем строку данными SHA224
-						 */
-						for(uint8_t i = 0; i < 28; i++)
-							// Формируем данные SHA224-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA224-хэша
+						driver::hex(digest.data(), 28, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA256
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA256): {
@@ -211,19 +219,13 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(32, 0);
 						// Выделяем память для буфера данных
-						result.resize(65, 0);
+						result.resize(64, 0);
 						// Выполняем расчет суммы
 						::SHA256_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA256_Final(digest.data(), &ctx);
-						/**
-						 * Заполняем строку данными SHA256
-						 */
-						for(uint8_t i = 0; i < 32; i++)
-							// Формируем данные SHA256-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA256-хэша
+						driver::hex(digest.data(), 32, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA384
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA384): {
@@ -234,19 +236,13 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(48, 0);
 						// Выделяем память для буфера данных
-						result.resize(97, 0);
+						result.resize(96, 0);
 						// Выполняем расчет суммы
 						::SHA384_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA384_Final(digest.data(), &ctx);
-						/**
-						 * Заполняем строку данными SHA384
-						 */
-						for(uint8_t i = 0; i < 48; i++)
-							// Формируем данные SHA384-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA384-хэша
+						driver::hex(digest.data(), 48, result);
 					} break;
 					// Если тип хэш-суммы указан как SHA512
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA512): {
@@ -257,19 +253,13 @@ namespace driver {
 						// Выделяем память для промежуточных значений
 						digest.resize(64, 0);
 						// Выделяем память для буфера данных
-						result.resize(129, 0);
+						result.resize(128, 0);
 						// Выполняем расчет суммы
 						::SHA512_Update(&ctx, buffer.data(), buffer.size());
 						// Копируем полученные данные
 						::SHA512_Final(digest.data(), &ctx);
-						/**
-						 * Заполняем строку данными SHA512
-						 */
-						for(uint8_t i = 0; i < 64; i++)
-							// Формируем данные SHA512-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA512-хэша
+						driver::hex(digest.data(), 64, result);
 					} break;
 				}
 			/**
@@ -315,104 +305,68 @@ namespace driver {
 					// Если тип хэш-суммы указан как HMAC_MD5
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::MD5): {
 						// Выделяем память для буфера данных
-						result.resize(33, 0);
+						result.resize(32, 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
 						::HMAC(::EVP_md5(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
-						/**
-						 * Заполняем строку данными MD5
-						 */
-						for(uint8_t i = 0; i < 16; i++)
-							// Формируем данные MD5-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные MD5-хэша
+						driver::hex(digest, 16, result);
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA1
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA1): {
 						// Выделяем память для буфера данных
-						result.resize(41, 0);
+						result.resize(40, 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
 						::HMAC(::EVP_sha1(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
-						/**
-						 * Заполняем строку данными SHA1
-						 */
-						for(uint8_t i = 0; i < 20; i++)
-							// Формируем данные SHA1-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA1-хэша
+						driver::hex(digest, 20, result);
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA224
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA224): {
 						// Выделяем память для буфера данных
-						result.resize(57, 0);
+						result.resize(56, 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
 						::HMAC(::EVP_sha224(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
-						/**
-						 * Заполняем строку данными SHA224
-						 */
-						for(uint8_t i = 0; i < 28; i++)
-							// Формируем данные SHA224-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA224-хэша
+						driver::hex(digest, 28, result);
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA256
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA256): {
 						// Выделяем память для буфера данных
-						result.resize(65, 0);
+						result.resize(64, 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
 						::HMAC(::EVP_sha256(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
-						/**
-						 * Заполняем строку данными SHA256
-						 */
-						for(uint8_t i = 0; i < 32; i++)
-							// Формируем данные SHA256-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA256-хэша
+						driver::hex(digest, 32, result);
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA384
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA384): {
 						// Выделяем память для буфера данных
-						result.resize(97, 0);
+						result.resize(96, 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
 						::HMAC(::EVP_sha384(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
-						/**
-						 * Заполняем строку данными SHA384
-						 */
-						for(uint8_t i = 0; i < 48; i++)
-							// Формируем данные SHA384-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA384-хэша
+						driver::hex(digest, 48, result);
 					} break;
 					// Если тип хэш-суммы указан как HMAC_SHA512
 					case static_cast <uint8_t> (awh::crypto_t::hash_t::SHA512): {
 						// Выделяем память для буфера данных
-						result.resize(129, 0);
+						result.resize(128, 0);
 						// Буфер для бинарного результата подписи
 						uint8_t digest[EVP_MAX_MD_SIZE] = {0};
 						// Выполняем получение подписи
 						::HMAC(::EVP_sha512(), key.data(), key.size(), reinterpret_cast <const uint8_t *> (buffer.data()), buffer.size(), digest, nullptr);
-						/**
-						 * Заполняем строку данными SHA512
-						 */
-						for(uint8_t i = 0; i < 64; i++)
-							// Формируем данные SHA512-хэша
-							::sprintf(reinterpret_cast <char *> (&result[i * 2]), "%02x", static_cast <uint32_t> (digest[i]));
-						// Удаляем последний символ
-						result.pop_back();
+						// Формируем данные SHA512-хэша
+						driver::hex(digest, 64, result);
 					} break;
 				}
 			/**
@@ -1346,7 +1300,7 @@ auto awh::Crypto::hashWithSeed(const void * buffer, const size_t size, const T s
 		switch(sizeof(T)){
 			// Если необходимо вернуть 32 битный хэш
 			case 4: {
-				// Возвращаем 32 битный хэш
+				// ВНИМАНИЕ: CityHash32 не поддерживает seed, поэтому для 32-битного результата ключ игнорируется
 				const auto & hash = ::CityHash32(static_cast <const char *> (buffer), size);
 				// Копируем результат в выходной буфер
 				::memcpy(&result, &hash, sizeof(hash));
@@ -1539,7 +1493,7 @@ auto awh::Crypto::hashWithSeeds(const void * buffer, const size_t size, const T 
 		switch(sizeof(T)){
 			// Если необходимо вернуть 32 битный хэш
 			case 4: {
-				// Возвращаем 32 битный хэш
+				// ВНИМАНИЕ: CityHash32 не поддерживает seed, поэтому для 32-битного результата ключи игнорируются
 				const auto & hash = ::CityHash32(reinterpret_cast <const char *> (buffer), size);
 				// Копируем результат в выходной буфер
 				::memcpy(&result, &hash, sizeof(hash));
@@ -1561,10 +1515,10 @@ auto awh::Crypto::hashWithSeeds(const void * buffer, const size_t size, const T 
 			case 16: {
 				// 128-битный ключевой буфер
 				uint128 key;
-				// Копируем первую часть результата в выходной буфер
+				// Копируем первый ключ в младшую часть ключевого буфера
 				::memcpy(&key.first, reinterpret_cast <const char *> (&seed1), 8);
-				// Копируем вторую часть результата в выходной буфер
-				::memcpy(&key.second, reinterpret_cast <const char *> (&seed1) + 8, 8);
+				// Копируем второй ключ в старшую часть ключевого буфера
+				::memcpy(&key.second, reinterpret_cast <const char *> (&seed2), 8);
 				// Возвращаем 128 битный хэш
 				const auto & hash = ::CityHash128WithSeed(reinterpret_cast <const char *> (buffer), size, key);
 				// Копируем первую часть результата в выходной буфер
@@ -2151,6 +2105,8 @@ bool awh::Crypto::finalize(T & buffer) noexcept {
 					buffer.clear();
 					// Освобождаем контекст шифрования
 					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
+					// Зануляем контекст шифрования (исключаем повторное освобождение)
+					state.ctx = nullptr;
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2252,10 +2208,6 @@ bool awh::Crypto::initialize(const event_t event, const hash_t hash, const ciphe
 					// Выходим из метода
 					return result;
 				}
-				// Если контекст шифрования уже создан
-				if(state.ctx != nullptr)
-					// Освобождаем контекст шифрования
-					::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
 				// Создаем контекст шифрования
 				state.ctx = ::EVP_CIPHER_CTX_new();
 				// Если контекст не создан
@@ -2510,14 +2462,14 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 			case static_cast <uint8_t> (cipher_t::AES256): {
 				// Если пароль установлен
 				if(!this->_password.empty()){
+					// Выполняем блокировку потоков на всю критическую секцию (исключаем гонку проверки и инициализации)
+					const locker_t <> lock(this->_mtx);
 					// Получаем состояние объекта
 					const state_t & state = std::any_cast <const state_t &> (this->_state);
 					// Если контекст шифрования не создан
 					if(state.ctx == nullptr){
 						// Проверяем текущее состояние
 						if((state.hash != hash) || (state.cipher != cipher)){
-							// Выполняем блокировку потоков
-							const locker_t <> lock(this->_mtx);
 							// Если инициализация ключей не выполнена
 							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <state_t &> (state), this->_log)){
 								/**
@@ -2537,22 +2489,16 @@ auto awh::Crypto::encrypt(const void * buffer, const size_t size, const hash_t h
 								return result;
 							}
 						}
-						// Выполняем блокировку потоков
-						const locker_t <> lock(this->_mtx);
 						// Выполняем шифрование данных
 						driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
-					} else {
-						// Выполняем блокировку потоков
-						const locker_t <> lock(this->_mtx);
+					} else
 						// Выполняем шифрование данных
 						driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::ENCODE, const_cast <state_t &> (state), result, this->_log);
-					}
 				}
 				// Если кодирование не вышло
 				if(result.empty()){
-					// Возвращаем тот же самый буфер как он был передан
-					result.assign(reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
+					// Не возвращаем открытый текст: при неудаче шифрования результат остаётся пустым
 					/**
 					 * Если включён режим отладки
 					 */
@@ -2742,14 +2688,14 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 			case static_cast <uint8_t> (cipher_t::AES256): {
 				// Если пароль установлен
 				if(!this->_password.empty()){
+					// Выполняем блокировку потоков на всю критическую секцию (исключаем гонку проверки и инициализации)
+					const locker_t <> lock(this->_mtx);
 					// Получаем состояние объекта
 					const state_t & state = std::any_cast <const state_t &> (this->_state);
 					// Если контекст шифрования не создан
 					if(state.ctx == nullptr){
 						// Проверяем текущее состояние
 						if((state.hash != hash) || (state.cipher != cipher)){
-							// Выполняем блокировку потоков
-							const locker_t <> lock(this->_mtx);
 							// Если инициализация ключей не выполнена
 							if(!driver::cipher(cipher, hash, this->_password, this->_salt, this->_rounds, const_cast <state_t &> (state), this->_log)){
 								/**
@@ -2769,22 +2715,16 @@ auto awh::Crypto::decrypt(const void * buffer, const size_t size, const hash_t h
 								return result;
 							}
 						}
-						// Выполняем блокировку потоков
-						const locker_t <> lock(this->_mtx);
 						// Выполняем дешифрование данных
 						driver::hash(reinterpret_cast <const char *> (buffer), size, cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
 					// Если контекст шифрования уже создан
-					} else {
-						// Выполняем блокировку потоков
-						const locker_t <> lock(this->_mtx);
+					} else
 						// Выполняем дешифрование данных
 						driver::hash(reinterpret_cast <const char *> (buffer), size, state.cipher, event_t::DECODE, const_cast <state_t &> (state), result, this->_log);
-					}
 				}
 				// Если дешифрование не вышло
 				if(result.empty()){
-					// Возвращаем тот же самый буфер как он был передан
-					result.assign(reinterpret_cast <const char *> (buffer), reinterpret_cast <const char *> (buffer) + size);
+					// Не возвращаем зашифрованные данные: при неудаче дешифрования результат остаётся пустым
 					/**
 					 * Если включён режим отладки
 					 */
@@ -4118,7 +4058,7 @@ void awh::Crypto::encryptWithPublicKey(const uint8_t * buffer, const size_t size
 				// Если контекст для подписи создан
 				} else {
 					// Если контекст для шифрования не инициализирован
-					if((::EVP_PKEY_encrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)){
+					if((::EVP_PKEY_encrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) || (::EVP_PKEY_CTX_set_rsa_oaep_md(ctx, ::EVP_sha256()) <= 0) || (::EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, ::EVP_sha256()) <= 0)){
 						// Освобождаем контекст для шифрования
 						::EVP_PKEY_CTX_free(ctx);
 						/**
@@ -4291,7 +4231,7 @@ void awh::Crypto::decryptWithPrivateKey(const uint8_t * buffer, const size_t siz
 					// Если контекст для подписи создан
 					} else {
 						// Если контекст для дешифрования не инициализирован
-						if((::EVP_PKEY_decrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0)){
+						if((::EVP_PKEY_decrypt_init(ctx) <= 0) || (::EVP_PKEY_CTX_set_rsa_padding(ctx, RSA_PKCS1_OAEP_PADDING) <= 0) || (::EVP_PKEY_CTX_set_rsa_oaep_md(ctx, ::EVP_sha256()) <= 0) || (::EVP_PKEY_CTX_set_rsa_mgf1_md(ctx, ::EVP_sha256()) <= 0)){
 							// Освобождаем контекст для дешифрования
 							::EVP_PKEY_CTX_free(ctx);
 							/**
@@ -4891,4 +4831,13 @@ awh::Crypto::~Crypto() noexcept {
 	if(key.ctx != nullptr)
 		// Освобождаем память выделенную под ключ
 		::EVP_PKEY_free(key.ctx);
+	// Получаем ссылку на стейт AES-шифрования
+	state_t & state = std::any_cast <state_t &> (this->_state);
+	// Если контекст потокового AES-шифрования не был финализирован
+	if(state.ctx != nullptr){
+		// Освобождаем контекст шифрования
+		::EVP_CIPHER_CTX_free(const_cast <EVP_CIPHER_CTX *> (state.ctx));
+		// Зануляем контекст шифрования
+		state.ctx = nullptr;
+	}
 }

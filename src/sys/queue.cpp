@@ -329,7 +329,7 @@ void awh::Queue::commit(const size_t size) noexcept {
  */
 bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 	// Если ожидание не требуется либо потокобезопасность отключена
-	if((timeout == 0) || !this->_mtx.enabled.load(std::memory_order_acquire)){
+	if((timeout == 0) || !this->_mtx.enabled){
 		// Выполняем блокировку потока
 		const locker_t <> lock(this->_mtx);
 		// Возвращаем результат проверки на пустоту очереди
@@ -513,7 +513,7 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 		// Объекты блокировки потоков для обеих очередей
 		std::unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
-		if(this->_mtx.enabled.load(std::memory_order_acquire) || queue._mtx.enabled.load(std::memory_order_acquire)){
+		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
 			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
@@ -615,7 +615,7 @@ void awh::Queue::swap(queue_t & queue) noexcept {
  */
 void awh::Queue::threadSafety(const bool mode) noexcept {
 	// Активируем либо отключаем работу мьютекса блокировки доступа к данным очереди
-	this->_mtx.enabled.store(mode, std::memory_order_release);
+	this->_mtx.enabled = mode;
 	// Пробуждаем все ожидающие потоки, чтобы они не зависли при отключении потокобезопасности
 	this->_cv.notify_all();
 }
@@ -675,7 +675,7 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 		// Объекты блокировки потоков для обеих очередей
 		std::unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
-		if(this->_mtx.enabled.load(std::memory_order_acquire) || queue._mtx.enabled.load(std::memory_order_acquire)){
+		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
 			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
@@ -743,7 +743,7 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 		// Объекты блокировки потоков для обеих очередей
 		std::unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
-		if(this->_mtx.enabled.load(std::memory_order_acquire) || queue._mtx.enabled.load(std::memory_order_acquire)){
+		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
 			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
@@ -803,7 +803,7 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 		// Объекты блокировки потоков для обеих очередей
 		std::unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
-		if(this->_mtx.enabled.load(std::memory_order_acquire) || queue._mtx.enabled.load(std::memory_order_acquire)){
+		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
 			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
@@ -857,7 +857,7 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 		// Объект блокировки потока сторонней очереди
 		std::unique_lock <std::mutex> lock;
 		// Если для сторонней очереди включена потокобезопасность
-		if(queue._mtx.enabled.load(std::memory_order_acquire))
+		if(queue._mtx.enabled)
 			// Выполняем блокировку сторонней очереди
 			lock = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
 		// Если объект фреймворка установлен
@@ -911,7 +911,7 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 		// Объект блокировки потока сторонней очереди
 		std::unique_lock <std::mutex> lock;
 		// Если для сторонней очереди включена потокобезопасность
-		if(queue._mtx.enabled.load(std::memory_order_acquire))
+		if(queue._mtx.enabled)
 			// Выполняем блокировку сторонней очереди
 			lock = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
 		// Если объект фреймворка установлен

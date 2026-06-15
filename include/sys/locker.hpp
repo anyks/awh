@@ -24,6 +24,7 @@
 #include <mutex>
 #include <memory>
 #include <atomic>
+#include <functional>
 #include <type_traits>
 
 /**
@@ -73,6 +74,92 @@ namespace awh {
 	>> : std::true_type {};
 
 	/**
+	 * @brief Класс свойства булевого значения с поддержкой функции обратного вызова при изменении значения
+	 *
+	 */
+	typedef class Enabled_Property {
+		private:
+			// Значение свойства
+			std::atomic_bool _value;
+		private:
+			/**
+			 * Функция обратного вызова для дополнительных действий при изменении значения
+			 */
+			function <void (bool)> _callback;
+		public:
+			/**
+			 * @brief Оператор преобразования к булевому типу для получения текущего значения свойства
+			 *
+			 * @return текущее значение свойства
+			 */
+			operator bool() const noexcept {
+				// Возвращаем текущее значение свойства
+				return this->_value.load(std::memory_order_acquire);
+			}
+		public:
+			/**
+			 * @brief Оператор сравнения несоответствия значения свойства с заданным булевым значением
+			 *
+			 * @param value булевое значение для сравнения
+			 * @return      результат сравнения
+			 */
+			bool operator != (const bool value) const noexcept {
+				// Сравниваем текущее значение свойства с заданным значением
+				return (value != this->_value.load(std::memory_order_acquire));
+			}
+			/**
+			 * @brief Оператор сравнения соответствия значения свойства с заданным булевым значением
+			 *
+			 * @param value булевое значение для сравнения
+			 * @return      результат сравнения
+			 */
+			bool operator == (const bool value) const noexcept {
+				// Сравниваем текущее значение свойства с заданным значением
+				return (value == this->_value.load(std::memory_order_acquire));
+			}
+		public:
+			/**
+			 * @brief Оператор присваивания для копирования значения свойства из другого свойства
+			 *
+			 * @param other другое свойство для копирования значения
+			 * @return      ссылка на текущий объект для цепочки присваиваний
+			 */
+			Enabled_Property & operator = (const Enabled_Property & other) noexcept {
+				// Копируем значение из другого свойства
+				return (* this) = static_cast <bool> (other);
+			}
+		public:
+			/**
+			 * @brief Оператор присваивания для изменения значения свойства
+			 *
+			 * @param value новое значение свойства
+			 * @return      ссылка на текущий объект для цепочки присваиваний
+			 */
+			Enabled_Property & operator = (const bool value) noexcept {
+				// Если значение изменилось
+				if(this->_value.load(std::memory_order_acquire) != value){
+					// Меняем значение только если оно действительно изменилось
+					this->_value.store(value, std::memory_order_release);
+					// Если функция обратного вызова установлена
+					if(this->_callback != nullptr)
+						// Выполняем дополнительные действия
+						this->_callback(this->_value.load(std::memory_order_acquire));
+				}
+				// Возвращаем текущее значение объекта
+				return (* this);
+			}
+		public:
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param value    начальное значение свойства
+			 * @param callback функция обратного вызова для дополнительных действий при изменении значения 
+			 */
+			Enabled_Property(const bool value, function <void (bool)> callback = nullptr) noexcept :
+			 _value(value), _callback(callback) {}
+	} enabled_property_t;
+
+	/**
 	 * @brief Шаблон формата данных состояния блокировок
 	 *
 	 * @tparam MutexType тип данных состояния блокировок
@@ -95,12 +182,15 @@ namespace awh {
 			 *
 			 */
 			friend class Locker;
-		public:
+		private:
 			// Флаг активации режима работы
-			std::atomic_bool enabled;
+			std::atomic_bool _enabled;
 		private:
 			// Идентификатор процесса
 			std::atomic <pid_t> _pid;
+		public:
+			// Флаг включённости блокировок
+			enabled_property_t enabled;
 		private:
 			// Мютекс для блокировки потока
 			std::unique_ptr <MutexType> _mtx;
@@ -129,6 +219,22 @@ namespace awh {
 				// Возвращаем актуальный рабочий мьютекс
 				return this->_mtx.get();
 			}
+		private:
+			/**
+			 * @brief Метод, который будет вызван при изменении флага активации/деактивации блокировок
+			 *
+			 * @param value новое значение флага
+			 */
+			void onEnabledChanged(const bool value) noexcept {
+				// Устанавливаем новое значение флага активации/деактивации блокировок
+				this->_enabled.store(value, std::memory_order_release);
+				// Если блокировки включены, гарантируем существование рабочего мьютекса
+				if(this->_enabled.load(std::memory_order_acquire))
+					// Если блокировки включены, гарантируем существование рабочего мьютекса
+					(void) this->_ensure();
+				// Если блокировки отключены, удаляем рабочий мьютекс для освобождения ресурсов
+				else this->_mtx.reset(nullptr);
+			}
 		public:
 			/**
 			 * @brief Оператор преобразования к мютексу
@@ -139,12 +245,6 @@ namespace awh {
 			operator MutexType & () noexcept {
 				// Лениво создаём (или пересоздаём после fork) рабочий мьютекс
 				MutexType & mtx = (* this->_ensure());
-				/**
-				 * Раз сам мьютекс отдаётся наружу (например, под condition_variable),
-				 * это подразумевает работу в многопоточном режиме. Поднимаем флаг,
-				 * чтобы исключить противоречивое состояние enabled == false при живом мьютексе
-				 */
-				this->enabled.store(true, std::memory_order_release);
 				// Возвращаем мютекс для блокировки потока
 				return mtx;
 			}
@@ -165,8 +265,22 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit LockState() noexcept :
-			 enabled(true), _pid(::getpid()), _mtx(nullptr) {}
+			explicit LockState() noexcept : enabled {
+				// Активируем блокировки по умолчанию при создании объекта
+				true,
+				/**
+				 * @brief Функция обратного вызова для изменения флага активации/деактивации блокировок
+				 *
+				 * @param value новое значение флага
+				 */
+				[this](const bool value) noexcept {
+					// Устанавливаем новое значение флага активации/деактивации блокировок
+					this->onEnabledChanged(value);
+				}
+			}, _enabled(false), _pid(::getpid()), _mtx(nullptr) {
+				// Активируем блокировки по умолчанию при создании объекта
+				this->onEnabledChanged(true);
+			}
 	};
 	/**
 	 * @brief Шаблон формата данных состояния блокировок
@@ -237,8 +351,10 @@ namespace awh {
 			 *
 			 */
 			void _lockImpl(std::false_type) noexcept {
-				// Выполняем обычную блокировку
-				this->_held->lock();
+				// Если мьютекс существует
+				if(this->_held != nullptr)
+					// Выполняем обычную блокировку
+					this->_held->lock();
 			}
 			/**
 			 * @brief Шаблон метода разблокировки в эксклюзивном режиме
@@ -251,8 +367,10 @@ namespace awh {
 			 *
 			 */
 			void _unlockImpl(std::false_type) noexcept {
-				// Выполняем обычную разблокировку
-				this->_held->unlock();
+				// Если мьютекс существует
+				if(this->_held != nullptr)
+					// Выполняем обычную разблокировку
+					this->_held->unlock();
 			}
 		private:
 			/**
@@ -267,8 +385,10 @@ namespace awh {
 			 * @return результат выполнения операции
 			 */
 			typename std::enable_if <has_shared_lock <M>::value, void>::type _lockImpl(std::true_type) noexcept {
-				// Выполняем разделённую блокировку
-				this->_held->lock_shared();
+				// Если мьютекс существует
+				if(this->_held != nullptr)
+					// Выполняем разделённую блокировку
+					this->_held->lock_shared();
 			}
 			/**
 			 * @brief Шаблон метода уникальной блокировки при поддержке shared_lock
@@ -282,8 +402,10 @@ namespace awh {
 			 * @return результат выполнения операции
 			 */
 			typename std::enable_if <!has_shared_lock <M>::value, void>::type _lockImpl(std::true_type) noexcept {
-				// Выполняем обычную блокировку, так как мьютекс не поддерживает разделённую блокировку
-				this->_held->lock();
+				// Если мьютекс существует
+				if(this->_held != nullptr)
+					// Выполняем обычную блокировку, так как мьютекс не поддерживает разделённую блокировку
+					this->_held->lock();
 			}
 		private:
 			/**
@@ -298,8 +420,10 @@ namespace awh {
 			 * @return результат выполнения операции
 			 */
 			typename std::enable_if <has_shared_lock <M>::value, void>::type _unlockImpl(std::true_type) noexcept {
-				// Выполняем разделённую разблокировку
-				this->_held->unlock_shared();
+				// Если мьютекс существует
+				if(this->_held != nullptr)
+					// Выполняем разделённую разблокировку
+					this->_held->unlock_shared();
 			}
 			/**
 			 * @brief Шаблон метода уникальной разблокировки при поддержке shared_lock
@@ -313,8 +437,10 @@ namespace awh {
 			 * @return результат выполнения операции
 			 */
 			typename std::enable_if <!has_shared_lock <M>::value, void>::type _unlockImpl(std::true_type) noexcept {
-				// Выполняем обычную разблокировку, так как мьютекс не поддерживает разделённую блокировку
-				this->_held->unlock();
+				// Если мьютекс существует
+				if(this->_held != nullptr)
+					// Выполняем обычную разблокировку, так как мьютекс не поддерживает разделённую блокировку
+					this->_held->unlock();
 			}
 		private:
 			/**
@@ -359,7 +485,7 @@ namespace awh {
 			explicit Locker(LockState <MutexType> & state, mode_t mode = mode_t::EXCLUSIVE) noexcept
 			 : _locked(false), _mode(mode), _state(state), _held(nullptr) {
 				// Если захватывать доступ к памяти нам не нужно (однопоточный режим)
-				if(!this->_state.enabled.load(std::memory_order_acquire))
+				if(!this->_state._enabled.load(std::memory_order_acquire))
 					// Выходим из конструктора, не создавая и не захватывая мьютекс
 					return;
 				// Лениво создаём (или пересоздаём после fork) рабочий мьютекс и запоминаем его
