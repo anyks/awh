@@ -265,7 +265,8 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit LockState() noexcept : enabled {
+			explicit LockState() noexcept :
+			 _enabled(false), _pid(::getpid()), enabled {
 				// Активируем блокировки по умолчанию при создании объекта
 				true,
 				/**
@@ -277,7 +278,7 @@ namespace awh {
 					// Устанавливаем новое значение флага активации/деактивации блокировок
 					this->onEnabledChanged(value);
 				}
-			}, _enabled(false), _pid(::getpid()), _mtx(nullptr) {
+			}, _mtx(nullptr) {
 				// Активируем блокировки по умолчанию при создании объекта
 				this->onEnabledChanged(true);
 			}
