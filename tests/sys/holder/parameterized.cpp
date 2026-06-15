@@ -41,7 +41,7 @@ class HoldParameterizedFixture : public HolderFixture, public ::testing::WithPar
  */
 TEST_P(HoldParameterizedFixture, HoldTest){
 	// Создаём объект холдера
-	awh::holder_t <HolderFixture::status_t> holder(this->_status);
+	awh::holder_t <HolderFixture::status_t> holder(this->_status, this->_mtx);
 	ASSERT_TRUE(holder.access(this->_parameter.items, this->_parameter.status));
 }
 

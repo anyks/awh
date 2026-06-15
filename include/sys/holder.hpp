@@ -23,7 +23,6 @@
  */
 #include <mutex>
 #include <stack>
-#include <atomic>
 #include <unordered_set>
 
 /**
@@ -39,9 +38,10 @@ namespace awh {
 	/**
 	 * @brief Шаблон формата данных статусов холдера
 	 *
-	 * @tparam T тип данных статусов холдера
+	 * @tparam T         тип данных статусов холдера
+	 * @tparam MutexType тип данных внешнего мьютекса (std::mutex или std::shared_mutex)
 	 */
-	template <typename T>
+	template <typename T, typename MutexType = std::mutex>
 	/**
 	 * @brief Класс холдера
 	 *
@@ -49,23 +49,13 @@ namespace awh {
 	class Holder {
 		private:
 			// Флаг холдирования
-			std::atomic_bool _flag;
+			bool _flag;
 		private:
 			// Ссылка на стек статусов
 			std::stack <T> & _status;
 		private:
-			// Мютекс для блокировки потока
-			lock_state_t <std::mutex> _mtx;
-		public:
-			/**
-			 * @brief Метод установки безопасности работы потоков
-			 *
-			 * @param mode флаг режима безопасности потоков
-			 */
-			void threadSafety(const bool mode) noexcept {
-				// Устанавливаем режим безопасности потоков
-				this->_mtx.enabled = mode;
-			}
+			// Ссылка на внешний мьютекс владельца стека статусов
+			lock_state_t <MutexType> & _mtx;
 		public:
 			/**
 			 * @brief Метод проверки на разрешение выполнения операции
@@ -76,38 +66,39 @@ namespace awh {
 			 * @return      результат проверки (удалось ли захватить)
 			 */
 			bool access(const std::unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
+				// Выполняем эксклюзивную блокировку потока на всю транзакцию (проверка вершины и установка холда)
+				const locker_t <MutexType> lock(this->_mtx);
 				// Определяем есть ли фиксированные статусы
-				this->_flag.store(this->_status.empty(), std::memory_order_release);
-				// Если идентификатор обнулился после переполнения счётчика
-				if(!this->_flag.load(std::memory_order_acquire) && !comp.empty())
-					// Получаем результат сравнения
-					this->_flag.store((equal ? (comp.count(this->_status.top()) > 0) : (comp.count(this->_status.top()) < 1)), std::memory_order_release);
+				this->_flag = this->_status.empty();
+				// Если на вершине стека уже есть активный статус и задано множество для сравнения
+				if(!this->_flag && !comp.empty())
+					// Получаем результат сравнения текущего статуса со множеством разрешённых/запрещённых
+					this->_flag = (equal ? (comp.count(this->_status.top()) > 0) : (comp.count(this->_status.top()) < 1));
 				// Если необходимо выполнить холдирование
-				if(this->_flag.load(std::memory_order_acquire)){
-					// Выполняем блокировку потока
-					const locker_t <> lock(this->_mtx);
+				if(this->_flag)
 					// Выполняем установку холда
 					this->_status.push(hold);
-				}
 				// Возвращаем результат
-				return this->_flag.load(std::memory_order_acquire);
+				return this->_flag;
 			}
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param status ссылка на стек статусов
+			 * @param mtx    ссылка на внешний мьютекс владельца стека статусов
 			 */
-			explicit Holder(std::stack <T> & status) noexcept : _flag(false), _status(status) {}
+			explicit Holder(std::stack <T> & status, lock_state_t <MutexType> & mtx) noexcept :
+			 _flag(false), _status(status), _mtx(mtx) {}
 			/**
 			 * @brief Деструктор
 			 *
 			 */
 			~Holder() noexcept {
 				// Если холдирование выполнено
-				if(this->_flag.load(std::memory_order_acquire)){
-					// Выполняем блокировку потока
-					const locker_t <> lock(this->_mtx);
+				if(this->_flag){
+					// Выполняем эксклюзивную блокировку потока
+					const locker_t <MutexType> lock(this->_mtx);
 					// Выполняем снятие холда
 					this->_status.pop();
 				}
@@ -116,13 +107,14 @@ namespace awh {
 	/**
 	 * @brief Шаблон формата данных статусов холдера
 	 *
-	 * @tparam T данные статусов холдера
+	 * @tparam T         данные статусов холдера
+	 * @tparam MutexType тип данных внешнего мьютекса (std::mutex или std::shared_mutex)
 	 */
-	template <class T>
+	template <class T, typename MutexType = std::mutex>
 	/**
 	 * Создаём тип данных работы с холдером
 	 */
-	using holder_t = Holder <T>;
+	using holder_t = Holder <T, MutexType>;
 };
 
 #endif // __AWH_HOLDER__

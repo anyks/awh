@@ -39,8 +39,11 @@ class HolderFixture : public testing::Test {
 			STATUS4 = 0x04  // Четвёртый статус
 		};
 	protected:
-		// Объект холдера
+		// Стек статусов холдера
 		std::stack <status_t> _status;
+	protected:
+		// Внешний мьютекс для защиты стека статусов
+		awh::lock_state_t <std::mutex> _mtx;
 	public:
 		/**
 		 * @brief Метод настройки тестового окружения
