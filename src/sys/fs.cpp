@@ -526,209 +526,6 @@ namespace {
 };
 
 /**
- * @brief Метод, определяющий тип файловой системы по адресу
- *
- * @param addr адрес директории или файла
- * @return     тип файловой системы
- */
-awh::Filesystem::type_t awh::Filesystem::type(string_view addr) const noexcept {
-	// Переменная результата
-	type_t result = type_t::NONE;
-	// Если адрес директории или файла передан
-	if(!addr.empty()){
-		/**
-		 * Выполняем перехват ошибок
-		 */
-		try {
-			/**
-			 * Для операционной системы MS Windows
-			 */
-			#if _WIN32 || _WIN64
-				// Структура проверка статистики
-				struct _stat info{};
-				// Выполняем извлечение актуального значения адреса
-				const wstring & address = this->_fmk->convert(this->fullpath(addr));
-				// Выполняем извлечение данных статистики
-				const int32_t status = (!address.empty() ? ::_wstat(address.c_str(), &info) : -1);
-			/**
-			 * Для операционной системы не являющейся MS Windows
-			 */
-			#else
-				// Структура проверка статистики
-				struct stat info{};
-				// Выполняем извлечение данных статистики
-				const int32_t status = ::stat(addr.data(), &info);
-			#endif
-			// Если тип определён
-			if(status == 0){
-				// Если это каталог
-				if(S_ISDIR(info.st_mode))
-					// Получаем тип файловой системы
-					result = type_t::DIR;
-				// Если это устройство
-				else if(S_ISCHR(info.st_mode))
-					// Получаем тип файловой системы
-					result = type_t::CHR;
-				// Если это блок устройства
-				else if(S_ISBLK(info.st_mode))
-					// Получаем тип файловой системы
-					result = type_t::BLK;
-				// Если это файл
-				else if(S_ISREG(info.st_mode))
-					// Получаем тип файловой системы
-					result = type_t::FILE;
-				// Если это устройство ввода-вывода
-				else if(S_ISFIFO(info.st_mode))
-					// Получаем тип файловой системы
-					result = type_t::FIFO;
-				/**
-				 * Для операционной системы не являющейся MS Windows
-				 */
-				#if !_WIN32 && !_WIN64
-					// Если это сокет
-					else if(S_ISSOCK(info.st_mode))
-						// Получаем тип файловой системы
-						result = type_t::SOCK;
-				/**
-				 * Для операционной системы MS Windows
-				 */
-				#else
-					// Создаём объект работы с файлом
-					HANDLE file = ::CreateFileW(address.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
-					// Если открыть файл открыт нормально
-					if(file != INVALID_HANDLE_VALUE){
-						// Если файл является сокетом
-						if(::GetFileType(file) == FILE_TYPE_PIPE)
-							// Получаем тип файловой системы
-							result = type_t::SOCK;
-						// Выполняем закрытие файла
-						::CloseHandle(file);
-					}
-				#endif
-				/**
-				 * Если операционной системой является MacOS X
-				 */
-				#if __APPLE__ || __MACH__
-					/**
-					 * Если целевая платформа является MacOS X
-					 */
-					#ifdef __AWH_USE_MACOS_ALIAS_RESOLUTION__
-						// Если детектировать актуальные файлы не нужно и его тип определённо установлен
-						if(result != type_t::NONE){
-							/**
-							 * Выполняем проверку является ли файл alias-файлом
-							 */
-							@autoreleasepool {
-								// Преобразуем путь в NSString
-								NSString * path = [NSString stringWithUTF8String:addr.data()];
-								// Если путь не существует
-								if(!path || ![[NSFileManager defaultManager] fileExistsAtPath:path])
-									// Возвращаем значение по умолчанию
-									return result;
-								// Создаём объект URL из пути
-								NSURL * url = [NSURL fileURLWithPath:path];
-								// Если объект URL не создан
-								if(!url)
-									// Возвращаем значение по умолчанию
-									return result;
-								// Объект для хранения информации о ресурсе
-								NSNumber * isAliasNumber = nil;
-								// Ошибки получения ресурса
-								NSError * error = nil;
-								// Проверяем, является ли файл alias-файлом
-								BOOL success = [url getResourceValue:&isAliasNumber forKey:NSURLIsAliasFileKey error:&error];
-								// Если файл является alias-файлом
-								if(success && isAliasNumber && [isAliasNumber boolValue])
-									// Получаем тип файловой системы
-									result = type_t::LINK;
-							}
-						}
-					#endif
-				#endif
-			}
-			// Если детектировать актуальные файлы не нужно и адрес не детектирован как ссылка
-			if(result != type_t::LINK){
-				/**
-				 * Для операционной системы не являющейся MS Windows
-				 */
-				#if !_WIN32 && !_WIN64
-					// Если тип определён
-					if(::lstat(addr.data(), &info) == 0){
-						// Если это символьная ссылка
-						if(S_ISLNK(info.st_mode))
-							// Получаем тип файловой системы
-							result = type_t::LINK;
-					}
-				/**
-				 * Для операционной системы MS Windows
-				 */
-				#else
-					// Выполняем инициализацию результата
-					HRESULT hres = ::CoInitialize(nullptr);
-					// Создаём объект проверки наличия ярлыка
-					com_guard_t <IShellLinkW> psl;
-					// Выполняем инициализацию объекта для проверки ярлыков
-					hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
-					// Если инициализация выполнена
-					if(SUCCEEDED(hres) && psl){
-						// Создаём объект проверки файла
-						com_guard_t <IPersistFile> ppf;
-						// Выполняем инициализацию объекта для проверки файла
-						hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
-						// Если объект для проверки файла инициализирован
-						if(SUCCEEDED(hres) && ppf){
-							// Выполняем загрузку переданного адреса
-							hres = ppf->Load(address.c_str(), STGM_READ);
-							// Если переданный адрес является ярлыком
-							if(SUCCEEDED(hres))
-								// Получаем тип файловой системы
-								result = type_t::LINK;
-						}
-					}
-					// Выполняем очистку объекта результата
-					::CoUninitialize();
-				#endif
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const ios_base::failure & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
-	}
-	// Возвращаем результат
-	return result;
-}
-/**
  * @brief Метод создания символьной ссылки
  *
  * @param first  адрес на который нужно сделать ссылку
@@ -992,8 +789,8 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 										if(!::wcscmp(ptr->d_name, L".") || !::wcscmp(ptr->d_name, L".."))
 											// Выполняем пропуск каталога
 											continue;
-										// Получаем адрес в виде строки
-										const string & address = this->_fmk->format("%s%s%s", addr.data(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
+										// Получаем полный путь дочернего элемента из разрешённого адреса каталога
+										const string & child = this->_fmk->format("%s%s%s", address.c_str(), AWH_FS_SEPARATOR, this->_fmk->convert(ptr->d_name).c_str());
 									/**
 									 * Для операционной системы не являющейся MS Windows
 									 */
@@ -1002,25 +799,25 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 										if(!::strcmp(ptr->d_name, ".") || !::strcmp(ptr->d_name, ".."))
 											// Выполняем пропуск каталога
 											continue;
-										// Получаем адрес каталога
-										const string & address = this->_fmk->format("%s%s%s", addr.data(), AWH_FS_SEPARATOR, ptr->d_name);
+										// Получаем полный путь дочернего элемента из разрешённого адреса каталога
+										const string & child = this->_fmk->format("%s%s%s", address.c_str(), AWH_FS_SEPARATOR, ptr->d_name);
 									#endif
 									/**
 									 * Для операционной системы MS Windows
 									 */
 									#if _WIN32 || _WIN64
 										// Конвертируем адрес в формат wstring
-										const wstring & path = this->_fmk->convert(address);
+										const wstring & path = this->_fmk->convert(child);
 										// Если статистика извлечена
 										if(!::_wstat(path.c_str(), &info)){
 											// Если дочерний элемент является директорией
 											if(S_ISDIR(info.st_mode))
 												// Выполняем удаление подкаталогов
-												result = this->unlink(address, resolve);
+												result = this->unlink(child, resolve);
 											// Если дочерний элемент является файлом то удаляем его
 											else result = (::_wunlink(path.c_str()) == 0);
 										// Если путь является символьной ссылкой
-										} else if(this->type(address) == type_t::LINK)
+										} else if(this->type(child) == type_t::LINK)
 											// Выполняем удаление символьной ссылки
 											result = (::_wunlink(path.c_str()) == 0);
 									/**
@@ -1028,17 +825,17 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 									 */
 									#else
 										// Если статистика извлечена
-										if(!::stat(address.c_str(), &info)){
+										if(!::stat(child.c_str(), &info)){
 											// Если дочерний элемент является директорией
 											if(S_ISDIR(info.st_mode))
 												// Выполняем удаление подкаталогов
-												result = this->unlink(address, resolve);
+												result = this->unlink(child, resolve);
 											// Если дочерний элемент является файлом то удаляем его
-											else result = (::unlink(address.c_str()) == 0);
+											else result = (::unlink(child.c_str()) == 0);
 										// Если путь является символьной ссылкой
-										} else if(this->type(address) == type_t::LINK)
+										} else if(this->type(child) == type_t::LINK)
 											// Выполняем удаление символьной ссылки
-											result = (::unlink(address.c_str()) == 0);
+											result = (::unlink(child.c_str()) == 0);
 									#endif
 									// Если удаление не выполнено
 									if(!result)
@@ -1130,6 +927,212 @@ bool awh::Filesystem::unlink(string_view addr, const bool resolve) const noexcep
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод, определяющий тип файловой системы по адресу
+ *
+ * @param addr адрес директории или файла
+ * @return     тип файловой системы
+ */
+awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detectLinks) const noexcept {
+	// Переменная результата
+	type_t result = type_t::NONE;
+	// Если адрес директории или файла передан
+	if(!addr.empty()){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Для операционной системы MS Windows
+			 */
+			#if _WIN32 || _WIN64
+				// Структура проверка статистики
+				struct _stat info{};
+				// Выполняем извлечение актуального значения адреса
+				const wstring & address = this->_fmk->convert(this->fullpath(addr));
+				// Выполняем извлечение данных статистики
+				const int32_t status = (!address.empty() ? ::_wstat(address.c_str(), &info) : -1);
+			/**
+			 * Для операционной системы не являющейся MS Windows
+			 */
+			#else
+				// Структура проверка статистики
+				struct stat info{};
+				// Выполняем извлечение данных статистики
+				const int32_t status = ::stat(addr.data(), &info);
+			#endif
+			// Если тип определён
+			if(status == 0){
+				// Если это каталог
+				if(S_ISDIR(info.st_mode))
+					// Получаем тип файловой системы
+					result = type_t::DIR;
+				// Если это устройство
+				else if(S_ISCHR(info.st_mode))
+					// Получаем тип файловой системы
+					result = type_t::CHR;
+				// Если это блок устройства
+				else if(S_ISBLK(info.st_mode))
+					// Получаем тип файловой системы
+					result = type_t::BLK;
+				// Если это файл
+				else if(S_ISREG(info.st_mode))
+					// Получаем тип файловой системы
+					result = type_t::FILE;
+				// Если это устройство ввода-вывода
+				else if(S_ISFIFO(info.st_mode))
+					// Получаем тип файловой системы
+					result = type_t::FIFO;
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#if !_WIN32 && !_WIN64
+					// Если это сокет
+					else if(S_ISSOCK(info.st_mode))
+						// Получаем тип файловой системы
+						result = type_t::SOCK;
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#else
+					// Создаём объект работы с файлом
+					HANDLE file = ::CreateFileW(address.c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr);
+					// Если открыть файл открыт нормально
+					if(file != INVALID_HANDLE_VALUE){
+						// Если файл является сокетом
+						if(::GetFileType(file) == FILE_TYPE_PIPE)
+							// Получаем тип файловой системы
+							result = type_t::SOCK;
+						// Выполняем закрытие файла
+						::CloseHandle(file);
+					}
+				#endif
+				/**
+				 * Если операционной системой является MacOS X
+				 */
+				#if __APPLE__ || __MACH__
+					/**
+					 * Если целевая платформа является MacOS X
+					 */
+					#ifdef __AWH_USE_MACOS_ALIAS_RESOLUTION__
+						// Alias-файлы всегда являются обычными файлами — проверяем только их и только если детект включён
+						if(detectLinks && (result == type_t::FILE)){
+							/**
+							 * Выполняем проверку является ли файл alias-файлом
+							 */
+							@autoreleasepool {
+								// Преобразуем путь в NSString
+								NSString * path = [NSString stringWithUTF8String:addr.data()];
+								// Если путь не существует
+								if(!path || ![[NSFileManager defaultManager] fileExistsAtPath:path])
+									// Возвращаем значение по умолчанию
+									return result;
+								// Создаём объект URL из пути
+								NSURL * url = [NSURL fileURLWithPath:path];
+								// Если объект URL не создан
+								if(!url)
+									// Возвращаем значение по умолчанию
+									return result;
+								// Объект для хранения информации о ресурсе
+								NSNumber * isAliasNumber = nil;
+								// Ошибки получения ресурса
+								NSError * error = nil;
+								// Проверяем, является ли файл alias-файлом
+								BOOL success = [url getResourceValue:&isAliasNumber forKey:NSURLIsAliasFileKey error:&error];
+								// Если файл является alias-файлом
+								if(success && isAliasNumber && [isAliasNumber boolValue])
+									// Получаем тип файловой системы
+									result = type_t::LINK;
+							}
+						}
+					#endif
+				#endif
+			}
+			// Если детектирование ссылок включено и адрес ещё не детектирован как ссылка
+			if(detectLinks && (result != type_t::LINK)){
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#if !_WIN32 && !_WIN64
+					// Если тип определён
+					if(::lstat(addr.data(), &info) == 0){
+						// Если это символьная ссылка
+						if(S_ISLNK(info.st_mode))
+							// Получаем тип файловой системы
+							result = type_t::LINK;
+					}
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#else
+					// Ярлыки Windows всегда имеют расширение .lnk — иначе дорогой COM-вызов не требуется
+					if((address.size() > 4) && (::_wcsicmp(address.c_str() + (address.size() - 4), L".lnk") == 0)){
+						// Выполняем инициализацию результата
+						HRESULT hres = ::CoInitialize(nullptr);
+						// Создаём объект проверки наличия ярлыка
+						com_guard_t <IShellLinkW> psl;
+						// Выполняем инициализацию объекта для проверки ярлыков
+						hres = ::CoCreateInstance(CLSID_ShellLink, nullptr, CLSCTX_INPROC_SERVER, IID_IShellLinkW, reinterpret_cast <LPVOID *> (&psl));
+						// Если инициализация выполнена
+						if(SUCCEEDED(hres) && psl){
+							// Создаём объект проверки файла
+							com_guard_t <IPersistFile> ppf;
+							// Выполняем инициализацию объекта для проверки файла
+							hres = psl->QueryInterface(IID_IPersistFile, reinterpret_cast <void **> (&ppf));
+							// Если объект для проверки файла инициализирован
+							if(SUCCEEDED(hres) && ppf){
+								// Выполняем загрузку переданного адреса
+								hres = ppf->Load(address.c_str(), STGM_READ);
+								// Если переданный адрес является ярлыком
+								if(SUCCEEDED(hres))
+									// Получаем тип файловой системы
+									result = type_t::LINK;
+							}
+						}
+						// Выполняем очистку объекта результата
+						::CoUninitialize();
+					}
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, detectLinks), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(addr, detectLinks), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1666,68 +1669,64 @@ bool awh::Filesystem::mkdir(string_view addr) const noexcept {
 				const string & address = this->fullpath(addr);
 				// Если адрес получен правильный
 				if((result = !address.empty())){
-					// Создаём буфер данных для получения адреса
-					char buffer[PATH_MAX];
-					// Копируем переданный адрес в буфер
-					::snprintf(buffer, address.size() + 1, "%s", address.c_str());
+					// Мутабельная копия полного адреса (без фиксированного буфера и snprintf для портируемости)
+					string buffer(address);
 					// Если последний символ является сепаратором тогда удаляем его
-					if(buffer[address.size() - 1] == AWH_FS_SEPARATOR[0])
-						// Устанавливаем конец строки
-						buffer[address.size() - 1] = 0;
-					// Указатель на сепаратор
-					char * i = nullptr;
+					if(!buffer.empty() && (buffer.back() == AWH_FS_SEPARATOR[0]))
+						// Удаляем завершающий сепаратор
+						buffer.pop_back();
 					/**
-					 * Переходим по всем символам
+					 * Переходим по всем символам адреса, создавая каталоги по мере прохождения
 					 */
-					for(i = buffer + 1; * i; i++){
+					for(size_t i = 1; i < buffer.length(); ++i){
 						// Если найден сепаратор
-						if((* i) == AWH_FS_SEPARATOR[0]){
-							// Сбрасываем указатель
-							(* i) = 0;
+						if(buffer[i] == AWH_FS_SEPARATOR[0]){
+							// Временно обрываем строку нулём, чтобы получить промежуточный путь
+							buffer[i] = '\0';
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
 							#if !_WIN32 && !_WIN64
 								// Создаем каталог
-								result = (::mkdir(buffer, S_IRWXU) == 0);
+								result = (::mkdir(buffer.c_str(), S_IRWXU) == 0);
 							/**
 							 * Для операционной системы MS Windows
 							 */
 							#else
 								// Если это дисковой сепаратор
-								if((::strlen(buffer) == 2) && (buffer[1] == ':')){
+								if((i == 2) && (buffer[1] == ':')){
 									// Запоминаем сепаратор
-									(* i) = AWH_FS_SEPARATOR[0];
+									buffer[i] = AWH_FS_SEPARATOR[0];
 									// Продолжаем перебор адреса
 									continue;
 								}
 								// Создаем каталог
-								result = (::_wmkdir(this->_fmk->convert(buffer).c_str()) == 0);
+								result = (::_wmkdir(this->_fmk->convert(buffer.c_str()).c_str()) == 0);
 							#endif
 							// Если каталог уже существует
 							if(!result && (errno == EEXIST))
 								// Восстанавливаем флаг
 								result = true;
 							// Запоминаем сепаратор
-							(* i) = AWH_FS_SEPARATOR[0];
+							buffer[i] = AWH_FS_SEPARATOR[0];
 						// Если это последний символ в строке
-						} else if(* (i + 1) == 0) {
+						} else if((i + 1) == buffer.length()) {
 							/**
 							 * Для операционной системы не являющейся MS Windows
 							 */
 							#if !_WIN32 && !_WIN64
 								// Создаем каталог
-								result = (::mkdir(buffer, S_IRWXU) == 0);
+								result = (::mkdir(buffer.c_str(), S_IRWXU) == 0);
 							/**
 							 * Для операционной системы MS Windows
 							 */
 							#else
 								// Если это дисковой сепаратор
-								if((::strlen(buffer) == 2) && (buffer[1] == ':'))
+								if((buffer.length() == 2) && (buffer[1] == ':'))
 									// Выходим из цикла
 									break;
 								// Создаем каталог
-								result = (::_wmkdir(this->_fmk->convert(buffer).c_str()) == 0);
+								result = (::_wmkdir(this->_fmk->convert(buffer.c_str()).c_str()) == 0);
 							#endif
 							// Если каталог уже существует
 							if(!result && (errno == EEXIST))
@@ -1933,7 +1932,7 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 				/**
 				 * Определяем тип переданного пути
 				 */
-				switch(static_cast <uint8_t> (this->type(path))){
+				switch(static_cast <uint8_t> (this->type(path, false))){
 					// Если полный путь является файлом
 					case static_cast <uint8_t> (type_t::FILE): {
 						/**
@@ -2057,21 +2056,39 @@ uintmax_t awh::Filesystem::size(string_view addr, string_view ext, const bool re
 										break;
 										// Если полный путь является файлом
 										case static_cast <uint8_t> (type_t::FILE): {
+											// Флаг необходимости учёта файла
+											bool allowed = true;
 											// Если расширение файла передано
 											if(!ext.empty()){
 												// Получаем обёртку полученного пути
 												string_view path = address;
 												// Получаем расширение файла
 												const string & extension = this->_fmk->format(".%s", ext.data());
-												// Если расширение не выше полного адреса
-												if(path.size() > extension.size()){
-													// Если расширение файла найдено
-													if(this->_fmk->compare(path.substr(path.size() - extension.size()).data(), extension))
-														// Получаем размер файла
-														result += this->size(path, ext, recurse);
-												}
-											// Если расширение файла не передано, то просто получаем размер файла
-											} else result += this->size(address, ext, recurse);
+												// Файл учитывается только если его расширение совпадает с фильтром
+												allowed = ((path.size() > extension.size()) && this->_fmk->compare(path.substr(path.size() - extension.size()).data(), extension));
+											}
+											// Если файл нужно учесть — получаем его размер напрямую, без повторного резолвинга
+											if(allowed){
+												/**
+												 * Для операционной системы MS Windows
+												 */
+												#if _WIN32 || _WIN64
+													// Структура проверка статистики
+													struct _stat info{};
+													// Если статистика извлечена
+													if(!::_wstat(this->_fmk->convert(address).c_str(), &info))
+												/**
+												 * Для операционной системы не являющейся MS Windows
+												 */
+												#else
+													// Структура проверка статистики
+													struct stat info{};
+													// Если статистика извлечена
+													if(!::stat(address.c_str(), &info))
+												#endif
+														// Выполняем извлечение данных статистики
+														result += static_cast <uintmax_t> (info.st_size);
+											}
 										} break;
 										// Если путь принадлежит к другому типу
 										default: {
@@ -2160,7 +2177,7 @@ uintmax_t awh::Filesystem::count(string_view addr, string_view ext, const bool r
 			// Выполняем извлечение актуального значения адреса
 			const string & address = this->fullpath(addr, true);
 			// Если адрес получен правильный
-			if(!address.empty() && (this->type(address) == type_t::DIR)){
+			if(!address.empty() && (this->type(address, false) == type_t::DIR)){
 				// Получаем обёртку полученного пути
 				string_view path = address;
 				/**
@@ -2571,8 +2588,14 @@ void awh::Filesystem::read(string_view filename, T & result, const seek_t seek, 
 							li.QuadPart = -1;
 						// Если позиция установлена успешно
 						if(li.QuadPart > -1){
+							// Объект для хранения полного размера файла
+							LARGE_INTEGER fileSize;
+							// Если размер файла получить не удалось либо смещение находится за пределами файла
+							if(!::GetFileSizeEx(file, &fileSize) || (offset >= static_cast <size_t> (fileSize.QuadPart)))
+								// Выходим из метода (дескриптор будет закрыт автоматически)
+								return;
 							// Определяем размер читаемых данных
-							size_t size = (static_cast <size_t> (::GetFileSize(file, nullptr)) - offset);
+							size_t size = (static_cast <size_t> (fileSize.QuadPart) - offset);
 							// Если объект результата пустой
 							if(result.empty())
 								// Устанавливаем размер буфера
@@ -3002,41 +3025,32 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 						return;
 					// Добавляем прочитанные данные к остатку
 					remainder.append(data, size);
-					// Позиция в остатке
-					size_t pos = 0;
+					// Индекс начала текущей необработанной строки
+					size_t start = 0;
+					// Длина накопленного буфера
+					const size_t length = remainder.length();
 					/**
-					 * Выполняем обработку остатка на наличие полных строк
+					 * Выполняем обработку остатка на наличие полных строк за один проход
 					 */
-					while(pos < remainder.length()){
-						// Извлекаем текущий символ
-						char c = remainder[pos];
+					for(size_t pos = 0; pos < length; ++pos){
 						// Если символ является символом новой строки
-						if(c == '\n'){
-							// Создаём представление строки
-							string_view str(remainder.c_str(), pos);
-							// Если строка заканчивается символом возврата каретки
-							if(!str.empty() && (str.back() == '\r'))
-								// Удаляем символ возврата каретки из строки
-								str = str.substr(0, str.size() - 1);
+						if(remainder[pos] == '\n'){
+							// Определяем конец строки без завершающего перевода
+							size_t end = pos;
+							// Если перед символом новой строки стоит возврат каретки — отбрасываем его
+							if((end > start) && (remainder[end - 1] == '\r'))
+								// Уменьшаем границу строки
+								--end;
 							// Вызываем функцию обратного вызова с найденной строкой
-							callback(str);
-							// Обновляем остаток
-							remainder = ::move(remainder.substr(pos + 1));
-							// Сбрасываем позицию в остатке
-							pos = 0;
-						// Если символ является символом возврата каретки
-						} else if((c == '\r') && ((pos + 1) < remainder.length()) && (remainder[pos + 1] == '\n')) {
-							// Создаём представление строки
-							string_view str(remainder.c_str(), pos);
-							// Вызываем функцию обратного вызова с найденной строкой
-							callback(str);
-							// Обновляем остаток
-							remainder = ::move(remainder.substr(pos + 2));
-							// Сбрасываем позицию в остатке
-							pos = 0;
-						// Выполняем переход к следующему символу
-						} else pos++;
+							callback(string_view(remainder.c_str() + start, end - start));
+							// Сдвигаем начало следующей необработанной строки
+							start = pos + 1;
+						}
 					}
+					// Удаляем обработанный префикс, оставляя незавершённый хвост (один сдвиг вместо копий в цикле)
+					if(start > 0)
+						// Удаляем обработанную часть буфера
+						remainder.erase(0, start);
 				};
 				/**
 				 * Для операционной системы MS Windows
@@ -3319,10 +3333,8 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 			const string & address = this->fullpath(filename, true);
 			// Если адрес получен правильный
 			if(!address.empty()){
-				// Если размер буфера для чтения равен нулю
-				if(size == 0)
-					// Корректируем размер буфера для чтения
-					const_cast <size_t &> (size) = static_cast <size_t> (::getpagesize());
+				// Определяем размер блока чтения (без модификации const-параметра)
+				const size_t chunk = ((size == 0) ? static_cast <size_t> (::getpagesize()) : size);
 				/**
 				 * Для операционной системы MS Windows
 				 */
@@ -3390,7 +3402,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								return;
 							}
 							// Выполняем создание буфера для чтения файла
-							vector <char> buffer(static_cast <size_t> (::min(length.QuadPart, static_cast <LONGLONG> (size))), 0);
+							vector <char> buffer(static_cast <size_t> (::min(length.QuadPart, static_cast <LONGLONG> (chunk))), 0);
 							// Количество прочитанных байт
 							DWORD bytes = 0;
 							/**
@@ -3511,7 +3523,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 						// Определяем размер читаемых данных
 						const off_t length = (static_cast <off_t> (info.st_size) - static_cast <off_t> (position));
 						// Выполняем создание буфера для чтения файла
-						vector <char> buffer(static_cast <size_t> (::min <off_t> (length, static_cast <off_t> (size))), 0);
+						vector <char> buffer(static_cast <size_t> (::min <off_t> (length, static_cast <off_t> (chunk))), 0);
 						// Количество прочитанных байт
 						ssize_t bytes = 0;
 						/**
@@ -3868,11 +3880,7 @@ void awh::Filesystem::readdir(string_view path, string_view ext, const size_t si
 		const string & address = this->fullpath(path, resolve);
 		// Если адрес получен правильный
 		if(!address.empty() && (this->type(address) == type_t::DIR)){
-			// Если размер буфера для чтения равен нулю
-			if(size == 0)
-				// Корректируем размер буфера для чтения
-				const_cast <size_t &> (size) = static_cast <size_t> (::getpagesize());
-			// Переходим по всему списку файлов в каталоге
+			// Переходим по всему списку файлов в каталоге (нулевой размер блока скорректирует readfile)
 			this->readdir(address, ext, recurse, [&](const type_t type, string_view filename) noexcept -> void {
 				/**
 				 * Определяем тип переданного пути

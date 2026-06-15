@@ -183,3 +183,301 @@ TEST_F(FSFixture, FSTest){
 	ASSERT_TRUE(this->_fs->unlink(testDir));
 	ASSERT_EQ(this->_fs->type(testDir), awh::fs_t::type_t::NONE);
 }
+
+/**
+ * @brief Регрессия: рекурсивное создание глубоко вложенного пути (mkdir на std::string без snprintf/буфера PATH_MAX)
+ *
+ */
+TEST_F(FSFixture, MkdirDeepNestedTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string root = "test_mkdir_deep_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Глубоко вложенный путь
+	const std::string deep = root + "/a/b/c/d/e/f/g/h";
+	// Создаём всю цепочку каталогов за один вызов
+	ASSERT_TRUE(this->_fs->mkdir(deep));
+	// Финальный каталог должен существовать
+	ASSERT_EQ(this->_fs->type(deep), awh::fs_t::type_t::DIR);
+	// Промежуточные каталоги тоже должны существовать
+	ASSERT_EQ(this->_fs->type(root + "/a/b/c"), awh::fs_t::type_t::DIR);
+	// Проверяем путь с завершающим разделителем
+	const std::string withSlash = root + "/x/y/";
+	// Создаём каталог с завершающим разделителем
+	ASSERT_TRUE(this->_fs->mkdir(withSlash));
+	// Каталог без завершающего разделителя должен существовать
+	ASSERT_EQ(this->_fs->type(root + "/x/y"), awh::fs_t::type_t::DIR);
+	// Удаляем корневой каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(root));
+	// Каталог должен быть удалён
+	ASSERT_EQ(this->_fs->type(root), awh::fs_t::type_t::NONE);
+}
+
+/**
+ * @brief Регрессия: чтение со смещением за пределами размера файла не должно падать и должно возвращать пусто
+ *
+ */
+TEST_F(FSFixture, ReadOffsetBeyondSizeTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string dir = "test_read_offset_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(dir));
+	// Создаём каталог
+	ASSERT_TRUE(this->_fs->mkdir(dir));
+	// Путь к файлу
+	const std::string file = dir + "/data.bin";
+	// Содержимое файла (5 байт)
+	const std::string content = "12345";
+	// Записываем файл
+	this->_fs->write(file, content.c_str());
+	// Проверяем размер
+	ASSERT_EQ(this->_fs->size(file), static_cast <uintmax_t> (content.size()));
+	// Смещение больше размера файла — результат пустой, без падения и без огромной аллокации
+	ASSERT_TRUE((this->_fs->read <std::string> (file, awh::fs_t::seek_t::BEGIN, 100)).empty());
+	// Смещение равно размеру файла — результат пустой
+	ASSERT_TRUE((this->_fs->read <std::string> (file, awh::fs_t::seek_t::BEGIN, content.size())).empty());
+	// Смещение внутри файла — читаем остаток
+	ASSERT_EQ((this->_fs->read <std::string> (file, awh::fs_t::seek_t::BEGIN, 3)), "45");
+	// Удаляем каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(dir));
+}
+
+/**
+ * @brief Регрессия: чтение файла блоками с нулевым размером блока (без const_cast на const-параметре)
+ *
+ */
+TEST_F(FSFixture, ReadfileZeroChunkSizeTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string dir = "test_readfile_zero_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(dir));
+	// Создаём каталог
+	ASSERT_TRUE(this->_fs->mkdir(dir));
+	// Путь к файлу
+	const std::string file = dir + "/blob.bin";
+	// Формируем содержимое заведомо больше одной страницы памяти
+	std::string content;
+	// Наполняем содержимое данными
+	for(size_t i = 0; i < 10000; ++i)
+		// Добавляем строку с номером
+		content.append("0123456789ABCDEF");
+	// Записываем файл
+	this->_fs->write(file, content.c_str());
+	// Накопитель прочитанных данных
+	std::string collected;
+	// Читаем файл блоками с нулевым размером блока (должен использоваться размер страницы)
+	this->_fs->readfile(file, 0, [&](const void * buffer, const size_t size) noexcept -> void {
+		// Если буфер получен — добавляем к накопителю
+		if((buffer != nullptr) && (size > 0))
+			// Добавляем данные блока
+			collected.append(reinterpret_cast <const char *> (buffer), size);
+	});
+	// Прочитанные данные должны полностью совпасть с записанными
+	ASSERT_EQ(collected, content);
+	// Удаляем каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(dir));
+}
+
+/**
+ * @brief Регрессия: рекурсивное удаление вложенного дерева каталогов (дочерние пути из разрешённого адреса)
+ *
+ */
+TEST_F(FSFixture, UnlinkRecursiveNestedTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string root = "test_unlink_tree_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Создаём вложенную структуру каталогов
+	ASSERT_TRUE(this->_fs->mkdir(root + "/sub1/sub2"));
+	// Создаём файлы на разных уровнях вложенности
+	this->_fs->write(root + "/f1.txt", "level0");
+	// Файл первого уровня
+	this->_fs->write(root + "/sub1/f2.txt", "level1");
+	// Файл второго уровня
+	this->_fs->write(root + "/sub1/sub2/f3.txt", "level2");
+	// Проверяем, что файлы созданы
+	ASSERT_EQ(this->_fs->type(root + "/sub1/sub2/f3.txt"), awh::fs_t::type_t::FILE);
+	// Удаляем всё дерево рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(root));
+	// Дерево должно быть полностью удалено
+	ASSERT_EQ(this->_fs->type(root), awh::fs_t::type_t::NONE);
+}
+
+/**
+ * @brief Регрессия: построчное чтение с разными переводами строк и без финального перевода (без O(n^2))
+ *
+ */
+TEST_F(FSFixture, ReadfileLineEndingsTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string dir = "test_readfile_lines_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(dir));
+	// Создаём каталог
+	ASSERT_TRUE(this->_fs->mkdir(dir));
+	/**
+	 * @brief Вспомогательная функция чтения строк файла
+	 *
+	 * @param name    имя файла
+	 * @param content содержимое для записи
+	 * @return        список прочитанных строк
+	 */
+	auto readLines = [&](const std::string & name, const std::string & content) -> std::vector <std::string> {
+		// Путь к файлу
+		const std::string file = dir + "/" + name;
+		// Записываем содержимое
+		this->_fs->write(file, content.c_str());
+		// Список прочитанных строк
+		std::vector <std::string> lines;
+		// Читаем файл построчно
+		this->_fs->readfile(file, [&](std::string_view line) noexcept -> void {
+			// Добавляем строку в список
+			lines.emplace_back(line);
+		});
+		// Возвращаем результат
+		return lines;
+	};
+	// Unix-переводы строк с финальным переводом
+	{
+		// Читаем строки
+		const auto lines = readLines("unix.txt", "Line1\nLine2\nLine3\n");
+		// Проверяем количество и содержимое
+		ASSERT_EQ(lines.size(), 3u);
+		// Содержимое строк
+		ASSERT_EQ(lines[0], "Line1");
+		// Содержимое строк
+		ASSERT_EQ(lines[1], "Line2");
+		// Содержимое строк
+		ASSERT_EQ(lines[2], "Line3");
+	}
+	// Windows-переводы строк без финального перевода
+	{
+		// Читаем строки
+		const auto lines = readLines("win.txt", "A\r\nB\r\nC");
+		// Проверяем количество и содержимое
+		ASSERT_EQ(lines.size(), 3u);
+		// Содержимое строк (без \r)
+		ASSERT_EQ(lines[0], "A");
+		// Содержимое строк (без \r)
+		ASSERT_EQ(lines[1], "B");
+		// Содержимое строк (без \r)
+		ASSERT_EQ(lines[2], "C");
+	}
+	// Пустая строка в середине должна сохраняться
+	{
+		// Читаем строки
+		const auto lines = readLines("empty.txt", "x\n\ny");
+		// Проверяем количество и содержимое
+		ASSERT_EQ(lines.size(), 3u);
+		// Первая строка
+		ASSERT_EQ(lines[0], "x");
+		// Пустая строка
+		ASSERT_EQ(lines[1], "");
+		// Последняя строка
+		ASSERT_EQ(lines[2], "y");
+	}
+	// Удаляем каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(dir));
+}
+
+/**
+ * @brief Регрессия: подсчёт размера и количества файлов с фильтром по расширению и рекурсией (прямой stat)
+ *
+ */
+TEST_F(FSFixture, SizeCountExtensionTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string root = "test_size_ext_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(root) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(root));
+	// Создаём вложенную структуру
+	ASSERT_TRUE(this->_fs->mkdir(root + "/sub"));
+	// Файлы верхнего уровня
+	this->_fs->write(root + "/a.txt", "aaa");   // 3 байта, txt
+	// Ещё один txt-файл
+	this->_fs->write(root + "/b.txt", "bb");    // 2 байта, txt
+	// Файл с другим расширением
+	this->_fs->write(root + "/c.log", "c");     // 1 байт, log
+	// Файл во вложенном каталоге
+	this->_fs->write(root + "/sub/d.txt", "dddd"); // 4 байта, txt
+	// Размер только txt-файлов с рекурсией: 3 + 2 + 4 = 9
+	ASSERT_EQ(this->_fs->size(root, "txt", true), static_cast <uintmax_t> (9));
+	// Размер только txt-файлов без рекурсии: 3 + 2 = 5
+	ASSERT_EQ(this->_fs->size(root, "txt", false), static_cast <uintmax_t> (5));
+	// Размер всех файлов с рекурсией: 3 + 2 + 1 + 4 = 10
+	ASSERT_EQ(this->_fs->size(root, "", true), static_cast <uintmax_t> (10));
+	// Количество txt-файлов с рекурсией: a, b, d = 3
+	ASSERT_EQ(this->_fs->count(root, "txt", true), static_cast <uintmax_t> (3));
+	// Количество txt-файлов без рекурсии: a, b = 2
+	ASSERT_EQ(this->_fs->count(root, "txt", false), static_cast <uintmax_t> (2));
+	// Количество всех файлов с рекурсией: a, b, c, d = 4
+	ASSERT_EQ(this->_fs->count(root, "", true), static_cast <uintmax_t> (4));
+	// Удаляем каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(root));
+}
+
+/**
+ * @brief Регрессия: перегрузка type(addr, detectLinks) сохраняет определение базовых типов
+ *
+ */
+TEST_F(FSFixture, TypeDetectLinksOverloadTest){
+	// Если объект работы с ФС создан
+	ASSERT_TRUE(this->_fs != nullptr);
+	// Корневой каталог теста
+	const std::string dir = "test_type_detect_unit";
+	// Удаляем остатки предыдущего запуска
+	if(this->_fs->type(dir) != awh::fs_t::type_t::NONE)
+		// Удаляем каталог рекурсивно
+		ASSERT_TRUE(this->_fs->unlink(dir));
+	// Создаём каталог
+	ASSERT_TRUE(this->_fs->mkdir(dir));
+	// Путь к файлу
+	const std::string file = dir + "/file.txt";
+	// Создаём файл
+	this->_fs->write(file, "data");
+	// Каталог определяется как каталог независимо от детекта ссылок
+	ASSERT_EQ(this->_fs->type(dir, true), awh::fs_t::type_t::DIR);
+	// Каталог определяется как каталог и с отключённым детектом ссылок
+	ASSERT_EQ(this->_fs->type(dir, false), awh::fs_t::type_t::DIR);
+	// Файл определяется как файл независимо от детекта ссылок
+	ASSERT_EQ(this->_fs->type(file, true), awh::fs_t::type_t::FILE);
+	// Файл определяется как файл и с отключённым детектом ссылок
+	ASSERT_EQ(this->_fs->type(file, false), awh::fs_t::type_t::FILE);
+	/**
+	 * Для операционной системы не являющейся MS Windows
+	 */
+	#if !_WIN32 && !_WIN64
+		// Путь к символьной ссылке
+		const std::string link = dir + "/link.txt";
+		// Создаём символьную ссылку на файл
+		this->_fs->symlink(file, link);
+		// При включённом детекте ссылка определяется как ссылка
+		ASSERT_EQ(this->_fs->type(link, true), awh::fs_t::type_t::LINK);
+		// При отключённом детекте тип берётся по цели ссылки (обычный файл)
+		ASSERT_EQ(this->_fs->type(link, false), awh::fs_t::type_t::FILE);
+	#endif
+	// Удаляем каталог рекурсивно
+	ASSERT_TRUE(this->_fs->unlink(dir));
+}

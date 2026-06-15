@@ -86,14 +86,6 @@ namespace awh {
 			const log_t * _log;
 		public:
 			/**
-			 * @brief Метод, определяющий тип файловой системы по адресу
-			 *
-			 * @param addr адрес директории или файла
-			 * @return     тип файловой системы
-			 */
-			type_t type(string_view addr) const noexcept;
-		public:
-			/**
 			 * @brief Метод создания символьной ссылки
 			 *
 			 * @param first  адрес на который нужно сделать ссылку
@@ -116,6 +108,15 @@ namespace awh {
 			 * @return        результат удаления
 			 */
 			bool unlink(string_view addr, const bool resolve = false) const noexcept;
+		public:
+			/**
+			 * @brief Метод, определяющий тип файловой системы по адресу
+			 *
+			 * @param addr        адрес директории или файла
+			 * @param detectLinks флаг детектирования символьных ссылок (на горячих путях можно отключить)
+			 * @return            тип файловой системы
+			 */
+			type_t type(string_view addr, const bool detectLinks = true) const noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения реального адреса
