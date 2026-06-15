@@ -880,13 +880,61 @@ namespace awh {
 			size_t countLetter(wstring_view word, const wchar_t letter) const noexcept;
 		public:
 			/**
-			 * @brief Метод запоминания регистра слова
+			 * @brief Шаблон функции проверки установлен ли бит в указанной позиции
 			 *
-			 * @param pos   позиция для установки регистра
-			 * @param start начальное значение регистра в бинарном виде
-			 * @return      позиция верхнего регистра в бинарном виде
+			 * @tparam T тип данных с которым работает функция
 			 */
-			uint64_t setCase(const uint64_t pos, const uint64_t start = 0) const noexcept;
+			template <typename T>
+			/**
+			 * @brief Метод проверки установлен ли бит в указанной позиции
+			 *
+			 * @param pos позиция для проверки
+			 * @param num число в бинарном виде для проверки бита
+			 * @return    результат проверки
+			 */
+			bool isBit(const T pos, const T num) const noexcept;
+			/**
+			 * @brief Шаблон функции инверсии бита в указанной позиции
+			 *
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод инверсии бита в указанной позиции
+			 *
+			 * @param pos позиция для инверсии
+			 * @param num число в бинарном виде для инверсии бита
+			 * @return    итоговое значение числа после инверсии
+			 */
+			T flipBit(const T pos, const T num) const noexcept;
+			/**
+			 * @brief Шаблон функции сброса бита в указанной позиции
+			 *
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод сброса бита в указанной позиции
+			 *
+			 * @param pos позиция для сброса
+			 * @param num число в бинарном виде для сброса бита
+			 * @return    итоговое значение числа после сброса бита
+			 */
+			T resetBit(const T pos, const T num) const noexcept;
+			/**
+			 * @brief Шаблон функции устанвки бита в указанную позицию
+			 *
+			 * @tparam T тип данных с которым работает функция
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод устанвки бита в указанную позицию
+			 *
+			 * @param pos позиция для установки бита
+			 * @param num начальное значение бита
+			 * @return    итоговое значение числа после установки бита
+			 */
+			T setBit(const T pos, const T num = 0) const noexcept;
 		public:
 			/**
 			 * @brief Метод реализации функции формирования форматированной строки

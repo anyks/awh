@@ -61,7 +61,7 @@ TEST_F(FmkFixture, ReCreateFmkTest){
 }
 
 /**
- * @brief Метод тестирования установки регистра строк
+ * @brief Метод тестирования установки бита в указанную позицию
  *
  */
 TEST_F(FmkFixture, CaseFmkTest){
@@ -71,8 +71,14 @@ TEST_F(FmkFixture, CaseFmkTest){
 	this->_fmk = std::make_unique <awh::fmk_t> ();
 	// Проверяем что объект фреймворка создан
 	ASSERT_TRUE(this->_fmk != nullptr);
-	// Тестируем установку регистра строк
-	ASSERT_EQ(this->_fmk->setCase(2, 4), 8);
+	// Тестируем установку бита в указанную позицию
+	ASSERT_EQ(this->_fmk->setBit <uint64_t> (2, 4), 8);
+	// Тестируем проверку установленного бита
+	ASSERT_TRUE(this->_fmk->isBit <uint64_t> (3, 8));
+	// Тестируем сброс бита в указанной позиции
+	ASSERT_EQ(this->_fmk->resetBit <uint64_t> (3, 8), 0);
+	// Тестируем инверсию бита в указанной позиции
+	ASSERT_EQ(this->_fmk->flipBit <uint64_t> (3, 8), 0);
 }
 
 /**

@@ -6469,23 +6469,58 @@ size_t awh::Framework::countLetter(wstring_view word, const wchar_t letter) cons
 	return result;
 }
 /**
- * @brief Метод запоминания регистра слова
+ * @brief Шаблон функции проверки установлен ли бит в указанной позиции
  *
- * @param pos   позиция для установки регистра
- * @param start начальное значение регистра в бинарном виде
- * @return      позиция верхнего регистра в бинарном виде
+ * @tparam T тип данных с которым работает функция
  */
-uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const noexcept {
-	// Переменная результата
-	uint64_t result = start;
+template <typename T>
+/**
+ * @brief Метод проверки установлен ли бит в указанной позиции
+ *
+ * @param pos позиция для проверки
+ * @param num число в бинарном виде для проверки бита
+ * @return    результат проверки
+ */
+bool awh::Framework::isBit(const T pos, const T num) const noexcept {
+	// Результат работы функции
+	bool result = false;
 	/**
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Если позиция в пределах разрядности счётчика
-		if(pos < 64)
-			// Устанавливаем бит регистра по указанной позиции
-			result += (static_cast <uint64_t> (1) << pos);
+		/**
+		 * Определяем размер типа входящих данных
+		 */
+		switch(sizeof(result)){
+			// Если число принадлежит к типу uint8_t
+			case 1: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 8)
+					// Устанавливаем бит регистра по указанной позиции
+					return ((num & (static_cast <T> (1) << pos)) != 0);
+			} break;
+			// Если число принадлежит к типу uint16_t
+			case 2: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 16)
+					// Устанавливаем бит регистра по указанной позиции
+					return ((num & (static_cast <T> (1) << pos)) != 0);
+			} break;
+			// Если число принадлежит к типу uint32_t
+			case 4: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 32)
+					// Устанавливаем бит регистра по указанной позиции
+					return ((num & (static_cast <T> (1) << pos)) != 0);
+			} break;
+			// Если число принадлежит к типу uint64_t
+			case 8: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 64)
+					// Устанавливаем бит регистра по указанной позиции
+					return ((num & (static_cast <T> (1) << pos)) != 0);
+			} break;
+		}
 	/**
 	 * Если возникает ошибка
 	 */
@@ -6497,7 +6532,304 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, start), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода проверки установлен ли бит в указанной позиции
+ */
+template bool awh::Framework::isBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
+template bool awh::Framework::isBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
+template bool awh::Framework::isBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
+template bool awh::Framework::isBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+/**
+ * @brief Шаблон функции инверсии бита в указанной позиции
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод инверсии бита в указанной позиции
+ *
+ * @param pos позиция для инверсии
+ * @param num число в бинарном виде для инверсии бита
+ * @return    итоговое значение числа после инверсии
+ */
+T awh::Framework::flipBit(const T pos, const T num) const noexcept {
+	// Результат работы функции
+	T result = num;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем размер типа входящих данных
+		 */
+		switch(sizeof(result)){
+			// Если число принадлежит к типу uint8_t
+			case 1: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 8)
+					// Инвертируем бит регистра по указанной позиции
+					result ^= (static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint16_t
+			case 2: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 16)
+					// Инвертируем бит регистра по указанной позиции
+					result ^= (static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint32_t
+			case 4: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 32)
+					// Инвертируем бит регистра по указанной позиции
+					result ^= (static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint64_t
+			case 8: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 64)
+					// Инвертируем бит регистра по указанной позиции
+					result ^= (static_cast <T> (1) << pos);
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода инверсии бита в указанной позиции
+ */
+template uint8_t awh::Framework::flipBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
+template uint16_t awh::Framework::flipBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
+template uint32_t awh::Framework::flipBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
+template uint64_t awh::Framework::flipBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+/**
+ * @brief Шаблон функции сброса бита в указанной позиции
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод сброса бита в указанной позиции
+ *
+ * @param pos позиция для сброса
+ * @param num число в бинарном виде для сброса бита
+ * @return    итоговое значение числа после сброса бита
+ */
+T awh::Framework::resetBit(const T pos, const T num) const noexcept {
+	// Результат работы функции
+	T result = num;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем размер типа входящих данных
+		 */
+		switch(sizeof(result)){
+			// Если число принадлежит к типу uint8_t
+			case 1: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 8)
+					// Сбрасываем бит регистра по указанной позиции
+					result &= ~(static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint16_t
+			case 2: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 16)
+					// Сбрасываем бит регистра по указанной позиции
+					result &= ~(static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint32_t
+			case 4: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 32)
+					// Сбрасываем бит регистра по указанной позиции
+					result &= ~(static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint64_t
+			case 8: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 64)
+					// Сбрасываем бит регистра по указанной позиции
+					result &= ~(static_cast <T> (1) << pos);
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		// Если объект логирования не установлен
+		} else {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! Called function:\n%s\n\nMessage:\n%s\n\n", __PRETTY_FUNCTION__, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				::fprintf(stderr, "ERROR! %s\n\n", error.what());
+			#endif
+		}
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * Объявляем прототипы для метода сброса бита в указанной позиции
+ */
+template uint8_t awh::Framework::resetBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
+template uint16_t awh::Framework::resetBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
+template uint32_t awh::Framework::resetBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
+template uint64_t awh::Framework::resetBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
+/**
+ * @brief Шаблон функции устанвки бита в указанную позицию
+ *
+ * @tparam T тип данных с которым работает функция
+ */
+template <typename T>
+/**
+ * @brief Метод устанвки бита в указанную позицию
+ *
+ * @param pos позиция для установки бита
+ * @param num начальное значение бита
+ * @return    итоговое значение числа после установки бита
+ */
+T awh::Framework::setBit(const T pos, const T num) const noexcept {
+	// Переменная результата
+	T result = num;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Определяем размер типа входящих данных
+		 */
+		switch(sizeof(result)){
+			// Если число принадлежит к типу uint8_t
+			case 1: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 8)
+					// Устанавливаем бит регистра по указанной позиции
+					result += (static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint16_t
+			case 2: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 16)
+					// Устанавливаем бит регистра по указанной позиции
+					result += (static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint32_t
+			case 4: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 32)
+					// Устанавливаем бит регистра по указанной позиции
+					result += (static_cast <T> (1) << pos);
+			} break;
+			// Если число принадлежит к типу uint64_t
+			case 8: {
+				// Если позиция в пределах разрядности счётчика
+				if(pos < 64)
+					// Устанавливаем бит регистра по указанной позиции
+					result += (static_cast <T> (1) << pos);
+			} break;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Если объект логирования установлен
+		if(this->_log != nullptr){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, num), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -6525,6 +6857,13 @@ uint64_t awh::Framework::setCase(const uint64_t pos, const uint64_t start) const
 	// Возвращаем результат
 	return result;
 }
+/**
+ * Объявляем прототипы для метода установки бита в указанную позицию
+ */
+template uint8_t awh::Framework::setBit <uint8_t> (const uint8_t, const uint8_t) const noexcept;
+template uint16_t awh::Framework::setBit <uint16_t> (const uint16_t, const uint16_t) const noexcept;
+template uint32_t awh::Framework::setBit <uint32_t> (const uint32_t, const uint32_t) const noexcept;
+template uint64_t awh::Framework::setBit <uint64_t> (const uint64_t, const uint64_t) const noexcept;
 /**
  * @brief Метод реализации функции формирования форматированной строки
  *
