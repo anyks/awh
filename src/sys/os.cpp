@@ -16,6 +16,7 @@
  * Стандартные заголовочные файлы
  */
 #include <memory>
+#include <cerrno>
 #include <cstring>
 #include <cstddef>
 #include <cstdlib>
@@ -198,8 +199,8 @@ using namespace std;
 		if(!buffer.empty()){
 			// Выделяем память для результирующего буфера данных
 			result.resize(buffer.size() / sizeof(T));
-			// Выполняем копирование полученного буфера данных
-			::memcpy(reinterpret_cast <char *> (result.data()), reinterpret_cast <const char *> (buffer.data()), buffer.size());
+			// Выполняем копирование только выровненного по размеру типа количества байт (защита от выхода за границы)
+			::memcpy(reinterpret_cast <char *> (result.data()), reinterpret_cast <const char *> (&buffer[0]), result.size() * sizeof(T));
 		}
 	}
 	/**
@@ -216,9 +217,131 @@ using namespace std;
 	 */
 	static void metadata(const vector <char> & buffer, T & result) noexcept {
 		// Если данные являются основными
-		if(!buffer.empty())
-			// Выполняем копирование полученных данных
-			::memcpy(&result, buffer.data(), sizeof(result));
+		if(!buffer.empty()){
+			// Определяем безопасное количество копируемых байт (не больше размера буфера и размера результата)
+			const size_t length = (buffer.size() < sizeof(result) ? buffer.size() : sizeof(result));
+			// Выполняем копирование полученных данных без выхода за границы буфера
+			::memcpy(&result, &buffer[0], length);
+		}
+	}
+	/**
+	 * Тип элемента списка групп пользователя для функции getgrouplist (на MacOS X прототип использует int32_t, на остальных системах gid_t)
+	 */
+	#if __APPLE__ || __MACH__
+		/**
+		 * @brief Тип элемента списка групп пользователя для функции getgrouplist на MacOS X
+		 *
+		 */
+		typedef int32_t grouplist_t;
+	/**
+	 * Для операционной системы не являющейся MacOS X
+	 */
+	#else
+		/**
+		 * @brief Тип элемента списка групп пользователя для функции getgrouplist для операционной системы не являющейся MacOS X
+		 *
+		 */
+		typedef gid_t grouplist_t;
+	#endif
+	/**
+	 * @brief Функция извлечения данных пользователя по его идентификатору с динамическим буфером
+	 *
+	 * @param uid    идентификатор пользователя
+	 * @param pwd    объект параметров пользователя
+	 * @param buffer буфер данных для извлечения
+	 * @param data   указатель на извлечённые данные пользователя
+	 * @return       результат извлечения данных
+	 */
+	static bool getUserById(const uid_t uid, struct passwd & pwd, vector <char> & buffer, struct passwd ** data) noexcept {
+		// Получаем рекомендованный системой размер буфера данных
+		const long size = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+		// Выделяем память для буфера данных (с запасным значением, если система не вернула размер)
+		buffer.resize((size > 0) ? static_cast <size_t> (size) : 1024);
+		// Результат извлечения данных
+		int32_t result = 0;
+		/**
+		 * Выполняем извлечение данных пользователя, увеличивая буфер при его нехватке
+		 */
+		while((result = ::getpwuid_r(uid, &pwd, &buffer[0], buffer.size(), data)) == ERANGE)
+			// Увеличиваем размер буфера данных вдвое
+			buffer.resize(buffer.size() * 2);
+		// Возвращаем результат извлечения данных
+		return ((result == 0) && (* data != nullptr));
+	}
+	/**
+	 * @brief Функция извлечения данных пользователя по его имени с динамическим буфером
+	 *
+	 * @param name   имя пользователя
+	 * @param pwd    объект параметров пользователя
+	 * @param buffer буфер данных для извлечения
+	 * @param data   указатель на извлечённые данные пользователя
+	 * @return       результат извлечения данных
+	 */
+	static bool getUserByName(const char * name, struct passwd & pwd, vector <char> & buffer, struct passwd ** data) noexcept {
+		// Получаем рекомендованный системой размер буфера данных
+		const long size = ::sysconf(_SC_GETPW_R_SIZE_MAX);
+		// Выделяем память для буфера данных (с запасным значением, если система не вернула размер)
+		buffer.resize((size > 0) ? static_cast <size_t> (size) : 1024);
+		// Результат извлечения данных
+		int32_t result = 0;
+		/**
+		 * Выполняем извлечение данных пользователя, увеличивая буфер при его нехватке
+		 */
+		while((result = ::getpwnam_r(name, &pwd, &buffer[0], buffer.size(), data)) == ERANGE)
+			// Увеличиваем размер буфера данных вдвое
+			buffer.resize(buffer.size() * 2);
+		// Возвращаем результат извлечения данных
+		return ((result == 0) && (* data != nullptr));
+	}
+	/**
+	 * @brief Функция извлечения данных группы по её идентификатору с динамическим буфером
+	 *
+	 * @param gid    идентификатор группы пользователя
+	 * @param grp    объект параметров группы пользователя
+	 * @param buffer буфер данных для извлечения
+	 * @param data   указатель на извлечённые данные группы пользователя
+	 * @return       результат извлечения данных
+	 */
+	static bool getGroupById(const gid_t gid, struct group & grp, vector <char> & buffer, struct group ** data) noexcept {
+		// Получаем рекомендованный системой размер буфера данных
+		const long size = ::sysconf(_SC_GETGR_R_SIZE_MAX);
+		// Выделяем память для буфера данных (с запасным значением, если система не вернула размер)
+		buffer.resize((size > 0) ? static_cast <size_t> (size) : 1024);
+		// Результат извлечения данных
+		int32_t result = 0;
+		/**
+		 * Выполняем извлечение данных группы, увеличивая буфер при его нехватке
+		 */
+		while((result = ::getgrgid_r(gid, &grp, &buffer[0], buffer.size(), data)) == ERANGE)
+			// Увеличиваем размер буфера данных вдвое
+			buffer.resize(buffer.size() * 2);
+		// Возвращаем результат извлечения данных
+		return ((result == 0) && (* data != nullptr));
+	}
+	/**
+	 * @brief Функция извлечения данных группы по её имени с динамическим буфером
+	 *
+	 * @param name   название группы пользователя
+	 * @param grp    объект параметров группы пользователя
+	 * @param buffer буфер данных для извлечения
+	 * @param data   указатель на извлечённые данные группы пользователя
+	 * @return       результат извлечения данных
+	 */
+	static bool getGroupByName(const char * name, struct group & grp, vector <char> & buffer, struct group ** data) noexcept {
+		// Получаем рекомендованный системой размер буфера данных
+		const long size = ::sysconf(_SC_GETGR_R_SIZE_MAX);
+		// Выделяем память для буфера данных (с запасным значением, если система не вернула размер)
+		buffer.resize((size > 0) ? static_cast <size_t> (size) : 1024);
+		// Результат извлечения данных
+		int32_t result = 0;
+		/**
+		 * Выполняем извлечение данных группы, увеличивая буфер при его нехватке
+		 */
+		while((result = ::getgrnam_r(name, &grp, &buffer[0], buffer.size(), data)) == ERANGE)
+			// Увеличиваем размер буфера данных вдвое
+			buffer.resize(buffer.size() * 2);
+		// Возвращаем результат извлечения данных
+		return ((result == 0) && (* data != nullptr));
 	}
 	/**
 	 * @brief Метод извлечения настроек ядра операционной системы
@@ -242,7 +365,7 @@ using namespace std;
 					// Выделяем в буфере нужное количество памяти
 					buffer.resize(length, 0);
 					// Запрашиваем искомые данные
-					if(::sysctlbyname(name.data(), buffer.data(), &length, nullptr, 0) < 0)
+					if(::sysctlbyname(name.data(), &buffer[0], &length, nullptr, 0) < 0)
 						// Выполняем очистку буфера данных
 						buffer.clear();
 				}
@@ -250,117 +373,120 @@ using namespace std;
 			 * Если это Linux
 			 */
 			#elif __linux__
-				// Объект работы с операционной системой
-				awh::os_t os;
-				// Создаём комманду запуска
-				string command = "sysctl";
-				// Добавляем разделитель
-				command.append(1, ' ');
-				// Добавляем название параметра
-				command.append(name);
-				// Добавляем разделитель
-				command.append(1, ' ');
-				// Добавляем усечение строки
-				command.append("| cut -d \"=\" -f2 | xargs");
-				// Выполняем получение значения команды
-				const string & result = os.exec(command, false);
-				// Если результат получен
-				if(!result.empty()){
-					// Очередь собранных данных
-					std::queue <std::pair <string, bool>> data;
+				// Формируем путь к параметру ядра в виртуальной файловой системе /proc/sys
+				string path = "/proc/sys/";
+				/**
+				 * Преобразуем точечную нотацию параметра в путь файловой системы (net.core.somaxconn -> net/core/somaxconn)
+				 */
+				for(const char letter : name)
+					// Заменяем разделитель точки на разделитель каталогов
+					path.append(1, (letter == '.') ? '/' : letter);
+				// Открываем файл параметра ядра на чтение
+				FILE * file = ::fopen(path.c_str(), "rb");
+				// Если файл параметра ядра удачно открыт
+				if(file != nullptr){
+					// Прочитанное значение параметра ядра
+					string result;
+					// Буфер для чтения данных
+					char chunk[256];
+					// Количество прочитанных байт
+					size_t bytes = 0;
 					/**
-					 * Выполняем перебор всего полученного результата
+					 * Считываем содержимое файла параметра ядра целиком
 					 */
-					for(auto & item : result){
-						// Если символ является пробелом
-						if(::isspace(item) || (item == '\t') || (item == '\n') || (item == '\r') || (item == '\f') || (item == '\v')){
-							// Если очередь уже не пустая
-							if(!data.empty()){
-								// Если запись является числом
-								if(data.back().second){
-									// Выполняем создание блока данных
-									std::pair <string, bool> record = std::make_pair("", true);
-									// Выполняем добавление записи в очередь
-									data.push(::move(record));
-								// Если запись является строкой, добавляем полученный символ в запись
-								} else data.back().first.append(1, ' ');
-							}
-						// Если символ является числом
-						} else if(std::isdigit(item) || ((item == '-') && (data.empty() || data.back().first.empty()))) {
-							// Если данных в очереди ещё нет
-							if(data.empty()){
-								// Выполняем создание блока данных
-								std::pair <string, bool> record = std::make_pair(string(1, item), true);
-								// Выполняем добавление записи в очередь
-								data.push(::move(record));
-							// Если данные в очереди уже есть, добавляем полученный символ в запись
-							} else data.back().first.append(1, item);
-						// Если символ является простым символом
-						} else if(item != 0) {
-							// Если данных в очереди ещё нет
-							if(data.empty()){
-								// Выполняем создание блока данных
-								std::pair <string, bool> record = std::make_pair(string(1, item), false);
-								// Выполняем добавление записи в очередь
-								data.push(::move(record));
-							// Если данные в очереди уже есть
-							} else {
-								// Помечаем что запись не является числом
-								data.back().second = false;
-								// Добавляем полученный символ в запись
-								data.back().first.append(1, item);
-							}
-						}
-					}
-					/**
-					 * Выполняем перебор всей очереди собранных данных
-					 */
-					while(!data.empty()){
-						// Если запись существует
-						if(!data.front().first.empty()){
-							// Если запись является числом
-							if(data.front().second){
-								/**
-								 * Выполняем отлов ошибок
-								 */
-								try {
-									// Выполняем получение числа
-									const uint64_t value1 = ::stoull(data.front().first);
-									// Пытаемся уменьшить число
-									if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
-										// Выполняем преобразование в unsigned int 32
-										const uint32_t value2 = static_cast <uint32_t> (value1);
-										// Выполняем добавление новой записи в буфер
-										buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
-									// Выполняем добавление новой записи в буфер
-									} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
-								/**
-								 * Если возникает ошибка
-								 */
-								} catch(const exception &) {
-									// Выполняем получение числа
-									const uint64_t value1 = 0;
-									// Пытаемся уменьшить число
-									if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
-										// Выполняем преобразование в unsigned int 32
-										const uint32_t value2 = static_cast <uint32_t> (value1);
-										// Выполняем добавление новой записи в буфер
-										buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
-									// Выполняем добавление новой записи в буфер
-									} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
+					while((bytes = ::fread(chunk, sizeof(char), sizeof(chunk), file)) > 0)
+						// Добавляем прочитанный блок данных к результату
+						result.append(chunk, bytes);
+					// Закрываем файл параметра ядра
+					::fclose(file);
+					// Если результат получен
+					if(!result.empty()){
+						// Очередь собранных данных
+						std::queue <std::pair <string, bool>> data;
+						/**
+						 * Выполняем перебор всего полученного результата
+						 */
+						for(const char item : result){
+							// Если символ является пробельным
+							if(::isspace(static_cast <uint8_t> (item))){
+								// Если очередь уже не пустая
+								if(!data.empty()){
+									// Если запись является числом
+									if(data.back().second){
+										// Если текущая запись уже содержит данные, начинаем новую запись
+										if(!data.back().first.empty())
+											// Выполняем добавление новой пустой числовой записи в очередь
+											data.push(std::make_pair(string(""), true));
+									// Если запись является строкой, добавляем разделитель в запись
+									} else data.back().first.append(1, ' ');
 								}
-							// Если запись является текстом
+							// Если символ является числом
+							} else if(std::isdigit(static_cast <uint8_t> (item)) || ((item == '-') && (data.empty() || data.back().first.empty()))) {
+								// Если данных в очереди ещё нет
+								if(data.empty())
+									// Выполняем создание блока данных
+									data.push(std::make_pair(string(1, item), true));
+								// Если данные в очереди уже есть, добавляем полученный символ в запись
+								else data.back().first.append(1, item);
+							// Если символ является простым символом
 							} else {
-								// Если последний символ является пробелом, удаляем его
-								if(::isspace(data.front().first.back()))
-									// Выполняем удаление последний символ
-									data.front().first.pop_back();
-								// Выполняем добавление новой записи в буфер
-								buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
+								// Если данных в очереди ещё нет
+								if(data.empty())
+									// Выполняем создание блока данных
+									data.push(std::make_pair(string(1, item), false));
+								// Если данные в очереди уже есть
+								else {
+									// Помечаем что запись не является числом
+									data.back().second = false;
+									// Добавляем полученный символ в запись
+									data.back().first.append(1, item);
+								}
 							}
 						}
-						// Удаляем используемую запись
-						data.pop();
+						/**
+						 * Выполняем перебор всей очереди собранных данных
+						 */
+						while(!data.empty()){
+							// Если запись существует
+							if(!data.front().first.empty()){
+								// Если запись является числом
+								if(data.front().second){
+									/**
+									 * Выполняем отлов ошибок
+									 */
+									try {
+										// Выполняем получение числа
+										const uint64_t value1 = ::stoull(data.front().first);
+										// Пытаемся уменьшить число
+										if(static_cast <uint64_t> (static_cast <uint32_t> (value1)) == value1){
+											// Выполняем преобразование в unsigned uint32_t
+											const uint32_t value2 = static_cast <uint32_t> (value1);
+											// Выполняем добавление новой записи в буфер
+											buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value2), reinterpret_cast <const char *> (&value2) + sizeof(value2));
+										// Выполняем добавление новой записи в буфер
+										} else buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value1), reinterpret_cast <const char *> (&value1) + sizeof(value1));
+									/**
+									 * Если возникает ошибка преобразования числа
+									 */
+									} catch(const exception &) {
+										// Значение по умолчанию при ошибке преобразования
+										const uint32_t value = 0;
+										// Выполняем добавление нулевой записи в буфер
+										buffer.insert(buffer.end(), reinterpret_cast <const char *> (&value), reinterpret_cast <const char *> (&value) + sizeof(value));
+									}
+								// Если запись является текстом
+								} else {
+									// Если последний символ является пробельным, удаляем его
+									if(::isspace(static_cast <uint8_t> (data.front().first.back())))
+										// Выполняем удаление последнего символа
+										data.front().first.pop_back();
+									// Выполняем добавление новой записи в буфер
+									buffer.insert(buffer.end(), data.front().first.begin(), data.front().first.end());
+								}
+							}
+							// Удаляем используемую запись
+							data.pop();
+						}
 					}
 				}
 			#endif
@@ -387,20 +513,27 @@ using namespace std;
 			 * Операционной системой является Linux
 			 */
 			#elif __linux__
-				// Объект работы с операционной системой
-				awh::os_t os;
-				// Создаём комманду запуска
-				string command = "sysctl -w";
-				// Добавляем разделитель
-				command.append(1, ' ');
-				// Добавляем название параметра
-				command.append(name.data(), name.size());
-				// Добавляем разделитель
-				command.append(1, '=');
-				// Добавляем параметр для установки
-				command.append(reinterpret_cast <const char *> (buffer), size);
-				// Выполняем установку параметров ядра
-				return !os.exec(command, false).empty();
+				// Формируем путь к параметру ядра в виртуальной файловой системе /proc/sys
+				string path = "/proc/sys/";
+				/**
+				 * Преобразуем точечную нотацию параметра в путь файловой системы (net.core.somaxconn -> net/core/somaxconn)
+				 */
+				for(const char letter : name)
+					// Заменяем разделитель точки на разделитель каталогов
+					path.append(1, (letter == '.') ? '/' : letter);
+				// Открываем файл параметра ядра на запись
+				FILE * file = ::fopen(path.c_str(), "wb");
+				// Если файл параметра ядра удачно открыт
+				if(file != nullptr){
+					// Выполняем запись значения параметра ядра
+					const size_t bytes = ::fwrite(buffer, sizeof(char), size, file);
+					// Закрываем файл параметра ядра
+					::fclose(file);
+					// Сообщаем результат записи значения параметра ядра
+					return (bytes == size);
+				}
+				// Сообщаем, что значение параметра ядра не установлено
+				return false;
 			#endif
 		}
 		// Сообщаем, что ничего не установленно
@@ -1024,7 +1157,7 @@ void awh::Operating_System::printStatsMemory() const noexcept {
 }
 /**
  * @brief Метод очистки выделенной памяти
- * 
+ *
  */
 void awh::Operating_System::releaseFreeMemory() const noexcept {
 	/**
@@ -1032,7 +1165,7 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
 	 */
 	#if __AWH_USE_TCMALLOC__
 		// Выполняем сброс памяти
-		::tcmalloc::MallocExtension::instance()->ReleaseFreeMemory();
+		MallocExtension::instance()->ReleaseFreeMemory();
 	/**
 	 * Если используется аллокатор Glibc
 	 */
@@ -1057,11 +1190,15 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
 	 */
 	#elif __FreeBSD__ || __NetBSD__ || __OpenBSD__
 		/**
-		 * BSD: можно попробовать malloc_trim (FreeBSD 13+)
+		 * BSD: на FreeBSD стандартный аллокатор — jemalloc, принудительный возврат памяти системе выполняется через mallctl
 		 */
 		#if __FreeBSD__ && JEMALLOC
-			// Выполняем сброс памяти
-			::malloc_stats_print(nullptr, nullptr, nullptr);
+			// Объявляем функцию управления аллокатором jemalloc
+			extern "C" int32_t mallctl(const char *, void *, size_t *, void *, size_t);
+			/**
+			 * Принудительно очищаем все арены аллокатора (MALLCTL_ARENAS_ALL == 4096), возвращая память системе
+			 */
+			::mallctl("arena.4096.purge", nullptr, nullptr, nullptr, 0);
 		#endif
 	/**
 	 * Для операционной системы MS Windows
@@ -1082,7 +1219,7 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
 			 */
 			#if _UCRT || __MSVCRT_VERSION__
 				// Экспортируем нужную нам функцию
-				extern "C" int _heap_trim(size_t);
+				extern "C" int32_t _heap_trim(size_t);
 				// Выполняем сброс памяти
 				_heap_trim(0);
 			#endif
@@ -1243,57 +1380,23 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		// Переменная результата
 		vector <gid_t> result;
 		// Буфер данных для извлечения данных
-		char buffer[1024];
+		vector <char> buffer;
 		// Объект параметров пользователя
 		struct passwd pwd{};
 		// Извлечённые данные пользователя
 		struct passwd * data = nullptr;
 		// Выполняем извлечение данных пользователя
-		if((::getpwuid_r(::geteuid(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
-			/**
-			 * Для операционной системы MacOS X, FreeBSD или Sun Solaris
-			 */
-			#if __APPLE__ || __MACH__ || __FreeBSD__ || __sun__
-				// Добавляем текущую группу пользователя в список
-				result.push_back(pwd.pw_gid);
-				// Активируем перебор групп
-				::setgrent();
-				// Активная группа пользователя
-				struct group * grp = nullptr;
-				/**
-				 * Выполняем перебор всех групп пользователя
-				 */
-				while((grp = ::getgrent()) != nullptr){
-					// Получаем текущую группу пользователя
-					if(grp->gr_mem){
-						/**
-						 * Теперь перебираем все группы пользователей котоыре есть
-						 */
-						for(char ** member = grp->gr_mem; (* member != nullptr); ++member){
-							// Если пользователи совпадают
-							if(::strcmp(pwd.pw_name, * member) == 0){
-								// Формируем список групп пользователя
-								result.push_back(grp->gr_gid);
-								// Выходим из цикла
-								break;
-							}
-						}
-					}
-				}
-				// Деактивируем перебор групп
-				::endgrent();
-			/**
-			 * Для остальных операционных систем
-			 */
-			#else
-				// Количество групп пользователя
-				int32_t count = 0;
-				// Первый вызов: нам необходимо определить количетсво групп пользователя
-				::getgrouplist(pwd.pw_name, pwd.pw_gid, nullptr, &count);
-				// Увеличиваем список групп пользователя
+		if(::getUserById(::geteuid(), pwd, buffer, &data)){
+			// Количество групп пользователя
+			int32_t count = 0;
+			// Первый вызов: нам необходимо определить количество групп пользователя
+			::getgrouplist(pwd.pw_name, pwd.pw_gid, nullptr, &count);
+			// Если количество групп пользователя получено
+			if(count > 0){
+				// Выделяем память для списка групп пользователя
 				result.resize(static_cast <size_t> (count));
 				// Второй вызов: пробуем получить список групп пользователя
-				if(::getgrouplist(pwd.pw_name, pwd.pw_gid, reinterpret_cast <gid_t *> (result.data()), &count) == -1){
+				if(::getgrouplist(pwd.pw_name, pwd.pw_gid, reinterpret_cast <grouplist_t *> (result.data()), &count) == -1){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1309,8 +1412,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					#endif
 					// Очищаем список групп пользователя
 					result.clear();
-				}
-			#endif
+				// Корректируем размер списка под фактическое количество групп
+				} else result.resize(static_cast <size_t> (count));
+			}
 		// Если данные пользователя не извлечены
 		} else {
 			/**
@@ -1338,13 +1442,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 */
 	string awh::Operating_System::user(const uid_t uid) const noexcept {
 		// Буфер данных для извлечения данных
-		char buffer[1024];
+		vector <char> buffer;
 		// Объект параметров пользователя
 		struct passwd pwd{};
 		// Извлечённые данные пользователя
 		struct passwd * data = nullptr;
 		// Выполняем извлечение данных пользователя
-		if((::getpwuid_r(uid, &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+		if(::getUserById(uid, pwd, buffer, &data))
 			// Печатаем имя пользователя
 			return string(pwd.pw_name);
 		// Если данные пользователя не извлечены
@@ -1374,13 +1478,13 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 */
 	string awh::Operating_System::group(const gid_t gid) const noexcept {
 		// Буфер данных для извлечения данных
-		char buffer[1024];
+		vector <char> buffer;
 		// Объект параметров группы пользователя
-		struct group grp;
+		struct group grp{};
 		// Извлечённые данные группы пользователя
 		struct group * data = nullptr;
 		// Выполняем извлечение данных группы пользователя
-		if((::getgrgid_r(gid, &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+		if(::getGroupById(gid, grp, buffer, &data))
 			// Печатаем имя пользователя
 			return string(grp.gr_name);
 		// Если данные пользователя не извлечены
@@ -1412,13 +1516,15 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		// Если название группы пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
-			char buffer[1024];
+			vector <char> buffer;
 			// Объект параметров группы пользователя
-			struct group grp;
+			struct group grp{};
 			// Извлечённые данные группы пользователя
 			struct group * data = nullptr;
+			// Формируем нуль-терминированное название группы пользователя
+			const string groupname(name);
 			// Выполняем извлечение данных группы пользователя
-			if((::getgrnam_r(name.data(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+			if(::getGroupByName(groupname.c_str(), grp, buffer, &data))
 				// Возвращаем идентификатор группы пользователя
 				return grp.gr_gid;
 			// Если данные группы пользователя не извлечены
@@ -1451,13 +1557,15 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
-			char buffer[1024];
+			vector <char> buffer;
 			// Объект параметров пользователя
 			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
+			// Формируем нуль-терминированное имя пользователя
+			const string username(name);
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(name.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+			if(::getUserByName(username.c_str(), pwd, buffer, &data))
 				// Возвращаем идентификатор пользователя
 				return pwd.pw_uid;
 			// Если данные пользователя не извлечены
@@ -1490,13 +1598,15 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		// Если имя пользователя передано
 		if(!name.empty()){
 			// Буфер данных для извлечения данных
-			char buffer[1024];
+			vector <char> buffer;
 			// Объект параметров пользователя
 			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
+			// Формируем нуль-терминированное имя пользователя
+			const string username(name);
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(name.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+			if(::getUserByName(username.c_str(), pwd, buffer, &data))
 				// Возвращаем идентификатор группы пользователя
 				return pwd.pw_gid;
 			// Если данные пользователя не извлечены
@@ -1531,57 +1641,25 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		// Если имя пользователя передано
 		if(!user.empty()){
 			// Буфер данных для извлечения данных
-			char buffer[1024];
+			vector <char> buffer;
 			// Объект параметров пользователя
 			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
+			// Формируем нуль-терминированное имя пользователя
+			const string username(user);
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(user.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
-				/**
-				 * Для операционной системы MacOS X, FreeBSD или Sun Solaris
-				 */
-				#if __APPLE__ || __MACH__ || __FreeBSD__ || __sun__
-					// Добавляем текущую группу пользователя в список
-					result.push_back(pwd.pw_gid);
-					// Активируем перебор групп
-					::setgrent();
-					// Активная группа пользователя
-					struct group * grp = nullptr;
-					/**
-					 * Выполняем перебор всех групп пользователя
-					 */
-					while((grp = ::getgrent()) != nullptr){
-						// Получаем текущую группу пользователя
-						if(grp->gr_mem){
-							/**
-							 * Теперь перебираем все группы пользователей котоыре есть
-							 */
-							for(char ** member = grp->gr_mem; (* member != nullptr); ++member){
-								// Если пользователи совпадают
-								if(user.compare(* member) == 0){
-									// Формируем список групп пользователя
-									result.push_back(grp->gr_gid);
-									// Выходим из цикла
-									break;
-								}
-							}
-						}
-					}
-					// Деактивируем перебор групп
-					::endgrent();
-				/**
-				 * Для остальных операционных систем
-				 */
-				#else
-					// Количество групп пользователя
-					int32_t count = 0;
-					// Первый вызов: нам необходимо определить количетсво групп пользователя
-					::getgrouplist(user.data(), pwd.pw_gid, nullptr, &count);
-					// Увеличиваем список групп пользователя
+			if(::getUserByName(username.c_str(), pwd, buffer, &data)){
+				// Количество групп пользователя
+				int32_t count = 0;
+				// Первый вызов: нам необходимо определить количество групп пользователя
+				::getgrouplist(pwd.pw_name, pwd.pw_gid, nullptr, &count);
+				// Если количество групп пользователя получено
+				if(count > 0){
+					// Выделяем память для списка групп пользователя
 					result.resize(static_cast <size_t> (count));
 					// Второй вызов: пробуем получить список групп пользователя
-					if(::getgrouplist(user.data(), pwd.pw_gid, reinterpret_cast <gid_t *> (result.data()), &count) == -1){
+					if(::getgrouplist(pwd.pw_name, pwd.pw_gid, reinterpret_cast <grouplist_t *> (result.data()), &count) == -1){
 						/**
 						 * Если включён режим отладки
 						 */
@@ -1597,8 +1675,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 						#endif
 						// Очищаем список групп пользователя
 						result.clear();
-					}
-				#endif
+					// Корректируем размер списка под фактическое количество групп
+					} else result.resize(static_cast <size_t> (count));
+				}
 			// Если данные пользователя не извлечены
 			} else {
 				/**
@@ -1710,22 +1789,30 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	bool awh::Operating_System::chown(string_view user, string_view group) const noexcept {
 		// Если имя пользователя и название группы пользователя переданы
 		if(!user.empty() && !group.empty()){
-			// Буфер данных для извлечения данных
-			char buffer[1024];
+			// Буфер данных для извлечения данных пользователя
+			vector <char> buffer;
 			// Объект параметров пользователя
 			struct passwd pwd{};
 			// Извлечённые данные пользователя
 			struct passwd * data = nullptr;
+			// Формируем нуль-терминированное имя пользователя
+			const string username(user);
 			// Выполняем извлечение данных пользователя
-			if((::getpwnam_r(user.data(), &pwd, buffer, sizeof(buffer), &data) == 0) && (data != nullptr)){
+			if(::getUserByName(username.c_str(), pwd, buffer, &data)){
+				// Сохраняем идентификатор пользователя до повторного использования буфера
+				const uid_t uid = pwd.pw_uid;
+				// Буфер данных для извлечения данных группы пользователя
+				vector <char> bufferGroup;
 				// Объект параметров группы пользователя
-				struct group grp;
+				struct group grp{};
 				// Извлечённые данные группы пользователя
-				struct group * data = nullptr;
+				struct group * dataGroup = nullptr;
+				// Формируем нуль-терминированное название группы пользователя
+				const string groupname(group);
 				// Выполняем извлечение данных группы пользователя
-				if((::getgrnam_r(group.data(), &grp, buffer, sizeof(buffer), &data) == 0) && (data != nullptr))
+				if(::getGroupByName(groupname.c_str(), grp, bufferGroup, &dataGroup))
 					// Возвращаем установку права доступа
-					return this->chown(pwd.pw_uid, grp.gr_gid);
+					return this->chown(uid, grp.gr_gid);
 				// Если данные группы пользователя не извлечены
 				else {
 					/**
@@ -2056,6 +2143,10 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				wstring domain(domainSize, L'\0');
 				// Извлекаем имя пользователя и его доменное имя
 				if(::LookupAccountSidW(nullptr, pSid, &name[0], &nameSize, &domain[0], &domainSize, &sidType)){
+					// Усекаем буферы до фактической длины (второй вызов возвращает длину без нуль-терминатора)
+					name.resize(nameSize);
+					// Усекаем доменное имя до фактической длины
+					domain.resize(domainSize);
 					// Если доменное имя установлено
 					if(!domain.empty() && (domain[0] != '\0')){
 						/**
@@ -2150,6 +2241,8 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			PSID pSid = (PSID) ::LocalAlloc(LPTR, sidSize);
 			// Извлекаем SID пользователя/группы и его доменное имя
 			if(::LookupAccountNameW(nullptr, account.c_str(), pSid, &sidSize, &domain[0], &domainSize, &sidType)){
+				// Усекаем доменное имя до фактической длины (второй вызов возвращает длину без нуль-терминатора)
+				domain.resize(domainSize);
 				// Строка SID идентификатора пользователя/доменного имени
 				LPWSTR sid = nullptr;
 				// Выполняем извлечение SID идентификатор пользователя/доменного имени
@@ -2365,17 +2458,8 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	 * @return     полученное значение записи
 	 */
 	T awh::Operating_System::sysctl(string_view name) const noexcept {
-		// Переменная результата
-		T result;
-		// Если данные являются основными
-		if(is_integral <T>::value || is_floating_point <T>::value || is_array <T>::value){
-			// Буфер результата по умолчанию
-			uint8_t buffer[sizeof(T)];
-			// Заполняем нулями буфер данных
-			::memset(buffer, 0, sizeof(T));
-			// Выполняем установку результата по умолчанию
-			::memcpy(&result, reinterpret_cast <T *> (buffer), sizeof(T));
-		}
+		// Переменная результата (для скалярных типов выполняется нулевая инициализация)
+		T result{};
 		// Если название записи передано правильно
 		if(!name.empty()){
 			// Создаём буфер данных для извлечения данных
@@ -2383,12 +2467,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 			// Выполняем извлечение данных записи
 			::sysctl(name, buffer);
 			// Если данные буфера были извлечены удачно
-			if(!buffer.empty()){
-				// Если данные являются основными
-				if(is_class <T>::value || is_integral <T>::value || is_floating_point <T>::value)
-					// Выполняем получение данных
-					::metadata(buffer, result);
-			}
+			if(!buffer.empty())
+				// Выполняем получение данных в соответствии с типом результата
+				::metadata(buffer, result);
 		}
 		// Возвращаем результат
 		return result;
@@ -2410,7 +2491,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __linux__
 		template size_t awh::Operating_System::sysctl <size_t> (string_view) const noexcept;
 		template ssize_t awh::Operating_System::sysctl <ssize_t> (string_view) const noexcept;
 	#endif
@@ -2431,7 +2512,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __linux__
 		template vector <size_t> awh::Operating_System::sysctl <vector <size_t>> (string_view) const noexcept;
 		template vector <ssize_t> awh::Operating_System::sysctl <vector <ssize_t>> (string_view) const noexcept;
 	#endif
@@ -2466,9 +2547,9 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				// Буфер результата по умолчанию
 				vector <uint8_t> buffer(sizeof(value), 0);
 				// Выполняем установку результата по умолчанию
-				::memcpy(buffer.data(), &value, sizeof(value));
+				::memcpy(&buffer[0], &value, sizeof(value));
 				// Выполняем установку буфера бинарных данных
-				return ::sysctl(name, buffer.data(), buffer.size());
+				return ::sysctl(name, &buffer[0], buffer.size());
 			#endif
 		}
 		// Сообщаем, что ничего не установленно
@@ -2490,7 +2571,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __linux__
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const size_t) const noexcept;
 		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const ssize_t) const noexcept;
 	#endif
@@ -2572,12 +2653,12 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 				 */
 				for(auto & item : items){
 					// Выполняем установку результата по умолчанию
-					::memcpy(buffer.data() + offset, &item, sizeof(item));
+					::memcpy(&buffer[0] + offset, &item, sizeof(item));
 					// Выполняем увеличение смещения в буфере
 					offset += sizeof(item);
 				}
 				// Выполняем установку буфера бинарных данных
-				return ::sysctl(name, buffer.data(), buffer.size());
+				return ::sysctl(name, &buffer[0], buffer.size());
 			#endif
 		}
 		// Сообщаем, что ничего не установленно
@@ -2599,7 +2680,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	/**
 	 * Если операционной системой является MacOS X или Linux
 	 */
-	#if __APPLE__ || __MACH__ || __Linux__
+	#if __APPLE__ || __MACH__ || __linux__
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const vector <size_t> &) const noexcept;
 		template bool awh::Operating_System::sysctl <ssize_t> (string_view, const vector <ssize_t> &) const noexcept;
 	#endif
@@ -2710,7 +2791,7 @@ string awh::Operating_System::exec(string_view cmd, const bool multiline) const 
 				/**
 				 * Считываем до тех пор пока все не прочитаем
 				 */
-				while(::fgetws(buffer, sizeof(buffer), stream) != nullptr){
+				while(::fgetws(buffer, sizeof(buffer) / sizeof(buffer[0]), stream) != nullptr){
 					// Выполняем конвертирование в utf-8 строку
 					result.append(::move(::convert(buffer)));
 					// Если это не мультилайн

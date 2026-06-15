@@ -29,7 +29,6 @@
  * Стандартные заголовочные файлы
  */
 #include <fstream>
-#include <codecvt>
 #include <sstream>
 #include <cstdlib>
 #include <fcntl.h>
@@ -3133,7 +3132,7 @@ void awh::Filesystem::readfile(string_view filename, const function <void (strin
 								// Устанавливаем старшее смещение для чтения
 								overlapped.OffsetHigh = li.HighPart;
 								// Выполняем чтение части файла в буфер
-								if(!::ReadFile(file, buffer.data(), static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
+								if(!::ReadFile(file, &buffer[0], static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
 									// Создаём буфер сообщения ошибки
 									wchar_t message[0xFF] = {0};
 									// Выполняем формирование текста ошибки
@@ -3416,7 +3415,7 @@ void awh::Filesystem::readfile(string_view filename, const size_t size, const fu
 								// Устанавливаем старшее смещение для чтения
 								overlapped.OffsetHigh = li.HighPart;
 								// Выполняем чтение части файла в буфер
-								if(!::ReadFile(file, buffer.data(), static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
+								if(!::ReadFile(file, &buffer[0], static_cast <DWORD> (::min <ULONGLONG> (static_cast <ULONGLONG> (buffer.size()),  static_cast <ULONGLONG> (length.QuadPart - li.QuadPart))), &bytes, &overlapped)){
 									// Создаём буфер сообщения ошибки
 									wchar_t message[0xFF] = {0};
 									// Выполняем формирование текста ошибки
