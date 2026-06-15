@@ -24,8 +24,9 @@
  */
 #if _WIN32 || _WIN64
 	/**
-	 * Стандартный заголовочный файл
+	 * Стандартные заголовочные файлы
 	 */
+	#include <cstdio>
 	#include <vector>
 #endif
 
@@ -213,7 +214,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 	/**
 	 * Для операционной системы NetBSD
 	 */
-	#elif ___NetBSD__
+	#elif __NetBSD__
 		// Выполняем формирование лога
 		this->_log->print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
@@ -345,10 +346,10 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			// Выходим из функции
 			return false;
 		}
-		// Получаем мягкие значения
-		const uint32_t currentSoft = static_cast <uint32_t> (rl.rlim_cur);
-		// Получаем жесткие значения
-		const uint32_t currentHard = static_cast <uint32_t> (rl.rlim_max);
+		// Получаем мягкое значение (с защитой от усечения RLIM_INFINITY)
+		const uint32_t currentSoft = ((rl.rlim_cur == RLIM_INFINITY) || (rl.rlim_cur > static_cast <rlim_t> (UINT32_MAX)) ? UINT32_MAX : static_cast <uint32_t> (rl.rlim_cur));
+		// Получаем жёсткое значение (с защитой от усечения RLIM_INFINITY)
+		const uint32_t currentHard = ((rl.rlim_max == RLIM_INFINITY) || (rl.rlim_max > static_cast <rlim_t> (UINT32_MAX)) ? UINT32_MAX : static_cast <uint32_t> (rl.rlim_max));
 		/**
 		 * Если включён режим отладки
 		 */
@@ -360,10 +361,47 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 		if(currentSoft >= limit)
 			// Возвращаем true
 			return true;
-		// Пытаемся поднять soft лимит до min(target, hard)
-		const rlim_t soft = static_cast <rlim_t> (limit <= currentHard ? limit : currentHard);
-		// Устанавливаем новое значение лимита
-		rl.rlim_cur = soft;
+		/**
+		 * Если жёсткого лимита достаточно — поднимаем только мягкий лимит до желаемого значения
+		 */
+		if(currentHard >= limit){
+			// Устанавливаем новое значение мягкого лимита
+			rl.rlim_cur = static_cast <rlim_t> (limit);
+			// Устанавливаем новое значение файловых дескрипторов
+			if(::setrlimit(RLIMIT_NOFILE, &rl) == 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Печатаем информационное сообщение
+					this->_log->print("Successfully raised soft FD limit to %u", log_t::flag_t::INFO, limit);
+				#endif
+				// Возвращаем true
+				return true;
+			}
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
+			#endif
+			// Возвращаем результат неудачи
+			return false;
+		}
+		/**
+		 * Жёсткого лимита недостаточно — пытаемся поднять и мягкий, и жёсткий лимит до желаемого (требуются права root)
+		 */
+		// Устанавливаем новое значение мягкого лимита
+		rl.rlim_cur = static_cast <rlim_t> (limit);
+		// Устанавливаем новое значение жёсткого лимита
+		rl.rlim_max = static_cast <rlim_t> (limit);
 		// Устанавливаем новое значение файловых дескрипторов
 		if(::setrlimit(RLIMIT_NOFILE, &rl) == 0){
 			/**
@@ -371,62 +409,45 @@ bool awh::Files_Descriptors::limit(const uint32_t limit) const noexcept {
 			 */
 			#if DEBUG_MODE
 				// Печатаем информационное сообщение
-				this->_log->print("Successfully raised soft FD limit to %u", log_t::flag_t::INFO, static_cast <uint32_t> (soft));
+				this->_log->print("Successfully raised soft and hard FD limit to %u", log_t::flag_t::INFO, limit);
 			#endif
-			// (Опционально) Пытаемся поднять hard лимит — если есть права
-			if(currentHard < limit){
-				// Записываем в лог информацию о помощи
-				this->help(currentHard, limit);
-				// Поднимаем текущее значение лимита
-				rl.rlim_cur = static_cast <rlim_t> (soft);
-				// Пытаемся поднять hard лимит
-				rl.rlim_max = static_cast <rlim_t> (limit);
-				// Устанавливаем новое значение файловых дескрипторов
-				if(::setrlimit(RLIMIT_NOFILE, &rl) == 0){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Печатаем информационное сообщение
-						this->_log->print("Successfully raised hard FD limit to %u", log_t::flag_t::INFO, limit);
-					#endif
-				// Если ничего не получилось
-				} else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("Failed to raise hard FD limit to %u (need root?): %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, limit, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("Failed to raise hard FD limit to %u (need root?): %s", log_t::flag_t::WARNING, limit, ::strerror(errno));
-					#endif
-				}
-			}
 			// Возвращаем true
 			return true;
-		// Если установить не удалось
+		}
+		/**
+		 * Поднять жёсткий лимит не удалось — откатываемся к максимально возможному мягкому лимиту (до текущего жёсткого)
+		 */
+		// Устанавливаем мягкий лимит на максимум доступного жёсткого
+		rl.rlim_cur = static_cast <rlim_t> (currentHard);
+		// Восстанавливаем прежнее значение жёсткого лимита
+		rl.rlim_max = static_cast <rlim_t> (currentHard);
+		// Пытаемся поднять мягкий лимит хотя бы до жёсткого
+		if(::setrlimit(RLIMIT_NOFILE, &rl) == 0){
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Печатаем информационное сообщение
+				this->_log->print("Raised soft FD limit to hard maximum %u (requested %u)", log_t::flag_t::INFO, currentHard, limit);
+			#endif
+		// Если даже это не удалось
 		} else {
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
+				this->_log->debug("Failed to raise soft FD limit to %u: %s", __PRETTY_FUNCTION__, make_tuple(limit), log_t::flag_t::WARNING, currentHard, ::strerror(errno));
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, static_cast <uint32_t> (soft), ::strerror(errno));
+				this->_log->print("Failed to raise soft FD limit to %u: %s", log_t::flag_t::WARNING, currentHard, ::strerror(errno));
 			#endif
 		}
 	#endif
-	// Возвращаем значение по умолчанию
+	// Возвращаем результат неудачи: желаемый лимит не достигнут полностью
 	return false;
 }
 /**
@@ -442,100 +463,24 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 	 */
 	#if _WIN32 || _WIN64
 		/**
-		 * Выполняем перехват ошибок
+		 * На Windows нет аналога getrlimit(RLIMIT_NOFILE). Лимит файловых дескрипторов
+		 * уровня CRT управляется функциями _getmaxstdio()/_setmaxstdio() (по умолчанию 512,
+		 * максимум 8192). Возвращаем эти значения без создания и закрытия сокетов,
+		 * так как пробинг сокетами крайне дорог и не отражает реальный одновременный лимит.
 		 */
-		try {
-			// Формируем текущее значение файловых дескрипторов
-			result.first = 65536;
-			// Устанавливаем максимальное количество сокетов
-			result.second = 100000;
-			// SetHandleCount — рекомендация системе, не гарантирует лимит
-			if(::SetHandleCount(static_cast <uint32_t> (result.first))){
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Печатаем информационное сообщение
-					this->_log->print("Called SetHandleCount(%u) successfully", log_t::flag_t::INFO, result.first);
-				#endif
-			// Если ничего не получилось
-			} else {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("SetHandleCount(%u) failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, result.first);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("SetHandleCount(%u) failed", log_t::flag_t::WARNING, result.first);
-				#endif
-				// Выходим из функции
-				return std::make_pair(0, 0);
-			}
-			// Создаём сокеты, пока не упрёмся в лимит
-   			vector <SOCKET> socks;
-			// чтобы не аллоцировать часто резервируем память
-			socks.reserve(1000);
-			// Сокет для инициализации
-			SOCKET sock = INVALID_SOCKET;
-			/**
-			 * Выполняем создание 100000 сокетов
-			 */
-			for(uint32_t i = 0; i < result.second; ++i){
-				// Выполняем инициализацию сокетов
-				if((sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET){
-					/**
-					 * Выполняем закрытие открытых сокетов
-					 */
-					for(auto & sock : socks)
-						// Закрываем все открытые сокеты
-						::closesocket(sock);
-					// Устанавливаем максимальное значение доступных сокетов
-					result.second = i;
-					// Возвращаем полученный результат
-					return result;
-				}
-				socks.push_back(sock);
-				// Оптимизация: не держим слишком много — закрываем каждые 1000
-				if(socks.size() >= 1000){
-					/**
-					 * Выполняем закрытие открытых сокетов
-					 */
-					for(auto & sock : socks)
-						// Закрываем все открытые сокеты
-						::closesocket(sock);
-					// Выполняем очистку созданных сокетов
-					socks.clear();
-				}
-			}
-			/**
-			 * Выполняем закрытие открытых сокетов
-			 */
-			for(auto & sock : socks)
-				// Закрываем все открытые сокеты
-				::closesocket(sock);
+		// Получаем текущее значение лимита файловых дескрипторов уровня CRT
+		const int current = ::_getmaxstdio();
+		// Устанавливаем текущее значение количества доступных файловых дескрипторов
+		result.first = (current > 0 ? static_cast <uint32_t> (current) : 512);
+		// Устанавливаем максимально возможное значение (потолок _setmaxstdio)
+		result.second = 8192;
 		/**
-		 * Если возникает ошибка
+		 * Если включён режим отладки
 		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-		}
+		#if DEBUG_MODE
+			// Печатаем информационное сообщение
+			this->_log->print("Current FD limits: soft=%u, hard=%u", log_t::flag_t::INFO, result.first, result.second);
+		#endif
 	/**
 	 * Для всех остальных операционных систем
 	 */
@@ -547,7 +492,7 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 			/**
 			 * Структура заполнения доступных лимитов
 			 */
-			struct rlimit rl;
+			struct rlimit rl{0};
 			// Выполняем извлечение информации об доступных файловых дескрипторах
 			if(::getrlimit(RLIMIT_NOFILE, &rl) != 0){
 				/**
@@ -566,10 +511,10 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 				// Возвращаем результат
 				return result;
 			}
-			// Выполняем установку текущего значения количества доступных файловых дескрипторов
-			result.first = static_cast <uint32_t> (rl.rlim_cur);
-			// Выполняем установку максимального значения количества доступных файловых дескрипторов
-			result.second = static_cast <uint32_t> (rl.rlim_max);
+			// Выполняем установку текущего значения количества доступных файловых дескрипторов (с защитой от усечения RLIM_INFINITY)
+			result.first = ((rl.rlim_cur == RLIM_INFINITY) || (rl.rlim_cur > static_cast <rlim_t> (UINT32_MAX)) ? UINT32_MAX : static_cast <uint32_t> (rl.rlim_cur));
+			// Выполняем установку максимального значения количества доступных файловых дескрипторов (с защитой от усечения RLIM_INFINITY)
+			result.second = ((rl.rlim_max == RLIM_INFINITY) || (rl.rlim_max > static_cast <rlim_t> (UINT32_MAX)) ? UINT32_MAX : static_cast <uint32_t> (rl.rlim_max));
 		/**
 		 * Если возникает ошибка
 		 */
@@ -592,3 +537,118 @@ std::pair <uint32_t, uint32_t> awh::Files_Descriptors::limit() const noexcept {
 	// Возвращаем результат
 	return result;
 }
+/**
+ * @brief Метод оценки лимита одновременно открытых сокетов
+ *
+ * @param max верхний предел пробинга (0 - использовать значение по умолчанию)
+ * @return    пара значений (оценка доступного количества сокетов, верхний предел пробинга)
+ */
+std::pair <uint32_t, uint32_t> awh::Files_Descriptors::sockets(const uint32_t max) const noexcept {
+	// Переменная результата
+	std::pair <uint32_t, uint32_t> result = {0, 0};
+	// Определяем верхний предел пробинга (по умолчанию 65535)
+	const uint32_t limit = (max > 0 ? max : 65535);
+	/**
+	 * Для операционной системы MS Windows
+	 */
+	#if _WIN32 || _WIN64
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			/**
+			 * Структура данных Winsock
+			 */
+			WSADATA wsa;
+			// Выполняем инициализацию Winsock
+			if(::WSAStartup(MAKEWORD(2, 2), &wsa) != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("WSAStartup failed", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("WSAStartup failed", log_t::flag_t::CRITICAL);
+				#endif
+				// Возвращаем результат
+				return result;
+			}
+			// Список открытых сокетов (держим их открытыми для корректного измерения)
+			vector <SOCKET> socks;
+			// Резервируем память, чтобы избежать частых аллокаций
+			socks.reserve(limit < 1024 ? limit : 1024);
+			// Сокет для инициализации
+			SOCKET sock = INVALID_SOCKET;
+			// Счётчик успешно открытых сокетов
+			uint32_t count = 0;
+			/**
+			 * Выполняем короткий пробинг до первой ошибки или до достижения предела
+			 */
+			for(; count < limit; ++count){
+				// Выполняем инициализацию сокета
+				if((sock = ::socket(AF_INET, SOCK_STREAM, IPPROTO_TCP)) == INVALID_SOCKET)
+					// Прерываем цикл, упёршись в лимит
+					break;
+				// Сохраняем открытый сокет
+				socks.push_back(sock);
+			}
+			/**
+			 * Выполняем закрытие всех открытых сокетов
+			 */
+			for(auto & sock : socks)
+				// Закрываем открытый сокет
+				::closesocket(sock);
+			// Выполняем деинициализацию Winsock
+			::WSACleanup();
+			// Устанавливаем оценку доступного количества сокетов
+			result.first = count;
+			// Устанавливаем верхний предел пробинга
+			result.second = limit;
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	/**
+	 * Для всех остальных операционных систем
+	 */
+	#else
+		// На POSIX-системах лимит сокетов ограничен лимитом файловых дескрипторов
+		const std::pair <uint32_t, uint32_t> fds = this->limit();
+		// Оценка доступного количества сокетов (ограничена верхним пределом пробинга)
+		result.first = (fds.first > limit ? limit : fds.first);
+		// Устанавливаем верхний предел пробинга
+		result.second = limit;
+	#endif
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Конструктор
+ *
+ * @param log объект для работы с логами
+ */
+awh::Files_Descriptors::Files_Descriptors(const log_t * log) noexcept : _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Files_Descriptors::~Files_Descriptors() noexcept {}

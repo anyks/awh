@@ -19,9 +19,13 @@
 #define __AWH_EVENT_FDS_BASE__
 
 /**
- * Стандартные заголовочные файлы
+ * Стандартный заголовочный файл
  */
 #include <cstdint>
+
+/**
+ * Системный заголовочный файл
+ */
 #include <unistd.h>
 
 /**
@@ -69,18 +73,25 @@ namespace awh {
 			 * @return количество файловых дескрипторов установленных в файловой системе
 			 */
 			std::pair <uint32_t, uint32_t> limit() const noexcept;
+			/**
+			 * @brief Метод оценки лимита одновременно открытых сокетов
+			 *
+			 * @param max верхний предел пробинга (0 - использовать значение по умолчанию)
+			 * @return    пара значений (оценка доступного количества сокетов, верхний предел пробинга)
+			 */
+			std::pair <uint32_t, uint32_t> sockets(const uint32_t max = 0) const noexcept;
 		public:
 			/**
 			 * @brief Конструктор
 			 *
 			 * @param log объект для работы с логами
 			 */
-			explicit Files_Descriptors(const log_t * log) noexcept : _log(log) {}
+			explicit Files_Descriptors(const log_t * log) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Files_Descriptors() noexcept {}
+			~Files_Descriptors() noexcept;
 	} fds_t;
 };
 
