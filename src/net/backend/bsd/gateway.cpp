@@ -56,6 +56,28 @@ using namespace std;
  */
 namespace gw {
 	/**
+	 * @brief Структура распарсенных адресов сообщения маршрута
+	 *
+	 */
+	typedef struct Addrs {
+		// Адрес назначения маршрута
+		struct sockaddr * dst;
+		// Адрес шлюза маршрута
+		struct sockaddr * gw;
+		// Маска подсети маршрута
+		struct sockaddr * mask;
+		// Сетевой интерфейс маршрута (канальный уровень)
+		struct sockaddr_dl * ifp;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		Addrs() noexcept :
+		 dst(nullptr), gw(nullptr),
+		 mask(nullptr), ifp(nullptr) {}
+	} addrs_t;
+
+	/**
 	 * @brief Функция преобразования префикса в маску подсети
 	 *
 	 * @param prefix префикс сети
@@ -68,6 +90,148 @@ namespace gw {
 			return 0;
 		// Возвращаем маску подсети
 		return htonl((0xFFFFFFFFU) << (32 - static_cast <uint32_t> (prefix)));
+	}
+	/**
+	 * @brief Функция получения следующего адреса маршрута
+	 *
+	 * @param addr объект текущего адреса маршрута
+	 * @return     объект следующего адреса маршрута
+	 */
+	static struct sockaddr * advance(struct sockaddr * addr) noexcept {
+		// Получаем длину структуры адреса
+		const uint32_t length = static_cast <uint32_t> (addr->sa_len ? addr->sa_len : sizeof(long));
+		// Извлекаем объект следующего адреса маршрута
+		return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(length));
+	}
+	/**
+	 * @brief Функция разбора адресов сообщения маршрута
+	 *
+	 * @param rtm объект сообщения маршрута
+	 * @return    структура распарсенных адресов маршрута
+	 */
+	static addrs_t parse(const struct rt_msghdr * rtm) noexcept {
+		// Результат разбора адресов маршрута
+		addrs_t result;
+		// Объект текущего адреса маршрута
+		struct sockaddr * sa = reinterpret_cast <struct sockaddr *> (const_cast <struct rt_msghdr *> (rtm) + 1);
+		// Если присутствует адрес назначения в маршруте
+		if(rtm->rtm_addrs & RTA_DST){
+			// Извлекаем адрес назначения маршрута
+			result.dst = sa;
+			// Переходим к следующему адресу маршрута
+			sa = advance(sa);
+		}
+		// Если присутствует шлюз в маршруте
+		if(rtm->rtm_addrs & RTA_GATEWAY){
+			// Если адрес шлюза является ссылочным
+			if(sa->sa_family == AF_LINK)
+				// Извлекаем сетевой интерфейс маршрута
+				result.ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+			// Иначе извлекаем адрес шлюза маршрута
+			else result.gw = sa;
+			// Переходим к следующему адресу маршрута
+			sa = advance(sa);
+		}
+		// Если присутствует маска подсети в маршруте
+		if(rtm->rtm_addrs & RTA_NETMASK){
+			// Извлекаем маску подсети маршрута
+			result.mask = sa;
+			// Переходим к следующему адресу маршрута
+			sa = advance(sa);
+		}
+		// Если присутствует маска клонирования в маршруте
+		if(rtm->rtm_addrs & RTA_GENMASK)
+			// Переходим к следующему адресу маршрута
+			sa = advance(sa);
+		// Если присутствует сетевой интерфейс в маршруте
+		if(rtm->rtm_addrs & RTA_IFP){
+			// Если сетевой интерфейс ещё не был извлечён и адрес является ссылочным
+			if((result.ifp == nullptr) && (sa->sa_family == AF_LINK))
+				// Извлекаем сетевой интерфейс маршрута
+				result.ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
+			// Переходим к следующему адресу маршрута
+			sa = advance(sa);
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Функция запроса маршрута для адреса назначения через RTM_GET
+	 *
+	 * @param dst    адрес назначения для запроса маршрута
+	 * @param buffer буфер для приёма ответа маршрута
+	 * @param size   размер буфера для приёма ответа маршрута
+	 * @param rtm    объект полученного маршрута (выходной параметр)
+	 * @return       результат выполнения запроса маршрута
+	 */
+	static bool query(const struct sockaddr * dst, uint8_t * buffer, const size_t size, struct rt_msghdr ** rtm) noexcept {
+		// Создаём сокет маршрутизации
+		const awh::net::socket_t sock = ::socket(PF_ROUTE, SOCK_RAW, 0);
+		// Если сокет не создан
+		if(sock == awh::net::invalid_socket_t)
+			// Выводим результат
+			return false;
+		// Буфер запроса маршрута
+		uint8_t request[512];
+		// Зануляем буфер запроса маршрута
+		::memset(request, 0, sizeof(request));
+		// Получаем объект заголовка запроса маршрута
+		struct rt_msghdr * rtq = reinterpret_cast <struct rt_msghdr *> (request);
+		// Получаем буфер полезной нагрузки запроса маршрута
+		uint8_t * cp = (request + sizeof(struct rt_msghdr));
+		// Устанавливаем тип сообщения на получение маршрута
+		rtq->rtm_type = RTM_GET;
+		// Устанавливаем флаги маршрута
+		rtq->rtm_flags = RTF_UP;
+		// Устанавливаем используемые поля адресов
+		rtq->rtm_addrs = RTA_DST;
+		// Устанавливаем версию маршрута
+		rtq->rtm_version = RTM_VERSION;
+		// Получаем идентификатор процесса
+		const pid_t pid = ::getpid();
+		// Устанавливаем идентификатор процесса
+		rtq->rtm_pid = pid;
+		// Получаем уникальный порядковый номер запроса
+		static int32_t seq = 0;
+		// Вычисляем текущий порядковый номер запроса
+		const int32_t current = ++seq;
+		// Устанавливаем порядковый номер запроса
+		rtq->rtm_seq = current;
+		// Копируем адрес назначения в запрос маршрута
+		::memcpy(cp, dst, dst->sa_len);
+		// Смещаем указатель полезной нагрузки
+		cp += ROUNDUP(dst->sa_len);
+		// Устанавливаем полный размер сообщения запроса
+		rtq->rtm_msglen = static_cast <uint16_t> (cp - request);
+		// Отправляем запрос маршрута
+		if(::write(sock, request, rtq->rtm_msglen) <= 0){
+			// Закрываем сокет маршрутизации
+			::close(sock);
+			// Выводим результат
+			return false;
+		}
+		// Размер прочитанных данных
+		ssize_t bytes = 0;
+		/**
+		 * Читаем ответы, пока не получим свой по порядковому номеру и идентификатору процесса
+		 */
+		do {
+			// Читаем очередной ответ маршрута
+			bytes = ::read(sock, buffer, size);
+		/**
+		 * Проверяем, что данные из сокета прочитаны удачно, а также совпадает порядковый номер и идентификатор процесса
+		 */
+		} while((bytes > 0) && ((reinterpret_cast <struct rt_msghdr *> (buffer)->rtm_seq != current) || (reinterpret_cast <struct rt_msghdr *> (buffer)->rtm_pid != pid)));
+		// Закрываем сокет маршрутизации
+		::close(sock);
+		// Если ответ не получен
+		if(bytes <= 0)
+			// Выводим результат
+			return false;
+		// Устанавливаем указатель на полученный маршрут
+		(* rtm) = reinterpret_cast <struct rt_msghdr *> (buffer);
+		// Выводим результат
+		return true;
 	}
 };
 
@@ -92,71 +256,6 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 			switch(route.gateway->size){
 				// Если адрес является IPv4
 				case 4: {
-					// Читаем ВСЕ IPv4-маршруты
-					int32_t mib[6] = {
-						CTL_NET,     // Сетевой уровень
-						PF_ROUTE,    // Протокол маршрутизации
-						0,           // Производитель
-						AF_INET,     // Адресное семейство IPv4
-						NET_RT_DUMP, // Чтение маршрутов
-						0            // Флаги поиска
-					};
-					// Размер буфера
-					size_t length = 0;
-					// Получаем размер буфера
-					if(::sysctl(mib, 6, nullptr, &length, nullptr, 0) < 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Возвращаем результат
-						return result;
-					}
-					// Буфер данных для получения маршрутов
-					vector <uint8_t> buffer(length, 0);
-					// Извлекаем маршруты в буфер
-					if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Возвращаем результат
-						return result;
-					}
-					// Получаем итератор следующего маршрута
-					uint8_t * begin = &buffer[0];
-					// Получаем конец всех маршрутов
-					uint8_t * end = (begin + length);
-					/**
-					 * @brief Функция получения следующего адреса маршрута
-					 *
-					 * @param addr объект текущего адреса маршрута
-					 * @return     объект следующего адреса маршрута
-					 */
-					auto advance = [](struct sockaddr * addr) noexcept -> struct sockaddr * {
-						// Получаем длину структуры адреса
-						const uint32_t length = static_cast <uint32_t> (addr->sa_len ? addr->sa_len : sizeof(long));
-						// Извлекаем объект текущего адреса маршрута
-						return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(length));
-					};
 					// Индекс сетевого интерфейса для поиска
 					uint32_t searchIfIndex = 0;
 					// Если задано имя интерфейса
@@ -172,244 +271,206 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address == 0) &&
 						(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address == 0) && (searchIfIndex == 0)
 					);
+					// Индекс сетевого интерфейса найденного маршрута
+					uint32_t foundIfIndex = 0;
 					/**
-					 * Перебираем все маршруты
+					 * @brief Функция сопоставления и заполнения маршрута из сообщения
+					 *
+					 * @param rtm объект сообщения маршрута
+					 * @return    результат совпадения и заполнения маршрута
 					 */
-					while(begin < end){
-						// Приводим к структуре маршрута
-						struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
-						// Если версия маршрута не совпадает
-						if(rtm->rtm_version != RTM_VERSION)
-							// Выходим из цикла
-							break;
-						// Объект текущего маршрута
-						struct sockaddr_in * gw = nullptr;
-						// Объект сетевого интерфейса маршрута
-						struct sockaddr_dl * ifp = nullptr;
-						// Объект назначения маршрута
-						struct sockaddr_in * dst = nullptr;
+					auto process = [&](struct rt_msghdr * rtm) -> bool {
+						// Разбираем адреса сообщения маршрута
+						const ::gw::addrs_t addrs = ::gw::parse(rtm);
+						// Объект адреса шлюза маршрута
+						struct sockaddr_in * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.gw) : nullptr);
+						// Объект адреса назначения маршрута
+						struct sockaddr_in * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.dst) : nullptr);
 						// Объект маски подсети маршрута
-						struct sockaddr_in * mask = nullptr;
-						// Объект текущего адреса маршрута
-						struct sockaddr * sa = reinterpret_cast <struct sockaddr *> (rtm + 1);
-						// Если присутствуют адреса в маршруте
-						if(rtm->rtm_addrs & RTA_DST){
-							// Если адрес назначения является IPv4
-							if(sa->sa_family == AF_INET)
-								// Извлекаем адрес назначения маршрута
-								dst = reinterpret_cast <struct sockaddr_in *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует шлюз в маршруте
-						if(rtm->rtm_addrs & RTA_GATEWAY){
-							// Если адрес шлюза является IPv4
-							if(sa->sa_family == AF_INET)
-								// Извлекаем адрес шлюза маршрута
-								gw = reinterpret_cast <struct sockaddr_in *> (sa);
-							// Если адрес шлюза является ссылочным
-							else if(sa->sa_family == AF_LINK)
-								// Извлекаем сетевой интерфейс маршрута
-								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска подсети в маршруте
-						if(rtm->rtm_addrs & RTA_NETMASK){
-							// Если адрес маски подсети является IPv4
-							if(sa->sa_family == AF_INET)
-								// Извлекаем маску подсети маршрута
-								mask = reinterpret_cast <struct sockaddr_in *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска клонирования в маршруте
-						if(rtm->rtm_addrs & RTA_GENMASK)
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						// Если присутствует сетевой интерфейс в маршруте
-						if(rtm->rtm_addrs & RTA_IFP){
-							// Если сетевой интерфейс не был извлечён
-							if(ifp == nullptr){
-								// Если адрес сетевого интерфейса является ссылочным
-								if(sa->sa_family == AF_LINK)
-									// Извлекаем сетевой интерфейс маршрута
-									ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							}
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
+						struct sockaddr_in * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.mask) : nullptr);
+						// Объект сетевого интерфейса маршрута
+						struct sockaddr_dl * ifp = addrs.ifp;
 						// Предполагаем совпадение и проверяем условия
-						result = true;
+						bool match = true;
 						// Если ищем маршрут по умолчанию
 						if(lookForDefault)
 							// Если адрес назначения 0 (и маска подразумевается 0 или отсутствует)
-							result = ((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0);
+							match = ((dst != nullptr ? dst->sin_addr.s_addr : 0) == 0);
 						// Если ищем конкретный маршрут
 						else {
 							// Если задан gateway, он должен совпадать
 							if(awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address != 0)
-								// Устанавливаем флаг несовпадения
-								result = ((gw != nullptr ? gw->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address);
+								// Накапливаем результат совпадения по адресу шлюза
+								match = match && ((gw != nullptr ? gw->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address);
 							// Если задан destination, он должен совпадать
 							if(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address != 0)
-								// Устанавливаем флаг несовпадения
-								result = ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
+								// Накапливаем результат совпадения по адресу назначения
+								match = match && ((dst != nullptr ? dst->sin_addr.s_addr : 0) == awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address);
 							// Если задан интерфейс
 							if(searchIfIndex != 0)
-								// Если интерфейса в маршруте нет или индекс не совпадает
-								result = ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+								// Накапливаем результат совпадения по индексу интерфейса
+								match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
 						}
-						// Если маршрут найден
-						if(result){
-							// Если задан адрес шлюза
-							if(gw != nullptr)
-								// Устанавливаем адрес шлюза
-								awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = gw->sin_addr.s_addr;
-							// Иначе зануляем адрес шлюза
-							else awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = 0;
-							// Если задан адрес назначения
-							if(dst != nullptr)
-								// Устанавливаем адрес назначения
-								awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = dst->sin_addr.s_addr;
-							// Иначе зануляем адрес назначения
-							else awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = 0;
-							// Вычисляем префикс
-							route.prefix = 0;
-							// Если задана маска подсети
-							if(mask != nullptr){
-								// Преобразуем маску в префикс
-								uint32_t addr = ntohl(mask->sin_addr.s_addr);
-								/**
-								 * Подсчитываем количество единичных бит в маске
-								 */
-								while(addr & 0x80000000){
-									// Увеличиваем префикс
-									route.prefix++;
-									// Сдвигаем маску влево
-									addr <<= 1;
-								}
-							// Если маска не задана
-							} else if(rtm->rtm_flags & RTF_HOST)
-								// Если это хостовый маршрут без маски, то /32
-								route.prefix = 32;
-							// Выходим из цикла (первый найденный)
-							break;
-						}
-						// Переходим к следующему маршруту
-						begin += rtm->rtm_msglen;
+						// Если маршрут не найден
+						if(!match)
+							// Выводим результат
+							return false;
+						// Запоминаем индекс сетевого интерфейса найденного маршрута
+						foundIfIndex = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
+						// Если задан адрес шлюза
+						if(gw != nullptr)
+							// Устанавливаем адрес шлюза
+							awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = gw->sin_addr.s_addr;
+						// Иначе зануляем адрес шлюза
+						else awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = 0;
+						// Если задан адрес назначения
+						if(dst != nullptr)
+							// Устанавливаем адрес назначения
+							awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = dst->sin_addr.s_addr;
+						// Иначе зануляем адрес назначения
+						else awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address = 0;
+						// Вычисляем префикс
+						route.prefix = 0;
+						// Если задана маска подсети
+						if(mask != nullptr){
+							// Преобразуем маску в префикс
+							uint32_t addr = ntohl(mask->sin_addr.s_addr);
+							/**
+							 * Подсчитываем количество единичных бит в маске
+							 */
+							while(addr & 0x80000000){
+								// Увеличиваем префикс
+								route.prefix++;
+								// Сдвигаем маску влево
+								addr <<= 1;
+							}
+						// Если маска не задана
+						} else if(rtm->rtm_flags & RTF_HOST)
+							// Если это хостовый маршрут без маски, то /32
+							route.prefix = 32;
+						// Выводим результат
+						return true;
+					};
+					/**
+					 * Быстрый путь: при незаданном адресе назначения запрашиваем маршрут напрямую через RTM_GET.
+					 * Для конкретного адреса назначения используется полный дамп (точное совпадение).
+					 */
+					if(awh_cast <net::addr_net_ipv4_t *> (route.destination.get())->address == 0){
+						// Структура адреса назначения для запроса (0 — маршрут по умолчанию)
+						struct sockaddr_in qdst{0};
+						// Устанавливаем длину структуры
+						qdst.sin_len = sizeof(struct sockaddr_in);
+						// Устанавливаем семейство адресов
+						qdst.sin_family = AF_INET;
+						// Буфер для приёма ответа маршрута
+						uint8_t reply[2048];
+						// Объект полученного маршрута
+						struct rt_msghdr * rtm = nullptr;
+						// Выполняем запрос маршрута и обрабатываем ответ
+						if(::gw::query(reinterpret_cast <struct sockaddr *> (&qdst), reply, sizeof(reply), &rtm) && process(rtm))
+							// Устанавливаем флаг успешного поиска маршрута
+							result = true;
 					}
-					// Если найден маршрут
-					if(result){
-						// Получаем список сетевых интерфейсов
-						struct ifaddrs * ptr = nullptr;
-						// Выполняем получение списка сетевых интерфейсов
-						if(::getifaddrs(&ptr) != 0){
+					/**
+					 * Медленный путь: перебираем всю таблицу маршрутизации
+					 */
+					if(!result){
+						// Читаем ВСЕ IPv4-маршруты
+						int32_t mib[6] = {
+							CTL_NET,     // Сетевой уровень
+							PF_ROUTE,    // Протокол маршрутизации
+							0,           // Производитель
+							AF_INET,     // Адресное семейство IPv4
+							NET_RT_DUMP, // Чтение маршрутов
+							0            // Флаги поиска
+						};
+						// Размер буфера
+						size_t length = 0;
+						// Получаем размер буфера
+						if(::sysctl(mib, 6, nullptr, &length, nullptr, 0) < 0){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
-							// Возвращаем пустой результат
+							// Возвращаем результат
 							return result;
 						}
+						// Буфер данных для получения маршрутов
+						vector <uint8_t> buffer(length, 0);
+						// Извлекаем маршруты в буфер
+						if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+							// Возвращаем результат
+							return result;
+						}
+						// Получаем итератор следующего маршрута
+						uint8_t * begin = &buffer[0];
+						// Получаем конец всех маршрутов
+						uint8_t * end = (begin + length);
 						/**
-						 * Перебираем все сетевые интерфейсы
+						 * Перебираем все маршруты
 						 */
-						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-							// Если не IPv4 адреса
-							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
-								// Переходим к следующему интерфейсу
-								continue;
-							// Получаем указатель на структуру IPv4
-							struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
-							// Если адреса совпадают
-							if(sin->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address){
-								// Устанавливаем результат
-								route.ifname = ifa->ifa_name;
-								// Завершаем поиск
+						while(begin < end){
+							// Если оставшихся данных недостаточно для заголовка маршрута
+							if(static_cast <size_t> (end - begin) < sizeof(struct rt_msghdr))
+								// Выходим из цикла
+								break;
+							// Приводим к структуре маршрута
+							struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
+							// Если версия маршрута не совпадает
+							if(rtm->rtm_version != RTM_VERSION)
+								// Выходим из цикла
+								break;
+							// Если длина сообщения некорректна или выходит за границы буфера
+							if((rtm->rtm_msglen == 0) || (static_cast <size_t> (end - begin) < rtm->rtm_msglen))
+								// Выходим из цикла
+								break;
+							// Обрабатываем сообщение маршрута
+							if(process(rtm)){
+								// Устанавливаем флаг успешного поиска маршрута
+								result = true;
+								// Выходим из цикла (первый найденный)
 								break;
 							}
+							// Переходим к следующему маршруту
+							begin += rtm->rtm_msglen;
 						}
-						// Освобождаем память списка сетевых интерфейсов
-						::freeifaddrs(ptr);
+					}
+					// Если найден маршрут и известен индекс сетевого интерфейса
+					if(result && (foundIfIndex > 0)){
+						// Буфер для имени сетевого интерфейса
+						char ifname[IF_NAMESIZE];
+						// Зануляем буфер имени сетевого интерфейса
+						::memset(ifname, 0, sizeof(ifname));
+						// Получаем имя сетевого интерфейса по его индексу
+						if(::if_indextoname(foundIfIndex, ifname) != nullptr)
+							// Устанавливаем имя сетевого интерфейса
+							route.ifname = ifname;
 					}
 				} break;
 				// Если адрес является IPv6
 				case 16: {
-					// Читаем ВСЕ IPv6-маршруты
-					int32_t mib[6] = {
-						CTL_NET,     // Сетевой уровень
-						PF_ROUTE,    // Протокол маршрутизации
-						0,           // Производитель
-						AF_INET6,    // Адресное семейство IPv6
-						NET_RT_DUMP, // Чтение маршрутов
-						0            // Флаги поиска
-					};
-					// Размер буфера
-					size_t length = 0;
-					// Получаем размер буфера
-					if(::sysctl(mib, 6, nullptr, &length, nullptr, 0) < 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Возвращаем результат
-						return result;
-					}
-					// Буфер данных для получения маршрутов
-					vector <uint8_t> buffer(length, 0);
-					// Извлекаем маршруты в буфер
-					if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Возвращаем результат
-						return result;
-					}
-					// Получаем итератор следующего маршрута
-					uint8_t * begin = &buffer[0];
-					// Получаем конец всех маршрутов
-					uint8_t * end = (begin + length);
-					/**
-					 * @brief Функция получения следующего адреса маршрута
-					 *
-					 * @param addr объект текущего адреса маршрута
-					 * @return     объект следующего адреса маршрута
-					 */
-					auto advance = [](struct sockaddr * addr) noexcept -> struct sockaddr * {
-						// Получаем длину структуры адреса
-						const uint32_t length = static_cast <uint32_t> (addr->sa_len ? addr->sa_len : sizeof(long));
-						// Извлекаем объект текущего адреса маршрута
-						return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(length));
-					};
 					// Если адрес назначения не инициализирован
 					if(route.destination == nullptr)
 						// Инициализируем объект адреса назначения в маршруте
@@ -432,180 +493,207 @@ bool awh::eth::Gateway::get(route_t & route) const noexcept {
 						searchIfIndex = ::if_nametoindex(route.ifname.c_str());
 					// Флаг поиска маршрута по умолчанию
 					const bool lookForDefault = (!isDest && !isGw && (searchIfIndex == 0));
+					// Индекс сетевого интерфейса найденного маршрута
+					uint32_t foundIfIndex = 0;
 					/**
-					 * Перебираем все маршруты
+					 * @brief Функция сопоставления и заполнения маршрута из сообщения
+					 *
+					 * @param rtm объект сообщения маршрута
+					 * @return    результат совпадения и заполнения маршрута
 					 */
-					while(begin < end){
-						// Приводим к структуре маршрута
-						struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
-						// Если версия маршрута не совпадает
-						if(rtm->rtm_version != RTM_VERSION)
-							// Выходим из цикла
-							break;
-						// Объект текущего маршрута
-						struct sockaddr_in6 * gw = nullptr;
-						// Объект сетевого интерфейса маршрута
-						struct sockaddr_dl * ifp = nullptr;
-						// Объект назначения маршрута
-						struct sockaddr_in6 * dst = nullptr;
+					auto process = [&](struct rt_msghdr * rtm) -> bool {
+						// Разбираем адреса сообщения маршрута
+						const ::gw::addrs_t addrs = ::gw::parse(rtm);
+						// Объект адреса шлюза маршрута
+						struct sockaddr_in6 * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.gw) : nullptr);
+						// Объект адреса назначения маршрута
+						struct sockaddr_in6 * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.dst) : nullptr);
 						// Объект маски подсети маршрута
-						struct sockaddr_in6 * mask = nullptr;
-						// Объект текущего адреса маршрута
-						struct sockaddr * sa = reinterpret_cast <struct sockaddr *> (rtm + 1);
-						// Если присутствуют адреса в маршруте
-						if(rtm->rtm_addrs & RTA_DST){
-							// Если адрес назначения является IPv6
-							if(sa->sa_family == AF_INET6)
-								// Извлекаем адрес назначения маршрута
-								dst = reinterpret_cast <struct sockaddr_in6 *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует шлюз в маршруте
-						if(rtm->rtm_addrs & RTA_GATEWAY){
-							// Если адрес шлюза является IPv6
-							if(sa->sa_family == AF_INET6)
-								// Извлекаем адрес шлюза маршрута
-								gw = reinterpret_cast <struct sockaddr_in6 *> (sa);
-							// Если адрес шлюза является ссылочным
-							else if(sa->sa_family == AF_LINK)
-								// Извлекаем сетевой интерфейс маршрута
-								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска подсети в маршруте
-						if(rtm->rtm_addrs & RTA_NETMASK){
-							// Если адрес маски подсети является IPv6
-							if(sa->sa_family == AF_INET6)
-								// Извлекаем маску подсети маршрута
-								mask = reinterpret_cast <struct sockaddr_in6 *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска клонирования в маршруте
-						if(rtm->rtm_addrs & RTA_GENMASK)
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						// Если присутствует сетевой интерфейс в маршруте
-						if(rtm->rtm_addrs & RTA_IFP){
-							// Если сетевой интерфейс не был извлечён
-							if(ifp == nullptr){
-								// Если адрес сетевого интерфейса является ссылочным
-								if(sa->sa_family == AF_LINK)
-									// Извлекаем сетевой интерфейс маршрута
-									ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							}
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
+						struct sockaddr_in6 * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.mask) : nullptr);
+						// Объект сетевого интерфейса маршрута
+						struct sockaddr_dl * ifp = addrs.ifp;
 						// Предполагаем совпадение и проверяем условия
-						result = true;
+						bool match = true;
 						// Если ищем маршрут по умолчанию
 						if(lookForDefault)
 							// Если адрес назначения задан и не равен 0
-							result = ((dst == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr));
+							match = ((dst == nullptr) || IN6_IS_ADDR_UNSPECIFIED(&dst->sin6_addr));
 						// Если ищем конкретный маршрут
 						else {
 							// Проверка шлюза
 							if(isGw)
-								// Устанавливаем флаг совпадения, если адрес шлюза совпадает
-								result = ((gw != nullptr) && (::memcmp(&gw->sin6_addr, searchGw, 16) == 0));
+								// Накапливаем результат совпадения по адресу шлюза
+								match = match && ((gw != nullptr) && (::memcmp(&gw->sin6_addr, searchGw, 16) == 0));
 							// Проверка назначения
 							if(isDest)
-								// Устанавливаем флаг совпадения, если адрес назначения совпадает
-								result = ((dst != nullptr) && (::memcmp(&dst->sin6_addr, searchDest, 16) == 0));
+								// Накапливаем результат совпадения по адресу назначения
+								match = match && ((dst != nullptr) && (::memcmp(&dst->sin6_addr, searchDest, 16) == 0));
 							// Проверка интерфейса
 							if(searchIfIndex != 0)
-								// Если интерфейс в маршруте установлен и индекс совпадает
-								result = ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
+								// Накапливаем результат совпадения по индексу интерфейса
+								match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
 						}
-						// Если маршрут найден
-						if(result){
-							// Если задан адрес шлюза
-							if(gw != nullptr)
-								// Устанавливаем адрес шлюза
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], &gw->sin6_addr, 16);
-							// Иначе зануляем адрес шлюза
-							else ::memset(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 0, 16);
-							// Если задан адрес назначения
-							if(dst != nullptr)
-								// Устанавливаем адрес назначения
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], &dst->sin6_addr, 16);
-							// Иначе зануляем адрес назначения
-							else ::memset(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], 0, 16);
-							// Вычисляем префикс
-							route.prefix = 0;
-							// Если задана маска подсети
-							if(mask != nullptr){
+						// Если маршрут не найден
+						if(!match)
+							// Выводим результат
+							return false;
+						// Запоминаем индекс сетевого интерфейса найденного маршрута
+						foundIfIndex = (ifp != nullptr ? ifp->sdl_index : rtm->rtm_index);
+						// Если задан адрес шлюза
+						if(gw != nullptr)
+							// Устанавливаем адрес шлюза
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], &gw->sin6_addr, 16);
+						// Иначе зануляем адрес шлюза
+						else ::memset(&awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 0, 16);
+						// Если задан адрес назначения
+						if(dst != nullptr)
+							// Устанавливаем адрес назначения
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], &dst->sin6_addr, 16);
+						// Иначе зануляем адрес назначения
+						else ::memset(&awh_cast <net::addr_net_ipv6_t *> (route.destination.get())->address[0], 0, 16);
+						// Вычисляем префикс
+						route.prefix = 0;
+						// Если задана маска подсети
+						if(mask != nullptr){
+							/**
+							 * Преобразуем маску в префикс
+							 */
+							for(uint8_t i = 0; i < 16; ++i){
+								// Получаем байт маски
+								uint8_t byte = mask->sin6_addr.s6_addr[i];
 								/**
-								 * Преобразуем маску в префикс
+								 * Подсчитываем количество единичных бит в маске
 								 */
-								for(uint8_t i = 0; i < 16; ++i){
-									// Получаем байт маски
-									uint8_t byte = mask->sin6_addr.s6_addr[i];
-									/**
-									 * Подсчитываем количество единичных бит в маске
-									 */
-									while(byte & 0x80){
-										// Увеличиваем префикс
-										route.prefix++;
-										// Сдвигаем байт влево
-										byte <<= 1;
-									}
+								while(byte & 0x80){
+									// Увеличиваем префикс
+									route.prefix++;
+									// Сдвигаем байт влево
+									byte <<= 1;
 								}
-							// Если маска не задана
-							} else if(rtm->rtm_flags & RTF_HOST)
-								// Если это хостовый маршрут без маски, то /128
-								route.prefix = 128;
-							// Выходим из цикла (первый найденный)
-							break;
-						}
-						// Переходим к следующему маршруту
-						begin += rtm->rtm_msglen;
+							}
+						// Если маска не задана
+						} else if(rtm->rtm_flags & RTF_HOST)
+							// Если это хостовый маршрут без маски, то /128
+							route.prefix = 128;
+						// Выводим результат
+						return true;
+					};
+					/**
+					 * Быстрый путь: при незаданном адресе назначения запрашиваем маршрут напрямую через RTM_GET.
+					 * Для конкретного адреса назначения используется полный дамп (точное совпадение).
+					 */
+					if(!isDest){
+						// Структура адреса назначения для запроса (0 — маршрут по умолчанию)
+						struct sockaddr_in6 qdst{0};
+						// Устанавливаем длину структуры
+						qdst.sin6_len = sizeof(struct sockaddr_in6);
+						// Устанавливаем семейство адресов
+						qdst.sin6_family = AF_INET6;
+						// Буфер для приёма ответа маршрута
+						uint8_t reply[2048];
+						// Объект полученного маршрута
+						struct rt_msghdr * rtm = nullptr;
+						// Выполняем запрос маршрута и обрабатываем ответ
+						if(::gw::query(reinterpret_cast <struct sockaddr *> (&qdst), reply, sizeof(reply), &rtm) && process(rtm))
+							// Устанавливаем флаг успешного поиска маршрута
+							result = true;
 					}
-					// Если найден маршрут
-					if(result){
-						// Получаем список сетевых интерфейсов
-						struct ifaddrs * ptr = nullptr;
-						// Выполняем получение списка сетевых интерфейсов
-						if(::getifaddrs(&ptr) != 0){
+					/**
+					 * Медленный путь: перебираем всю таблицу маршрутизации
+					 */
+					if(!result){
+						// Читаем ВСЕ IPv6-маршруты
+						int32_t mib[6] = {
+							CTL_NET,     // Сетевой уровень
+							PF_ROUTE,    // Протокол маршрутизации
+							0,           // Производитель
+							AF_INET6,    // Адресное семейство IPv6
+							NET_RT_DUMP, // Чтение маршрутов
+							0            // Флаги поиска
+						};
+						// Размер буфера
+						size_t length = 0;
+						// Получаем размер буфера
+						if(::sysctl(mib, 6, nullptr, &length, nullptr, 0) < 0){
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Unable to get list of network interfaces", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 							#endif
-							// Возвращаем пустой результат
+							// Возвращаем результат
 							return result;
 						}
+						// Буфер данных для получения маршрутов
+						vector <uint8_t> buffer(length, 0);
+						// Извлекаем маршруты в буфер
+						if(::sysctl(mib, 6, &buffer[0], &length, nullptr, 0) < 0){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+							#endif
+							// Возвращаем результат
+							return result;
+						}
+						// Получаем итератор следующего маршрута
+						uint8_t * begin = &buffer[0];
+						// Получаем конец всех маршрутов
+						uint8_t * end = (begin + length);
 						/**
-						 * Перебираем все сетевые интерфейсы
+						 * Перебираем все маршруты
 						 */
-						for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-							// Если не IPv6 адреса
-							if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
-								// Переходим к следующему интерфейсу
-								continue;
-							// Получаем указатель на структуру IPv6
-							struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
-							// Если адреса совпадают
-							if(::memcmp(&sin->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], sizeof(in6_addr)) == 0){
-								// Устанавливаем результат
-								route.ifname = ifa->ifa_name;
-								// Завершаем поиск
+						while(begin < end){
+							// Если оставшихся данных недостаточно для заголовка маршрута
+							if(static_cast <size_t> (end - begin) < sizeof(struct rt_msghdr))
+								// Выходим из цикла
+								break;
+							// Приводим к структуре маршрута
+							struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
+							// Если версия маршрута не совпадает
+							if(rtm->rtm_version != RTM_VERSION)
+								// Выходим из цикла
+								break;
+							// Если длина сообщения некорректна или выходит за границы буфера
+							if((rtm->rtm_msglen == 0) || (static_cast <size_t> (end - begin) < rtm->rtm_msglen))
+								// Выходим из цикла
+								break;
+							// Обрабатываем сообщение маршрута
+							if(process(rtm)){
+								// Устанавливаем флаг успешного поиска маршрута
+								result = true;
+								// Выходим из цикла (первый найденный)
 								break;
 							}
+							// Переходим к следующему маршруту
+							begin += rtm->rtm_msglen;
 						}
-						// Освобождаем память списка сетевых интерфейсов
-						::freeifaddrs(ptr);
+					}
+					// Если найден маршрут и известен индекс сетевого интерфейса
+					if(result && (foundIfIndex > 0)){
+						// Буфер для имени сетевого интерфейса
+						char ifname[IF_NAMESIZE];
+						// Зануляем буфер имени сетевого интерфейса
+						::memset(ifname, 0, sizeof(ifname));
+						// Получаем имя сетевого интерфейса по его индексу
+						if(::if_indextoname(foundIfIndex, ifname) != nullptr)
+							// Устанавливаем имя сетевого интерфейса
+							route.ifname = ifname;
 					}
 				} break;
 				// Во всех остальных случаях
@@ -808,6 +896,22 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							// Освобождаем список интерфейсов
 							::freeifaddrs(ifptr);
 						}
+						// Если IP-адрес сетевого интерфейса не найден
+						if(!found){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("Unable to find IPv4 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, route.ifname.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("Unable to find IPv4 address for interface \"%s\"", log_t::flag_t::WARNING, route.ifname.c_str());
+							#endif
+						}
 					/**
 					 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
 					 * Используем интерфейс как link-layer gateway (-interface)
@@ -1007,6 +1111,22 @@ bool awh::eth::Gateway::add(const route_t & route) const noexcept {
 							}
 							// Освобождаем список интерфейсов
 							::freeifaddrs(ifptr);
+						}
+						// Если IP-адрес сетевого интерфейса не найден
+						if(!found){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("Unable to find IPv6 address for interface \"%s\"", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, route.ifname.c_str());
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("Unable to find IPv6 address for interface \"%s\"", log_t::flag_t::WARNING, route.ifname.c_str());
+							#endif
 						}
 					/**
 					 * Случай 2: Specific Route + No Gateway IP + Ifname [$ sudo route add -net 10.0.0.0/8 -interface utun6]
@@ -1249,84 +1369,38 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					uint8_t * end = (begin + length);
 					// Получаем маску подсети из переданного префикса
 					const in_addr_t netmsk = ::gw::prefix2mask(route.prefix);
-					/**
-					 * @brief Функция получения следующего адреса маршрута
-					 *
-					 * @param addr объект текущего адреса маршрута
-					 * @return     объект следующего адреса маршрута
-					 */
-					auto advance = [](struct sockaddr * addr) noexcept -> struct sockaddr * {
-						// Получаем длину структуры адреса
-						const uint32_t length = static_cast <uint32_t> (addr->sa_len ? addr->sa_len : sizeof(long));
-						// Извлекаем объект текущего адреса маршрута
-						return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(length));
-					};
+					// Индекс сетевого интерфейса для поиска (вычисляем один раз вне цикла)
+					const uint32_t searchIfIndex = (!route.ifname.empty() ? ::if_nametoindex(route.ifname.c_str()) : 0);
 					// Индекс текущего маршрута
 					int32_t index = 0;
 					/**
 					 * Перебираем все маршруты
 					 */
 					while(begin < end){
+						// Если оставшихся данных недостаточно для заголовка маршрута
+						if(static_cast <size_t> (end - begin) < sizeof(struct rt_msghdr))
+							// Выходим из цикла
+							break;
 						// Приводим к структуре маршрута
 						struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
 						// Если версия маршрута не совпадает
 						if(rtm->rtm_version != RTM_VERSION)
 							// Выходим из цикла
 							break;
-						// Объект текущего маршрута
-						struct sockaddr_in * gw = nullptr;
-						// Объект назначения маршрута
-						struct sockaddr_in * dst = nullptr;
+						// Если длина сообщения некорректна или выходит за границы буфера
+						if((rtm->rtm_msglen == 0) || (static_cast <size_t> (end - begin) < rtm->rtm_msglen))
+							// Выходим из цикла
+							break;
+						// Разбираем адреса сообщения маршрута
+						const ::gw::addrs_t addrs = ::gw::parse(rtm);
+						// Объект адреса шлюза маршрута
+						struct sockaddr_in * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.gw) : nullptr);
+						// Объект адреса назначения маршрута
+						struct sockaddr_in * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.dst) : nullptr);
 						// Объект маски подсети маршрута
-						struct sockaddr_in * mask = nullptr;
+						struct sockaddr_in * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET)) ? reinterpret_cast <struct sockaddr_in *> (addrs.mask) : nullptr);
 						// Объект сетевого интерфейса маршрута
-						struct sockaddr_dl * ifp = nullptr;
-						// Объект текущего адреса маршрута
-						struct sockaddr * sa = reinterpret_cast <struct sockaddr *> (rtm + 1);
-						// Если присутствуют адреса в маршруте
-						if(rtm->rtm_addrs & RTA_DST){
-							// Если адрес назначения является IPv4
-							if(sa->sa_family == AF_INET)
-								// Извлекаем адрес назначения маршрута
-								dst = reinterpret_cast <struct sockaddr_in *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует шлюз в маршруте
-						if(rtm->rtm_addrs & RTA_GATEWAY){
-							// Если адрес шлюза является IPv4
-							if(sa->sa_family == AF_INET)
-								// Извлекаем адрес шлюза маршрута
-								gw = reinterpret_cast <struct sockaddr_in *> (sa);
-							// Если адрес шлюза является ссылочным
-							else if(sa->sa_family == AF_LINK)
-								// Извлекаем сетевой интерфейс маршрута
-								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска подсети в маршруте
-						if(rtm->rtm_addrs & RTA_NETMASK){
-							// Если адрес маски подсети является IPv4
-							if(sa->sa_family == AF_INET)
-								// Извлекаем маску подсети маршрута
-								mask = reinterpret_cast <struct sockaddr_in *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска клонирования в маршруте
-						if(rtm->rtm_addrs & RTA_GENMASK)
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						// Если присутствует сетевой интерфейс в маршруте
-						if((rtm->rtm_addrs & RTA_IFP) && (ifp == nullptr)){
-							// Если адрес сетевого интерфейса является ссылочным
-							if(sa->sa_family == AF_LINK)
-								// Извлекаем сетевой интерфейс маршрута
-								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
+						struct sockaddr_dl * ifp = addrs.ifp;
 						// Флаг совпадения маршрута
 						bool match = true;
 						/**
@@ -1362,12 +1436,9 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = ((gw != nullptr) && (gw->sin_addr.s_addr == awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address));
 						// Если имя сетевого интерфейса задано (и шлюз НЕ задан)
-						else if(!route.ifname.empty()) {
-							// Получаем индекс сетевого интерфейса
-							const uint32_t index = ::if_nametoindex(route.ifname.c_str());
+						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-							match = ((ifp != nullptr) && (ifp->sdl_index == index));
-						}
+							match = ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
 						// Если адрес не совпадает
 						if(!match){
 							// Переходим к следующему маршруту
@@ -1380,6 +1451,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						{
 							// Буфер для удаления маршрута
 							char buffer[1024];
+							// Если исходное сообщение маршрута не помещается в буфер
+							if(rtm->rtm_msglen > sizeof(buffer)){
+								// Переходим к следующему маршруту
+								begin += rtm->rtm_msglen;
+								// Продолжаем перебор дальше
+								continue;
+							}
 							// Зануляем буфер для удаления маршрута
 							::memset(buffer, 0, sizeof(buffer));
 							// Получаем буфер полезной нагрузки текущего адреса маршрута
@@ -1407,7 +1485,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								// Смещаем указатель полезной нагрузки
 								payload += ROUNDUP(src->sa_len);
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							}
 							// Если присутствует шлюз в маршруте
 							if(rtm->rtm_addrs & RTA_GATEWAY){
@@ -1420,7 +1498,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								// Иначе снимаем флаг шлюза
 								} else rtd->rtm_addrs &= ~RTA_GATEWAY;
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							}
 							// Если присутствует маска подсети в маршруте
 							if(rtm->rtm_addrs & RTA_NETMASK){
@@ -1429,12 +1507,12 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								// Смещаем указатель полезной нагрузки
 								payload += ROUNDUP(src->sa_len);
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							}
 							// Если присутствует маска клонирования в маршруте
 							if(rtm->rtm_addrs & RTA_GENMASK)
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							// Если присутствует сетевой интерфейс в маршруте
 							if(rtm->rtm_addrs & RTA_IFP){
 								// Копируем сетевой интерфейс маршрута
@@ -1550,6 +1628,8 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 					uint8_t * end = (begin + length);
 					// Получаем маску подсети из переданного префикса
 					struct in6_addr netmsk{0};
+					// Индекс сетевого интерфейса для поиска (вычисляем один раз вне цикла)
+					const uint32_t searchIfIndex = (!route.ifname.empty() ? ::if_nametoindex(route.ifname.c_str()) : 0);
 					// Если префикс задан
 					if(route.prefix > 0){
 						// Текущий префикс
@@ -1574,84 +1654,36 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							} else netmsk.s6_addr[i] = 0;
 						}
 					}
-					/**
-					 * @brief Функция получения следующего адреса маршрута
-					 *
-					 * @param addr объект текущего адреса маршрута
-					 * @return     объект следующего адреса маршрута
-					 */
-					auto advance = [](struct sockaddr * addr) noexcept -> struct sockaddr * {
-						// Получаем длину структуры адреса
-						const uint32_t length = static_cast <uint32_t> (addr->sa_len ? addr->sa_len : sizeof(long));
-						// Извлекаем объект текущего адреса маршрута
-						return reinterpret_cast <struct sockaddr *> (reinterpret_cast <uint8_t *> (addr) + ROUNDUP(length));
-					};
 					// Индекс текущего маршрута
 					int32_t index = 0;
 					/**
 					 * Перебираем все маршруты
 					 */
 					while(begin < end){
+						// Если оставшихся данных недостаточно для заголовка маршрута
+						if(static_cast <size_t> (end - begin) < sizeof(struct rt_msghdr))
+							// Выходим из цикла
+							break;
 						// Приводим к структуре маршрута
 						struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
 						// Если версия маршрута не совпадает
 						if(rtm->rtm_version != RTM_VERSION)
 							// Выходим из цикла
 							break;
-						// Объект текущего маршрута
-						struct sockaddr_in6 * gw = nullptr;
-						// Объект назначения маршрута
-						struct sockaddr_in6 * dst = nullptr;
+						// Если длина сообщения некорректна или выходит за границы буфера
+						if((rtm->rtm_msglen == 0) || (static_cast <size_t> (end - begin) < rtm->rtm_msglen))
+							// Выходим из цикла
+							break;
+						// Разбираем адреса сообщения маршрута
+						const ::gw::addrs_t addrs = ::gw::parse(rtm);
+						// Объект адреса шлюза маршрута
+						struct sockaddr_in6 * gw = (((addrs.gw != nullptr) && (addrs.gw->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.gw) : nullptr);
+						// Объект адреса назначения маршрута
+						struct sockaddr_in6 * dst = (((addrs.dst != nullptr) && (addrs.dst->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.dst) : nullptr);
 						// Объект маски подсети маршрута
-						struct sockaddr_in6 * mask = nullptr;
+						struct sockaddr_in6 * mask = (((addrs.mask != nullptr) && (addrs.mask->sa_family == AF_INET6)) ? reinterpret_cast <struct sockaddr_in6 *> (addrs.mask) : nullptr);
 						// Объект сетевого интерфейса маршрута
-						struct sockaddr_dl * ifp = nullptr;
-						// Объект текущего адреса маршрута
-						struct sockaddr * sa = reinterpret_cast <struct sockaddr *> (rtm + 1);
-						// Если присутствуют адреса в маршруте
-						if(rtm->rtm_addrs & RTA_DST){
-							// Если адрес назначения является IPv6
-							if(sa->sa_family == AF_INET6)
-								// Извлекаем адрес назначения маршрута
-								dst = reinterpret_cast <struct sockaddr_in6 *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует шлюз в маршруте
-						if(rtm->rtm_addrs & RTA_GATEWAY){
-							// Если адрес шлюза является IPv6
-							if(sa->sa_family == AF_INET6)
-								// Извлекаем адрес шлюза маршрута
-								gw = reinterpret_cast <struct sockaddr_in6 *> (sa);
-							// Если адрес шлюза является ссылочным
-							else if(sa->sa_family == AF_LINK)
-								// Извлекаем сетевой интерфейс маршрута
-								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска подсети в маршруте
-						if(rtm->rtm_addrs & RTA_NETMASK){
-							// Если адрес маски подсети является IPv6
-							if(sa->sa_family == AF_INET6)
-								// Извлекаем маску подсети маршрута
-								mask = reinterpret_cast <struct sockaddr_in6 *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
-						// Если присутствует маска клонирования в маршруте
-						if(rtm->rtm_addrs & RTA_GENMASK)
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						// Если присутствует сетевой интерфейс в маршруте
-						if((rtm->rtm_addrs & RTA_IFP) && (ifp == nullptr)){
-							// Если адрес сетевого интерфейса является ссылочным
-							if(sa->sa_family == AF_LINK)
-								// Извлекаем сетевой интерфейс маршрута
-								ifp = reinterpret_cast <struct sockaddr_dl *> (sa);
-							// Устанавливаем текущий адрес маршрута
-							sa = advance(sa);
-						}
+						struct sockaddr_dl * ifp = addrs.ifp;
 						// Флаг совпадения маршрута
 						bool match = true;
 						/**
@@ -1689,12 +1721,9 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 							// Устанавливаем флаг совпадения по адресу шлюза маршрута
 							match = match && ((gw != nullptr) && (::memcmp(&gw->sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address[0], 16) == 0));
 						// Если имя сетевого интерфейса задано
-						else if(!route.ifname.empty()) {
-							// Получаем индекс сетевого интерфейса
-							const uint32_t index = ::if_nametoindex(route.ifname.c_str());
+						else if(!route.ifname.empty())
 							// Устанавливаем флаг совпадения по имени сетевого интерфейса маршрута
-							match = match && ((ifp != nullptr) && (ifp->sdl_index == index));
-						}
+							match = match && ((ifp != nullptr) && (ifp->sdl_index == searchIfIndex));
 						// Если адрес не совпадает
 						if(!match){
 							// Переходим к следующему маршруту
@@ -1707,6 +1736,13 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 						{
 							// Буфер для удаления маршрута
 							char buffer[1024];
+							// Если исходное сообщение маршрута не помещается в буфер
+							if(rtm->rtm_msglen > sizeof(buffer)){
+								// Переходим к следующему маршруту
+								begin += rtm->rtm_msglen;
+								// Продолжаем перебор дальше
+								continue;
+							}
 							// Зануляем буфер для удаления маршрута
 							::memset(buffer, 0, sizeof(buffer));
 							// Получаем буфер полезной нагрузки текущего адреса маршрута
@@ -1734,7 +1770,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								// Смещаем указатель полезной нагрузки
 								payload += ROUNDUP(src->sa_len);
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							}
 							// Если присутствует шлюз в маршруте
 							if(rtm->rtm_addrs & RTA_GATEWAY){
@@ -1747,7 +1783,7 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								// Иначе снимаем флаг шлюза
 								} else rtd->rtm_addrs &= ~RTA_GATEWAY;
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							}
 							// Если присутствует маска подсети в маршруте
 							if(rtm->rtm_addrs & RTA_NETMASK){
@@ -1756,12 +1792,12 @@ bool awh::eth::Gateway::remove(const route_t & route) const noexcept {
 								// Смещаем указатель полезной нагрузки
 								payload += ROUNDUP(src->sa_len);
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							}
 							// Если присутствует маска клонирования в маршруте
 							if(rtm->rtm_addrs & RTA_GENMASK)
 								// Устанавливаем текущий адрес маршрута
-								src = advance(src);
+								src = ::gw::advance(src);
 							// Если присутствует сетевой интерфейс в маршруте
 							if(rtm->rtm_addrs & RTA_IFP){
 								// Копируем сетевой интерфейс маршрута

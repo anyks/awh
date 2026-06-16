@@ -537,6 +537,21 @@ SET(AWH_LIB_NAME ${PROJECT_NAME})
 if (CMAKE_BUILD_TESTS)
     # Задаем имя библиотеки для сбора статистики покрытия кода
     SET(AWH_LIB_GCOV_NAME ${PROJECT_NAME}_gcov)
+    # Указываем что нужно собирать статистику покрытия кода тестами
+    option(CMAKE_BUILD_COVERAGE "Enable code coverage instrumentation for tests" ON)
+    # Если сбор статистики покрытия кода активирован
+    if (CMAKE_BUILD_COVERAGE)
+        # Флаги компиляции для инструментирования кода (gcov/llvm-cov)
+        SET(GCC_COVERAGE_COMPILE_FLAGS --coverage)
+        # Зависимости линковки для подключения рантайма сбора статистики покрытия
+        SET(GCC_COVERAGE_LIBS --coverage)
+    # Если сбор статистики покрытия кода отключён
+    else()
+        # Обнуляем флаги компиляции инструментирования кода
+        SET(GCC_COVERAGE_COMPILE_FLAGS "")
+        # Обнуляем зависимости линковки рантайма сбора статистики покрытия
+        SET(GCC_COVERAGE_LIBS "")
+    endif()
 endif (CMAKE_BUILD_TESTS)
 
 # Если нужно собрать и динамическую библиотеку
@@ -4467,6 +4482,59 @@ if (CMAKE_BUILD_TESTS)
     # СБорка тестов и бенчмарков
     add_subdirectory(tests)
     # add_subdirectory(benchmark)
+
+    # Если сбор статистики покрытия кода активирован
+    if (CMAKE_BUILD_COVERAGE)
+        # Ищем утилиту gcovr для формирования отчёта о покрытии
+        find_program(GCOVR_EXECUTABLE gcovr)
+        # Если утилита gcovr найдена
+        if (GCOVR_EXECUTABLE)
+            # Если сборка производится под операционную систему MacOS X
+            if (APPLE)
+                # На macOS данные покрытия clang разбираются через llvm-cov из состава Xcode
+                SET(AWH_GCOV_TOOL "xcrun llvm-cov gcov")
+            # Если сборка производится под прочие операционные системы
+            else()
+                # На остальных системах используется штатный gcov
+                SET(AWH_GCOV_TOOL "gcov")
+            endif()
+            # Каталог для HTML-отчёта о покрытии
+            SET(AWH_COVERAGE_REPORT_DIR "${CMAKE_BINARY_DIR}/coverage")
+            # Цель формирования отчёта о покрытии (прогон тестов + HTML-отчёт)
+            add_custom_target(coverage
+                # Запускаем скрипт прогона тестов и формирования отчёта о покрытии
+                COMMAND ${CMAKE_COMMAND}
+                    -DSRC_DIR=${CMAKE_SOURCE_DIR}
+                    -DBIN_DIR=${CMAKE_BINARY_DIR}
+                    -DREPORT_DIR=${AWH_COVERAGE_REPORT_DIR}
+                    -DGCOVR=${GCOVR_EXECUTABLE}
+                    -DGCOV_TOOL=${AWH_GCOV_TOOL}
+                    "-DTEST_BINS=$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_net>;$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_sys>"
+                    -P ${CMAKE_SOURCE_DIR}/sh/coverage.cmake
+                # Перед формированием отчёта собираем тесты
+                DEPENDS ${PROJECT_NAME}_UNITTEST_net ${PROJECT_NAME}_UNITTEST_sys
+                # Рабочий каталог
+                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+                # Описание цели
+                COMMENT "Running unit tests and generating code coverage report"
+                VERBATIM
+            )
+            # Цель сброса накопленных счётчиков покрытия
+            add_custom_target(coverage-clean
+                # Удаляем все накопленные данные покрытия
+                COMMAND find ${CMAKE_BINARY_DIR} -name *.gcda -delete
+                # Рабочий каталог
+                WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
+                # Описание цели
+                COMMENT "Removing collected coverage counters (*.gcda)"
+                VERBATIM
+            )
+        # Если утилита gcovr не найдена
+        else()
+            # Выводим сообщение об отсутствии утилиты gcovr
+            message(STATUS "gcovr not found: target 'coverage' is disabled\n")
+        endif()
+    endif()
 endif (CMAKE_BUILD_TESTS)
 
 # Если сборка производится под операционную систему Windows
