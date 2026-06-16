@@ -144,7 +144,7 @@ using namespace placeholders;
 					 */
 					#else
 						// Формируем команду символизации через addr2line по смещению инструкции внутри модуля
-						::snprintf(command, sizeof(command), "addr2line -f -C -p -e '%s' 0x%llx 2>/dev/null", info.dli_fname, static_cast <uint64_t> (addr - base));
+						::snprintf(command, sizeof(command), "addr2line -f -C -p -e '%s' 0x%lx 2>/dev/null", info.dli_fname, static_cast <uint64_t> (addr - base));
 					#endif
 					// Выполняем команду символизации и получаем её вывод
 					result = __awh_exec_command__(command);
