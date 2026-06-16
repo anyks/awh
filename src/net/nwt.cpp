@@ -1490,7 +1490,7 @@ void awh::Network_Types::zone(string_view zone) noexcept {
  * @brief Метод извлечения списка пользовательских зон интернета
  *
  */
-const std::unordered_set <string> & awh::Network_Types::zones() const noexcept {
+const unordered_set <string> & awh::Network_Types::zones() const noexcept {
 	// Возвращаем список пользовательских зон интернета
 	return this->_user;
 }
@@ -1499,7 +1499,7 @@ const std::unordered_set <string> & awh::Network_Types::zones() const noexcept {
  *
  * @param zones список доменных зон интернета
  */
-void awh::Network_Types::zones(const std::unordered_set <string> & zones) noexcept {
+void awh::Network_Types::zones(const unordered_set <string> & zones) noexcept {
 	// Если список зон не пустой
 	if(!zones.empty())
 		// Возвращаем список пользовательских зон
@@ -1511,7 +1511,7 @@ void awh::Network_Types::zones(const std::unordered_set <string> & zones) noexce
  * @param text текст для парсинга
  * @return     параметры полученные в результате парсинга
  */
-awh::Network_Types::url_t awh::Network_Types::parse(string_view text) noexcept {
+awh::Network_Types::url_t awh::Network_Types::parse(string_view text) const noexcept {
 	// Переменная результата
 	url_t result{};
 	/**

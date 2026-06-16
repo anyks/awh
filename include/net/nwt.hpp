@@ -112,13 +112,13 @@ namespace awh {
 					 *
 					 * @param url параметры адреса
 					 */
-					explicit URL(URL && url) noexcept;
+					URL(URL && url) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param url параметры адреса
 					 */
-					explicit URL(const URL & url) noexcept;
+					URL(const URL & url) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
@@ -133,7 +133,7 @@ namespace awh {
 			} url_t;
 		private:
 			// Список пользовательских доменных зон интернета
-			std::unordered_set <string> _user;
+			unordered_set <string> _user;
 		private:
 			// Объект логера
 			const Logging * _log;
@@ -163,13 +163,13 @@ namespace awh {
 			 * @brief Метод извлечения списка пользовательских зон интернета
 			 *
 			 */
-			const std::unordered_set <string> & zones() const noexcept;
+			const unordered_set <string> & zones() const noexcept;
 			/**
 			 * @brief Метод установки списка пользовательских зон
 			 *
 			 * @param zones список доменных зон интернета
 			 */
-			void zones(const std::unordered_set <string> & zones) noexcept;
+			void zones(const unordered_set <string> & zones) noexcept;
 		public:
 			/**
 			 * @brief Метод парсинга URI-строки
@@ -177,7 +177,7 @@ namespace awh {
 			 * @param text текст для парсинга
 			 * @return     параметры полученные в результате парсинга
 			 */
-			url_t parse(string_view text) noexcept;
+			url_t parse(string_view text) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки объекта логирования

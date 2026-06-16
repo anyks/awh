@@ -1366,7 +1366,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = const_cast <fmk_t *> (this)->_nwt.parse(text);
+					const auto & url = this->_nwt.parse(text);
 					// Если ссылка найдена
 					result = (url.type != nwt_t::types_t::NONE);
 				} break;
@@ -1747,7 +1747,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 				// Если установлен флаг роверки на URL адреса
 				case static_cast <uint8_t> (check_t::URL): {
 					// Выполняем парсинг nwt адреса
-					const auto & url = const_cast <fmk_t *> (this)->_nwt.parse(this->convert(text));
+					const auto & url = this->_nwt.parse(this->convert(text));
 					// Если ссылка найдена
 					result = (url.type != nwt_t::types_t::NONE);
 				} break;
@@ -8088,7 +8088,7 @@ std::unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const
 			 */
 			while(pos < text.size()){
 				// Выполняем парсинг nwt адреса
-				auto resUri = const_cast <fmk_t *> (this)->_nwt.parse(text.substr(pos));
+				auto resUri = this->_nwt.parse(text.substr(pos));
 				// Если ссылка найдена
 				if(resUri.type != nwt_t::types_t::NONE){
 					// Получаем данные слова
