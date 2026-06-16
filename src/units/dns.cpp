@@ -2513,6 +2513,22 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Добавляем запись в кэш DNS-резолвера
 							this->pushAddressToCache(answer.name, ip.get(), answer.ttl);
 						}
+						// Если функция обратного вызова установлена для получения списка IP-адресов
+						if(this->_callback.is("addresses")){
+							// Список IP-адресов для передачи в функцию обратного вызова
+							vector <unique_ptr <net::addr_t>> addresses(result.a.size());
+							/**
+							 * Перебираем все A-записи в ответе от DNS-сервера
+							 */
+							for(size_t i = 0; i < result.a.size(); ++i){
+								// Устанавливаем IPv4-адрес в объекте адреса
+								this->_addr.v4(result.a[i].ip);
+								// Устанавливаем представление IP-адреса для вывода результата
+								addresses[i] = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							}
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> ("addresses", id, event::family_t::IPV4, domain, addresses);
+						}
 						// Если функция обратного вызова установлена для получения IP-адресов
 						if(this->_callback.is("address")){
 							// Выбираем стандарт рандомайзера
@@ -2521,7 +2537,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							::shuffle(result.a.begin(), result.a.end(), generator);
 							// Устанавливаем IPv4-адрес в объекте адреса
 							this->_addr.v4(result.a.front().ip);
-							// Устанавливаем строковое представление IP-адреса для вывода результата
+							// Устанавливаем представление IP-адреса для вывода результата
 							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, result.a.front().name, address.get());
@@ -2540,6 +2556,22 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Добавляем запись в кэш DNS-резолвера
 							this->pushAddressToCache(answer.name, ip.get(), answer.ttl);
 						}
+						// Если функция обратного вызова установлена для получения списка IP-адресов
+						if(this->_callback.is("addresses")){
+							// Список IP-адресов для передачи в функцию обратного вызова
+							vector <unique_ptr <net::addr_t>> addresses(result.aaaa.size());
+							/**
+							 * Перебираем все AAAA-записи в ответе от DNS-сервера
+							 */
+							for(size_t i = 0; i < result.aaaa.size(); ++i){
+								// Устанавливаем IPv6-адрес в объекте адреса
+								this->_addr.v6(result.aaaa[i].ip);
+								// Устанавливаем представление IP-адреса для вывода результата
+								addresses[i] = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
+							}
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> ("addresses", id, event::family_t::IPV6, domain, addresses);
+						}
 						// Если функция обратного вызова установлена для получения IP-адресов
 						if(this->_callback.is("address")){
 							// Выбираем стандарт рандомайзера
@@ -2548,7 +2580,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							::shuffle(result.aaaa.begin(), result.aaaa.end(), generator);
 							// Устанавливаем IPv6-адрес в объекте адреса
 							this->_addr.v6(result.aaaa.front().ip);
-							// Устанавливаем строковое представление IP-адреса для вывода результата
+							// Устанавливаем представление IP-адреса для вывода результата
 							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, result.aaaa.front().name, address.get());
@@ -2642,6 +2674,32 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								// Добавляем запись в кэш DNS-резолвера
 								this->pushAddressToCache(answer.domain, address.get(), answer.ttl);
 						}
+						// Если функция обратного вызова установлена для получения списка IP-адресов
+						if(this->_callback.is("addresses")){
+							// Список IP-адресов для передачи в функцию обратного вызова
+							vector <unique_ptr <net::addr_t>> addresses;
+							/**
+							 * Перебираем все A-записи в ответе от DNS-сервера
+							 */
+							for(auto & ptr : result.ptr){
+								// Устанавливаем ARPA-адрес в объекте адреса
+								this->_addr.arpa(ptr.name);
+								/**
+								 * Определяем тип адреса для установки семейство адресов для вывода результата
+								 */
+								switch(static_cast <uint8_t> (this->_addr.type())){
+									// Если адрес является IPv4
+									case static_cast <uint8_t> (net_addr_t::type_t::IPV4):
+									// Если адрес является IPv6
+									case static_cast <uint8_t> (net_addr_t::type_t::IPV6):
+										// Устанавливаем представление IP-адреса для вывода результата
+										addresses.push_back(::move(this->_addr.source(net_addr_t::endian_t::LITTLE)));
+									break;
+								}
+							}
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> ("addresses", id, event::family_t::IPV4, domain, addresses);
+						}
 						// Если функция обратного вызова установлена для получения IP-адресов
 						if(this->_callback.is("address")){
 							// Выбираем стандарт рандомайзера
@@ -2667,7 +2725,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 									family = event::family_t::IPV6;
 								break;
 							}
-							// Устанавливаем строковое представление IP-адреса для вывода результата
+							// Устанавливаем представление IP-адреса для вывода результата
 							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, family, result.ptr.front().domain, address.get());
@@ -3072,6 +3130,8 @@ void awh::unit::DNS::callback(const callback_t & callback) noexcept {
 	this->_callback.set("address", callback);
 	// Устанавливаем обработчик исчерпания числа попыток DNS-запроса
 	this->_callback.set("attempts", callback);
+	// Выполняем установку функции обратного вызова при получении списка IP-адресов
+	this->_callback.set("addresses", callback);
 }
 /**
  * @brief Метод установки числа попыток DNS-запроса

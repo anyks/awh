@@ -13,9 +13,21 @@
  */
 
 /**
- * Стандартный заголовочный файл
+ * Если размер буфера в байтах не определён
  */
-#include <cmath>
+#ifndef AWH_NETWORK_QUEUE_BUFFER_SIZE
+	/**
+	 * Устанавливаем размер буфера для сетевой очереди (по умолчанию 64 КБ)
+	 */
+	#define AWH_NETWORK_QUEUE_BUFFER_SIZE 0x10000
+#endif
+
+/**
+ * Стандартные заголовочные файлы
+ */
+#include <new>
+#include <vector>
+#include <algorithm>
 
 /**
  * Подключаем заголовочный файл проекта
@@ -28,45 +40,146 @@
 using namespace std;
 
 /**
- * @brief Метод сдвига всех данных к началу буфера при фрагментации
+ * @brief Анонимное пространство имён для пула блоков буфера очереди
+ *
+ * @note Сетевой реактор работает по модели «один поток на воркер-процесс», поэтому пул
+ *       сделан потоко-локальным (thread_local) и не требует блокировок.
+ */
+namespace {
+	/**
+	 * Флаг живости пула: имеет константную инициализацию (тривиальный тип), поэтому
+	 * корректно читается на всём протяжении жизни потока, включая фазу статической деинициализации
+	 */
+	thread_local bool __awh_block_pool_alive__ = true;
+	/**
+	 * Максимальное количество свободных блоков, удерживаемых в пуле на поток
+	 * (ограничивает «прилипание» пиковой памяти: __AWH_QUEUE_BLOCK_POOL_CAP__ * 64 КБ)
+	 */
+	constexpr size_t __AWH_QUEUE_BLOCK_POOL_CAP__ = 0x40;
+
+	/**
+	 * @brief Контейнер свободных блоков буфера с корректной очисткой при завершении потока
+	 *
+	 */
+	typedef struct BlockPool {
+		// Список свободных блоков буфера
+		vector <uint8_t *> blocks;
+		/**
+		 * @brief Деструктор: освобождает удержанные блоки и помечает пул как недоступный
+		 *
+		 */
+		~BlockPool() noexcept {
+			/**
+			 * Освобождаем все блоки, удержанные в пуле
+			 */
+			for(uint8_t * block : this->blocks)
+				// Освобождаем блок буфера
+				delete [] block;
+			// Очищаем список свободных блоков
+			this->blocks.clear();
+			// Помечаем пул как недоступный (далее освобождение идёт напрямую через delete[])
+			__awh_block_pool_alive__ = false;
+		}
+	} block_pool_t;
+
+	/**
+	 * @brief Потоко-локальный пул блоков буфера
+	 *
+	 */
+	thread_local block_pool_t __awh_block_pool__;
+
+	/**
+	 * @brief Функция получения блока буфера из пула (или выделения нового)
+	 *
+	 * @return блок буфера (nullptr при нехватке памяти)
+	 */
+	inline uint8_t * acquireBlock() noexcept {
+		// Если пул доступен и в нём есть свободные блоки
+		if(__awh_block_pool_alive__ && !__awh_block_pool__.blocks.empty()){
+			// Извлекаем последний свободный блок из пула
+			uint8_t * block = __awh_block_pool__.blocks.back();
+			// Удаляем извлечённый блок из списка свободных
+			__awh_block_pool__.blocks.pop_back();
+			// Возвращаем переиспользованный блок
+			return block;
+		}
+		// Выделяем новый блок буфера без выброса исключений
+		return new (std::nothrow) uint8_t[AWH_NETWORK_QUEUE_BUFFER_SIZE];
+	}
+	/**
+	 * @brief Функция возврата блока буфера в пул (или его освобождения при переполнении пула)
+	 *
+	 * @param block возвращаемый блок буфера
+	 */
+	inline void releaseBlock(uint8_t * block) noexcept {
+		// Если блок не выделен, ничего не делаем
+		if(block == nullptr)
+			// Выходим из функции
+			return;
+		// Если пул доступен и не достиг предела удерживаемых блоков
+		if(__awh_block_pool_alive__ && (__awh_block_pool__.blocks.size() < __AWH_QUEUE_BLOCK_POOL_CAP__)){
+			/**
+			 * Выполняем перехват ошибок (push_back может выбросить bad_alloc при реаллокации)
+			 */
+			try {
+				// Возвращаем блок в пул для последующего переиспользования
+				__awh_block_pool__.blocks.push_back(block);
+				// Выходим из функции, блок успешно помещён в пул
+				return;
+			// Если поместить блок в пул не удалось - освобождаем его напрямую
+			} catch(...) {}
+		}
+		// Освобождаем блок буфера
+		delete [] block;
+	}
+};
+
+/**
+ * @brief Метод сдвига всех данных к началу буфера при фрагментации (используется только для UDP)
  *
  */
 void awh::Network_Queue::compact() noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Если позиция чтения уже в начале буфера, нет необходимости сдвигать данные
-		if(this->_read == 0)
-			// Выходим из функции, так как данные уже в начале буфера
-			return;
-		// Вычисляем размер данных, которые нужно сдвинуть
-		const size_t size = (this->_write - this->_read);
-		// Если есть данные для сдвига
-		if(size > 0)
-			// Используем memmove для перекрывающихся областей
-			std::memmove(this->_buffer, this->_buffer + this->_read, size);
-		// Обновляем позицию записи на новый конец данных
-		this->_write = size;
-		// Сбрасываем позицию чтения в начало буфера
-		this->_read = 0;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+	// Если позиция чтения уже в начале буфера или буфер не выделен, нет необходимости сдвигать данные
+	if((this->_read == 0) || (this->_buffer == nullptr))
+		// Выходим из функции, так как данные уже в начале буфера
+		return;
+	// Вычисляем размер данных, которые нужно сдвинуть
+	const size_t size = (this->_write - this->_read);
+	// Если есть данные для сдвига
+	if(size > 0)
+		// Используем memmove для перекрывающихся областей
+		::memmove(this->_buffer, this->_buffer + this->_read, size);
+	// Обновляем позицию записи на новый конец данных
+	this->_write = size;
+	// Сбрасываем позицию чтения в начало буфера
+	this->_read = 0;
+}
+/**
+ * @brief Метод ленивого выделения буфера очереди из пула (если ещё не выделен)
+ *
+ * @return результат выделения буфера (false при нехватке памяти)
+ */
+bool awh::Network_Queue::reserve() noexcept {
+	// Если буфер уже выделен, выделение не требуется
+	if(this->_buffer != nullptr)
+		// Возвращаем успешный результат
+		return true;
+	// Выделяем буфер из пула
+	this->_buffer = ::acquireBlock();
+	// Возвращаем результат выделения буфера
+	return (this->_buffer != nullptr);
+}
+/**
+ * @brief Метод возврата буфера очереди в пул (вызывается при опустошении очереди)
+ *
+ */
+void awh::Network_Queue::release() noexcept {
+	// Если буфер выделен
+	if(this->_buffer != nullptr){
+		// Возвращаем буфер в пул
+		::releaseBlock(this->_buffer);
+		// Сбрасываем указатель на буфер
+		this->_buffer = nullptr;
 	}
 }
 /**
@@ -76,42 +189,21 @@ void awh::Network_Queue::compact() noexcept {
  */
 size_t awh::Network_Queue::recordSize(const size_t pos) const noexcept {
 	/**
-	 * Выполняем перехват ошибок
+	 * Определяем размер записи в зависимости от типа очереди
 	 */
-	try {
-		/**
-		 * Определяем размер записи в зависимости от типа очереди
-		 */
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если очередь для потоков данных (например, TCP)
-			case static_cast <uint8_t> (type_t::TCP):
-				// Для TCP очереди размер записи хранится в первых 4 байтах
-				return this->_total;
-			// Если очередь для потоков данных (например, UDP)
-			case static_cast <uint8_t> (type_t::UDP):
-				// На x86/x64 разрешён unaligned access - используем прямой cast вместо memcpy
-				return (* reinterpret_cast <const size_t *> (this->_buffer + pos));
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если очередь для границ сообщений (например, UDP)
+		case static_cast <uint8_t> (type_t::UDP): {
+			// Заголовок записи лежит по произвольному (невыровненному) смещению - читаем через memcpy (UB-safe и так же быстро на x86/ARM)
+			size_t size = 0;
+			// Копируем заголовок размера записи из буфера
+			::memcpy(&size, this->_buffer + pos, sizeof(size));
+			// Возвращаем размер полезной нагрузки записи
+			return size;
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
 	}
-	// Возвращаем значение по умолчанию (0) в случае ошибки
-	return 0;
+	// Для TCP записи как таковой нет - возвращаем размер непрерывного региона A
+	return (this->_write - this->_read);
 }
 /**
  * @brief Метод установки размера записи (прямой доступ)
@@ -121,52 +213,30 @@ size_t awh::Network_Queue::recordSize(const size_t pos) const noexcept {
  */
 void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcept {
 	/**
-	 * Выполняем перехват ошибок
+	 * Устанавливаем размер записи в зависимости от типа очереди
 	 */
-	try {
-		/**
-		 * Устанавливаем размер записи в зависимости от типа очереди
-		 */
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если очередь для потоков данных (например, TCP)
-			case static_cast <uint8_t> (type_t::TCP): {
-				/**
-				 * Если включён режим отладки
-				 */
-				#if DEBUG_MODE
-					// Записываем ошибку в лог
-					this->_log->debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, make_tuple(pos, size), log_t::flag_t::WARNING);
-				/**
-				 * Если режим отладки не включён
-				 */
-				#else
-					// Записываем ошибку в лог
-					this->_log->print("It is not possible to set the size of an individual record for TCP payload", log_t::flag_t::WARNING);
-				#endif
-			} break;
-			// Если очередь для потоков данных (например, UDP)
-			case static_cast <uint8_t> (type_t::UDP):
-				// На x86/x64 разрешён unaligned access - используем прямой cast вместо memcpy
-				(* reinterpret_cast <size_t *> (this->_buffer + pos)) = size;
-			break;
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(pos, size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если очередь для потоков данных (например, TCP)
+		case static_cast <uint8_t> (type_t::TCP): {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("It is not possible to set the size of an individual record for TCP payload", __PRETTY_FUNCTION__, make_tuple(pos, size), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("It is not possible to set the size of an individual record for TCP payload", log_t::flag_t::WARNING);
+			#endif
+		} break;
+		// Если очередь для границ сообщений (например, UDP)
+		case static_cast <uint8_t> (type_t::UDP):
+			// Заголовок записи лежит по произвольному (невыровненному) смещению - пишем через memcpy (UB-safe и так же быстро на x86/ARM)
+			::memcpy(this->_buffer + pos, &size, sizeof(size));
+		break;
 	}
 }
 /**
@@ -174,51 +244,27 @@ void awh::Network_Queue::recordSize(const size_t pos, const size_t size) noexcep
  *
  */
 void awh::Network_Queue::clear() noexcept {
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Сбрасываем позицию чтения в начало буфера
-		this->_read = 0;
-		// Сбрасываем позицию записи в начало буфера
-		this->_write = 0;
-		// Сбрасываем кэшированный размер полезных данных
-		this->_total = 0;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
-	}
+	// Сбрасываем позицию чтения в начало буфера
+	this->_read = 0;
+	// Сбрасываем позицию записи в начало буфера
+	this->_write = 0;
+	// Сбрасываем кэшированный размер полезных данных
+	this->_total = 0;
+	// Сбрасываем счётчик записей в очереди
+	this->_count = 0;
+	// Сбрасываем конец вторичного региона B
+	this->_bwrite = 0;
+	// Возвращаем буфер в пул, так как очередь опустела
+	this->release();
 }
 /**
- * @brief Метод получения типа сетевой очереди
+ * @brief Метод проверки на пустоту очереди
  *
- * @return тип сетевой очереди
+ * @return результат проверки на пустоту очереди
  */
-awh::Network_Queue::type_t awh::Network_Queue::type() const noexcept {
-	// Возвращаем текущий тип сетевой очереди
-	return this->_type;
-}
-/**
- * @brief Метод Установки типа сетевой очереди
- *
- */
-void awh::Network_Queue::type(const type_t type) noexcept {
-	// Устанавливаем новый тип сетевой очереди
-	this->_type = type;
+bool awh::Network_Queue::empty() const noexcept {
+	// Очередь пуста, когда в ней нет полезных данных (учитывает оба региона bip-режима)
+	return (this->_total == 0);
 }
 /**
  * @brief Метод получения общего размера полезных данных в очереди (без учёта метаданных)
@@ -241,59 +287,54 @@ size_t awh::Network_Queue::count() const noexcept {
 /**
  * @brief Метод определения доступного пространства для новых данных (в байтах полезной нагрузки)
  *
+ * @note   Возвращает размер наибольшего непрерывного свободного региона: для TCP (bip) это гарантированный максимум одной записи, для UDP - свободное место за вычетом заголовка.
  * @return доступное пространство для новых данных в очереди
  */
 size_t awh::Network_Queue::available() const noexcept {
 	/**
-	 * Выполняем перехват ошибок
+	 * Определяем доступное пространство в зависимости от типа очереди
 	 */
-	try {
-		// Вычисляем использованное пространство в очереди
-		const size_t used = (this->_write - this->_read);
-		// Вычисляем доступное пространство в очереди
-		const size_t space = (AWH_NETWORK_QUEUE_BUFFER_SIZE - used);
-		/**
-		 * Определяем размер записи в зависимости от типа очереди
-		 */
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если очередь для потоков данных (например, TCP)
-			case static_cast <uint8_t> (type_t::TCP):
-				// Возвращаем размер доступного пространства для новых данных в очереди (без учёта метаданных)
-				return space;
-			// Если очередь для потоков данных (например, UDP)
-			case static_cast <uint8_t> (type_t::UDP):
-				// Вычитаем место под заголовок новой записи
-				return ((space < sizeof(size_t)) ? 0 : (space - sizeof(size_t)));
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если очередь для потоков данных (например, TCP, bip-режим)
+		case static_cast <uint8_t> (type_t::TCP): {
+			// Если активен вторичный регион B - новые данные дописываются только в него
+			if(this->_bwrite > 0)
+				// Возвращаем непрерывное место между концом B и началом региона A
+				return (this->_read - this->_bwrite);
+			// Иначе возвращаем наибольший из непрерывных свободных регионов: хвост за A и голову перед A
+			const size_t tail = (AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write);
+			// Возвращаем максимальный непрерывный свободный регион
+			return ((tail >= this->_read) ? tail : this->_read);
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Если очередь для границ сообщений (например, UDP, линейный режим)
+		case static_cast <uint8_t> (type_t::UDP): {
+			// Вычисляем использованное пространство в очереди
+			const size_t used = (this->_write - this->_read);
+			// Вычисляем доступное пространство в очереди
+			const size_t space = (AWH_NETWORK_QUEUE_BUFFER_SIZE - used);
+			// Вычитаем место под заголовок новой записи
+			return ((space < sizeof(size_t)) ? 0 : (space - sizeof(size_t)));
+		}
 	}
-	// Возвращаем значение по умолчанию (0) в случае ошибки
+	// Возвращаем значение по умолчанию (0) для неизвестного типа очереди
 	return 0;
 }
 /**
- * @brief Метод проверки на пустоту очереди
+ * @brief Метод получения типа сетевой очереди
  *
- * @return результат проверки на пустоту очереди
+ * @return тип сетевой очереди
  */
-bool awh::Network_Queue::empty() const noexcept {
-	// Проверяем, если позиция чтения больше или равна позиции записи, значит очередь пуста
-	return (this->_read >= this->_write);
+awh::Network_Queue::type_t awh::Network_Queue::type() const noexcept {
+	// Возвращаем текущий тип сетевой очереди
+	return this->_type;
+}
+/**
+ * @brief Метод Установки типа сетевой очереди
+ *
+ */
+void awh::Network_Queue::type(const type_t type) noexcept {
+	// Устанавливаем новый тип сетевой очереди
+	this->_type = type;
 }
 /**
  * @brief Метод удаления верхней записи из очереди
@@ -302,90 +343,98 @@ bool awh::Network_Queue::empty() const noexcept {
  * @return     результат удаления верхней записи из очереди (true при успехе, false если очередь пуста)
  */
 bool awh::Network_Queue::pop(const size_t size) noexcept {
+	// Если очередь пуста, нет данных для удаления
+	if(this->empty())
+		// Возвращаем значение по умолчанию (false) при попытке удалить из пустой очереди
+		return false;
 	/**
-	 * Выполняем перехват ошибок
+	 * Определяем размер записи в зависимости от типа очереди и удаляем её, обновляя позиции и кэшированный размер данных
 	 */
-	try {
-		// Если очередь пуста, нет данных для удаления
-		if(this->empty())
-			// Возвращаем значение по умолчанию (false) при попытке удалить из пустой очереди
-			return false;
-		/**
-		 * Определяем размер записи в зависимости от типа очереди и удаляем её, обновляя позиции и кэшированный размер данных
-		 */
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если очередь для потоков данных (например, TCP)
-			case static_cast <uint8_t> (type_t::TCP): {
-				// Если размер для удаления из очереди меньше общего размера данных в очереди
-				if(size < AWH_NETWORK_QUEUE_BUFFER_SIZE){
-					// Определяем фактический размер данных для удаления, не превышающий текущий размер данных в очереди
-					const size_t actual = ::min(this->_total, size);
-					// Сдвигаем позицию чтения на размер текущей записи, effectively удаляя её из очереди
-					this->_read += actual;
-					// Уменьшаем кэшированный размер полезных данных на размер удалённой записи
-					this->_total -= actual;
-					// Уменьшаем счётчик записей в очереди
-					this->_count -= actual;
-					// Оптимизация: сброс позиций при полном опустошении
-					if(this->_read >= this->_write){
-						// Сбрасываем позицию чтения в начало буфера
-						this->_read = 0;
-						// Сбрасываем позицию записи в начало буфера
-						this->_write = 0;
-					}
-				// Выполняем очистку всех данных в очереди
-				} else if(size >= AWH_NETWORK_QUEUE_BUFFER_SIZE) {
-					// Сбрасываем позицию чтения в начало буфера
-					this->_read = 0;
-					// Сбрасываем позицию записи в начало буфера
-					this->_write = 0;
-					// Сбрасываем кэшированный размер полезных данных
-					this->_total = 0;
-				}
-			} break;
-			// Если очередь для потоков данных (например, UDP)
-			case static_cast <uint8_t> (type_t::UDP): {
-				// Получаем размер данных полезной нагрузки текущей верхней записи в очереди
-				const size_t size = this->recordSize(this->_read);
-				// Вычисляем полный размер записи, включая заголовок размера
-				const size_t record = (size + sizeof(size_t));
-				// Уменьшаем счётчик записей в очереди
-				this->_count--;
-				// Сдвигаем позицию чтения на размер текущей записи, effectively удаляя её из очереди
-				this->_read += record;
-				// Уменьшаем кэшированный размер полезных данных на размер удалённой записи
-				this->_total -= size;
-				// Оптимизация: сброс позиций при полном опустошении
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если очередь для потоков данных (например, TCP, bip-режим)
+		case static_cast <uint8_t> (type_t::TCP): {
+			// Если запрошено удаление не меньше размера буфера - очищаем очередь целиком
+			if(size >= AWH_NETWORK_QUEUE_BUFFER_SIZE){
+				// Сбрасываем позицию чтения в начало буфера
+				this->_read = 0;
+				// Сбрасываем позицию записи в начало буфера
+				this->_write = 0;
+				// Сбрасываем конец вторичного региона B
+				this->_bwrite = 0;
+				// Сбрасываем кэшированный размер полезных данных
+				this->_total = 0;
+				// Сбрасываем счётчик записей (для TCP он отслеживает количество байт)
+				this->_count = 0;
+			// Иначе удаляем запрошенный объём байт из непрерывных регионов
+			} else {
+				// Оставшийся к удалению объём данных
+				size_t remaining = size;
+				// Удаляем данные из основного региона A
+				const size_t fromA = ::min(remaining, this->_write - this->_read);
+				// Сдвигаем позицию чтения на удалённый объём
+				this->_read += fromA;
+				// Уменьшаем кэшированный размер полезных данных
+				this->_total -= fromA;
+				// Уменьшаем счётчик записей (для TCP он отслеживает количество байт)
+				this->_count -= fromA;
+				// Уменьшаем оставшийся к удалению объём
+				remaining -= fromA;
+				// Если основной регион A полностью вычитан
 				if(this->_read >= this->_write){
-					// Сбрасываем позицию чтения в начало буфера
+					// Переключаем вторичный регион B в основной регион A
 					this->_read = 0;
-					// Сбрасываем позицию записи в начало буфера
-					this->_write = 0;
+					// Конец нового региона A равен бывшему концу региона B
+					this->_write = this->_bwrite;
+					// Сбрасываем конец вторичного региона B
+					this->_bwrite = 0;
+					// Если остался объём к удалению и в новом регионе A есть данные
+					if((remaining > 0) && (this->_write > 0)){
+						// Удаляем оставшийся объём из нового региона A
+						const size_t fromB = ::min(remaining, this->_write - this->_read);
+						// Сдвигаем позицию чтения на удалённый объём
+						this->_read += fromB;
+						// Уменьшаем кэшированный размер полезных данных
+						this->_total -= fromB;
+						// Уменьшаем счётчик записей (для TCP он отслеживает количество байт)
+						this->_count -= fromB;
+						// Если новый регион A полностью вычитан - сбрасываем позиции
+						if(this->_read >= this->_write){
+							// Сбрасываем позицию чтения в начало буфера
+							this->_read = 0;
+							// Сбрасываем позицию записи в начало буфера
+							this->_write = 0;
+						}
+					}
 				}
-			} break;
-		}
-		// Возвращаем результат (true при успешном удалении записи из очереди)
-		return true;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+			}
+		} break;
+		// Если очередь для границ сообщений (например, UDP, линейный режим)
+		case static_cast <uint8_t> (type_t::UDP): {
+			// Получаем размер данных полезной нагрузки текущей верхней записи в очереди
+			const size_t payload = this->recordSize(this->_read);
+			// Вычисляем полный размер записи, включая заголовок размера
+			const size_t record = (payload + sizeof(size_t));
+			// Уменьшаем счётчик записей в очереди
+			this->_count--;
+			// Сдвигаем позицию чтения на размер текущей записи, effectively удаляя её из очереди
+			this->_read += record;
+			// Уменьшаем кэшированный размер полезных данных на размер удалённой записи
+			this->_total -= payload;
+			// Оптимизация: сброс позиций при полном опустошении
+			if(this->_read >= this->_write){
+				// Сбрасываем позицию чтения в начало буфера
+				this->_read = 0;
+				// Сбрасываем позицию записи в начало буфера
+				this->_write = 0;
+			}
+		} break;
 	}
-	// Возвращаем значение по умолчанию (false) в случае ошибки
-	return false;
+	// Если очередь опустела - возвращаем буфер в пул
+	if(this->_total == 0)
+		// Возвращаем буфер в пул
+		this->release();
+	// Возвращаем результат (true при успешном удалении записи из очереди)
+	return true;
 }
 /**
  * @brief Метод добавления данных в очередь
@@ -397,83 +446,102 @@ bool awh::Network_Queue::pop(const size_t size) noexcept {
 size_t awh::Network_Queue::push(const void * data, const size_t size) noexcept {
 	// Переменная результата
 	size_t result = 0;
-	/**
-	 * Выполняем перехват ошибок
-	 */
-	try {
-		// Если размер данных для добавления в очередь передан корректно
-		if(size > 0){
-			/**
-			 * Определяем тип очереди для получения данных
-			 */
-			switch(static_cast <uint8_t> (this->_type)){
-				// Если очередь для потоков данных (например, TCP)
-				case static_cast <uint8_t> (type_t::TCP): {
-					// Устанавливаем результат добавленных данных в очередь
-					result = size;
-					// Быстрая проверка на переполнение буфера
-					if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < result){
-						// Недостаточно места в конце - пробуем сжать
-						this->compact();
-						// Выполняем перерасчёт добавляемых данных
-						result = ::min(result, AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write);
-						// Проверяем ещё раз после сжатия
-						if(result == 0)
-							// Даже после сжатия нет места
-							return result;
-					}
-					// Копируем данные в буфер очереди
-					::memcpy(this->_buffer + this->_write, data, result);
-					// Увеличиваем счётчик записей в очереди
-					this->_count += result;
-				} break;
-				// Если очередь для потоков данных (например, UDP)
-				case static_cast <uint8_t> (type_t::UDP): {
-					// Устанавливаем результат добавленных данных в очередь
-					result = size;
-					// Определяем размер записи = размер данных + заголовок (size_t)
-					const size_t record = (sizeof(size_t) + result);
-					// Быстрая проверка на переполнение буфера
-					if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < record){
-						// Недостаточно места в конце - пробуем сжать
-						this->compact();
-						// Проверяем ещё раз после сжатия
-						if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < record)
-							// Даже после сжатия нет места
+	// Если размер данных для добавления в очередь передан корректно
+	if((size > 0) && (data != nullptr)){
+		/**
+		 * Определяем тип очереди для добавления данных
+		 */
+		switch(static_cast <uint8_t> (this->_type)){
+			// Если очередь для потоков данных (например, TCP, bip-режим)
+			case static_cast <uint8_t> (type_t::TCP): {
+				// Если активен вторичный регион B - данные дописываются только в него
+				if(this->_bwrite > 0){
+					// Если запись не помещается в непрерывный участок между концом B и началом A
+					if(size > (this->_read - this->_bwrite))
+						// Места нет - запись не выполняется (всё-или-ничего)
+						return 0;
+					// Выделяем буфер при необходимости
+					if(!this->reserve())
+						// Места в памяти нет - запись не выполняется
+						return 0;
+					// Копируем данные в конец вторичного региона B
+					::memcpy(this->_buffer + this->_bwrite, data, size);
+					// Сдвигаем конец вторичного региона B
+					this->_bwrite += size;
+				// Иначе выбираем больший из непрерывных свободных регионов (хвост за A или голова перед A)
+				} else {
+					// Размер свободного хвоста за регионом A
+					const size_t tail = (AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write);
+					// Размер свободной головы перед регионом A (потенциальный регион B)
+					const size_t head = this->_read;
+					// Если хвост за регионом A не меньше головы перед ним - пишем в хвост (регион A)
+					if(tail >= head){
+						// Если запись не помещается в хвост
+						if(size > tail)
+							// Места нет - запись не выполняется (всё-или-ничего)
 							return 0;
+						// Выделяем буфер при необходимости
+						if(!this->reserve())
+							// Места в памяти нет - запись не выполняется
+							return 0;
+						// Копируем данные в конец региона A
+						::memcpy(this->_buffer + this->_write, data, size);
+						// Сдвигаем конец региона A
+						this->_write += size;
+					// Иначе открываем вторичный регион B в начале буфера
+					} else {
+						// Если запись не помещается в голову перед регионом A
+						if(size > head)
+							// Места нет - запись не выполняется (всё-или-ничего)
+							return 0;
+						// Выделяем буфер при необходимости
+						if(!this->reserve())
+							// Места в памяти нет - запись не выполняется
+							return 0;
+						// Копируем данные в начало буфера (открываем регион B)
+						::memcpy(this->_buffer, data, size);
+						// Устанавливаем конец вторичного региона B
+						this->_bwrite = size;
 					}
-					// Устанавливаем размер записи (прямой доступ)
-					this->recordSize(this->_write, result);
-					// Увеличиваем позицию записи на размер заголовка
-					this->_write += sizeof(size_t);
-					// Копируем данные в буфер очереди
-					::memcpy(this->_buffer + this->_write, data, result);
-					// Увеличиваем счётчик записей в очереди
-					this->_count++;
-				} break;
-			}
-			// Увеличиваем размер полезных данных в очереди
-			this->_write += result;
-			// Обновляем кэшированный размер полезных данных
-			this->_total += result;
+				}
+				// Устанавливаем результат добавленных данных в очередь
+				result = size;
+				// Увеличиваем счётчик записей в очереди (для TCP он отслеживает количество байт)
+				this->_count += result;
+			} break;
+			// Если очередь для границ сообщений (например, UDP, линейный режим)
+			case static_cast <uint8_t> (type_t::UDP): {
+				// Определяем размер записи = размер данных + заголовок (size_t)
+				const size_t record = (sizeof(size_t) + size);
+				// Быстрая проверка на переполнение буфера
+				if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < record){
+					// Недостаточно места в конце - пробуем сжать
+					this->compact();
+					// Проверяем ещё раз после сжатия
+					if((AWH_NETWORK_QUEUE_BUFFER_SIZE - this->_write) < record)
+						// Даже после сжатия нет места - запись не помещается целиком (границы сообщений неделимы)
+						return 0;
+				}
+				// Выделяем буфер при необходимости
+				if(!this->reserve())
+					// Места в памяти нет - запись не выполняется
+					return 0;
+				// Устанавливаем результат добавленных данных в очередь
+				result = size;
+				// Устанавливаем размер записи (прямой доступ)
+				this->recordSize(this->_write, result);
+				// Увеличиваем позицию записи на размер заголовка
+				this->_write += sizeof(size_t);
+				// Копируем данные в буфер очереди
+				::memcpy(this->_buffer + this->_write, data, result);
+				// Увеличиваем позицию записи на размер полезных данных
+				this->_write += result;
+				// Увеличиваем счётчик записей в очереди
+				this->_count++;
+			} break;
 		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+		// Обновляем кэшированный размер полезных данных
+		this->_total += result;
 	}
 	// Возвращаем результат работы функции
 	return result;
@@ -486,62 +554,46 @@ size_t awh::Network_Queue::push(const void * data, const size_t size) noexcept {
  * @return     результат (true при успехе, false если очередь пуста)
  */
 bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept {
+	// Если очередь пуста, нет данных для чтения
+	if(this->empty())
+		// Возвращаем значение по умолчанию (false) при попытке чтения из пустой очереди
+		return false;
 	/**
-	 * Выполняем перехват ошибок
+	 * Определяем тип очереди для получения данных
 	 */
-	try {
-		// Если очередь пуста, нет данных для удаления
-		if(this->empty())
-			// Возвращаем значение по умолчанию (false) при попытке удалить из пустой очереди
-			return false;
-		/**
-		 * Определяем тип очереди для получения данных
-		 */
-		switch(static_cast <uint8_t> (this->_type)){
-			// Если очередь для потоков данных (например, TCP)
-			case static_cast <uint8_t> (type_t::TCP): {
-				// Получаем размер данных полезной нагрузки текущей верхней записи в очереди
-				size = this->recordSize(this->_read);
-				// Устанавливаем указатель на данные полезной нагрузки текущей верхней записи в очереди
-				* data = (this->_buffer + this->_read);
-			} break;
-			// Если очередь для потоков данных (например, UDP)
-			case static_cast <uint8_t> (type_t::UDP): {
-				// Получаем размер данных полезной нагрузки текущей верхней записи в очереди
-				size = this->recordSize(this->_read);
-				// Устанавливаем указатель на данные полезной нагрузки текущей верхней записи в очереди
-				* data = (this->_buffer + (this->_read + sizeof(size_t)));
-			} break;
-		}
-		// Возвращаем результат (true при успешном получении данных из очереди)
-		return true;
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(size), log_t::flag_t::CRITICAL, error.what());
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-		#endif
+	switch(static_cast <uint8_t> (this->_type)){
+		// Если очередь для потоков данных (например, TCP, bip-режим)
+		case static_cast <uint8_t> (type_t::TCP): {
+			// Размер непрерывного региона A (потребитель дочитает регион B следующим вызовом после pop)
+			size = (this->_write - this->_read);
+			// Устанавливаем указатель на начало непрерывного региона A
+			* data = (this->_buffer + this->_read);
+		} break;
+		// Если очередь для границ сообщений (например, UDP, линейный режим)
+		case static_cast <uint8_t> (type_t::UDP): {
+			// Получаем размер данных полезной нагрузки текущей верхней записи в очереди
+			size = this->recordSize(this->_read);
+			// Устанавливаем указатель на данные полезной нагрузки текущей верхней записи в очереди
+			* data = (this->_buffer + (this->_read + sizeof(size_t)));
+		} break;
 	}
-	// Возвращаем значение по умолчанию (false) в случае ошибки
-	return false;
+	// Возвращаем результат (true при успешном получении данных из очереди)
+	return true;
 }
 /**
- * @brief Конструктор инициализации сетевой очереди
+ * @brief Конструктор
  *
- * @param fmk объект фреймворка для доступа к его функциям
+ * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
 awh::Network_Queue::Network_Queue(const fmk_t * fmk, const log_t * log) noexcept :
- _type(type_t::UDP), _read(0), _write(0),
- _total(0), _count(0), _fmk(fmk), _log(log) {}
+ _type(type_t::NONE), _read(0), _write(0), _total(0),
+ _count(0), _bwrite(0), _buffer(nullptr), _fmk(fmk), _log(log) {}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::Network_Queue::~Network_Queue() noexcept {
+	// Возвращаем буфер в пул при уничтожении очереди
+	this->release();
+}
