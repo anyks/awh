@@ -24,16 +24,6 @@
 #endif
 
 /**
- * Если размер буфера в байтах не определён
- */
-#ifndef AWH_NETWORK_QUEUE_BUFFER_SIZE
-	/**
-	 * Устанавливаем размер буфера для сетевой очереди (по умолчанию 64 КБ)
-	 */
-	#define AWH_NETWORK_QUEUE_BUFFER_SIZE 0x10000
-#endif
-
-/**
  * Стандартные заголовочные файлы
  */
 #include <new>

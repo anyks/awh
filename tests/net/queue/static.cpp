@@ -340,6 +340,315 @@ TEST_F(NetworkQueueFixture, UdpUnalignedRecordTest){
 }
 
 /**
+ * @brief Тест игнорирования некорректных аргументов push (нулевой размер и нулевой указатель)
+ *
+ */
+TEST_F(NetworkQueueFixture, PushInvalidArgumentsTest){
+	// Очищаем очередь
+	this->_queue->clear();
+	// Устанавливаем тип очереди для потоков данных (например, TCP)
+	this->_queue->type(awh::net_queue_t::type_t::TCP);
+	// Блок данных для проверки
+	uint8_t byte = 0x7E;
+	// Добавление с нулевым указателем должно вернуть 0
+	ASSERT_EQ(this->_queue->push(nullptr, sizeof(byte)), 0u);
+	// Добавление с нулевым размером должно вернуть 0
+	ASSERT_EQ(this->_queue->push(&byte, 0), 0u);
+	// Очередь должна остаться пустой
+	ASSERT_TRUE(this->_queue->empty());
+	// Размер данных должен быть нулевым
+	ASSERT_EQ(this->_queue->size(), 0u);
+	// Счётчик записей должен быть нулевым
+	ASSERT_EQ(this->_queue->count(), 0u);
+}
+
+/**
+ * @brief Тест операций чтения и удаления на пустой очереди (должны корректно отклоняться)
+ *
+ */
+TEST_F(NetworkQueueFixture, EmptyQueueOperationsTest){
+	// Очищаем очередь
+	this->_queue->clear();
+	// Указатель на данные в очереди
+	const void * ptr = nullptr;
+	// Размер данных при чтении
+	size_t size = 0;
+	/**
+	 * Проверяем поведение пустой очереди для обоих типов
+	 */
+	for(const awh::net_queue_t::type_t type : {awh::net_queue_t::type_t::TCP, awh::net_queue_t::type_t::UDP}){
+		// Устанавливаем тип очереди
+		this->_queue->type(type);
+		// Очередь должна быть пустой
+		ASSERT_TRUE(this->_queue->empty());
+		// Чтение из пустой очереди должно вернуть false
+		ASSERT_FALSE(this->_queue->front(&ptr, size));
+		// Удаление записи из пустой очереди должно вернуть false
+		ASSERT_FALSE(this->_queue->pop());
+		// Удаление по размеру из пустой очереди должно вернуть false
+		ASSERT_FALSE(this->_queue->pop(1024));
+	}
+}
+
+/**
+ * @brief Тест цикла ленивого выделения и возврата буфера в пул (многократное наполнение/опустошение)
+ *
+ * @note При опустошении очереди буфер возвращается в потоко-локальный пул, а следующая запись
+ *       переиспользует блок из пула. Тест прогоняет множество циклов и проверяет целостность данных.
+ */
+TEST_F(NetworkQueueFixture, BufferPoolReuseCycleTest){
+	// Очищаем очередь
+	this->_queue->clear();
+	// Устанавливаем тип очереди для потоков данных (например, TCP)
+	this->_queue->type(awh::net_queue_t::type_t::TCP);
+	// Количество циклов наполнения/опустошения
+	constexpr size_t CYCLES = 256;
+	// Размер блока данных в каждом цикле
+	constexpr size_t BLOCK = 2048;
+	/**
+	 * Прогоняем циклы наполнения и полного опустошения очереди
+	 */
+	for(size_t cycle = 0; cycle < CYCLES; cycle++){
+		// Уникальный для цикла байт-заполнитель (для проверки целостности после переиспользования блока)
+		const uint8_t filler = static_cast <uint8_t> (cycle & 0xFF);
+		// Блок данных текущего цикла
+		std::vector <uint8_t> data(BLOCK, filler);
+		// Добавляем блок данных в очередь (ленивое выделение/переиспользование блока из пула)
+		ASSERT_EQ(this->_queue->push(data.data(), data.size()), data.size());
+		// Очередь не должна быть пустой
+		ASSERT_FALSE(this->_queue->empty());
+		// Размер данных должен совпадать с записанным блоком
+		ASSERT_EQ(this->_queue->size(), BLOCK);
+		// Указатель на данные в очереди
+		const void * ptr = nullptr;
+		// Размер непрерывного региона
+		size_t size = 0;
+		// Читаем данные из очереди
+		ASSERT_TRUE(this->_queue->front(&ptr, size));
+		// Размер непрерывного региона должен совпадать с блоком
+		ASSERT_EQ(size, BLOCK);
+		// Содержимое блока должно соответствовать байту-заполнителю текущего цикла
+		ASSERT_EQ(std::count(reinterpret_cast <const uint8_t *> (ptr), reinterpret_cast <const uint8_t *> (ptr) + size, filler), static_cast <ptrdiff_t> (size));
+		// Полностью опустошаем очередь (буфер возвращается в пул)
+		ASSERT_TRUE(this->_queue->pop(BLOCK));
+		// Очередь должна опустеть
+		ASSERT_TRUE(this->_queue->empty());
+		// Размер данных должен обнулиться
+		ASSERT_EQ(this->_queue->size(), 0u);
+	}
+}
+
+/**
+ * @brief Тест атомарности переполнения UDP-очереди (запись не помещается целиком - очередь не меняется)
+ *
+ */
+TEST_F(NetworkQueueFixture, UdpPushOverflowAtomicTest){
+	// Очищаем очередь
+	this->_queue->clear();
+	// Устанавливаем тип очереди для границ сообщений (например, UDP)
+	this->_queue->type(awh::net_queue_t::type_t::UDP);
+	// Крупная запись, чтобы быстро заполнить буфер
+	std::vector <uint8_t> record(8000, 0x44);
+	// Количество успешно добавленных записей
+	size_t pushed = 0;
+	/**
+	 * Заполняем очередь записями до отказа
+	 */
+	while(this->_queue->push(record.data(), record.size()) == record.size())
+		// Увеличиваем счётчик добавленных записей
+		pushed++;
+	// Хотя бы одна запись должна была добавиться
+	ASSERT_GT(pushed, 0u);
+	// Фиксируем состояние очереди на момент отказа
+	const size_t countBefore = this->_queue->count();
+	// Фиксируем размер данных на момент отказа
+	const size_t sizeBefore = this->_queue->size();
+	// Количество записей должно совпадать с числом успешных добавлений
+	ASSERT_EQ(countBefore, pushed);
+	// Повторная попытка добавления должна провалиться (всё-или-ничего)
+	ASSERT_EQ(this->_queue->push(record.data(), record.size()), 0u);
+	// Состояние очереди не должно измениться после неудачного добавления
+	ASSERT_EQ(this->_queue->count(), countBefore);
+	// Размер данных не должен измениться после неудачного добавления
+	ASSERT_EQ(this->_queue->size(), sizeBefore);
+}
+
+/**
+ * @brief Тест дефрагментации UDP-очереди (compact): запись, помещающаяся только после сжатия буфера
+ *
+ */
+TEST_F(NetworkQueueFixture, UdpCompactIntegrityTest){
+	// Очищаем очередь
+	this->_queue->clear();
+	// Устанавливаем тип очереди для границ сообщений (например, UDP)
+	this->_queue->type(awh::net_queue_t::type_t::UDP);
+	// Размер полезной нагрузки одной записи
+	constexpr size_t PAYLOAD = 10000;
+	// Количество предварительно добавляемых записей
+	constexpr size_t RECORDS = 6;
+	/**
+	 * Добавляем записи, заполняя буфер так, чтобы в хвосте осталось мало места
+	 */
+	for(size_t i = 0; i < RECORDS; i++){
+		// Запись с уникальным байтом-заполнителем
+		std::vector <uint8_t> record(PAYLOAD, static_cast <uint8_t> (i + 1));
+		// Добавляем запись в очередь
+		ASSERT_EQ(this->_queue->push(record.data(), record.size()), record.size());
+	}
+	// Удаляем первую запись из начала очереди (освобождаем место в голове, а не в хвосте)
+	ASSERT_TRUE(this->_queue->pop());
+	// Запись, которая не поместится в хвост, но поместится после сжатия (compact)
+	std::vector <uint8_t> tail(9000, 0x99);
+	// Добавление должно сработать только за счёт дефрагментации буфера
+	ASSERT_EQ(this->_queue->push(tail.data(), tail.size()), tail.size());
+	// В очереди должны остаться записи 2..6 и новая запись
+	ASSERT_EQ(this->_queue->count(), RECORDS);
+	// Ожидаемые записи после удаления первой и добавления хвостовой (байт-заполнитель и размер)
+	std::vector <std::pair <uint8_t, size_t>> expected;
+	// Записи со 2-й по 6-ю сохраняют исходный порядок и содержимое
+	for(size_t i = 1; i < RECORDS; i++)
+		// Добавляем ожидаемую запись
+		expected.emplace_back(static_cast <uint8_t> (i + 1), PAYLOAD);
+	// Последней идёт добавленная после сжатия запись
+	expected.emplace_back(static_cast <uint8_t> (0x99), tail.size());
+	// Индекс текущей ожидаемой записи
+	size_t index = 0;
+	/**
+	 * Обходим очередь и проверяем целостность данных после дефрагментации
+	 */
+	while(!this->_queue->empty()){
+		// Указатель на данные в очереди
+		const void * ptr = nullptr;
+		// Размер данных записи
+		size_t size = 0;
+		// Получаем данные из очереди
+		ASSERT_TRUE(this->_queue->front(&ptr, size));
+		// Размер записи должен совпадать с ожидаемым
+		ASSERT_EQ(size, expected.at(index).second);
+		// Содержимое записи должно соответствовать ожидаемому байту-заполнителю
+		ASSERT_EQ(std::count(reinterpret_cast <const uint8_t *> (ptr), reinterpret_cast <const uint8_t *> (ptr) + size, expected.at(index).first), static_cast <ptrdiff_t> (size));
+		// Удаляем запись из очереди
+		ASSERT_TRUE(this->_queue->pop());
+		// Увеличиваем индекс ожидаемой записи
+		index++;
+	}
+	// Проверяем, что обработаны все ожидаемые записи
+	ASSERT_EQ(index, expected.size());
+}
+
+/**
+ * @brief Тест заполнения вторичного региона B bip-буфера TCP и семантики available() при активном B
+ *
+ */
+TEST_F(NetworkQueueFixture, TcpRegionBFillTest){
+	// Очищаем очередь
+	this->_queue->clear();
+	// Устанавливаем тип очереди для потоков данных (например, TCP)
+	this->_queue->type(awh::net_queue_t::type_t::TCP);
+	// Крупный блок данных заполняет регион A
+	std::vector <uint8_t> blockA(60000, 0xA0);
+	// Добавляем блок в регион A
+	ASSERT_EQ(this->_queue->push(blockA.data(), blockA.size()), blockA.size());
+	// Освобождаем большую часть головы буфера (хвост остаётся маленьким)
+	ASSERT_TRUE(this->_queue->pop(50000));
+	// В регионе A осталось 10000 байт
+	ASSERT_EQ(this->_queue->size(), 10000u);
+	// Первый блок региона B (в хвосте места мало - откроется регион B в начале буфера)
+	std::vector <uint8_t> blockB1(5000, 0xB1);
+	// Добавляем первый блок в регион B
+	ASSERT_EQ(this->_queue->push(blockB1.data(), blockB1.size()), blockB1.size());
+	// При активном регионе B available() возвращает непрерывное место между концом B и началом A
+	const size_t freeB = this->_queue->available();
+	// Свободного места должно хватать на крупный второй блок
+	ASSERT_GT(freeB, 0u);
+	// Второй блок региона B ровно на доступный размер
+	std::vector <uint8_t> blockB2(freeB, 0xB2);
+	// Запись ровно на available() должна пройти полностью
+	ASSERT_EQ(this->_queue->push(blockB2.data(), blockB2.size()), freeB);
+	// После заполнения региона B свободного непрерывного места не остаётся
+	ASSERT_EQ(this->_queue->available(), 0u);
+	// Любая следующая запись обязана провалиться
+	uint8_t extra = 0x03;
+	// Проверяем что переполнение корректно отвергается
+	ASSERT_EQ(this->_queue->push(&extra, sizeof(extra)), 0u);
+	// Суммарный размер данных в очереди (остаток A + оба блока B)
+	ASSERT_EQ(this->_queue->size(), (10000u + 5000u + freeB));
+	// Указатель на данные в очереди
+	const void * ptr = nullptr;
+	// Размер непрерывного региона
+	size_t size = 0;
+	// Читаем остаток региона A
+	ASSERT_TRUE(this->_queue->front(&ptr, size));
+	// Регион A должен вернуть ровно 10000 байт
+	ASSERT_EQ(size, 10000u);
+	// Содержимое региона A должно соответствовать шаблону 0xA0
+	ASSERT_EQ(std::count(reinterpret_cast <const uint8_t *> (ptr), reinterpret_cast <const uint8_t *> (ptr) + size, 0xA0), static_cast <ptrdiff_t> (size));
+	// Удаляем остаток региона A (произойдёт переключение региона B в регион A)
+	ASSERT_TRUE(this->_queue->pop(size));
+	// В очереди остаются данные региона B
+	ASSERT_EQ(this->_queue->size(), (5000u + freeB));
+	// Читаем непрерывный бывший регион B
+	ASSERT_TRUE(this->_queue->front(&ptr, size));
+	// Бывший регион B должен вернуть весь свой объём одним непрерывным прогоном
+	ASSERT_EQ(size, (5000u + freeB));
+	// Первые 5000 байт региона B соответствуют шаблону 0xB1
+	ASSERT_EQ(std::count(reinterpret_cast <const uint8_t *> (ptr), reinterpret_cast <const uint8_t *> (ptr) + 5000, 0xB1), static_cast <ptrdiff_t> (5000));
+	// Оставшиеся байты региона B соответствуют шаблону 0xB2
+	ASSERT_EQ(std::count(reinterpret_cast <const uint8_t *> (ptr) + 5000, reinterpret_cast <const uint8_t *> (ptr) + size, 0xB2), static_cast <ptrdiff_t> (freeB));
+	// Удаляем остаток данных
+	ASSERT_TRUE(this->_queue->pop(size));
+	// Очередь должна опустеть
+	ASSERT_TRUE(this->_queue->empty());
+}
+
+/**
+ * @brief Тест переиспользования очереди после clear() со сменой типа (UDP -> TCP)
+ *
+ */
+TEST_F(NetworkQueueFixture, ClearAndSwitchTypeTest){
+	// Устанавливаем тип очереди для границ сообщений (например, UDP)
+	this->_queue->type(awh::net_queue_t::type_t::UDP);
+	// Записи разной длины для UDP-режима
+	const std::vector <std::string> records = {"alpha", "beta", "gamma"};
+	// Добавляем записи в очередь
+	for(auto & record : records)
+		// Добавляем запись в очередь
+		ASSERT_EQ(this->_queue->push(record.data(), record.size()), record.size());
+	// Количество записей должно совпадать
+	ASSERT_EQ(this->_queue->count(), records.size());
+	// Очищаем очередь (буфер возвращается в пул)
+	this->_queue->clear();
+	// После очистки очередь пуста
+	ASSERT_TRUE(this->_queue->empty());
+	// Размер данных обнулён
+	ASSERT_EQ(this->_queue->size(), 0u);
+	// Счётчик записей обнулён
+	ASSERT_EQ(this->_queue->count(), 0u);
+	// Переключаем тип очереди на потоковый (например, TCP)
+	this->_queue->type(awh::net_queue_t::type_t::TCP);
+	// Тип очереди должен корректно переключиться
+	ASSERT_EQ(this->_queue->type(), awh::net_queue_t::type_t::TCP);
+	// Блок данных для потокового режима
+	std::vector <uint8_t> data(4096, 0x5C);
+	// Очередь должна корректно работать после смены типа
+	ASSERT_EQ(this->_queue->push(data.data(), data.size()), data.size());
+	// Для TCP счётчик записей отслеживает количество байт
+	ASSERT_EQ(this->_queue->count(), this->_queue->size());
+	// Размер данных должен совпадать с записанным блоком
+	ASSERT_EQ(this->_queue->size(), data.size());
+	// Указатель на данные в очереди
+	const void * ptr = nullptr;
+	// Размер непрерывного региона
+	size_t size = 0;
+	// Читаем данные из очереди
+	ASSERT_TRUE(this->_queue->front(&ptr, size));
+	// Размер региона должен совпадать с блоком
+	ASSERT_EQ(size, data.size());
+	// Содержимое блока должно соответствовать шаблону 0x5C
+	ASSERT_EQ(std::count(reinterpret_cast <const uint8_t *> (ptr), reinterpret_cast <const uint8_t *> (ptr) + size, 0x5C), static_cast <ptrdiff_t> (size));
+}
+
+/**
  * @brief Бенчмарк экономии резидентной памяти (RSS) при ленивом выделении буфера
  *
  * @note Помечен префиксом DISABLED_ и не входит в обычный прогон из-за крупных аллокаций - запускать явно:
