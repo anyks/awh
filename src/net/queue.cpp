@@ -563,14 +563,14 @@ bool awh::Network_Queue::front(const void ** data, size_t & size) const noexcept
 			// Размер непрерывного региона A (потребитель дочитает регион B следующим вызовом после pop)
 			size = (this->_write - this->_read);
 			// Устанавливаем указатель на начало непрерывного региона A
-			* data = (this->_buffer + this->_read);
+			(* data) = (this->_buffer + this->_read);
 		} break;
 		// Если очередь для границ сообщений (например, UDP, линейный режим)
 		case static_cast <uint8_t> (type_t::UDP): {
 			// Получаем размер данных полезной нагрузки текущей верхней записи в очереди
 			size = this->recordSize(this->_read);
 			// Устанавливаем указатель на данные полезной нагрузки текущей верхней записи в очереди
-			* data = (this->_buffer + (this->_read + sizeof(size_t)));
+			(* data) = (this->_buffer + (this->_read + sizeof(size_t)));
 		} break;
 	}
 	// Возвращаем результат (true при успешном получении данных из очереди)
