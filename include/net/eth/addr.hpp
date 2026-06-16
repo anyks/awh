@@ -64,7 +64,7 @@ namespace awh {
 				/**
 				 * @brief Метод заполнения источника сетевых адресов по заданной сети
 				 *
-				 * @param net    сетевой адрес подсети в хостовом порядке
+				 * @param net    сетевой адрес подсети (IP-адрес в сетевом порядке байт)
 				 * @param source объект источника сетевых адресов
 				 */
 				void fillSource(const net::addr_t * net, net::src_t & source) const noexcept;

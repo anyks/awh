@@ -58,6 +58,7 @@
 #include <memory>
 #include <vector>
 #include <random>
+#include <cstddef>
 #include <cstring>
 #include <cstdlib>
 
@@ -104,6 +105,18 @@ namespace {
 	 *
 	 */
 	random_device __awh_randev__;
+
+	/**
+	 * @brief Нулевой MAC-адрес для сравнения
+	 *
+	 */
+	constexpr uint8_t __awh_zero_mac__[6] = {0};
+
+	/**
+	 * @brief Нулевой IPv6-адрес для сравнения
+	 *
+	 */
+	constexpr uint8_t __awh_zero_ipv6__[16] = {0};
 
 	/**
 	 * @brief Функция вычисления контрольной суммы
@@ -155,7 +168,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 		if(!source.iface.empty()){
 			// Если MAC-адрес ещё не заполнен
 			if((::strncmp("lo", source.iface.c_str(), 2) != 0) &&
-			   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], (uint8_t[6]){0}, 6) == 0)){
+			   (::memcmp(&awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], __awh_zero_mac__, 6) == 0)){
 				// Получаем список сетевых интерфейсов
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
@@ -169,7 +182,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 				 */
 				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
 					// Пропускаем не совпадающие имена интерфейсов
-					if((ifa->ifa_name == nullptr) || (::strcmp(ifa->ifa_name, source.iface.c_str()) != 0))
+					if((ifa->ifa_name == nullptr) || !this->_fmk->compare(ifa->ifa_name, source.iface))
 						// Переходим к следующему интерфейсу
 						continue;
 					// Ищем MAC-адрес интерфейса
@@ -249,7 +262,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 				// Если адрес является IPv6
 				case 16: {
 					// Если IPv6-адрес ещё не заполнен
-					if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], (uint8_t[16]){0}, 16) == 0){
+					if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], __awh_zero_ipv6__, 16) == 0){
 						// Получаем список сетевых интерфейсов
 						struct ifaddrs * ptr = nullptr;
 						// Выполняем получение списка сетевых интерфейсов
@@ -319,7 +332,7 @@ void awh::eth::Network_Address::fillSource(net::src_t & source) const noexcept {
 /**
  * @brief Метод заполнения источника сетевых адресов по заданной сети
  *
- * @param net    сетевой адрес подсети в хостовом порядке
+ * @param net    сетевой адрес подсети (IP-адрес в сетевом порядке байт)
  * @param source объект источника сетевых адресов
  */
 void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t & source) const noexcept {
@@ -439,7 +452,7 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				// Проверяем корректность префикса сети
 				if(network->prefix > 128)
 					// Корректируем префикс сети
-					awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->prefix = 128;
+					const_cast <net::addr_net_ipv6_t *> (network)->prefix = 128;
 				// Получаем список сетевых интерфейсов
 				struct ifaddrs * ptr = nullptr;
 				// Выполняем получение списка сетевых интерфейсов
@@ -470,8 +483,6 @@ void awh::eth::Network_Address::fillSource(const net::addr_t * net, net::src_t &
 				}
 				// Устанавливаем префикс хостового адреса
 				awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->prefix = network->prefix;
-				// Временный IPv6-адрес
-				struct in6_addr addr;
 				/**
 				 * Перебираем все сетевые интерфейсы
 				 */
@@ -560,12 +571,16 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						::inet_pton(AF_INET, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin_addr);
 						// Создаем сокет для проверки подключения
 						const net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, IPPROTO_IP);
+						// Если сокет создать не удалось, выходим
+						if(sock == net::invalid_socket_t)
+							// Выходим из функции
+							return;
 						// Выполняем подключение к серверу
 						int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 						// Если подключение удачное
 						if(conn > -1){
 							// Создаем структуру имени
-							struct sockaddr_in name;
+							struct sockaddr_in name{0};
 							// Размер структуры
 							socklen_t size = sizeof(name);
 							// Запрашиваем имя сокета
@@ -599,12 +614,16 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						::inet_pton(AF_INET6, resolvers[::__awh_randev__() % resolvers.size()].data(), &serv.sin6_addr);
 						// Создаем сокет для проверки подключения
 						const net::socket_t sock = ::socket(AF_INET6, SOCK_DGRAM, IPPROTO_IP);
+						// Если сокет создать не удалось, выходим
+						if(sock == net::invalid_socket_t)
+							// Выходим из функции
+							return;
 						// Выполняем подключение к серверу
 						int32_t conn = ::connect(sock, reinterpret_cast <const sockaddr *> (&serv), sizeof(serv));
 						// Если подключение удачное
 						if(conn > -1){
 							// Создаем структуру имени
-							struct sockaddr_in6 name;
+							struct sockaddr_in6 name{0};
 							// Размер структуры
 							socklen_t size = sizeof(name);
 							// Запрашиваем имя сокета
@@ -707,14 +726,18 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							struct rt_msghdr * rtm = reinterpret_cast <struct rt_msghdr *> (begin);
 							// Переходим к следующему элементу
 							begin += rtm->rtm_msglen;
-							// Получаем текущее значение активного подключения
+							// Если версия RTM протокола не соответствует, пропускаем
+							if(rtm->rtm_version != RTM_VERSION)
+								// Выполняем пропуск
+								continue;
+							// Получаем текущее значение активного подключения (sockaddr идёт сразу после заголовка)
 							struct sockaddr_inarp * sin = reinterpret_cast <struct sockaddr_inarp *> (rtm + 1);
 							// Если сетевой интерфейс отличается от IPv4, пропускаем
 							if(sin->sin_family != AF_INET)
 								// Выполняем пропуск
 								continue;
-							// Получаем текущее значение аппаратного сетевого адреса
-							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (sin + 1);
+							// Получаем текущее значение аппаратного сетевого адреса (с учётом выравнивания sockaddr)
+							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (reinterpret_cast <char *> (sin) + ROUNDUP(sin->sin_len));
 							// Если версия сетевого протокола отличается от MAC, пропускаем
 							if(sdl->sdl_family != AF_LINK)
 								// Выполняем пропуск
@@ -817,7 +840,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						// Получаем конечное значение итератора
 						char * end = (&buffer[0] + size);
 						// Создаём объект подключения
-						struct sockaddr_in6 addr;
+						struct sockaddr_in6 addr{0};
 						// Копируем IP-адрес в структуру подключения
 						::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr.sin6_addr));
 						/**
@@ -832,8 +855,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							if(rtm->rtm_version != RTM_VERSION)
 								// Выполняем пропуск
 								continue;
-							// Получаем текущее значение активного подключения
-							struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (begin + sizeof(rt_msghdr));
+							// Получаем текущее значение активного подключения (sockaddr идёт сразу после заголовка)
+							struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (rtm + 1);
 							// Если сетевой интерфейс отличается от IPv6, пропускаем
 							if(sin->sin6_family != AF_INET6)
 								// Выполняем пропуск
@@ -861,7 +884,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								// Выполняем пропуск
 								continue;
 							// Если IP-адрес установлен
-							if(::memcmp(&addr.sin6_addr, (uint8_t[16]){0}, 16) != 0){
+							if(::memcmp(&addr.sin6_addr, __awh_zero_ipv6__, 16) != 0){
 								/*
 								// Если RTM не соответствует хосту, пропускаем
 								if(!(rtm->rtm_flags & RTF_HOST))
@@ -930,8 +953,6 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							// Выходим из функции
 							return;
 						}
-						// Временный объект для извлечения MAC-адреса
-						net::src_t temp(::make_unique <net::addr_net_ipv4_t> ());
 						// Получаем числовое значение IP-адреса
 						const uint32_t addr = awh_cast <net::addr_net_ipv4_t *> (source.ip.get())->address;
 						/**
@@ -961,14 +982,31 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								}
 							// Если IP-адрес не установлен
 							} else {
-								// Устанавливаем название сетевого интерфейса
-								temp.iface = ifa->ifa_name;
-								// Устанавливаем IP-адрес временного объекта
-								awh_cast <net::addr_net_ipv4_t *> (temp.ip.get())->address = sin->sin_addr.s_addr;
-								// Выполняем извлечение MAC-адреса временного объекта
-								this->fillSource(temp);
+								// Признак того, что MAC-адрес найден
+								bool found = false;
+								// Буфер MAC-адреса текущего интерфейса
+								uint8_t mac[6] = {0};
+								/**
+								 * Извлекаем MAC текущего интерфейса из уже полученного списка (без повторного системного вызова)
+								 */
+								for(struct ifaddrs * link = ptr; link != nullptr; link = link->ifa_next){
+									// Ищем запись канального уровня с тем же именем интерфейса
+									if((link->ifa_addr != nullptr) && (link->ifa_addr->sa_family == AF_LINK) && (link->ifa_name != nullptr) && (::strcmp(link->ifa_name, ifa->ifa_name) == 0)){
+										// Получаем текущее значение аппаратного сетевого адреса
+										struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (link->ifa_addr);
+										// Если длина MAC-адреса корректна
+										if(sdl->sdl_alen == 6){
+											// Копируем MAC-адрес в буфер
+											::memcpy(mac, LLADDR(sdl), 6);
+											// Помечаем, что MAC-адрес найден
+											found = true;
+										}
+										// Завершаем поиск
+										break;
+									}
+								}
 								// Сравниваем MAC-адреса
-								if(::memcmp(&awh_cast <net::addr_mac_t *> (temp.mac.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6) == 0){
+								if(found && (::memcmp(mac, &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6) == 0)){
 									// Устанавливаем название сетевого интерфейса
 									source.iface = ifa->ifa_name;
 									// Копируем IP-адрес в результат
@@ -1003,10 +1041,8 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							// Выходим из функции
 							return;
 						}
-						// Временный объект для извлечения MAC-адреса
-						net::src_t temp(::make_unique <net::addr_net_ipv6_t> ());
 						// Создаём объект подключения
-						struct sockaddr_in6 addr;
+						struct sockaddr_in6 addr{0};
 						// Копируем IP-адрес в структуру подключения
 						::memcpy(&addr.sin6_addr, &awh_cast <net::addr_net_ipv6_t *> (source.ip.get())->address[0], sizeof(addr.sin6_addr));
 						/**
@@ -1024,7 +1060,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 							// Получаем указатель на IPv6-адрес
 							struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
 							// Если IP-адрес установлен
-							if(::memcmp(&addr.sin6_addr, (uint8_t[16]){0}, 16) != 0){
+							if(::memcmp(&addr.sin6_addr, __awh_zero_ipv6__, 16) != 0){
 								// Если IP-адрес совпадает с указанным IP-адресом
 								if(IN6_ARE_ADDR_EQUAL(&addr.sin6_addr, &sin->sin6_addr)){
 									// Устанавливаем название сетевого интерфейса
@@ -1036,14 +1072,31 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 								}
 							// Если IP-адрес не установлен
 							} else {
-								// Устанавливаем название сетевого интерфейса
-								temp.iface = ifa->ifa_name;
-								// Устанавливаем IP-адрес временного объекта
-								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (temp.ip.get())->address[0], &sin->sin6_addr, sizeof(in6_addr));
-								// Выполняем извлечение MAC-адреса временного объекта
-								this->fillSource(temp);
+								// Признак того, что MAC-адрес найден
+								bool found = false;
+								// Буфер MAC-адреса текущего интерфейса
+								uint8_t mac[6] = {0};
+								/**
+								 * Извлекаем MAC текущего интерфейса из уже полученного списка (без повторного системного вызова)
+								 */
+								for(struct ifaddrs * link = ptr; link != nullptr; link = link->ifa_next){
+									// Ищем запись канального уровня с тем же именем интерфейса
+									if((link->ifa_addr != nullptr) && (link->ifa_addr->sa_family == AF_LINK) && (link->ifa_name != nullptr) && (::strcmp(link->ifa_name, ifa->ifa_name) == 0)){
+										// Получаем текущее значение аппаратного сетевого адреса
+										struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (link->ifa_addr);
+										// Если длина MAC-адреса корректна
+										if(sdl->sdl_alen == 6){
+											// Копируем MAC-адрес в буфер
+											::memcpy(mac, LLADDR(sdl), 6);
+											// Помечаем, что MAC-адрес найден
+											found = true;
+										}
+										// Завершаем поиск
+										break;
+									}
+								}
 								// Сравниваем MAC-адреса
-								if(::memcmp(&awh_cast <net::addr_mac_t *> (temp.mac.get())->address[0], &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6) == 0){
+								if(found && (::memcmp(mac, &awh_cast <net::addr_mac_t *> (source.mac.get())->address[0], 6) == 0)){
 									// Устанавливаем название сетевого интерфейса
 									source.iface = ifa->ifa_name;
 									// Копируем IP-адрес в результат
@@ -1198,10 +1251,8 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			size_t totalSize = 0;
 			// Размер псевдозаголовка
 			size_t pseudoSize = 0;
-			// Оригинальный checksum
-			uint16_t original = 0;
-			// Указатель на checksum в транспортном заголовке
-			uint16_t * checksum = nullptr;
+			// Смещение поля контрольной суммы в транспортном заголовке
+			size_t checksumOffset = 0;
 			// Псевдозаголовок
 			unique_ptr <uint8_t []> pseudo = nullptr;
 			/**
@@ -1210,13 +1261,13 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 			switch(static_cast <uint8_t> (protocol)){
 				// Если протокол определён как TCP
 				case static_cast <uint8_t> (event::protocol_t::TCP):
-					// Сохраняем оригинальный checksum
-					checksum = const_cast <uint16_t *> (&(reinterpret_cast <const struct tcphdr *> (transport))->th_sum);
+					// Запоминаем смещение поля контрольной суммы в TCP-заголовке
+					checksumOffset = offsetof(struct tcphdr, th_sum);
 				break;
 				// Если протокол определён как UDP
 				case static_cast <uint8_t> (event::protocol_t::UDP):
-					// Сохраняем оригинальный checksum
-					checksum = const_cast <uint16_t *> (&(reinterpret_cast <const struct udphdr *> (transport))->uh_sum);
+					// Запоминаем смещение поля контрольной суммы в UDP-заголовке
+					checksumOffset = offsetof(struct udphdr, uh_sum);
 				break;
 				// Для неподдерживаемого протокола
 				default: {
@@ -1237,10 +1288,6 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					return result;
 				}
 			}
-			// Сохраняем оригинал
-			original = (* checksum);
-			// Обнуляем checksum в транспортном заголовке
-			(* checksum) = 0;
 			/**
 			 * Определяем семейство события
 			 */
@@ -1336,12 +1383,36 @@ uint16_t awh::eth::Network_Address::checksum(const event::family_t family, const
 					::memcpy(pseudo.get(), &hdr, pseudoSize);
 				} break;
 			}
+			// Если семейство протокола не поддержано, псевдозаголовок не сформирован
+			if(pseudo == nullptr){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("Unsupported address family for checksum calculation", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (family), static_cast <uint16_t> (protocol), src, dst, transport, length), log_t::flag_t::CRITICAL);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("Unsupported address family for checksum calculation", log_t::flag_t::CRITICAL);
+				#endif
+				// Выходим из функции
+				return result;
+			}
 			// Копируем транспортный заголовок + данные
 			::memcpy(pseudo.get() + pseudoSize, transport, length);
+			// Обнуляем контрольную сумму в копии транспортного заголовка (исходный буфер не модифицируется)
+			if((checksumOffset + sizeof(uint16_t)) <= length)
+				// Зануляем поле контрольной суммы в копии
+				::memset(pseudo.get() + pseudoSize + checksumOffset, 0, sizeof(uint16_t));
 			// Вычисляем контрольную сумму
 			result = ::checksum(pseudo.get(), totalSize);
-			// Восстанавливаем оригинал (опционально — обычно вызывающий сам запишет результат)
-			(* checksum) = original;
+			// Для UDP нулевая контрольная сумма передаётся как 0xFFFF (RFC 768)
+			if((static_cast <uint8_t> (protocol) == static_cast <uint8_t> (event::protocol_t::UDP)) && (result == 0))
+				// Корректируем нулевую контрольную сумму UDP
+				result = 0xFFFF;
 		/**
 		 * Если возникает ошибка
 		 */

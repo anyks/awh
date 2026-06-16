@@ -291,6 +291,18 @@ namespace {
 	thread_local size_t __awh_size__ = 0;
 
 	/**
+	 * @brief Нулевой MAC-адрес для сравнения
+	 *
+	 */
+	static uint8_t __awh_zero_mac__[6] = {0};
+
+	/**
+	 * @brief Нулевой IPv6-адрес для сравнения
+	 *
+	 */
+	static uint8_t __awh_zero_ipv6__[16] = {0};
+
+	/**
 	 * @brief Буфер временного хранения данных UDP сообщений
 	 *
 	 */
@@ -2579,7 +2591,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 														// Устанавливаем тип параметров подключения для идентификатора события клиента
 														attr->type = net::type_t::IPV6;
 														// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу соответствует
-														if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], (uint8_t[16]){0}, 16) == 0)
+														if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip.get())->address[0], ::__awh_zero_ipv6__, 16) == 0)
 															// Устанавливаем IP-адрес подключённого клиента для идентификатора события клиента
 															this->_unit->server.getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (attr.get())->ip);
 														// Устанавливаем полученный IP-адрес
@@ -2721,7 +2733,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															// Извлекаем IP-адрес этого сервера
 															this->_unit->server.getAddress(sid, event::address_t::IPV6, addr);
 															// Если IP-адрес которому разрешено подключаться к SOCKS5-прокси-серверу установлен
-															if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], (uint8_t[16]){0}, 16) == 0)
+															if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (addr.get())->address[0], ::__awh_zero_ipv6__, 16) == 0)
 																// Устанавливаем текущий IP-адрес этого сервера для установки подключения
 																this->_unit->server.getAddress(eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (i->second.ctx.host.get())->ip);
 															// Устанавливаем полученный IP-адрес

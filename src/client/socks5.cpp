@@ -73,6 +73,18 @@ namespace {
 	thread_local size_t __awh_size__ = 0;
 
 	/**
+	 * @brief Нулевой MAC-адрес для сравнения
+	 *
+	 */
+	static uint8_t __awh_zero_mac__[6] = {0};
+
+	/**
+	 * @brief Нулевой IPv6-адрес для сравнения
+	 *
+	 */
+	static uint8_t __awh_zero_ipv6__[16] = {0};
+
+	/**
 	 * @brief Буфер временного хранения данных UDP сообщений
 	 *
 	 */
@@ -527,7 +539,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										// Устанавливаем внутренний IP-адрес клиента
 										this->_unit->client.getAddress(this->_endpoint.udp.eid, event::address_t::IPV6, awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip);
 										// Если адрес клиента установлен а порт не установлен
-										if((::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address[0], (uint8_t[16]){0}, 16) != 0) && (port == 0)){
+										if((::memcmp(&awh_cast <net::addr_net_ipv6_t *> (awh_cast <net::attr_net_t *> (this->_ctx.host.get())->ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0) && (port == 0)){
 											// Получаем внутренний порт socks5-клиента
 											port = this->_unit->client.getSourcePort(this->_id.eid);
 											// Устанавливаем внутренний порт клиента

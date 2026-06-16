@@ -1402,6 +1402,18 @@ namespace {
 	static uint8_t __awh_cmsgbuf__[0x200];
 
 	/**
+	 * @brief Нулевой MAC-адрес для сравнения
+	 *
+	 */
+	static uint8_t __awh_zero_mac__[6] = {0};
+
+	/**
+	 * @brief Нулевой IPv6-адрес для сравнения
+	 *
+	 */
+	static uint8_t __awh_zero_ipv6__[16] = {0};
+
+	/**
 	 * @brief Глобальный буфер временного хранения данных
 	 *
 	 */
@@ -25231,7 +25243,7 @@ namespace io {
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
 									// Если MAC-адрес успешно получен
-									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
 										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
@@ -25417,7 +25429,7 @@ namespace io {
 								// Если чёрный или белый список адресов не пустой
 								if(!server->blacklist.empty() || !server->whitelist.empty()){
 									// Если MAC-адрес успешно получен
-									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+									if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 										// Устанавливаем полученный MAC-адрес в объект события
 										const_cast <net_addr_t *> (addr)->source(src.mac.get());
 										// Получаем MAC-адрес для проверки
@@ -26766,7 +26778,7 @@ namespace io {
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
 							// Если MAC-адрес успешно получен
-							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
 								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
@@ -26927,7 +26939,7 @@ namespace io {
 						// Если чёрный или белый список адресов не пустой
 						if(!server->blacklist.empty() || !server->whitelist.empty()){
 							// Если MAC-адрес успешно получен
-							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+							if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 								// Устанавливаем полученный MAC-адрес в объект события
 								const_cast <net_addr_t *> (addr)->source(src.mac.get());
 								// Получаем MAC-адрес для проверки
@@ -31773,7 +31785,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 									// Устанавливаем адрес IPv6 для клиента
 									::memcpy(&::trust_cast <struct sockaddr_in6> (tunnel->endpoint.server).sin6_addr.s6_addr, &awh_cast <net::addr_net_ipv6_t *> (tunnel->source.get())->address[0], 16);
 									// Если адрес для удаленного подключения установлен
-									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], (uint8_t[16]){0}, 16) != 0)
+									if(::memcmp(&awh_cast <net::addr_net_ipv6_t *> (tunnel->target.get())->address[0], ::__awh_zero_ipv6__, 16) != 0)
 										// Устанавливаем адрес IPv6 для клиента
 										this->_eth.iface.setAddress(tunnel->iface, tunnel->source.get(), tunnel->target.get(), 128);
 									// Устанавливаем адрес IPv6 для сервера
@@ -35149,7 +35161,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 							// Выполняем извлечение сетевых параметров
 							this->_eth.addr.fillSource(src);
 							// Если IP-адрес успешно получен
-							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 								// Устанавливаем тип адреса
 								client->state.address = event::address_t::IPV6;
 								// Если объект источника сетевого адреса не инициализирован
@@ -35258,7 +35270,7 @@ bool awh::engine::IO::setIface(const event::id_t id, string_view name) noexcept 
 							// Выполняем извлечение сетевых параметров
 							this->_eth.addr.fillSource(src);
 							// Если IP-адрес успешно получен
-							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+							if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 								// Устанавливаем тип адреса
 								server->state.address = event::address_t::IPV6;
 								// Устанавливаем IP-адрес в хост сервера
@@ -38455,7 +38467,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -38532,7 +38544,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -38652,7 +38664,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -38729,7 +38741,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -38856,7 +38868,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -38931,7 +38943,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -39062,7 +39074,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
 													this->_addr.source(src.mac.get());
 													// Возвращаем результат работы функции
@@ -39110,7 +39122,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -39198,7 +39210,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 													// Устанавливаем полученный MAC-адрес в объект события
 													this->_addr.source(src.mac.get());
 													// Возвращаем результат работы функции
@@ -39246,7 +39258,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0){
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0){
 											// Устанавливаем полученный MAC-адрес в объект события
 											this->_addr.source(src.mac.get());
 											// Возвращаем результат работы функции
@@ -40036,7 +40048,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(client->state.node, src);
 													// Если IP-адрес успешно получен
-													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 														// Устанавливаем тип адреса
 														client->state.address = event::address_t::IPV6;
 														// Если объект адреса клиента не инициализирован
@@ -40192,7 +40204,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 													// Выполняем извлечение сетевых параметров
 													this->_eth.addr.fillSource(server->state.node, src);
 													// Если IP-адрес успешно получен
-													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+													if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 														// Устанавливаем тип адреса
 														server->state.address = event::address_t::IPV6;
 														// Если объект адреса сервера не инициализирован
@@ -40636,7 +40648,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 											// Устанавливаем тип адреса
 											client->state.address = address;
 											// Если объект адреса клиента не инициализирован
@@ -40780,7 +40792,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											this->_eth.addr.fillSource(server->state.node, src);
 											// Если MAC-адрес успешно получен
 											if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-											   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 												// Устанавливаем тип адреса
 												server->state.address = address;
 												// Если объект адреса сервера не инициализирован
@@ -41062,7 +41074,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Извлекаем полученный IPv6-адрес
 										auto addr = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 										// Если адрес равен нулю и узел является клиентом
-										if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
+										if((result = (::memcmp(&addr[0], ::__awh_zero_ipv6__, 16) == 0))){
 											// Устанавливаем тип адреса
 											client->state.address = address;
 											// Если объект адреса клиента не инициализирован
@@ -41096,7 +41108,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 											// Устанавливаем тип адреса
 											client->state.address = address;
 											// Если объект адреса клиента не инициализирован
@@ -41216,7 +41228,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										// Извлекаем полученный IPv6-адрес
 										auto addr = ::move(this->_addr.v6(net_addr_t::endian_t::LITTLE));
 										// Если адрес равен нулю и узел является клиентом
-										if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
+										if((result = (::memcmp(&addr[0], ::__awh_zero_ipv6__, 16) == 0))){
 											// Устанавливаем тип адреса
 											server->state.address = address;
 											// Если объект адреса сервера не инициализирован
@@ -41240,7 +41252,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											this->_eth.addr.fillSource(server->state.node, src);
 											// Если MAC-адрес успешно получен
 											if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-											   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+											   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 												// Устанавливаем тип адреса
 												server->state.address = address;
 												// Если объект адреса сервера не инициализирован
@@ -41559,7 +41571,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Выполняем извлечение сетевых параметров
 											this->_eth.addr.fillSource(network.get(), src);
 											// Если IP-адрес успешно получен
-											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 												// Устанавливаем тип адреса
 												client->state.address = event::address_t::IPV6;
 												// Если объект адреса клиента не инициализирован
@@ -41801,7 +41813,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 											// Выполняем извлечение сетевых параметров
 											this->_eth.addr.fillSource(network.get(), src);
 											// Если IP-адрес успешно получен
-											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+											if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 												// Устанавливаем тип адреса
 												server->state.address = event::address_t::IPV6;
 												// Если объект адреса сервера не инициализирован
@@ -42037,7 +42049,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -42112,7 +42124,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(peer->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -42234,7 +42246,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -42309,7 +42321,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(origin->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -42438,7 +42450,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -42511,7 +42523,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(client->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -42644,7 +42656,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 													// Устанавливаем полученный MAC-адрес в объект события
 													value = ::move(src.mac);
 												// Если MAC-адрес не получен
@@ -42690,7 +42702,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -42776,7 +42788,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(event::node_t::PEER, src);
 												// Если MAC-адрес успешно получен
-												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+												if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 													// Устанавливаем полученный MAC-адрес в объект события
 													value = ::move(src.mac);
 												// Если MAC-адрес не получен
@@ -42822,7 +42834,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										// Выполняем извлечение сетевых параметров
 										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
-										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)
+										if(::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)
 											// Устанавливаем полученный MAC-адрес в объект события
 											value = ::move(src.mac);
 										// Если MAC-адрес не получен
@@ -43586,7 +43598,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(client->state.node, src);
 												// Если IP-адрес успешно получен
-												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 													// Устанавливаем тип адреса
 													client->state.address = event::address_t::IPV6;
 													// Если объект адреса клиента не инициализирован
@@ -43711,7 +43723,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 												// Выполняем извлечение сетевых параметров
 												this->_eth.addr.fillSource(server->state.node, src);
 												// Если IP-адрес успешно получен
-												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], (uint8_t[16]){0}, 16) != 0))){
+												if((result = (::memcmp(&awh_cast <net::addr_net_ipv6_t *> (src.ip.get())->address[0], ::__awh_zero_ipv6__, 16) != 0))){
 													// Устанавливаем тип адреса
 													server->state.address = event::address_t::IPV6;
 													// Если объект адреса сервера не инициализирован
@@ -44010,7 +44022,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									this->_eth.addr.fillSource(client->state.node, src);
 									// Если MAC-адрес успешно получен
 									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-									   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+									   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 										// Устанавливаем тип адреса
 										client->state.address = address;
 										// Если объект адреса клиента не инициализирован
@@ -44125,7 +44137,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 											// Устанавливаем тип адреса
 											server->state.address = address;
 											// Если объект адреса сервера не инициализирован
@@ -44322,7 +44334,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									// Извлекаем полученный IPv6-адрес
 									auto addr = ::move(awh_cast <const net::addr_net_ipv6_t *> (value)->address);
 									// Если адрес равен нулю и узел является клиентом
-									if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
+									if((result = (::memcmp(&addr[0], ::__awh_zero_ipv6__, 16) == 0))){
 										// Устанавливаем тип адреса
 										client->state.address = address;
 										// Если объект адреса клиента не инициализирован
@@ -44358,7 +44370,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									this->_eth.addr.fillSource(client->state.node, src);
 									// Если MAC-адрес успешно получен
 									if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-									   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+									   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 										// Устанавливаем тип адреса
 										client->state.address = address;
 										// Если объект адреса клиента не инициализирован
@@ -44447,7 +44459,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 									// Извлекаем полученный IPv6-адрес
 									auto addr = ::move(awh_cast <const net::addr_net_ipv6_t *> (value)->address);
 									// Если адрес равен нулю и узел является клиентом
-									if((result = (::memcmp(&addr[0], (uint8_t[16]){0}, 16) == 0))){
+									if((result = (::memcmp(&addr[0], ::__awh_zero_ipv6__, 16) == 0))){
 										// Устанавливаем тип адреса
 										server->state.address = address;
 										// Если объект адреса сервера не инициализирован
@@ -44473,7 +44485,7 @@ bool awh::engine::IO::setAddress(const event::id_t id, const event::address_t ad
 										this->_eth.addr.fillSource(server->state.node, src);
 										// Если MAC-адрес успешно получен
 										if((result = ((own == net_addr_t::own_t::LAN) || (own == net_addr_t::own_t::SYS) ||
-										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], (uint8_t[6]){0}, 6) != 0)))){
+										   (::memcmp(&awh_cast <net::addr_mac_t *> (src.mac.get())->address[0], ::__awh_zero_mac__, 6) != 0)))){
 											// Устанавливаем тип адреса
 											server->state.address = address;
 											// Если объект адреса сервера не инициализирован
