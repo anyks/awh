@@ -112,19 +112,19 @@ namespace awh {
 					 *
 					 * @param url параметры адреса
 					 */
-					URL(URL && url) noexcept;
+					explicit URL(URL && url) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param url параметры адреса
 					 */
-					URL(const URL & url) noexcept;
+					explicit URL(const URL & url) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					URL() noexcept;
+					explicit URL() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
