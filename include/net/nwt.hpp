@@ -19,14 +19,17 @@
 #define __AWH_NWT__
 
 /**
- * Стандартный заголовочный файл
+ * Стандартные заголовочные файлы
  */
+#include <string>
+#include <cstdint>
+#include <string_view>
 #include <unordered_set>
 
 /**
  * Подключаем заголовочный файл проекта
  */
-#include "../sys/reg.hpp"
+#include "../sys/global.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -102,7 +105,7 @@ namespace awh {
 					 * @param url параметры адреса
 					 * @return    результат сравнения
 					 */
-					bool operator == (const URL & url) noexcept;
+					bool operator == (const URL & url) const noexcept;
 				public:
 					/**
 					 * @brief Конструктор перемещения
@@ -129,34 +132,25 @@ namespace awh {
 					~URL() noexcept {}
 			} url_t;
 		private:
-			// Список букв разрешенных в последовательности
-			string _letters;
-		private:
-			// Объект регулярного выражения
-			regexp_t _regexp;
-		private:
-			// Регулярное выражение IP адресов
-			regexp_t::exp_t _ip;
-			// Регулярное выражение URL адресов
-			regexp_t::exp_t _url;
-			// Регулярное выражение E-MAIL адресов
-			regexp_t::exp_t _email;
-		private:
 			// Список пользовательских доменных зон интернета
 			std::unordered_set <string> _user;
-			// Список основных доменных зон интернета
-			std::unordered_set <string> _general;
-			// Список интернациональных доменных зон интернета
-			std::unordered_set <string> _national;
 		private:
 			// Объект логера
 			const Logging * _log;
 		private:
 			/**
-			 * @brief Метод инициализации
+			 * @brief Метод проверки, является ли домен верхнего уровня известной доменной зоной
+			 *
+			 * @param domain домен верхнего уровня для проверки
+			 * @return       результат проверки (true, если зона известна)
+			 */
+			bool isZone(const string & domain) const noexcept;
+		public:
+			/**
+			 * @brief Метод очистки результатов парсинга
 			 *
 			 */
-			void init() noexcept;
+			void clear() noexcept;
 		public:
 			/**
 			 * @brief Метод установки пользовательской зоны
@@ -186,18 +180,6 @@ namespace awh {
 			url_t parse(string_view text) noexcept;
 		public:
 			/**
-			 * @brief Метод очистки результатов парсинга
-			 *
-			 */
-			void clear() noexcept;
-			/**
-			 * @brief Метод добавления букв алфавита
-			 *
-			 * @param letters список букв алфавита
-			 */
-			void letters(string_view letters = "") noexcept;
-		public:
-			/**
 			 * @brief Метод установки объекта логирования
 			 *
 			 * @param log объект работы с логами
@@ -216,17 +198,10 @@ namespace awh {
 			 */
 			explicit Network_Types(const Logging * log) noexcept;
 			/**
-			 * @brief Конструктор
-			 *
-			 * @param letters список букв алфавита
-			 * @param log     объект для работы с логами
-			 */
-			explicit Network_Types(string_view letters, const Logging * log) noexcept;
-			/**
 			 * @brief Деструктор
 			 *
 			 */
-			~Network_Types() noexcept {}
+			~Network_Types() noexcept = default;
 	} nwt_t;
 };
 

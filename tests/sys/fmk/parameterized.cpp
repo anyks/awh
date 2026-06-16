@@ -1540,7 +1540,8 @@ TEST_P(FmkUrlsParameterizedFixture, FmkUrlsTest){
 INSTANTIATE_TEST_SUITE_P(TestParameters, FmkUrlsParameterizedFixture,
 	::testing::Values(
 		FmkUrlsTestParameter({"The address of our site https://www.ddd.com:8080/?id=test&key=hash#is_not_work is not working. You can contact us at another address http://www.example.ru/", {{24,78},{133,155}}}),
-		FmkUrlsTestParameter({"По адресу сайта http://пангеорадар.рф/?id=test&key=hash вы можете прочитать подробнее. По адресу http://пангеорадар.ру/ вы можете заказать наш продукт.", {{29,81},{157,192}}})
+		FmkUrlsTestParameter({"По адресу сайта http://пангеорадар.рф/?id=test&key=hash вы можете прочитать подробнее. По адресу http://пангеорадар.ру/ вы можете заказать наш продукт.", {{29,81},{157,192}}}),
+		FmkUrlsTestParameter({"Bad token foo.zzz must be skipped, but https://anyks.com/page is valid", {{39,61}}})
 	)
 );
 
