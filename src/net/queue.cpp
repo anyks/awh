@@ -13,6 +13,17 @@
  */
 
 /**
+ * Если максимальное количество свободных блоков не определёно
+ */
+#ifndef AWH_NETWORK_QUEUE_BLOCK_POOL_CAP
+	/**
+	 * Максимальное количество свободных блоков, удерживаемых в пуле на поток
+	 * (ограничивает «прилипание» пиковой памяти: AWH_NETWORK_QUEUE_BLOCK_POOL_CAP * 64 КБ)
+	 */
+	#define AWH_NETWORK_QUEUE_BLOCK_POOL_CAP 0x40
+#endif
+
+/**
  * Если размер буфера в байтах не определён
  */
 #ifndef AWH_NETWORK_QUEUE_BUFFER_SIZE
@@ -51,11 +62,6 @@ namespace {
 	 * корректно читается на всём протяжении жизни потока, включая фазу статической деинициализации
 	 */
 	thread_local bool __awh_block_pool_alive__ = true;
-	/**
-	 * Максимальное количество свободных блоков, удерживаемых в пуле на поток
-	 * (ограничивает «прилипание» пиковой памяти: __AWH_QUEUE_BLOCK_POOL_CAP__ * 64 КБ)
-	 */
-	constexpr size_t __AWH_QUEUE_BLOCK_POOL_CAP__ = 0x40;
 
 	/**
 	 * @brief Контейнер свободных блоков буфера с корректной очисткой при завершении потока
@@ -117,7 +123,7 @@ namespace {
 			// Выходим из функции
 			return;
 		// Если пул доступен и не достиг предела удерживаемых блоков
-		if(__awh_block_pool_alive__ && (__awh_block_pool__.blocks.size() < __AWH_QUEUE_BLOCK_POOL_CAP__)){
+		if(__awh_block_pool_alive__ && (__awh_block_pool__.blocks.size() < static_cast <size_t> (AWH_NETWORK_QUEUE_BLOCK_POOL_CAP))){
 			/**
 			 * Выполняем перехват ошибок (push_back может выбросить bad_alloc при реаллокации)
 			 */

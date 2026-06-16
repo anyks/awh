@@ -122,6 +122,12 @@ if (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
     message(STATUS "Build with max network queue buffer size: ${CMAKE_NETWORK_QUEUE_BUFFER_SIZE}\n")
 endif (CMAKE_NETWORK_QUEUE_BUFFER_SIZE)
 
+# Если активирован флаг установки максимального количества свободных блоков для очереди сетевых событий (по умолчанию: 64)
+if (CMAKE_NETWORK_QUEUE_BLOCK_POOL_CAP)
+    add_compile_definitions(AWH_NETWORK_QUEUE_BLOCK_POOL_CAP=${CMAKE_NETWORK_QUEUE_BLOCK_POOL_CAP})
+    message(STATUS "Build with max network queue block pool cap: ${CMAKE_NETWORK_QUEUE_BLOCK_POOL_CAP}\n")
+endif (CMAKE_NETWORK_QUEUE_BLOCK_POOL_CAP)
+
 # Если активирован флаг установки размера MTU для UDP сообщений в IPv4 (по умолчанию: 1400)
 if (CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE)
     add_compile_definitions(AWH_MTU_UDP_IPV4_PAYLOAD_SIZE=${CMAKE_MTU_UDP_IPV4_PAYLOAD_SIZE})
