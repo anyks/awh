@@ -155,6 +155,7 @@ if (${GTest_FOUND})
                 eth/gateway.cpp
                 eth/socket.cpp
                 eth/portmap.cpp
+                eth/sctp.cpp
             )
         # Если не нужно собрать тесты для работы с Ethernet
         else()
