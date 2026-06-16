@@ -45,128 +45,98 @@ using namespace std;
 bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t sock, net::sctp::status_t & status) const noexcept {
 	// Переменная результата
 	bool result = false;
-	// Переменная для хранения протокола сокета
-	int32_t protocol = 0;
-	// Длина протокола сокета
-	socklen_t length = sizeof(protocol);
-	// Получаем протокол сокета
-	if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-		/**
-		 * Определяем протокол сокета
-		 */
-		switch(protocol){
-			// Если протокол SCTP
-			case IPPROTO_SCTP: {
-				// Создаём объект статуса SCTP сокета
-				struct sctp_status data = {};
-				// Устанавливаем идентификатор ассоциации
-				data.sstat_assoc_id = status.id;
-				// Размер структуры статуса SCTP сокета
-				socklen_t length = sizeof(data);
-				// Выполняем инициализацию SCTP сокета
-				if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &data, &length)))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
-				// Заполняем объект ответа
-				} else {
-					// Извлекаем идентификатор ассоциации SCTP сокета
-					status.id = data.sstat_assoc_id;
-					// Извлекаем количество входящих окон SCTP сокета
-					status.ratewind = data.sstat_rwnd;
-					// Извлекаем количество отправленных SCTP пакетов
-					status.unackdata = data.sstat_unackdata;
-					// Извлекаем количество ожидающих подтверждений SCTP сокета
-					status.penddata = data.sstat_penddata;
-					// Извлекаем количество входящих стримов SCTP сокета
-					status.istreams = data.sstat_instrms;
-					// Извлекаем количество выходящих стримов SCTP сокета
-					status.ostreams = data.sstat_outstrms;
-					// Извлекаем точку фрагментации SCTP сокета
-					status.fragpoint = data.sstat_fragmentation_point;
-					/**
-					 * Обрабатываем состояние SCTP сокета
-					 */
-					switch(data.sstat_state){
-						// Если состояние SCTP сокета - привязан
-						case SCTP_BOUND:
-							// Устанавливаем состояние SCTP сокета - привязан
-							status.state = net::sctp::state_status_t::BOUND;
-						break;
-						// Если состояние SCTP сокета - закрытие
-						case SCTP_CLOSED:
-							// Устанавливаем состояние SCTP сокета - закрыт
-							status.state = net::sctp::state_status_t::CLOSED;
-						break;
-						// Если состояние SCTP сокета - прослушивание
-						case SCTP_LISTEN:
-							// Устанавливаем состояние SCTP сокета - прослушивание
-							status.state = net::sctp::state_status_t::LISTEN;
-						break;
-						// Если состояние SCTP сокета - установлено
-						case SCTP_ESTABLISHED:
-							// Устанавливаем состояние SCTP сокета - установлено
-							status.state = net::sctp::state_status_t::ESTABLISHED;
-						break;
-						// Если состояние SCTP сокета - в процессе установления
-						case SCTP_COOKIE_WAIT:
-							// Устанавливаем состояние SCTP сокета - в процессе установления
-							status.state = net::sctp::state_status_t::COOKIE_WAIT;
-						break;
-						// Если состояние SCTP сокета - ожидание подтверждения cookie
-						case SCTP_COOKIE_ECHOED:
-							// Устанавливаем состояние SCTP сокета - ожидание подтверждения cookie
-							status.state = net::sctp::state_status_t::COOKIE_ECHOED;
-						break;
-						// Если состояние SCTP сокета - в процессе завершения
-						case SCTP_SHUTDOWN_SENT:
-							// Устанавливаем состояние SCTP сокета - в процессе завершения
-							status.state = net::sctp::state_status_t::SHUTDOWN_SENT;
-						break;
-						// Если состояние SCTP сокета - завершение
-						case SCTP_SHUTDOWN_PENDING:
-							// Устанавливаем состояние SCTP сокета - завершение
-							status.state = net::sctp::state_status_t::SHUTDOWN_PENDING;
-						break;
-						// Если состояние SCTP сокета - ожидание завершения
-						case SCTP_SHUTDOWN_RECEIVED:
-							// Устанавливаем состояние SCTP сокета - ожидание завершения
-							status.state = net::sctp::state_status_t::SHUTDOWN_RECEIVED;
-						break;
-						// Если состояние SCTP сокета - ожидание завершения
-						case SCTP_SHUTDOWN_ACK_SENT:
-							// Устанавливаем состояние SCTP сокета - ожидание завершения
-							status.state = net::sctp::state_status_t::SHUTDOWN_ACK_SENT;
-						break;
-					}
-				}
-			} break;
-		}
-	// Если возникает ошибка получения протокола сокета
-	} else {
+	// Создаём объект статуса SCTP сокета
+	struct sctp_status data = {};
+	// Устанавливаем идентификатор ассоциации
+	data.sstat_assoc_id = status.id;
+	// Размер структуры статуса SCTP сокета
+	socklen_t length = sizeof(data);
+	// Извлекаем статус SCTP сокета
+	if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_STATUS, &data, &length)))){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 		#endif
+	// Заполняем объект ответа
+	} else {
+		// Извлекаем идентификатор ассоциации SCTP сокета
+		status.id = data.sstat_assoc_id;
+		// Извлекаем количество входящих окон SCTP сокета
+		status.ratewind = data.sstat_rwnd;
+		// Извлекаем количество отправленных SCTP пакетов
+		status.unackdata = data.sstat_unackdata;
+		// Извлекаем количество ожидающих подтверждений SCTP сокета
+		status.penddata = data.sstat_penddata;
+		// Извлекаем количество входящих стримов SCTP сокета
+		status.istreams = data.sstat_instrms;
+		// Извлекаем количество выходящих стримов SCTP сокета
+		status.ostreams = data.sstat_outstrms;
+		// Извлекаем точку фрагментации SCTP сокета
+		status.fragpoint = data.sstat_fragmentation_point;
+		/**
+		 * Обрабатываем состояние SCTP сокета
+		 */
+		switch(data.sstat_state){
+			// Если состояние SCTP сокета - привязан
+			case SCTP_BOUND:
+				// Устанавливаем состояние SCTP сокета - привязан
+				status.state = net::sctp::state_status_t::BOUND;
+			break;
+			// Если состояние SCTP сокета - закрытие
+			case SCTP_CLOSED:
+				// Устанавливаем состояние SCTP сокета - закрыт
+				status.state = net::sctp::state_status_t::CLOSED;
+			break;
+			// Если состояние SCTP сокета - прослушивание
+			case SCTP_LISTEN:
+				// Устанавливаем состояние SCTP сокета - прослушивание
+				status.state = net::sctp::state_status_t::LISTEN;
+			break;
+			// Если состояние SCTP сокета - установлено
+			case SCTP_ESTABLISHED:
+				// Устанавливаем состояние SCTP сокета - установлено
+				status.state = net::sctp::state_status_t::ESTABLISHED;
+			break;
+			// Если состояние SCTP сокета - в процессе установления
+			case SCTP_COOKIE_WAIT:
+				// Устанавливаем состояние SCTP сокета - в процессе установления
+				status.state = net::sctp::state_status_t::COOKIE_WAIT;
+			break;
+			// Если состояние SCTP сокета - ожидание подтверждения cookie
+			case SCTP_COOKIE_ECHOED:
+				// Устанавливаем состояние SCTP сокета - ожидание подтверждения cookie
+				status.state = net::sctp::state_status_t::COOKIE_ECHOED;
+			break;
+			// Если состояние SCTP сокета - в процессе завершения
+			case SCTP_SHUTDOWN_SENT:
+				// Устанавливаем состояние SCTP сокета - в процессе завершения
+				status.state = net::sctp::state_status_t::SHUTDOWN_SENT;
+			break;
+			// Если состояние SCTP сокета - завершение
+			case SCTP_SHUTDOWN_PENDING:
+				// Устанавливаем состояние SCTP сокета - завершение
+				status.state = net::sctp::state_status_t::SHUTDOWN_PENDING;
+			break;
+			// Если состояние SCTP сокета - ожидание завершения
+			case SCTP_SHUTDOWN_RECEIVED:
+				// Устанавливаем состояние SCTP сокета - ожидание завершения
+				status.state = net::sctp::state_status_t::SHUTDOWN_RECEIVED;
+			break;
+			// Если состояние SCTP сокета - ожидание завершения
+			case SCTP_SHUTDOWN_ACK_SENT:
+				// Устанавливаем состояние SCTP сокета - ожидание завершения
+				status.state = net::sctp::state_status_t::SHUTDOWN_ACK_SENT;
+			break;
+		}
 	}
 	// Возвращаем результат
 	return result;
@@ -181,60 +151,30 @@ bool awh::eth::Stream_Control_Transmission_Protocol::status(const net::socket_t 
 bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::socket_t sock, const net::sctp::initmsg_t & initmsg) const noexcept {
 	// Переменная результата
 	bool result = false;
-	// Переменная для хранения протокола сокета
-	int32_t protocol = 0;
-	// Длина протокола сокета
-	socklen_t length = sizeof(protocol);
-	// Получаем протокол сокета
-	if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-		/**
-		 * Определяем протокол сокета
-		 */
-		switch(protocol){
-			// Если протокол SCTP
-			case IPPROTO_SCTP: {
-				// Создаём объект инициализации SCTP сокета
-				struct sctp_initmsg init{0};
-				// Устанавливаем количество попыток инициализации
-				init.sinit_max_attempts = initmsg.attempts;
-				// Устанавливаем таймаут инициализации
-				init.sinit_max_init_timeo = initmsg.timeout;
-				// Устанавливаем количество выходящих стримов
-				init.sinit_num_ostreams = initmsg.ostreams;
-				// Устанавливаем количество входящих стримов
-				init.sinit_max_instreams = initmsg.istreams;
-				// Выполняем инициализацию SCTP сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
-				}
-			} break;
-		}
-	// Если возникает ошибка получения протокола сокета
-	} else {
+	// Создаём объект инициализации SCTP сокета
+	struct sctp_initmsg init{0};
+	// Устанавливаем количество попыток инициализации
+	init.sinit_max_attempts = initmsg.attempts;
+	// Устанавливаем таймаут инициализации
+	init.sinit_max_init_timeo = initmsg.timeout;
+	// Устанавливаем количество выходящих стримов
+	init.sinit_num_ostreams = initmsg.ostreams;
+	// Устанавливаем количество входящих стримов
+	init.sinit_max_instreams = initmsg.istreams;
+	// Выполняем инициализацию SCTP сокета
+	if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &init, sizeof(init))))){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
@@ -248,152 +188,151 @@ bool awh::eth::Stream_Control_Transmission_Protocol::initMessages(const net::soc
  * @return       результат работы функции
  */
 bool awh::eth::Stream_Control_Transmission_Protocol::eventsSubscribe(const net::socket_t sock, const net::sctp::event_types_t & events) const noexcept {
-	// Переменная результата
-	bool result = false;
-	// Переменная для хранения протокола сокета
-	int32_t protocol = 0;
-	// Длина протокола сокета
-	socklen_t length = sizeof(protocol);
-	// Получаем протокол сокета
-	if(::getsockopt(sock, SOL_SOCKET, SO_PROTOCOL, &protocol, &length) == 0){
-		/**
-		 * Определяем протокол сокета
-		 */
-		switch(protocol){
-			// Если протокол SCTP
-			case IPPROTO_SCTP: {
-				/**
-				 * Блокируем работу ненужной проверки (пока непонятно что с этим делать)
-				 */
-				#ifdef __AWH_DISABLED__
-					// Создаём объект подписки на события
-					struct sctp_event event{0};
-					// Активируем получение входящих событий
-					event.se_on = 1;
-					// Устанавливаем тип события
-					event.se_type = SCTP_ASSOC_CHANGE;
-					// Устанавливаем идентификатор ассоциации
-					event.se_assoc_id = SCTP_FUTURE_ASSOC;
-					// Выполняем активацию получения событий SCTP для сокета
-					if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &event, sizeof(event))))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				#endif
-				// Создаём объект подписки на события
-				struct sctp_event_subscribe subscribe{0};
-				/**
-				 * Выполняем перебор всех возможных событий SCTP
-				 */
-				for(auto & event : events){
-					/**
-					 * Определяем тип события SCTP
-					 */
-					switch(static_cast <uint8_t> (event)){
-						// Если требуется уведомление о каждом входящем DATA-пакете
-						case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
-							// Устанавливаем уведомления о каждом входящем DATA-пакете
-							subscribe.sctp_data_io_event = 1;
-						break;
-						// Если ошибка удалённого узла
-						case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
-							// Устанавливаем события SCTP_PEER_ERROR_EVENT
-							subscribe.sctp_peer_error_event = 1;
-						break;
-						// Если изменение ассоциации
-						case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
-							// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-							subscribe.sctp_association_event = 1;
-						break;
-						// Если событие завершения работы
-						case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
-							// Устанавливаем события SCTP_SHUTDOWN_EVENT
-							subscribe.sctp_shutdown_event = 1;
-						break;
-						// Если событие "отправитель сухой"
-						case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
-							// Устанавливаем события SCTP_SENDER_DRY_EVENT
-							subscribe.sctp_sender_dry_event = 1;
-						break;
-						// Если изменение адреса однорангового узла
-						case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
-							// Устанавливаем события SCTP_ADDR_CHANGE
-							subscribe.sctp_address_event = 1;
-						break;
-						// Если событие ошибки отправки
-						case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
-							// Устанавливаем события SCTP_SEND_FAILED_EVENT
-							subscribe.sctp_send_failure_event = 1;
-						break;
-						// Если событие сброса потока
-						case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
-							// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
-							subscribe.sctp_stream_reset_event = 1;
-						break;
-						// Если событие аутентификации
-						case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
-							// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
-							subscribe.sctp_authentication_event = 1;
-						break;
-						// Если событие адаптационное указание
-						case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
-							// Устанавливаем события SCTP_ADAPTATION_INDICATION
-							subscribe.sctp_adaptation_layer_event = 1;
-						break;
-						// Если событие частичной доставки
-						case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
-							// Устанавливаем события SCTP_PARTIAL_DELIVERY_EVENT
-							subscribe.sctp_partial_delivery_event = 1;
-						break;
-					}
-				}
-				// Выполняем активацию получения событий SCTP для сокета
-				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe))))){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock), log_t::flag_t::CRITICAL, ::strerror(errno));
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-					#endif
-				}
-			} break;
-		}
-	// Если возникает ошибка получения протокола сокета
-	} else {
+	// Если список событий для подписки пустой
+	if(events.empty()){
 		/**
 		 * Если включён режим отладки
 		 */
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
-			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::WARNING, "SCTP events list is empty");
 		/**
 		 * Если режим отладки не включён
 		 */
 		#else
 			// Записываем ошибку в лог
-			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+			this->_log->print("%s", log_t::flag_t::WARNING, "SCTP events list is empty");
+		#endif
+		// Выходим из функции
+		return false;
+	}
+	// Результат подписки через устаревший API SCTP_EVENTS
+	bool resultLegacy = true;
+	// Результат подписки через современный API SCTP_EVENT
+	bool resultModern = true;
+	// Создаём объект подписки на события (устаревший API SCTP_EVENTS)
+	struct sctp_event_subscribe subscribe{0};
+	/**
+	 * Выполняем перебор всех переданных событий SCTP
+	 */
+	for(auto & event : events){
+		/**
+		 * Современные события (RFC 6525) подписываются через отдельный API SCTP_EVENT,
+		 * так как они отсутствуют в устаревшей структуре sctp_event_subscribe
+		 */
+		if((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) || (event == net::sctp::event_type_t::STREAM_CHANGE_EVENT)){
+			// Создаём объект подписки на событие (современный API SCTP_EVENT)
+			struct sctp_event item{0};
+			// Активируем получение события
+			item.se_on = 1;
+			// Применяем подписку ко всем будущим ассоциациям
+			item.se_assoc_id = SCTP_FUTURE_ASSOC;
+			// Устанавливаем тип события SCTP
+			item.se_type = ((event == net::sctp::event_type_t::ASSOC_RESET_EVENT) ? SCTP_ASSOC_RESET_EVENT : SCTP_STREAM_CHANGE_EVENT);
+			// Выполняем подписку на событие SCTP
+			if(static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENT, &item, sizeof(item)))){
+				// Запоминаем ошибку подписки через современный API
+				resultModern = false;
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+			}
+			// Переходим к следующему событию
+			continue;
+		}
+		/**
+		 * Определяем тип события SCTP
+		 */
+		switch(static_cast <uint8_t> (event)){
+			// Если требуется уведомление о каждом входящем DATA-пакете
+			case static_cast <uint8_t> (net::sctp::event_type_t::DATA_IO):
+				// Устанавливаем уведомления о каждом входящем DATA-пакете
+				subscribe.sctp_data_io_event = 1;
+			break;
+			// Если ошибка удалённого узла
+			case static_cast <uint8_t> (net::sctp::event_type_t::REMOTE_ERROR):
+				// Устанавливаем события SCTP_PEER_ERROR_EVENT
+				subscribe.sctp_peer_error_event = 1;
+			break;
+			// Если изменение ассоциации
+			case static_cast <uint8_t> (net::sctp::event_type_t::ASSOC_CHANGE):
+				// Устанавливаем асоциационные события SCTP_ASSOC_CHANGE
+				subscribe.sctp_association_event = 1;
+			break;
+			// Если событие завершения работы
+			case static_cast <uint8_t> (net::sctp::event_type_t::SHUTDOWN_EVENT):
+				// Устанавливаем события SCTP_SHUTDOWN_EVENT
+				subscribe.sctp_shutdown_event = 1;
+			break;
+			// Если событие "отправитель сухой"
+			case static_cast <uint8_t> (net::sctp::event_type_t::SENDER_DRY_EVENT):
+				// Устанавливаем события SCTP_SENDER_DRY_EVENT
+				subscribe.sctp_sender_dry_event = 1;
+			break;
+			// Если изменение адреса однорангового узла
+			case static_cast <uint8_t> (net::sctp::event_type_t::PEER_ADDR_CHANGE):
+				// Устанавливаем события SCTP_ADDR_CHANGE
+				subscribe.sctp_address_event = 1;
+			break;
+			// Если событие ошибки отправки (устаревший тип)
+			case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED):
+			// Если событие ошибки отправки
+			case static_cast <uint8_t> (net::sctp::event_type_t::SEND_FAILED_EVENT):
+				// Устанавливаем события SCTP_SEND_FAILED_EVENT
+				subscribe.sctp_send_failure_event = 1;
+			break;
+			// Если событие сброса потока
+			case static_cast <uint8_t> (net::sctp::event_type_t::STREAM_RESET_EVENT):
+				// Устанавливаем события сброса потока SCTP_STREAM_RESET_EVENT
+				subscribe.sctp_stream_reset_event = 1;
+			break;
+			// Если событие аутентификации
+			case static_cast <uint8_t> (net::sctp::event_type_t::AUTHENTICATION_EVENT):
+				// Устанавливаем события SCTP_AUTHENTICATION_INDICATION
+				subscribe.sctp_authentication_event = 1;
+			break;
+			// Если событие адаптационное указание
+			case static_cast <uint8_t> (net::sctp::event_type_t::ADAPTATION_INDICATION):
+				// Устанавливаем события SCTP_ADAPTATION_INDICATION
+				subscribe.sctp_adaptation_layer_event = 1;
+			break;
+			// Если событие частичной доставки
+			case static_cast <uint8_t> (net::sctp::event_type_t::PARTIAL_DELIVERY_EVENT):
+				// Устанавливаем события SCTP_PARTIAL_DELIVERY_EVENT
+				subscribe.sctp_partial_delivery_event = 1;
+			break;
+		}
+	}
+	// Выполняем активацию получения событий SCTP для сокета
+	if(static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_EVENTS, &subscribe, sizeof(subscribe)))){
+		// Запоминаем ошибку подписки через устаревший API
+		resultLegacy = false;
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, events.size()), log_t::flag_t::CRITICAL, ::strerror(errno));
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 		#endif
 	}
 	// Возвращаем результат
-	return result;
+	return (resultModern && resultLegacy);
 }
 /**
  * @brief Метод установки поддерживаемых алгоритмов аутентификации SCTP сокета
@@ -413,6 +352,10 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateSupportAlgorith
 		const size_t length = (offsetof(struct sctp_hmacalgo, shmac_idents) + types.size() * sizeof(uint16_t));
 		// Выделяем память под объект поддерживаемых алгоритмов аутентификации SCTP сокета
 		hmac = reinterpret_cast <struct sctp_hmacalgo *> (::calloc(1, length));
+		// Если память под объект не выделена
+		if(hmac == nullptr)
+			// Выходим из функции
+			return result;
 		// Устанавливаем количество поддерживаемых алгоритмов аутентификации SCTP сокета
 		hmac->shmac_number_of_idents = static_cast <uint32_t> (types.size());
 		// Индекс для записи поддерживаемых алгоритмов аутентификации SCTP сокета
@@ -476,6 +419,10 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateKey(const net::
 		const socklen_t size = static_cast <socklen_t> (offsetof(sctp_authkey, sca_key) + key.size());
 		// Выделяем память под ключ аутентификации
 		struct sctp_authkey * authkey = reinterpret_cast <sctp_authkey *> (::calloc(1, size));
+		// Если память под ключ не выделена
+		if(authkey == nullptr)
+			// Выходим из функции
+			return result;
 		// Устанавливаем идентификатор ассоциации
 		authkey->sca_assoc_id = 0;
 		// Устанавливаем номер ключа аутентификации
@@ -708,12 +655,18 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const net::socket_t sock, const event::origin_t origin, const uint32_t id, vector <net::sctp::auth_chunk_t> & chunks) const noexcept {
 	// Переменная результата
 	bool result = false;
-	// Объект чанков аутентификации SCTP сокета
-	struct sctp_authchunks authchunks{0};
-	// Устанавливаем идентификатор ассоциации
-	authchunks.gauth_assoc_id = id;
 	// Максимум 256 типов чанков — более чем достаточно
-	socklen_t length = (sizeof(authchunks) + 256);
+	const socklen_t capacity = static_cast <socklen_t> (sizeof(struct sctp_authchunks) + 256);
+	// Выделяем память под объект чанков аутентификации SCTP сокета (с запасом под гибкий массив gauth_chunks)
+	struct sctp_authchunks * authchunks = reinterpret_cast <struct sctp_authchunks *> (::calloc(1, capacity));
+	// Если память под объект не выделена
+	if(authchunks == nullptr)
+		// Выходим из функции
+		return result;
+	// Устанавливаем идентификатор ассоциации
+	authchunks->gauth_assoc_id = id;
+	// Размер выделенного буфера под чанки аутентификации
+	socklen_t length = capacity;
 	// Переменная для хранения типа опции
 	int32_t optname = 0;
 	/**
@@ -731,16 +684,18 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 			optname = SCTP_PEER_AUTH_CHUNKS;
 		break;
 	}
-	// Получаем протокол сокета
-	if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, &authchunks, &length) == 0))){
+	// Получаем чанки аутентификации SCTP сокета
+	if((result = (::getsockopt(sock, IPPROTO_SCTP, optname, authchunks, &length) == 0))){
+		// Вычисляем количество полученных чанков из фактически возвращённой длины буфера
+		const uint32_t count = (length > offsetof(struct sctp_authchunks, gauth_chunks)) ? static_cast <uint32_t> (length - offsetof(struct sctp_authchunks, gauth_chunks)) : 0;
 		/**
 		 * Перебираем все полученные чанки аутентификации
 		 */
-		for(uint32_t i = 0; i < authchunks.gauth_number_of_chunks; i++){
+		for(uint32_t i = 0; i < count; i++){
 			/**
 			 * Определяем тип чанка аутентификации
 			 */
-			switch(authchunks.gauth_chunks[i]){
+			switch(authchunks->gauth_chunks[i]){
 				// Если чанк аутентификации - DATA
 				case 0x00:
 					// Добавляем чанк аутентификации DATA
@@ -849,6 +804,8 @@ bool awh::eth::Stream_Control_Transmission_Protocol::authenticateChunks(const ne
 			this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 		#endif
 	}
+	// Очищаем память под объект чанков аутентификации SCTP сокета
+	::free(authchunks);
 	// Возвращаем результат
 	return result;
 }
@@ -869,7 +826,29 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 	 */
 	switch(static_cast <uint8_t> (type)){
 		// Если тип таймаута - INIT
-		case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
+		case static_cast <uint8_t> (net::sctp::timeout_t::INIT): {
+			// Создаём объект параметров инициализации SCTP сокета
+			struct sctp_initmsg params{0};
+			// Устанавливаем длину объекта параметров инициализации
+			socklen_t length = sizeof(params);
+			// Извлекаем параметры инициализации SCTP сокета
+			if(!(result = !static_cast <bool> (::getsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &params, &length)))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), ctx), log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			// Устанавливаем значение таймаута инициализации (максимальное время INIT)
+			} else result = params.sinit_max_init_timeo;
+		} break;
 		// Если тип таймаута - DATA
 		case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
 			// Создаём объект параметров таймаута SCTP сокета
@@ -916,7 +895,7 @@ uint32_t awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::sock
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
-		// Если тип таймаута - COOKIE
+		// Если тип таймаута - HEARTBEAT
 		case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
 			// Создаём объект параметров таймаута SCTP сокета
 			struct sctp_paddrparams params{0};
@@ -994,7 +973,32 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 	 */
 	switch(static_cast <uint8_t> (type)){
 		// Если тип таймаута - INIT
-		case static_cast <uint8_t> (net::sctp::timeout_t::INIT):
+		case static_cast <uint8_t> (net::sctp::timeout_t::INIT): {
+			// Создаём объект параметров инициализации SCTP сокета
+			struct sctp_initmsg params{0};
+			// Устанавливаем длину объекта параметров инициализации
+			socklen_t length = sizeof(params);
+			// Читаем текущие параметры инициализации, чтобы не сбросить остальные поля (потоки/попытки)
+			::getsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &params, &length);
+			// Устанавливаем новое значение максимального времени INIT
+			params.sinit_max_init_timeo = static_cast <uint16_t> (timeout);
+			// Активируем новые параметры инициализации SCTP сокета
+			if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_SCTP, SCTP_INITMSG, &params, sizeof(params))))){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, id, static_cast <uint16_t> (type), timeout, ctx), log_t::flag_t::WARNING, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+				#endif
+			}
+		} break;
 		// Если тип таймаута - DATA
 		case static_cast <uint8_t> (net::sctp::timeout_t::DATA): {
 			// Создаём объект параметров таймаута SCTP сокета
@@ -1040,7 +1044,7 @@ bool awh::eth::Stream_Control_Transmission_Protocol::timeout(const net::socket_t
 				this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(EOPNOTSUPP));
 			#endif
 		} break;
-		// Если тип таймаута - COOKIE
+		// Если тип таймаута - HEARTBEAT
 		case static_cast <uint8_t> (net::sctp::timeout_t::HEARTBEAT): {
 			// Создаём объект параметров таймаута SCTP сокета
 			struct sctp_paddrparams params{0};
