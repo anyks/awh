@@ -4510,7 +4510,7 @@ if (CMAKE_BUILD_TESTS)
                     -DGCOVR=${GCOVR_EXECUTABLE}
                     -DGCOV_TOOL=${AWH_GCOV_TOOL}
                     "-DTEST_BINS=$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_net>;$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_sys>"
-                    -P ${CMAKE_SOURCE_DIR}/sh/coverage.cmake
+                    -P ${CMAKE_SOURCE_DIR}/tests/coverage.cmake
                 # Перед формированием отчёта собираем тесты
                 DEPENDS ${PROJECT_NAME}_UNITTEST_net ${PROJECT_NAME}_UNITTEST_sys
                 # Рабочий каталог
