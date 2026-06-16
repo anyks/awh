@@ -82,7 +82,7 @@ namespace awh {
 					/**
 					 * Создаём тип данных итератора
 					 */
-					using iterator = std::unordered_map <uint64_t, record_t>::iterator;
+					using iterator = unordered_map <uint64_t, record_t>::iterator;
 				private:
 					// Текущее значение итератора
 					iterator _it;

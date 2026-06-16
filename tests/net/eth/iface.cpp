@@ -25,6 +25,26 @@
 #include "eth.hpp"
 
 /**
+ * @brief Вспомогательная функция поиска петлевого (loopback) сетевого интерфейса
+ *
+ * @param eth объект работы с Ethernet
+ * @return    имя петлевого интерфейса либо пустая строка
+ */
+static std::string findLoopback(const awh::eth_t * eth) noexcept {
+	// Перебираем все доступные сетевые интерфейсы
+	for(auto & name : eth->iface.available()){
+		// Получаем флаги сетевого интерфейса
+		auto flags = eth->iface.flags(name);
+		// Если интерфейс является петлевым
+		if(flags.find(awh::event::eth_flag_t::LOOPBACK) != flags.end())
+			// Возвращаем найденное имя
+			return name;
+	}
+	// Возвращаем пустое имя
+	return std::string{};
+}
+
+/**
  * @brief Тест получения доступных интерфейсов
  *
  */
@@ -179,5 +199,192 @@ TEST_F(EthFixture, IfaceAddressTest){
 		std::unique_ptr <awh::net::addr_t> peer_ptr = std::make_unique <awh::net::addr_net_ipv4_t> ();
 		// Извлекаем P2P параметры
 		this->_eth->iface.getAddress(ifname, ip_ptr, peer_ptr, prefix);
+	}
+}
+
+/**
+ * @brief Тест безопасной обработки нулевого адреса
+ *
+ */
+TEST_F(EthFixture, IfaceNullAddrTest){
+	// Нулевой адрес сетевого подключения
+	const awh::net::addr_t * nullAddr = nullptr;
+	// Получение имени по нулевому адресу должно вернуть пустую строку без падения
+	ASSERT_TRUE(this->_eth->iface.name(nullAddr).empty());
+	// Проверки по нулевому адресу должны вернуть false без падения
+	ASSERT_FALSE(this->_eth->iface.isTunnel(nullAddr));
+	ASSERT_FALSE(this->_eth->iface.isVirtual(nullAddr));
+}
+
+/**
+ * @brief Тест безопасной обработки пустого имени интерфейса
+ *
+ */
+TEST_F(EthFixture, IfaceEmptyNameTest){
+	// Пустое имя сетевого интерфейса
+	const std::string empty = "";
+	// Все методы должны безопасно обрабатывать пустое имя
+	ASSERT_FALSE(this->_eth->iface.isAvailable(empty));
+	ASSERT_FALSE(this->_eth->iface.isTunnel(empty));
+	ASSERT_FALSE(this->_eth->iface.isVirtual(empty));
+	ASSERT_EQ(this->_eth->iface.mtu(empty), 0);
+	ASSERT_FALSE(this->_eth->iface.mtu(empty, 1500));
+	ASSERT_TRUE(this->_eth->iface.flags(empty).empty());
+	ASSERT_FALSE(this->_eth->iface.flag(empty, awh::event::eth_flag_t::UP, awh::event::mode_t::ENABLED));
+	ASSERT_FALSE(this->_eth->iface.destroy(empty));
+	ASSERT_EQ(this->_eth->iface.getAddress(empty, awh::event::family_t::IPV4), nullptr);
+	// Создаём объект IPv4 адреса для проверки сеттеров
+	auto ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Устанавливаем адрес петлевого сетевого интерфейса
+	ip->address = htonl(INADDR_LOOPBACK);
+	// Установка адреса и комплексная настройка с пустым именем должны вернуть false
+	ASSERT_FALSE(this->_eth->iface.setAddress(empty, ip.get(), 24));
+	ASSERT_FALSE(this->_eth->iface.configure(empty, ip.get(), 24, 1500));
+}
+
+/**
+ * @brief Тест безопасной обработки несуществующего интерфейса
+ *
+ */
+TEST_F(EthFixture, IfaceNonExistentTest){
+	// Заведомо несуществующее имя сетевого интерфейса
+	const std::string fake = "non_existent_iface_123";
+	// Несуществующий интерфейс недоступен
+	ASSERT_FALSE(this->_eth->iface.isAvailable(fake));
+	// MTU несуществующего интерфейса равен нулю
+	ASSERT_EQ(this->_eth->iface.mtu(fake), 0);
+	// Список флагов несуществующего интерфейса пуст
+	ASSERT_TRUE(this->_eth->iface.flags(fake).empty());
+	// Классификация несуществующего интерфейса возвращает false
+	ASSERT_FALSE(this->_eth->iface.isTunnel(fake));
+	ASSERT_FALSE(this->_eth->iface.isVirtual(fake));
+}
+
+/**
+ * @brief Тест классификации петлевого интерфейса как виртуального
+ *
+ */
+TEST_F(EthFixture, IfaceLoopbackVirtualTest){
+	// Ищем петлевой интерфейс
+	const std::string lo = findLoopback(this->_eth.get());
+	// Если петлевой интерфейс найден
+	if(!lo.empty()){
+		// Петлевой интерфейс должен быть доступен
+		ASSERT_TRUE(this->_eth->iface.isAvailable(lo));
+		// Петлевой интерфейс всегда виртуальный
+		ASSERT_TRUE(this->_eth->iface.isVirtual(lo));
+		// MTU петлевого интерфейса больше нуля
+		ASSERT_GT(this->_eth->iface.mtu(lo), 0);
+		// В флагах петлевого интерфейса присутствует LOOPBACK
+		auto flags = this->_eth->iface.flags(lo);
+		ASSERT_NE(flags.find(awh::event::eth_flag_t::LOOPBACK), flags.end());
+	}
+}
+
+/**
+ * @brief Тест инварианта: туннельный интерфейс обязан быть виртуальным
+ *
+ */
+TEST_F(EthFixture, IfaceTunnelIsVirtualTest){
+	// Перебираем все доступные сетевые интерфейсы
+	for(auto & name : this->_eth->iface.available()){
+		// Если интерфейс является туннельным
+		if(this->_eth->iface.isTunnel(name))
+			// Туннель обязан классифицироваться и как виртуальный (туннель ⊂ виртуальный)
+			ASSERT_TRUE(this->_eth->iface.isVirtual(name));
+	}
+}
+
+/**
+ * @brief Тест согласованности проверок по адресу и по имени (единый проход getifaddrs)
+ *
+ */
+TEST_F(EthFixture, IfaceNameByLoopbackAddrTest){
+	// Создаём объект IPv4 адреса
+	auto addr = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Устанавливаем адрес петлевого сетевого интерфейса
+	addr->address = htonl(INADDR_LOOPBACK);
+	// Получаем имя интерфейса по адресу
+	const std::string name = this->_eth->iface.name(addr.get());
+	// Если имя найдено
+	if(!name.empty()){
+		// Найденный интерфейс должен быть доступен
+		ASSERT_TRUE(this->_eth->iface.isAvailable(name));
+		// Проверки по адресу и по имени должны давать одинаковый результат
+		ASSERT_EQ(this->_eth->iface.isVirtual(addr.get()), this->_eth->iface.isVirtual(name));
+		ASSERT_EQ(this->_eth->iface.isTunnel(addr.get()), this->_eth->iface.isTunnel(name));
+	}
+}
+
+/**
+ * @brief Тест получения адресов разных семейств без падения
+ *
+ */
+TEST_F(EthFixture, IfaceGetAddressFamiliesTest){
+	// Перебираем все доступные сетевые интерфейсы
+	for(auto & name : this->_eth->iface.available()){
+		// Получаем IPv4-адрес интерфейса
+		this->_eth->iface.getAddress(name, awh::event::family_t::IPV4);
+		// Получаем IPv6-адрес интерфейса
+		this->_eth->iface.getAddress(name, awh::event::family_t::IPV6);
+	}
+}
+
+/**
+ * @brief Тест извлечения префикса подсети петлевого интерфейса
+ *
+ */
+TEST_F(EthFixture, IfacePrefixTest){
+	// Ищем петлевой интерфейс
+	const std::string lo = findLoopback(this->_eth.get());
+	// Если петлевой интерфейс найден
+	if(!lo.empty()){
+		// IP-адрес сетевого интерфейса
+		std::unique_ptr <awh::net::addr_t> ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// IP-адрес удалённого пира
+		std::unique_ptr <awh::net::addr_t> peer = std::make_unique <awh::net::addr_net_ipv4_t> ();
+		// Префикс подсети
+		uint8_t prefix = 0;
+		// Если параметры IPv4 успешно извлечены
+		if(this->_eth->iface.getAddress(lo, ip, peer, prefix))
+			// Префикс должен быть в допустимом диапазоне
+			ASSERT_LE(prefix, 32);
+	}
+}
+
+/**
+ * @brief Тест безопасной обработки некорректных аргументов комплексной настройки
+ *
+ */
+TEST_F(EthFixture, IfaceConfigureGuardTest){
+	// Создаём объект IPv4 адреса
+	auto ip = std::make_unique <awh::net::addr_net_ipv4_t> ();
+	// Устанавливаем адрес петлевого сетевого интерфейса
+	ip->address = htonl(INADDR_LOOPBACK);
+	// Комплексная настройка с пустым именем недопустима
+	ASSERT_FALSE(this->_eth->iface.configure("", ip.get(), 24, 1500));
+	// Комплексная настройка с нулевым адресом недопустима
+	ASSERT_FALSE(this->_eth->iface.configure("lo0", static_cast <const awh::net::addr_t *> (nullptr), 24, 1500));
+	// Создаём объект IPv6 адреса для проверки несовпадения типов
+	auto peer6 = std::make_unique <awh::net::addr_net_ipv6_t> ();
+	// Комплексная настройка точка-точка с разными типами адреса и пира недопустима
+	ASSERT_FALSE(this->_eth->iface.configure("lo0", ip.get(), peer6.get(), 24, 1500));
+}
+
+/**
+ * @brief Тест вызова комплексной настройки на реальном интерфейсе
+ *
+ */
+TEST_F(EthFixture, IfaceConfigureCallTest){
+	// Ищем петлевой интерфейс
+	const std::string lo = findLoopback(this->_eth.get());
+	// Если петлевой интерфейс найден
+	if(!lo.empty()){
+		// Получаем текущий IPv4-адрес петлевого интерфейса
+		auto ip = this->_eth->iface.getAddress(lo, awh::event::family_t::IPV4);
+		// Если адрес получен (фактическое применение требует прав суперпользователя)
+		if(ip != nullptr)
+			// Вызов комплексной настройки не должен приводить к падению (MTU не меняем)
+			this->_eth->iface.configure(lo, ip.get(), 8, 0);
 	}
 }

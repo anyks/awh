@@ -130,7 +130,7 @@ namespace awh {
 					 * @brief Создаём тип данных итератора
 					 *
 					 */
-					using iterator = std::unordered_map <id_t, fn_t>::iterator;
+					using iterator = unordered_map <id_t, fn_t>::iterator;
 				private:
 					// Текущее значение итератора
 					iterator _it;
@@ -238,7 +238,7 @@ namespace awh {
 			crypto_t _crypto;
 		private:
 			// Хранилище распределения по названиям
-			std::unordered_map <id_t, fn_t> _callbacks;
+			unordered_map <id_t, fn_t> _callbacks;
 		private:
 			// Объект холдера для блокировки основного потока
 			mutable lock_state_t <std::recursive_mutex> _mtx;
@@ -370,7 +370,7 @@ namespace awh {
 			 *
 			 * @return выводим созданный блок дампа контейнера
 			 */
-			const std::unordered_map <id_t, fn_t> & dump() const noexcept {
+			const unordered_map <id_t, fn_t> & dump() const noexcept {
 				// Формируем дамп функций обратного вызова
 				return this->_callbacks;
 			}
@@ -379,7 +379,7 @@ namespace awh {
 			 *
 			 * @param callbacks дамп данных функций обратного вызова
 			 */
-			void dump(const std::unordered_map <id_t, fn_t> & callbacks) noexcept {
+			void dump(const unordered_map <id_t, fn_t> & callbacks) noexcept {
 				// Если данные функций обратного вызова переданы
 				if(!callbacks.empty()){
 					/**

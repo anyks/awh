@@ -845,19 +845,19 @@ namespace {
 	class Symbols {
 		private:
 			// Контейнер римских чисел
-			std::unordered_map <char, uint16_t> _romes;
+			unordered_map <char, uint16_t> _romes;
 			// Контейнер арабских чисел
-			std::unordered_map <char, uint8_t> _arabics;
+			unordered_map <char, uint8_t> _arabics;
 		private:
 			// Контейнер латинских символов
-			std::unordered_map <char, wchar_t> _letters;
+			unordered_map <char, wchar_t> _letters;
 			// Контейнер латинских символов для UTF-8
-			std::unordered_map <wchar_t, char> _wideLetters;
+			unordered_map <wchar_t, char> _wideLetters;
 		private:
 			// Контейнер римских чисел для UTF-8
-			std::unordered_map <wchar_t, uint16_t> _wideRomes;
+			unordered_map <wchar_t, uint16_t> _wideRomes;
 			// Контейнер арабских чисел для UTF-8
-			std::unordered_map <wchar_t, uint8_t> _wideArabics;
+			unordered_map <wchar_t, uint8_t> _wideArabics;
 		public:
 			/**
 			 * @brief Метод проверки соответствия римской цифре
@@ -7635,9 +7635,9 @@ const wstring & awh::Framework::replace(const wstring & text, const wstring & wo
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-std::unordered_map <string, string> awh::Framework::kv(string_view text, string_view delim, string_view separator, const vector <string> & escaping) const noexcept {
+unordered_map <string, string> awh::Framework::kv(string_view text, string_view delim, string_view separator, const vector <string> & escaping) const noexcept {
 	// Переменная результата
-	std::unordered_map <string, string> result;
+	unordered_map <string, string> result;
 	// Если данные для обработки текста передан
 	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
@@ -7796,9 +7796,9 @@ std::unordered_map <string, string> awh::Framework::kv(string_view text, string_
  * @param escaping  символы экранирования
  * @return          список найденных элементов
  */
-std::unordered_map <wstring, wstring> awh::Framework::kv(wstring_view text, wstring_view delim, wstring_view separator, const vector <wstring> & escaping) const noexcept {
+unordered_map <wstring, wstring> awh::Framework::kv(wstring_view text, wstring_view delim, wstring_view separator, const vector <wstring> & escaping) const noexcept {
 	// Переменная результата
-	std::unordered_map <wstring, wstring> result;
+	unordered_map <wstring, wstring> result;
 	// Если данные для обработки текста передан
 	if(!text.empty() && !delim.empty() && !separator.empty() && !escaping.empty()){
 		/**
@@ -7965,7 +7965,7 @@ void awh::Framework::domainZone(string_view zone) noexcept {
  *
  * @param zones список доменных зон интернета
  */
-void awh::Framework::domainZones(const std::unordered_set <string> & zones) noexcept {
+void awh::Framework::domainZones(const unordered_set <string> & zones) noexcept {
 	// Устанавливаем список доменных зон
 	if(!zones.empty())
 		// Устанавливаем список пользовательских зон
@@ -7976,7 +7976,7 @@ void awh::Framework::domainZones(const std::unordered_set <string> & zones) noex
  *
  * @return список доменных зон
  */
-const std::unordered_set <string> & awh::Framework::domainZones() const noexcept {
+const unordered_set <string> & awh::Framework::domainZones() const noexcept {
 	// Возвращаем список доменных зон интернета
 	return this->_nwt.zones();
 }
@@ -8072,9 +8072,9 @@ void awh::Framework::setLocale(string_view locale) noexcept {
  * @param text текст для извлечения url адресов
  * @return     список координат с url адресами
  */
-std::unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noexcept {
+unordered_map <size_t, size_t> awh::Framework::urls(string_view text) const noexcept {
 	// Переменная результата
-	std::unordered_map <size_t, size_t> result;
+	unordered_map <size_t, size_t> result;
 	// Если текст передан
 	if(!text.empty()){
 		/**

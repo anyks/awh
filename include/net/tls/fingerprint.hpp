@@ -714,7 +714,7 @@ namespace awh {
 				 */
 				typedef struct Extension_Certificate_Authorities : public extension_t {
 					// Список DER-кодированных Distinguished Name (DistinguishedName) из RFC 8446 §4.2.4
-					std::vector <std::vector <uint8_t>> authorities;
+					vector <vector <uint8_t>> authorities;
 					/**
 					 * @brief Конструктор
 					 *

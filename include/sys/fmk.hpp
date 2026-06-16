@@ -1034,7 +1034,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			std::unordered_map <string, string> kv(string_view text, string_view delim, string_view separator = "=", const vector <string> & escaping = {string{"\""}}) const noexcept;
+			unordered_map <string, string> kv(string_view text, string_view delim, string_view separator = "=", const vector <string> & escaping = {string{"\""}}) const noexcept;
 			/**
 			 * @brief Метод извлечения ключей и значений из текста
 			 *
@@ -1044,7 +1044,7 @@ namespace awh {
 			 * @param escaping  символы экранирования
 			 * @return          список найденных элементов
 			 */
-			std::unordered_map <wstring, wstring> kv(wstring_view text, wstring_view delim, wstring_view separator = L"=", const vector <wstring> & escaping = {wstring{L"\""}}) const noexcept;
+			unordered_map <wstring, wstring> kv(wstring_view text, wstring_view delim, wstring_view separator = L"=", const vector <wstring> & escaping = {wstring{L"\""}}) const noexcept;
 		public:
 			/**
 			 * @brief Метод установки пользовательской зоны
@@ -1057,13 +1057,13 @@ namespace awh {
 			 *
 			 * @param zones список доменных зон интернета
 			 */
-			void domainZones(const std::unordered_set <string> & zones) noexcept;
+			void domainZones(const unordered_set <string> & zones) noexcept;
 			/**
 			 * @brief Метод извлечения списка пользовательских зон интернета
 			 *
 			 * @return список доменных зон
 			 */
-			const std::unordered_set <string> & domainZones() const noexcept;
+			const unordered_set <string> & domainZones() const noexcept;
 		public:
 			/**
 			 * @brief Метод установки системной локали
@@ -1078,7 +1078,7 @@ namespace awh {
 			 * @param text текст для извлечения url адресов
 			 * @return     список координат с url адресами
 			 */
-			std::unordered_map <size_t, size_t> urls(string_view text) const noexcept;
+			unordered_map <size_t, size_t> urls(string_view text) const noexcept;
 		public:
 			/**
 			 * @brief Метод получения иконки

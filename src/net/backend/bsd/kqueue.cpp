@@ -31141,9 +31141,9 @@ bool awh::engine::IO::Control_List::remove(const event::id_t id, string_view val
  * @param id идентификатор события
  * @return   контрольный список события
  */
-const std::unordered_map <string, event::address_t> & awh::engine::IO::Control_List::get(const event::id_t id) const noexcept {
+const unordered_map <string, event::address_t> & awh::engine::IO::Control_List::get(const event::id_t id) const noexcept {
 	// Переменная результата
-	static const std::unordered_map <string, event::address_t> result;
+	static const unordered_map <string, event::address_t> result;
 	/**
 	 * Выполняем перехват ошибок
 	 */

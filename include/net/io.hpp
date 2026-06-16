@@ -246,7 +246,7 @@ namespace awh {
 						 * @param id идентификатор события
 						 * @return   контрольный список события
 						 */
-						const std::unordered_map <string, event::address_t> & get(const event::id_t id) const noexcept;
+						const unordered_map <string, event::address_t> & get(const event::id_t id) const noexcept;
 					public:
 						/**
 						 * @brief Конструктор

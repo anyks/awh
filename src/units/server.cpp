@@ -721,9 +721,9 @@ bool awh::unit::Server::removeFromWhitelist(const event::id_t eid, string_view v
  * @param eid идентификатор события
  * @return    чёрный список события
  */
-const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromBlacklist(const event::id_t eid) const noexcept {
+const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromBlacklist(const event::id_t eid) const noexcept {
 	// Переменная результата
-	static const std::unordered_map <string, awh::event::address_t> result;
+	static const unordered_map <string, awh::event::address_t> result;
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Возвращаем чёрный список события
@@ -737,9 +737,9 @@ const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::ge
  * @param eid идентификатор события
  * @return    белый список события
  */
-const std::unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromWhitelist(const event::id_t eid) const noexcept {
+const unordered_map <string, awh::event::address_t> & awh::unit::Server::getFromWhitelist(const event::id_t eid) const noexcept {
 	// Переменная результата
-	static const std::unordered_map <string, awh::event::address_t> result;
+	static const unordered_map <string, awh::event::address_t> result;
 	// Если событие сервера является актуальным
 	if(this->isActual(eid))
 		// Возвращаем белый список события

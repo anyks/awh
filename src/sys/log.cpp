@@ -1202,7 +1202,7 @@ void awh::Logging::format(string_view format) noexcept {
  *
  * @return список режимов вывода логов
  */
-const std::unordered_set <awh::Logging::mode_t> & awh::Logging::mode() const noexcept {
+const unordered_set <awh::Logging::mode_t> & awh::Logging::mode() const noexcept {
 	// Возвращаем список режимов вывода логов
 	return this->_mode;
 }
@@ -1211,7 +1211,7 @@ const std::unordered_set <awh::Logging::mode_t> & awh::Logging::mode() const noe
  *
  * @param mode список режимов вывода логов
  */
-void awh::Logging::mode(const std::unordered_set <mode_t> & mode) noexcept {
+void awh::Logging::mode(const unordered_set <mode_t> & mode) noexcept {
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx);
 	// Выполняем установку списка режимов вывода логов

@@ -331,14 +331,14 @@ namespace awh {
 				 * @param eid идентификатор события
 				 * @return    чёрный список события
 				 */
-				const std::unordered_map <string, event::address_t> & getFromBlacklist(const event::id_t eid) const noexcept;
+				const unordered_map <string, event::address_t> & getFromBlacklist(const event::id_t eid) const noexcept;
 				/**
 				 * @brief Метод получения белого списка события
 				 *
 				 * @param eid идентификатор события
 				 * @return    белый список события
 				 */
-				const std::unordered_map <string, event::address_t> & getFromWhitelist(const event::id_t eid) const noexcept;
+				const unordered_map <string, event::address_t> & getFromWhitelist(const event::id_t eid) const noexcept;
 			public:
 				/**
 				 * @brief Метод фиксации настроек сервера

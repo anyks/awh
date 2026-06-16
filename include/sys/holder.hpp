@@ -65,7 +65,7 @@ namespace awh {
 			 * @param equal флаг эквивалентности (true - разрешено, если есть в comp, false - если нет)
 			 * @return      результат проверки (удалось ли захватить)
 			 */
-			bool access(const std::unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
+			bool access(const unordered_set <T> & comp, const T hold, const bool equal = true) noexcept {
 				// Выполняем эксклюзивную блокировку потока на всю транзакцию (проверка вершины и установка холда)
 				const locker_t <MutexType> lock(this->_mtx);
 				// Определяем есть ли фиксированные статусы

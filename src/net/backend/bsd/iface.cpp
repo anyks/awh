@@ -124,6 +124,352 @@ namespace iface {
 		return result;
 	}
 	/**
+	 * @brief Функция безопасного копирования имени интерфейса в фиксированный буфер
+	 *
+	 * @param buffer буфер назначения фиксированного размера IFNAMSIZ
+	 * @param name   имя сетевого интерфейса (может быть не нуль-терминированным string_view)
+	 */
+	static void copyName(char (& buffer)[IFNAMSIZ], const string_view name) noexcept {
+		// Определяем количество копируемых байт с учётом завершающего нуля
+		const size_t length = (name.size() < static_cast <size_t> (IFNAMSIZ - 1)) ? name.size() : static_cast <size_t> (IFNAMSIZ - 1);
+		// Копируем имя интерфейса ровно на длину переданного представления
+		::memcpy(buffer, name.data(), length);
+		// Устанавливаем завершающий ноль
+		buffer[length] = '\0';
+	}
+	/**
+	 * @brief Функция проверки типа канального уровня на принадлежность туннелю
+	 *
+	 * @param type тип интерфейса канального уровня (sdl_type)
+	 * @return     результат проверки
+	 */
+	static bool isTunnelLinkType(const uint8_t type) noexcept {
+		/**
+		 * Определяем тип интерфейса
+		 */
+		switch(type){
+			/**
+			 * Если определён тип интерфейса Tunnel
+			 */
+			#ifdef IFT_TUNNEL
+				// Если это виртуальный интерфейс (Tunnel)
+				case IFT_TUNNEL:
+			#endif
+			/**
+			 * Если определён тип интерфейса STF
+			 */
+			#ifdef IFT_STF
+				// Если это виртуальный интерфейс (STF)
+				case IFT_STF:
+			#endif
+			// Если это виртуальный интерфейс (PPP)
+			case IFT_PPP:
+			// Если это виртуальный интерфейс (GIF)
+			case IFT_GIF:
+				// Сообщаем, что это туннельный интерфейс
+				return true;
+		}
+		// Сообщаем, что это не туннельный интерфейс
+		return false;
+	}
+	/**
+	 * @brief Функция проверки типа канального уровня на принадлежность виртуальному интерфейсу
+	 *
+	 * @param type тип интерфейса канального уровня (sdl_type)
+	 * @return     результат проверки
+	 */
+	static bool isVirtualLinkType(const uint8_t type) noexcept {
+		/**
+		 * Определяем тип интерфейса
+		 */
+		switch(type){
+			/**
+			 * Если определён тип интерфейса Bridge
+			 */
+			#ifdef IFT_BRIDGE
+				// Если это виртуальный интерфейс (Bridge)
+				case IFT_BRIDGE:
+			#endif
+			/**
+			 * Если определён тип интерфейса VLAN
+			 */
+			#ifdef IFT_L2VLAN
+				// Если это виртуальный интерфейс (VLAN)
+				case IFT_L2VLAN:
+			#endif
+			/**
+			 * Если определён тип интерфейса Tunnel
+			 */
+			#ifdef IFT_TUNNEL
+				// Если это виртуальный интерфейс (Tunnel)
+				case IFT_TUNNEL:
+			#endif
+			/**
+			 * Если определён тип интерфейса STF
+			 */
+			#ifdef IFT_STF
+				// Если это виртуальный интерфейс (STF)
+				case IFT_STF:
+			#endif
+			// Если это виртуальный интерфейс (Loopback)
+			case IFT_LOOP:
+			// Если это виртуальный интерфейс (PPP)
+			case IFT_PPP:
+			// Если это виртуальный интерфейс (GIF)
+			case IFT_GIF:
+				// Сообщаем, что это виртуальный интерфейс
+				return true;
+		}
+		// Сообщаем, что это не виртуальный интерфейс
+		return false;
+	}
+	/**
+	 * @brief Функция поиска имени сетевого интерфейса по адресу в уже полученном списке
+	 *
+	 * @param list список сетевых интерфейсов
+	 * @param addr адрес сетевого подключения
+	 * @return     имя найденного сетевого интерфейса
+	 */
+	static string findNameByAddr(struct ifaddrs * list, const awh::net::addr_t * addr) noexcept {
+		/**
+		 * Перебираем все сетевые интерфейсы
+		 */
+		for(struct ifaddrs * ifa = list; ifa != nullptr; ifa = ifa->ifa_next){
+			/**
+			 * Определяем тип адреса
+			 */
+			switch(addr->size){
+				// Если адрес является MAC-адресом
+				case 6: {
+					// Ищем MAC-адрес интерфейса
+					if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
+						// Получаем текущее значение аппаратного сетевого адреса
+						struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
+						// Проверяем длину MAC-адреса
+						if(sdl->sdl_alen == 6){
+							// Получаем указатель на MAC-адрес
+							const uint8_t * mac = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
+							// Сравниваем MAC-адреса
+							if(::memcmp(&awh_cast <const awh::net::addr_mac_t *> (addr)->address[0], mac, 6) == 0)
+								// Возвращаем найденное имя интерфейса
+								return string(ifa->ifa_name);
+						}
+					}
+				} break;
+				// Если адрес является IPv4
+				case 4: {
+					// Если не IPv4 адреса
+					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
+						// Переходим к следующему интерфейсу
+						continue;
+					// Получаем указатель на структуру IPv4
+					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
+					// Если адреса совпадают
+					if(sin->sin_addr.s_addr == awh_cast <const awh::net::addr_net_ipv4_t *> (addr)->address)
+						// Возвращаем найденное имя интерфейса
+						return string(ifa->ifa_name);
+				} break;
+				// Если адрес является IPv6
+				case 16: {
+					// Если не IPv6 адреса
+					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
+						// Переходим к следующему интерфейсу
+						continue;
+					// Получаем указатель на структуру IPv6
+					struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+					// Если адреса совпадают
+					if(::memcmp(&sin->sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (addr)->address[0], sizeof(in6_addr)) == 0)
+						// Возвращаем найденное имя интерфейса
+						return string(ifa->ifa_name);
+				} break;
+			}
+		}
+		// Возвращаем пустое имя интерфейса
+		return string{};
+	}
+	/**
+	 * @brief Функция классификации интерфейса (туннельный/виртуальный) в уже полученном списке
+	 *
+	 * @param list список сетевых интерфейсов
+	 * @param name имя сетевого интерфейса
+	 * @param virt режим классификации: true - виртуальный, false - туннельный
+	 * @param fmk  объект фреймворка
+	 * @return     результат классификации интерфейса
+	 */
+	static bool classify(struct ifaddrs * list, const string_view name, const bool virt, const awh::fmk_t * fmk) noexcept {
+		// Переменная результата
+		bool result = false;
+		/**
+		 * Перебираем все сетевые интерфейсы
+		 */
+		for(struct ifaddrs * ifa = list; ifa != nullptr; ifa = ifa->ifa_next){
+			// Если имя интерфейса не совпадает
+			if(!fmk->compare(ifa->ifa_name, name))
+				// Переходим к следующему интерфейсу
+				continue;
+			// Применяем эвристику по флагам интерфейса
+			if(virt)
+				// Виртуальный интерфейс обычно Point-to-Point или Loopback
+				result = ((ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_flags & IFF_LOOPBACK));
+			// Туннель обычно Point-to-Point и не Broadcast
+			else result = ((ifa->ifa_flags & IFF_POINTOPOINT) && !(ifa->ifa_flags & IFF_BROADCAST));
+			// Дополнительная точная проверка через AF_LINK
+			if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
+				// Получаем структуру адреса канального уровня
+				struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
+				// Если тип интерфейса точно определён, возвращаем результат окончательно
+				if(virt ? ::iface::isVirtualLinkType(sdl->sdl_type) : ::iface::isTunnelLinkType(sdl->sdl_type))
+					// Сообщаем, что интерфейс точно классифицирован
+					return true;
+			}
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
+	 * @brief Функция применения IP-адреса (и при необходимости адреса пира) к интерфейсу через указанный сокет
+	 *
+	 * @param sock   управляющий сокет
+	 * @param name   имя сетевого интерфейса
+	 * @param ip     адрес сетевого интерфейса для установки
+	 * @param peer   адрес удалённого пира (для точка-точка) либо nullptr
+	 * @param prefix префикс подсети
+	 * @param log    объект работы с логами
+	 * @return       результат применения адреса
+	 */
+	static bool applyAddress(const awh::net::socket_t sock, const string_view name, const awh::net::addr_t * ip, const awh::net::addr_t * peer, const uint8_t prefix, const awh::log_t * log) noexcept {
+		// Переменная результата
+		bool result = false;
+		/**
+		 * Определяем тип адреса
+		 */
+		switch(ip->size){
+			// Если адрес является IPv4
+			case 4: {
+				// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
+				struct in_aliasreq ifra = {0};
+				// Копируем имя сетевого интерфейса
+				::iface::copyName(ifra.ifra_name, name);
+				// Устанавливаем семейство адресов IPv4
+				ifra.ifra_addr.sin_family = AF_INET;
+				// Устанавливаем длину структуры
+				ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
+				// Устанавливаем IP-адрес интерфейса
+				ifra.ifra_addr.sin_addr.s_addr = awh_cast <const awh::net::addr_net_ipv4_t *> (ip)->address;
+				// Устанавливаем семейство маски
+				ifra.ifra_mask.sin_family = AF_INET;
+				// Устанавливаем длину структуры маски
+				ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
+				// Если префикс подсети больше 32 или равен 0
+				if((prefix > 32) || (prefix == 0))
+					// Устанавливаем маску подсети интерфейса как /32
+					ifra.ifra_mask.sin_addr.s_addr = 0xFFFFFFFF;
+				// Устанавливаем маску подсети интерфейса
+				else ifra.ifra_mask.sin_addr.s_addr = ::iface::prefix2mask(prefix);
+				// Устанавливаем семейство широковещательного адреса (для точка-точка - адреса пира)
+				ifra.ifra_broadaddr.sin_family = AF_INET;
+				// Устанавливаем длину структуры широковещательного адреса (для точка-точка - адреса пира)
+				ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
+				// Если задан адрес удалённого пира (точка-точка)
+				if(peer != nullptr)
+					// Устанавливаем IP-адрес удалённого пира
+					ifra.ifra_broadaddr.sin_addr.s_addr = awh_cast <const awh::net::addr_net_ipv4_t *> (peer)->address;
+				// Вычисляем широковещательный адрес
+				else ifra.ifra_broadaddr.sin_addr.s_addr = ((ifra.ifra_addr.sin_addr.s_addr & ifra.ifra_mask.sin_addr.s_addr) | ~ifra.ifra_mask.sin_addr.s_addr);
+				// Применяем новый IP-адрес и маску интерфейса
+				if(!(result = (::ioctl(sock, SIOCAIFADDR, &ifra) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, name, static_cast <uint16_t> (prefix)), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Если адрес является IPv6
+			case 16: {
+				// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
+				struct in6_aliasreq ifra6 = {0};
+				// Копируем имя сетевого интерфейса
+				::iface::copyName(ifra6.ifra_name, name);
+				// Устанавливаем семейство адресов IPv6
+				ifra6.ifra_addr.sin6_family = AF_INET6;
+				// Устанавливаем длину структуры
+				ifra6.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
+				// Устанавливаем IP-адрес интерфейса
+				::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (ip)->address[0], 16);
+				// Если задан адрес удалённого пира (точка-точка)
+				if(peer != nullptr){
+					// Устанавливаем семейство адреса пира
+					ifra6.ifra_dstaddr.sin6_family = AF_INET6;
+					// Устанавливаем длину структуры адреса пира
+					ifra6.ifra_dstaddr.sin6_len = sizeof(struct sockaddr_in6);
+					// Устанавливаем IP-адрес удалённого пира
+					::memcpy(&ifra6.ifra_dstaddr.sin6_addr, &awh_cast <const awh::net::addr_net_ipv6_t *> (peer)->address[0], 16);
+				}
+				// Устанавливаем семейство маски
+				ifra6.ifra_prefixmask.sin6_family = AF_INET6;
+				// Устанавливаем длину структуры маски
+				ifra6.ifra_prefixmask.sin6_len = sizeof(struct sockaddr_in6);
+				// Если префикс задан
+				if((prefix > 0) && (prefix <= 128)){
+					// Текущее значение маски подсети
+					uint32_t mask = static_cast <uint32_t> (prefix);
+					/**
+					 * Проходим по байтам
+					 */
+					for(uint8_t i = 0; i < 16; ++i){
+						// Если префикс больше либо равен 8
+						if(mask >= 8){
+							// Устанавливаем байт маски подсети
+							ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xFF;
+							// Уменьшаем префикс на 8
+							mask -= 8;
+						// Если префикс меньше 8, но больше нуля
+						} else if(mask > 0) {
+							// Устанавливаем байт маски подсети
+							ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - mask));
+							// Обнуляем префикс
+							mask = 0;
+						// Зануляем байт маски подсети
+						} else ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0;
+					}
+				// Устанавливаем маску соответствующую префиксу /128
+				} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xFF, 16);
+				/**
+				 * Устанавливаем бесконечное время жизни адреса
+				 */
+				ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
+				ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
+				// Применяем новый IP-адрес и маску интерфейса
+				if(!(result = (::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						log->debug("%s", __PRETTY_FUNCTION__, make_tuple(sock, name, static_cast <uint16_t> (prefix)), awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+		// Возвращаем результат
+		return result;
+	}
+	/**
 	 * @brief Функция создания клонируемого интерфейса
 	 *
 	 * @param driver имя драйвера интерфейса
@@ -166,7 +512,7 @@ namespace iface {
 					::strncpy(ifr.ifr_name, name.c_str(), IFNAMSIZ - 1);
 					// Устанавливаем завершающий ноль
 					ifr.ifr_name[IFNAMSIZ - 1] = '\0';
-					// Удаляем интерфейс
+					// Создаём интерфейс
 					if(::ioctl(sock, SIOCIFCREATE, &ifr) != 0){
 						/**
 						 * Если включён режим отладки
@@ -181,6 +527,8 @@ namespace iface {
 							// Записываем ошибку в лог
 							log->print("%s", awh::log_t::flag_t::CRITICAL, ::strerror(errno));
 						#endif
+						// Закрываем сокет
+						::close(sock);
 						// Возвращаем результат
 						return awh::net::invalid_socket_t;
 					}
@@ -271,9 +619,7 @@ bool awh::eth::Interface::destroy(string_view name) const noexcept {
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
-			// Устанавливаем завершающий ноль
-			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			::iface::copyName(ifr.ifr_name, name);
 			// Удаляем интерфейс
 			if(!(result = (::ioctl(sock, SIOCIFDESTROY, &ifr) == 0))){
 				/**
@@ -346,14 +692,14 @@ unordered_set <string> awh::eth::Interface::available() const noexcept {
 			// Возвращаем пустой результат
 			return result;
 		}
+		// Гарантируем освобождение списка интерфейсов при любом выходе
+		const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
 		/**
 		 * Перебираем все сетевые интерфейсы
 		 */
 		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next)
 			// Добавляем имя сетевого интерфейса в результирующий список
 			result.emplace(ifa->ifa_name);
-		// Освобождаем память списка сетевых интерфейсов
-		::freeifaddrs(ptr);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -410,6 +756,8 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 				// Возвращаем пустой результат
 				return result;
 			}
+			// Гарантируем освобождение списка интерфейсов при любом выходе
+			const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
 			/**
 			 * Перебираем все сетевые интерфейсы
 			 */
@@ -418,8 +766,6 @@ bool awh::eth::Interface::isAvailable(string_view name) const noexcept {
 				if((result = this->_fmk->compare(ifa->ifa_name, name)))
 					// Завершаем поиск
 					break;
-			// Освобождаем память списка сетевых интерфейсов
-			::freeifaddrs(ptr);
 		}
 	/**
 	 * Если возникает ошибка
@@ -461,58 +807,10 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
 			if(::getifaddrs(&ptr) == 0){
-				/**
-				 * Перебираем все сетевые интерфейсы
-				 */
-				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-					// Если имя интерфейса совпадает
-					if(this->_fmk->compare(ifa->ifa_name, name)){
-						/**
-						 * Проверяем флаги на любой записи интерфейса (IPv4/IPv6/Link)
-						 * Туннель обычно Point-to-Point и не Broadcast
-						 */
-						result = ((ifa->ifa_flags & IFF_POINTOPOINT) && !(ifa->ifa_flags & IFF_BROADCAST));
-						// Дополнительная точная проверка через AF_LINK
-						if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
-							// Получаем структуру адреса канального уровня
-							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
-							/**
-							 * Определяем тип интерфейса
-							 */
-							switch(sdl->sdl_type){
-								/**
-								 * Если определён тип интерфейса Tunnel
-								 */
-								#ifdef IFT_TUNNEL
-									// Если это виртуальный интерфейс (Tunnel)
-									case IFT_TUNNEL:
-								#endif
-								/**
-								 * Если определён тип интерфейса STF
-								 */
-								#ifdef IFT_STF
-									// Если это виртуальный интерфейс (STF)
-									case IFT_STF:
-								#endif
-								// Если это виртуальный интерфейс (PPP)
-								case IFT_PPP:
-								// Если это виртуальный интерфейс (GIF)
-								case IFT_GIF: {
-									// Устанавливаем результат окончательно
-									result = true;
-									// Прерываем цикл, так как точно нашли
-									goto End;
-								}
-							}
-						}
-					}
-				}
-				/**
-				 * Завершаем поиск туннельного интерфейса
-				 */
-				End:
-				// Освобождаем память списка сетевых интерфейсов
-				::freeifaddrs(ptr);
+				// Гарантируем освобождение списка интерфейсов при любом выходе
+				const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
+				// Выполняем классификацию интерфейса как туннельного
+				result = ::iface::classify(ptr, name, false, this->_fmk);
 			}
 		/**
 		 * Если возникает ошибка
@@ -543,8 +841,48 @@ bool awh::eth::Interface::isTunnel(string_view name) const noexcept {
  * @return     результат проверки туннельного сетевого интерфейса
  */
 bool awh::eth::Interface::isTunnel(const net::addr_t * addr) const noexcept {
-	// Возвращаем результат проверки имени интерфейса
-	return this->isTunnel(this->name(addr));
+	// Переменная результата
+	bool result = false;
+	// Если адрес передан
+	if(addr != nullptr){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем список сетевых интерфейсов
+			struct ifaddrs * ptr = nullptr;
+			// Выполняем получение списка сетевых интерфейсов (единственный проход)
+			if(::getifaddrs(&ptr) == 0){
+				// Гарантируем освобождение списка интерфейсов при любом выходе
+				const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
+				// Определяем имя интерфейса по адресу в полученном списке
+				const string name = ::iface::findNameByAddr(ptr, addr);
+				// Если имя интерфейса найдено, выполняем классификацию по тому же списку
+				if(!name.empty())
+					// Выполняем классификацию интерфейса как туннельного
+					result = ::iface::classify(ptr, name, false, this->_fmk);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Возвращаем результат
+	return result;
 }
 /**
  * @brief Метод проверки виртуального сетевого интерфейса
@@ -565,71 +903,10 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
 			if(::getifaddrs(&ptr) == 0){
-				/**
-				 * Перебираем все сетевые интерфейсы
-				 */
-				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-					// Если имя интерфейса совпадает
-					if(this->_fmk->compare(ifa->ifa_name, name)){
-						// Проверяем флаги: если интерфейс имеет флаги POINTOPOINT или LOOPBACK
-						result = ((ifa->ifa_flags & IFF_POINTOPOINT) || (ifa->ifa_flags & IFF_LOOPBACK));
-						// Дополнительная точная проверка через AF_LINK
-						if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
-							// Получаем структуру адреса канального уровня
-							struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
-							/**
-							 * Определяем тип интерфейса
-							 */
-							switch(sdl->sdl_type){
-								/**
-								 * Если определён тип интерфейса Bridge
-								 */
-								#ifdef IFT_BRIDGE
-									// Если это виртуальный интерфейс (Bridge)
-									case IFT_BRIDGE:
-								#endif
-								/**
-								 * Если определён тип интерфейса VLAN
-								 */
-								#ifdef IFT_L2VLAN
-									// Если это виртуальный интерфейс (VLAN)
-									case IFT_L2VLAN:
-								#endif
-								/**
-								 * Если определён тип интерфейса Tunnel
-								 */
-								#ifdef IFT_TUNNEL
-									// Если это виртуальный интерфейс (Tunnel)
-									case IFT_TUNNEL:
-								#endif
-								/**
-								 * Если определён тип интерфейса STF
-								 */
-								#ifdef IFT_STF
-									// Если это виртуальный интерфейс (STF)
-									case IFT_STF:
-								#endif
-								// Если это виртуальный интерфейс (Loopback)
-								case IFT_LOOP:
-								// Если это виртуальный интерфейс (PPP)
-								case IFT_PPP:
-								// Если это виртуальный интерфейс (GIF)
-								case IFT_GIF: {
-									// Устанавливаем результат
-									result = true;
-									// Прерываем цикл
-									goto End;
-								}
-							}
-						}
-					}
-				}
-				/**
-				 * Завершаем поиск виртуального интерфейса
-				 */
-				End:
-				// Освобождаем память списка сетевых интерфейсов
-				::freeifaddrs(ptr);
+				// Гарантируем освобождение списка интерфейсов при любом выходе
+				const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
+				// Выполняем классификацию интерфейса как виртуального
+				result = ::iface::classify(ptr, name, true, this->_fmk);
 			}
 		/**
 		 * Если возникает ошибка
@@ -660,8 +937,48 @@ bool awh::eth::Interface::isVirtual(string_view name) const noexcept {
  * @return     результат проверки виртуального сетевого интерфейса
  */
 bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
-	// Возвращаем результат проверки имени интерфейса
-	return this->isVirtual(this->name(addr));
+	// Переменная результата
+	bool result = false;
+	// Если адрес передан
+	if(addr != nullptr){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Получаем список сетевых интерфейсов
+			struct ifaddrs * ptr = nullptr;
+			// Выполняем получение списка сетевых интерфейсов (единственный проход)
+			if(::getifaddrs(&ptr) == 0){
+				// Гарантируем освобождение списка интерфейсов при любом выходе
+				const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
+				// Определяем имя интерфейса по адресу в полученном списке
+				const string name = ::iface::findNameByAddr(ptr, addr);
+				// Если имя интерфейса найдено, выполняем классификацию по тому же списку
+				if(!name.empty())
+					// Выполняем классификацию интерфейса как виртуального
+					result = ::iface::classify(ptr, name, true, this->_fmk);
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Возвращаем результат
+	return result;
 }
 /**
  * @brief Метод получения имени сетевого интерфейса по адресу
@@ -672,6 +989,10 @@ bool awh::eth::Interface::isVirtual(const net::addr_t * addr) const noexcept {
 string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 	// Переменная результата
 	string result = "";
+	// Если адрес не передан
+	if(addr == nullptr)
+		// Возвращаем пустой результат
+		return result;
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -696,70 +1017,10 @@ string awh::eth::Interface::name(const net::addr_t * addr) const noexcept {
 			// Возвращаем пустой результат
 			return result;
 		}
-		/**
-		 * Перебираем все сетевые интерфейсы
-		 */
-		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-			/**
-			 * Определяем тип адреса
-			 */
-			switch(addr->size){
-				// Если адрес является MAC-адресом
-				case 6: {
-					// Ищем MAC-адрес интерфейса
-					if((ifa->ifa_addr != nullptr) && (ifa->ifa_addr->sa_family == AF_LINK)){
-						// Получаем текущее значение аппаратного сетевого адреса
-						struct sockaddr_dl * sdl = reinterpret_cast <struct sockaddr_dl *> (ifa->ifa_addr);
-						// Проверяем длину MAC-адреса
-						if(sdl->sdl_alen == 6){
-							// Получаем указатель на MAC-адрес
-							const uint8_t * ptr = reinterpret_cast <const uint8_t *> (LLADDR(sdl));
-							// Сравниваем MAC-адреса
-							if(::memcmp(&awh_cast <const net::addr_mac_t *> (addr)->address[0], ptr, 6) == 0){
-								// Устанавливаем результат
-								result = ifa->ifa_name;
-								// Завершаем поиск
-								break;
-							}
-						}
-					}
-				} break;
-				// Если адрес является IPv4
-				case 4: {
-					// Если не IPv4 адреса
-					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
-						// Переходим к следующему интерфейсу
-						continue;
-					// Получаем указатель на структуру IPv4
-					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
-					// Если адреса совпадают
-					if(sin->sin_addr.s_addr == awh_cast <const net::addr_net_ipv4_t *> (addr)->address){
-						// Устанавливаем результат
-						result = ifa->ifa_name;
-						// Завершаем поиск
-						break;
-					}
-				} break;
-				// Если адрес является IPv6
-				case 16: {
-					// Если не IPv6 адреса
-					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
-						// Переходим к следующему интерфейсу
-						continue;
-					// Получаем указатель на структуру IPv6
-					struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
-					// Если адреса совпадают
-					if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (addr)->address[0], sizeof(in6_addr)) == 0){
-						// Устанавливаем результат
-						result = ifa->ifa_name;
-						// Завершаем поиск
-						break;
-					}
-				} break;
-			}
-		}
-		// Освобождаем память списка сетевых интерфейсов
-		::freeifaddrs(ptr);
+		// Гарантируем освобождение списка интерфейсов при любом выходе
+		const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
+		// Определяем имя интерфейса по адресу в полученном списке
+		result = ::iface::findNameByAddr(ptr, addr);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -807,6 +1068,8 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					struct ifaddrs * ifap = nullptr;
 					// Если список получен успешно
 					if(::getifaddrs(&ifap) == 0){
+						// Гарантируем освобождение списка интерфейсов при любом выходе
+						const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ifap, &::freeifaddrs);
 						/**
 						 * Перебираем интерфейсы
 						 */
@@ -828,8 +1091,6 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 								}
 							}
 						}
-						// Освобождаем список
-						::freeifaddrs(ifap);
 					}
 				}
 				// Если имя интерфейса определено
@@ -1232,14 +1493,12 @@ uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 				// Возвращаем значение по умолчанию
-				return false;
+				return 0;
 			}
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
-			// Устанавливаем завершающий ноль
-			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			::iface::copyName(ifr.ifr_name, name);
 			// Извлекаем MTU из интерфейса
 			if(::ioctl(sock, SIOCGIFMTU, &ifr) != 0){
 				/**
@@ -1258,7 +1517,7 @@ uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
 				// Закрываем сокет
 				::close(sock);
 				// Возвращаем значение по умолчанию
-				return false;
+				return 0;
 			}
 			// Закрываем сокет
 			::close(sock);
@@ -1284,7 +1543,7 @@ uint16_t awh::eth::Interface::mtu(string_view name) const noexcept {
 		}
 	}
 	// Возвращаем значение по умолчанию
-	return false;
+	return 0;
 }
 /**
  * @brief Метод установки MTU сетевого интерфейса
@@ -1325,9 +1584,7 @@ bool awh::eth::Interface::mtu(string_view name, const uint16_t mtu) const noexce
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
-			// Устанавливаем завершающий ноль
-			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			::iface::copyName(ifr.ifr_name, name);
 			// Если не удалось получить флаги интерфейса
 			if(!(result = (::ioctl(sock, SIOCGIFFLAGS, &ifr) == 0))){
 				/**
@@ -1428,9 +1685,7 @@ unordered_set <awh::event::eth_flag_t> awh::eth::Interface::flags(string_view na
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
-			// Устанавливаем завершающий ноль
-			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			::iface::copyName(ifr.ifr_name, name);
 			// Если не удалось получить флаги интерфейса
 			if(::ioctl(sock, SIOCGIFFLAGS, &ifr) != 0){
 				/**
@@ -1555,9 +1810,7 @@ bool awh::eth::Interface::flag(string_view name, const event::eth_flag_t flag, c
 			// Настраиваем интерфейс
 			struct ifreq ifr{0};
 			// Копируем имя интерфейса
-			::strncpy(ifr.ifr_name, name.data(), IFNAMSIZ - 1);
-			// Устанавливаем завершающий ноль
-			ifr.ifr_name[IFNAMSIZ - 1] = '\0';
+			::iface::copyName(ifr.ifr_name, name);
 			// Если не удалось получить флаги интерфейса
 			if(!(result = (::ioctl(sock, SIOCGIFFLAGS, &ifr) == 0))){
 				/**
@@ -1771,119 +2024,8 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				// Возвращаем результат
 				return result;
 			}
-			/**
-			 * Определяем тип адреса
-			 */
-			switch(ip->size){
-				// Если адрес является IPv4
-				case 4: {
-					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
-					struct in_aliasreq ifra = {0};
-					// Копируем имя сетевого интерфейса
-					::strncpy(ifra.ifra_name, name.data(), IFNAMSIZ - 1);
-					// Устанавливаем семейство адресов IPv4
-					ifra.ifra_addr.sin_family = AF_INET;
-					// Устанавливаем длину структуры
-					ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
-					// Устанавливаем IP-адрес интерфейса
-					ifra.ifra_addr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
-					// Устанавливаем семейство маски
-					ifra.ifra_mask.sin_family = AF_INET;
-					// Устанавливаем длину структуры маски
-					ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
-					// Если префикс подсети больше 32 или равен 0
-					if((prefix > 32) || (prefix == 0))
-						// Устанавливаем маску подсети интерфейса как /32
-						ifra.ifra_mask.sin_addr.s_addr = 0xFFFFFFFF;
-					// Устанавливаем маску подсети интерфейса
-					else ifra.ifra_mask.sin_addr.s_addr = ::iface::prefix2mask(prefix);
-					// Устанавливаем семейство широковещательного адреса
-					ifra.ifra_broadaddr.sin_family = AF_INET;
-					// Устанавливаем длину структуры широковещательного адреса
-					ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
-					// Вычисляем широковещательный адрес
-					ifra.ifra_broadaddr.sin_addr.s_addr = ((ifra.ifra_addr.sin_addr.s_addr & ifra.ifra_mask.sin_addr.s_addr) | ~ifra.ifra_mask.sin_addr.s_addr);
-					// Применяем новый IP-адрес и маску интерфейса
-					if(!(result = (::ioctl(sock, SIOCAIFADDR, &ifra) == 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-				// Если адрес является IPv6
-				case 16: {
-					// Объект запроса псевдонима интерфейса (для атомарной установки адреса и маски)
-					struct in6_aliasreq ifra6 = {0};
-					// Копируем имя сетевого интерфейса
-					::strncpy(ifra6.ifra_name, name.data(), IFNAMSIZ - 1);
-					// Устанавливаем семейство адресов IPv6
-					ifra6.ifra_addr.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры
-					ifra6.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
-					// Устанавливаем IP-адрес интерфейса
-					::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
-					// Устанавливаем семейство маски
-					ifra6.ifra_prefixmask.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры маски
-					ifra6.ifra_prefixmask.sin6_len = sizeof(struct sockaddr_in6);
-					// Если префикс задан
-					if((prefix > 0) && (prefix <= 128)){
-						// Текущее значение маски подсети
-						uint32_t mask = static_cast <uint32_t> (prefix);
-						/**
-						 * Проходим по байтам
-						 */
-						for(uint8_t i = 0; i < 16; ++i){
-							// Если префикс больше либо равен 8
-							if(mask >= 8){
-								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xFF;
-								// Уменьшаем префикс на 8
-								mask -= 8;
-							// Если префикс меньше 8, но больше нуля
-							} else if(mask > 0) {
-								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - mask));
-								// Обнуляем префикс
-								mask = 0;
-							// Зануляем байт маски подсети
-							} else ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0;
-						}
-					// Устанавливаем маску соответствующую префиксу /128
-					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xFF, 16);
-					/**
-					 * Устанавливаем бесконечное время жизни адреса
-					 */
-					ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
-					ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
-					// Применяем новый IP-адрес и маску интерфейса
-					if(!(result = (::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-			}
+			// Применяем IP-адрес и маску интерфейса через управляющий сокет
+			result = ::iface::applyAddress(sock, name, ip, nullptr, prefix, this->_log);
 			// Закрываем сокет
 			::close(sock);
 		/**
@@ -1944,6 +2086,8 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 				// Выходим из функции
 				return result;
 			}
+			// Гарантируем освобождение списка интерфейсов при любом выходе
+			const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
 			/**
 			 * Перебираем все сетевые интерфейсы
 			 */
@@ -1987,23 +2131,36 @@ unique_ptr <awh::net::addr_t> awh::eth::Interface::getAddress(string_view name, 
 							result = make_unique <net::addr_net_ipv4_t> ();
 							// Копируем IP-адрес в результат
 							awh_cast <net::addr_net_ipv4_t *> (result.get())->address = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr.s_addr;
-							// Возвращаем результат
-							return result;
+							// Завершаем поиск (для IPv4 берём первый найденный адрес)
+							goto End;
 						}
 						// Если интерфейс является IPv6
 						case AF_INET6: {
-							// Создаём объект для хранения IPv6-адреса
-							result = make_unique <net::addr_net_ipv6_t> ();
-							// Копируем IP-адрес в результат
-							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (result.get())->address[0], &reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr, sizeof(in6_addr));
+							// Получаем структуру IPv6-адреса
+							struct sockaddr_in6 * sin6 = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
+							// Определяем, является ли адрес Link-Local
+							const bool isLinkLocal = IN6_IS_ADDR_LINKLOCAL(&sin6->sin6_addr);
+							// Если результат ещё не установлен или найден глобальный адрес (перезаписываем Link-Local)
+							if((result == nullptr) || !isLinkLocal){
+								// Создаём объект для хранения IPv6-адреса
+								result = make_unique <net::addr_net_ipv6_t> ();
+								// Копируем IP-адрес в результат
+								::memcpy(&awh_cast <net::addr_net_ipv6_t *> (result.get())->address[0], &sin6->sin6_addr, sizeof(in6_addr));
+								// Если найден глобальный адрес, то это наш лучший выбор
+								if(!isLinkLocal)
+									// Завершаем поиск
+									goto End;
+							}
 						} break;
 						// В остальных случаях пропускаем интерфейс
 						default: continue;
 					}
 				}
 			}
-			// Освобождаем память от списка сетевых интерфейсов
-			::freeifaddrs(ptr);
+			/**
+			 * Метка завершения поиска
+			 */
+			End:;
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2064,125 +2221,8 @@ bool awh::eth::Interface::setAddress(string_view name, const net::addr_t * ip, c
 				// Возвращаем результат
 				return result;
 			}
-			/**
-			 * Определяем тип адреса
-			 */
-			switch(ip->size){
-				// Если адрес является IPv4
-				case 4: {
-					// Объект запроса псевдонима интерфейса
-					struct in_aliasreq ifra = {0};
-					// Копируем имя сетевого интерфейса
-					::strncpy(ifra.ifra_name, name.data(), IFNAMSIZ - 1);
-					// Устанавливаем семейство адресов IPv4
-					ifra.ifra_addr.sin_family = AF_INET;
-					// Устанавливаем длину структуры
-					ifra.ifra_addr.sin_len = sizeof(struct sockaddr_in);
-					// Устанавливаем IP-адрес интерфейса
-					ifra.ifra_addr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (ip)->address;
-					// Устанавливаем семейство маски
-					ifra.ifra_mask.sin_family = AF_INET;
-					// Устанавливаем длину структуры маски
-					ifra.ifra_mask.sin_len = sizeof(struct sockaddr_in);
-					// Если префикс подсети больше 32 или равен 0
-					if((prefix > 32) || (prefix == 0))
-						// Устанавливаем маску подсети интерфейса как /32
-						ifra.ifra_mask.sin_addr.s_addr = 0xFFFFFFFF;
-					// Устанавливаем маску подсети интерфейса
-					else ifra.ifra_mask.sin_addr.s_addr = ::iface::prefix2mask(prefix);
-					// Устанавливаем семейство адреса удаленого пира
-					ifra.ifra_broadaddr.sin_family = AF_INET;
-					// Устанавливаем длину структуры адреса удаленого пира
-					ifra.ifra_broadaddr.sin_len = sizeof(struct sockaddr_in);
-					// Устанавливаем IP-адрес удалённого пира
-					ifra.ifra_broadaddr.sin_addr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (peer)->address;
-					// Применяем новый IP-адрес, маску и адрес пира интерфейса
-					if(!(result = (::ioctl(sock, SIOCAIFADDR, &ifra) == 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-				// Если адрес является IPv6
-				case 16: {
-					// Объект запроса псевдонима интерфейса
-					struct in6_aliasreq ifra6 = {0};
-					// Копируем имя сетевого интерфейса
-					::strncpy(ifra6.ifra_name, name.data(), IFNAMSIZ - 1);
-					// Устанавливаем семейство адресов IPv6
-					ifra6.ifra_addr.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры
-					ifra6.ifra_addr.sin6_len = sizeof(struct sockaddr_in6);
-					// Устанавливаем IP-адрес интерфейса
-					::memcpy(&ifra6.ifra_addr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (ip)->address[0], 16);
-					// Устанавливаем семейство адреса пира
-					ifra6.ifra_dstaddr.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры адреса пира
-					ifra6.ifra_dstaddr.sin6_len = sizeof(struct sockaddr_in6);
-					// Устанавливаем IP-адрес удалённого пира
-					::memcpy(&ifra6.ifra_dstaddr.sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (peer)->address[0], 16);
-					// Устанавливаем семейство маски
-					ifra6.ifra_prefixmask.sin6_family = AF_INET6;
-					// Устанавливаем длину структуры маски
-					ifra6.ifra_prefixmask.sin6_len = sizeof(struct sockaddr_in6);
-					// Если префикс задан
-					if((prefix > 0) && (prefix <= 128)){
-						// Текущее значение маски подсети
-						uint32_t mask = static_cast <uint32_t> (prefix);
-						/**
-						 * Проходим по байтам
-						 */
-						for(uint8_t i = 0; i < 16; ++i){
-							// Если префикс больше либо равен 8
-							if(mask >= 8){
-								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0xFF;
-								// Уменьшаем префикс на 8
-								mask -= 8;
-							// Если префикс меньше 8, но больше нуля
-							} else if(mask > 0) {
-								// Устанавливаем байт маски подсети
-								ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = static_cast <uint8_t> (0xFF << (8 - mask));
-								// Обнуляем префикс
-								mask = 0;
-							// Зануляем байт маски подсети
-							} else ifra6.ifra_prefixmask.sin6_addr.s6_addr[i] = 0;
-						}
-					// Устанавливаем маску соответствующую префиксу /128
-					} else ::memset(&ifra6.ifra_prefixmask.sin6_addr, 0xFF, 16);
-					/**
-					 * Устанавливаем бесконечное время жизни адреса
-					 */
-					ifra6.ifra_lifetime.ia6t_vltime = ND6_INFINITE_LIFETIME;
-					ifra6.ifra_lifetime.ia6t_pltime = ND6_INFINITE_LIFETIME;
-					// Применяем новый IP-адрес и маску интерфейса
-					if(!(result = (::ioctl(sock, SIOCAIFADDR_IN6, &ifra6) == 0))){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix)), log_t::flag_t::CRITICAL, ::strerror(errno));
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-					}
-				} break;
-			}
+			// Применяем IP-адрес, маску и адрес удалённого пира интерфейса через управляющий сокет
+			result = ::iface::applyAddress(sock, name, ip, peer, prefix, this->_log);
 			// Закрываем сокет
 			::close(sock);
 		/**
@@ -2229,6 +2269,8 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 			struct ifaddrs * ptr = nullptr;
 			// Выполняем получение списка сетевых интерфейсов
 			if(::getifaddrs(&ptr) == 0){
+				// Гарантируем освобождение списка интерфейсов при любом выходе
+				const unique_ptr <struct ifaddrs, void (*)(struct ifaddrs *)> guard(ptr, &::freeifaddrs);
 				/**
 				 * Перебираем все сетевые интерфейсы
 				 */
@@ -2325,9 +2367,7 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 				/**
 				 * Метка завершения поиска
 				 */
-				End:
-				// Освобождаем память списка сетевых интерфейсов
-				::freeifaddrs(ptr);
+				End:;
 			} else {
 				/**
 				 * Если включён режим отладки
@@ -2353,6 +2393,158 @@ bool awh::eth::Interface::getAddress(string_view name, unique_ptr <net::addr_t> 
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
+ *
+ * @param name   имя сетевого интерфейса
+ * @param ip     адрес сетевого интерфейса для установки
+ * @param prefix префикс подсети
+ * @param mtu    размер MTU интерфейса (0 - не изменять)
+ * @return       результат комплексной настройки сетевого интерфейса
+ */
+bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint16_t mtu) const noexcept {
+	// Делегируем выполнение комплексной настройке без адреса удалённого пира
+	return this->configure(name, ip, nullptr, prefix, mtu);
+}
+/**
+ * @brief Метод комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
+ *
+ * @param name   имя сетевого интерфейса
+ * @param ip     адрес сетевого интерфейса для установки
+ * @param peer   адрес удалённого пира (для точка-точка) либо nullptr
+ * @param prefix префикс подсети
+ * @param mtu    размер MTU интерфейса (0 - не изменять)
+ * @return       результат комплексной настройки сетевого интерфейса
+ */
+bool awh::eth::Interface::configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint16_t mtu) const noexcept {
+	// Переменная результата
+	bool result = false;
+	// Если имя интерфейса и адрес переданы, а адрес пира (если задан) совпадает по типу
+	if(!name.empty() && (ip != nullptr) && ((peer == nullptr) || (ip->size == peer->size))){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Создаём единственный управляющий сокет для всех операций
+			net::socket_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+			// Если создание сокета прошло неудачно
+			if(sock == net::invalid_socket_t){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+				#endif
+				// Возвращаем результат
+				return result;
+			}
+			/**
+			 * Шаг 1. Применяем IP-адрес (и при необходимости адрес пира) через управляющий сокет
+			 */
+			result = ::iface::applyAddress(sock, name, ip, peer, prefix, this->_log);
+			/**
+			 * Шаг 2. Устанавливаем MTU интерфейса (если задан)
+			 */
+			if(result && (mtu > 0)){
+				// Настраиваем интерфейс
+				struct ifreq ifr{0};
+				// Копируем имя интерфейса
+				::iface::copyName(ifr.ifr_name, name);
+				// Устанавливаем MTU интерфейса
+				ifr.ifr_mtu = static_cast <int32_t> (mtu);
+				// Применяем новый MTU интерфейса
+				if(!(result = (::ioctl(sock, SIOCSIFMTU, &ifr) == 0))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			}
+			/**
+			 * Шаг 3. Поднимаем интерфейс (устанавливаем флаг IFF_UP)
+			 */
+			if(result){
+				// Настраиваем интерфейс
+				struct ifreq ifr{0};
+				// Копируем имя интерфейса
+				::iface::copyName(ifr.ifr_name, name);
+				// Если удалось получить текущие флаги интерфейса
+				if((result = (::ioctl(sock, SIOCGIFFLAGS, &ifr) == 0))){
+					// Устанавливаем флаг поднятия интерфейса
+					ifr.ifr_flags |= IFF_UP;
+					// Применяем новые флаги интерфейса
+					if(!(result = (::ioctl(sock, SIOCSIFFLAGS, &ifr) == 0))){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+						#endif
+					}
+				// Если получить флаги интерфейса не удалось
+				} else {
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix), mtu), log_t::flag_t::CRITICAL, ::strerror(errno));
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			}
+			// Закрываем сокет
+			::close(sock);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(name, static_cast <uint16_t> (prefix), mtu), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */

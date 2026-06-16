@@ -195,6 +195,28 @@ namespace awh {
 				bool getAddress(string_view name, unique_ptr <net::addr_t> & ip, unique_ptr <net::addr_t> & peer, uint8_t & prefix) const noexcept;
 			public:
 				/**
+				 * @brief Метод комплексной настройки сетевого интерфейса (адрес + MTU + поднятие) за один управляющий сокет
+				 *
+				 * @param name   имя сетевого интерфейса
+				 * @param ip     адрес сетевого интерфейса для установки
+				 * @param prefix префикс подсети
+				 * @param mtu    размер MTU интерфейса (0 - не изменять)
+				 * @return       результат комплексной настройки сетевого интерфейса
+				 */
+				bool configure(string_view name, const net::addr_t * ip, const uint8_t prefix, const uint16_t mtu = 0) const noexcept;
+				/**
+				 * @brief Метод комплексной настройки сетевого интерфейса точка-точка (адрес + пир + MTU + поднятие) за один управляющий сокет
+				 *
+				 * @param name   имя сетевого интерфейса
+				 * @param ip     адрес сетевого интерфейса для установки
+				 * @param peer   адрес удалённого пира (для точка-точка)
+				 * @param prefix префикс подсети
+				 * @param mtu    размер MTU интерфейса (0 - не изменять)
+				 * @return       результат комплексной настройки сетевого интерфейса
+				 */
+				bool configure(string_view name, const net::addr_t * ip, const net::addr_t * peer, const uint8_t prefix, const uint16_t mtu = 0) const noexcept;
+			public:
+				/**
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка

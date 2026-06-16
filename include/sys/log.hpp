@@ -366,14 +366,14 @@ namespace awh {
 			// Политика поведения при переполнении очереди асинхронного вывода
 			overflow_t _overflow;
 		private:
-			// Счётчик для сброса накопленных логов
-			mutable atomic_uint8_t _counter;
+			// Список доступных флагов
+			unordered_set <mode_t> _mode;
 		private:
 			// Идентификатор процесса, владеющего асинхронным потоком
-			mutable std::atomic <pid_t> _pid;
+			mutable atomic <pid_t> _pid;
 		private:
-			// Список доступных флагов
-			std::unordered_set <mode_t> _mode;
+			// Счётчик для сброса накопленных логов
+			mutable atomic_uint8_t _counter;
 		private:
 			// Объект работы с дочерними потоками
 			mutable screen_t <payload_t> _screen;
@@ -382,7 +382,7 @@ namespace awh {
 			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Набор приёмников вывода логов, построенный по текущему списку режимов
-			mutable std::vector <std::unique_ptr <Sink>> _sinks;
+			mutable vector <unique_ptr <Sink>> _sinks;
 		private:
 			/**
 			 * Функция обратного вызова которая срабатывает при появлении лога
@@ -745,13 +745,13 @@ namespace awh {
 			 *
 			 * @return список режимов вывода логов
 			 */
-			const std::unordered_set <mode_t> & mode() const noexcept;
+			const unordered_set <mode_t> & mode() const noexcept;
 			/**
 			 * @brief Метод добавления режимов вывода логов
 			 *
 			 * @param mode список режимов вывода логов
 			 */
-			void mode(const std::unordered_set <mode_t> & mode) noexcept;
+			void mode(const unordered_set <mode_t> & mode) noexcept;
 		public:
 			/**
 			 * @brief Метод установки название сервиса для вывода лога

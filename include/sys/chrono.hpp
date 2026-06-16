@@ -824,7 +824,7 @@ namespace awh {
 			 *
 			 * @param zones список временных зон для установки
 			 */
-			void setTimeZones(const std::unordered_map <string, int32_t> & zones) noexcept;
+			void setTimeZones(const unordered_map <string, int32_t> & zones) noexcept;
 		public:
 			/**
 			 * @brief Метод установки штампа времени в указанных единицах измерения

@@ -914,7 +914,7 @@ bool awh::Server::removeFromWhitelist(const event::id_t eid, string_view value) 
  * @param eid идентификатор события
  * @return    чёрный список события
  */
-const std::unordered_map <string, awh::event::address_t> & awh::Server::getFromBlacklist(const event::id_t eid) const noexcept {
+const unordered_map <string, awh::event::address_t> & awh::Server::getFromBlacklist(const event::id_t eid) const noexcept {
 	// Выполняем получение чёрного списка события
 	return this->_unit->server.getFromBlacklist(eid);
 }
@@ -924,7 +924,7 @@ const std::unordered_map <string, awh::event::address_t> & awh::Server::getFromB
  * @param eid идентификатор события
  * @return    белый список события
  */
-const std::unordered_map <string, awh::event::address_t> & awh::Server::getFromWhitelist(const event::id_t eid) const noexcept {
+const unordered_map <string, awh::event::address_t> & awh::Server::getFromWhitelist(const event::id_t eid) const noexcept {
 	// Выполняем получение белого списка события
 	return this->_unit->server.getFromWhitelist(eid);
 }

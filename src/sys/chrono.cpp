@@ -50,7 +50,7 @@ namespace {
 		// Сокращённые и полные названия месяцев (Jan/January ...)
 		vector <std::pair <string, string>> nameMonths;
 		// Коды годов в 4-летнем цикле для расчёта дня недели
-		std::unordered_map <uint16_t, uint8_t> rateLeapYears;
+		unordered_map <uint16_t, uint8_t> rateLeapYears;
 		/**
 		 * @brief Конструктор
 		 *
@@ -6430,7 +6430,7 @@ awh::Chrono::zone_t awh::Chrono::matchTimeZone(string_view zone) const noexcept 
 					// Если временная зона извлечена
 					if(!data.empty() && !data.front().empty()){
 						// Статическая таблица соответствия названий временных зон их идентификаторам
-						static const std::unordered_map <string, zone_t> matches = {
+						static const unordered_map <string, zone_t> matches = {
 							{"z", zone_t::UTC},
 							{"ct", zone_t::CT},
 							{"et", zone_t::ET},
@@ -7493,7 +7493,7 @@ void awh::Chrono::clearTimeZones() noexcept {
 		// Выполняем очистку списка временных зон
 		this->_timeZones.clear();
 		// Выполняем освобождение выделенной памяти
-		std::unordered_map <decltype(this->_timeZones)::key_type, decltype(this->_timeZones)::mapped_type> ().swap(this->_timeZones);
+		unordered_map <decltype(this->_timeZones)::key_type, decltype(this->_timeZones)::mapped_type> ().swap(this->_timeZones);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -7552,7 +7552,7 @@ void awh::Chrono::addTimeZone(string_view name, const int32_t offset) noexcept {
  *
  * @param zones список временных зон для установки
  */
-void awh::Chrono::setTimeZones(const std::unordered_map <string, int32_t> & zones) noexcept {
+void awh::Chrono::setTimeZones(const unordered_map <string, int32_t> & zones) noexcept {
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx.tz);
 	// Название временной зоны
