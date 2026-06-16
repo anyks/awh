@@ -15,12 +15,15 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <array>
 #include <random>
 #include <cerrno>
 #include <memory>
 #include <vector>
+#include <string>
 #include <cstring>
 #include <cstdlib>
+#include <shared_mutex>
 
 /**
  * Системные заголовочные файлы
@@ -36,12 +39,13 @@
  * Заголовочные файлы работы с модулем MiniUPnP
  */
 #include <miniupnpc/miniupnpc.h>
-#include <miniupnpc/upnpcommands.h>
 #include <miniupnpc/upnperrors.h>
+#include <miniupnpc/upnpcommands.h>
 
 /**
  * Подключаем заголовочный файл проекта
  */
+#include <sys/locker.hpp>
 #include <net/eth/portmap.hpp>
 
 /**
@@ -50,7 +54,287 @@
 using namespace std;
 
 /**
- * Инкапсулируем статические прототипы функций в пространство имён работы с сокетами
+ * @brief Внутренние служебные объекты
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Время жизни кеша обнаруженного IGD в миллисекундах
+	 *
+	 * @note Шлюз может перезагрузиться или сменить IP-адрес, поэтому кеш периодически обновляется
+	 */
+	constexpr uint64_t AWH_IGD_CACHE_TTL = 0xEA60;
+
+	/**
+	 * @brief Время жизни кеша шлюза по умолчанию в миллисекундах
+	 *
+	 * @note Маршрут по умолчанию может смениться при переключении сети, поэтому кеш периодически обновляется
+	 */
+	constexpr uint64_t AWH_GATEWAY_CACHE_TTL = 0xEA60;
+
+	/**
+	 * @brief Время жизни кеша публичного IP-адреса NAT-PMP в миллисекундах
+	 *
+	 * @note Внешний (публичный) IP-адрес может смениться у провайдера, поэтому кеш периодически обновляется
+	 */
+	constexpr uint64_t AWH_NATPMP_PUBLIC_CACHE_TTL = 0xEA60;
+
+	/**
+	 * @brief Флаг одноразовой инициализации мьютексов для кешей IGD и шлюза
+	 *
+	 */
+	once_flag __awh_init_once__;
+
+	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 */
+	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
+
+	/**
+	 * Блокировка доступа к глобальному кешу IGD
+	 */
+	static lock_state_t <std::shared_mutex> __awh_igd_cache_mutex__;
+
+	/**
+	 * Блокировка доступа к глобальному кешу шлюза
+	 */
+	static lock_state_t <std::shared_mutex> __awh_gateway_cache_mutex__;
+
+	/**
+	 * Блокировка доступа к глобальному кешу публичного IP-адреса NAT-PMP
+	 */
+	static lock_state_t <std::shared_mutex> __awh_natpmp_public_cache_mutex__;
+};
+
+/**
+ * @brief Внутренние служебные объекты модуля проброса портов
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Структура кеша обнаруженного IGD-шлюза UPnP
+	 *
+	 * @note Храним только владеющие строки (std::string), а не UPNPUrls,
+	 *       чтобы не тащить ручное освобождение через FreeUPNPUrls в статический кеш
+	 */
+	struct IgdCache {
+		// Абсолютное время истечения кеша в миллисекундах (0 - кеш пустой)
+		uint64_t expire;
+		// URL управления IGD
+		string controlURL;
+		// Тип сервиса IGD
+		string serviceType;
+		// Внутренний IP-адрес клиента в сторону IGD
+		string internalAddress;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit IgdCache() noexcept :
+		 expire(0), controlURL{""},
+		 serviceType{""}, internalAddress{""} {}
+	} __awh_igd_cache__;
+
+	/**
+	 * @brief Функция получения параметров IGD-шлюза UPnP (из кеша или через обнаружение)
+	 *
+	 * @param out    объект для записи параметров найденного IGD-шлюза
+	 * @param status результат выполнения операции UPnP (1 - успех, 0 - шлюз не обнаружен, иначе код ошибки UPnP)
+	 * @param now    текущая метка времени в миллисекундах
+	 * @return       результат получения параметров IGD-шлюза
+	 */
+	static bool resolveIGD(IgdCache & out, int32_t & status, const uint64_t now) noexcept {
+		/**
+		 * Быстрый путь: читаем валидный кеш под разделяемой блокировкой
+		 */
+		{
+			// Блокируем доступ к глобальному кешу IGD на чтение
+			const locker_t <std::shared_mutex> lock(::__awh_igd_cache_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Если кеш ещё актуален
+			if((::__awh_igd_cache__.expire > now) && !::__awh_igd_cache__.controlURL.empty()){
+				// Копируем параметры IGD из кеша (копируются только строки - это дёшево)
+				out = ::__awh_igd_cache__;
+				// Устанавливаем признак успеха
+				status = 1;
+				// Выходим
+				return true;
+			}
+		}
+		/**
+		 * Медленный путь: выполняем обнаружение БЕЗ удержания блокировки (это занимает несколько секунд)
+		 */
+		// Ищем устройства UPnP в локальной сети (3 секунды таймаут)
+		UPNPDev * devlist = ::upnpDiscover(3000, nullptr, nullptr, 0, 0, 2, nullptr);
+		// Если устройства не найдены
+		if(devlist == nullptr){
+			// Устанавливаем признак того, что шлюз не обнаружен
+			status = 0;
+			// Выходим
+			return false;
+		}
+		// Действующий шлюз IGD
+		UPNPUrls urls = {0};
+		// Структура данных IGD
+		IGDdatas data = {0};
+		// Буфер для хранения внутреннего IP-адреса
+		vector <char> internal(64, 0);
+		// Получаем действующий шлюз IGD
+		status = ::UPNP_GetValidIGD(devlist, &urls, &data, &internal[0], internal.size(), nullptr, 0);
+		// Освобождаем память списка устройств UPnP
+		::freeUPNPDevlist(devlist);
+		// Если не удалось получить действующий шлюз IGD
+		if(status != 1){
+			// Освобождаем память URL-ов UPnP
+			::FreeUPNPUrls(&urls);
+			// Выходим
+			return false;
+		}
+		// Снимаем только нужные строки из UPNPUrls/IGDdatas
+		out.controlURL      = (urls.controlURL != nullptr ? urls.controlURL : "");
+		out.serviceType     = data.first.servicetype;
+		out.internalAddress = &internal[0];
+		// Устанавливаем время истечения кеша
+		out.expire          = (now + AWH_IGD_CACHE_TTL);
+		// Освобождаем память URL-ов UPnP сразу - в кеше остаются только std::string
+		::FreeUPNPUrls(&urls);
+		/**
+		 * Публикуем результат в кеш под эксклюзивной блокировкой
+		 */
+		{
+			// Блокируем доступ к глобальному кешу IGD на запись
+			const locker_t <std::shared_mutex> lock(::__awh_igd_cache_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Сохраняем параметры IGD в кеш
+			::__awh_igd_cache__ = out;
+		}
+		// Все удачно
+		return true;
+	}
+
+	/**
+	 * @brief Структура кеша адреса шлюза по умолчанию
+	 *
+	 */
+	struct GatewayCache {
+		// Флаг наличия закешированного IPv4-шлюза
+		bool has4;
+		// Флаг наличия закешированного IPv6-шлюза
+		bool has6;
+		// Абсолютное время истечения кеша IPv4-шлюза в миллисекундах
+		uint64_t expire4;
+		// Абсолютное время истечения кеша IPv6-шлюза в миллисекундах
+		uint64_t expire6;
+		// IPv4-адрес шлюза по умолчанию
+		uint32_t address4;
+		// IPv6-адрес шлюза по умолчанию
+		array <uint8_t, 16> address6;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit GatewayCache() noexcept :
+		 has4(false), has6(false),
+		 expire4(0), expire6(0),
+		 address4(0), address6{0} {}
+	} __awh_gateway_cache__;
+
+	/**
+	 * @brief Функция получения адреса шлюза по умолчанию (из кеша или через таблицу маршрутизации)
+	 *
+	 * @param gateway объект работы с маршрутами
+	 * @param route   объект маршрута (адрес шлюза должен быть предварительно инициализирован под нужное семейство)
+	 * @param family  семейство IP-адресов (AF_INET или AF_INET6)
+	 * @param now     текущая метка времени в миллисекундах
+	 * @return        результат получения адреса шлюза
+	 */
+	static bool resolveGateway(const eth::gateway_t & gateway, eth::gateway_t::route_t & route, const int32_t family, const uint64_t now) noexcept {
+		/**
+		 * Быстрый путь: читаем валидный кеш под разделяемой блокировкой
+		 */
+		{
+			// Блокируем доступ к глобальному кешу шлюза на чтение
+			const locker_t <std::shared_mutex> lock(::__awh_gateway_cache_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Если закеширован актуальный IPv4-шлюз
+			if((family == AF_INET) && ::__awh_gateway_cache__.has4 && (::__awh_gateway_cache__.expire4 > now)){
+				// Устанавливаем закешированный IPv4-адрес шлюза в маршрут
+				awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address = ::__awh_gateway_cache__.address4;
+				// Выходим
+				return true;
+			// Если закеширован актуальный IPv6-шлюз
+			} else if((family == AF_INET6) && ::__awh_gateway_cache__.has6 && (::__awh_gateway_cache__.expire6 > now)) {
+				// Устанавливаем закешированный IPv6-адрес шлюза в маршрут
+				awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address = ::__awh_gateway_cache__.address6;
+				// Выходим
+				return true;
+			}
+		}
+		/**
+		 * Медленный путь: запрашиваем таблицу маршрутизации БЕЗ удержания блокировки
+		 */
+		if(!gateway.get(route))
+			// Если маршрут не получен, выходим
+			return false;
+		/**
+		 * Публикуем результат в кеш под эксклюзивной блокировкой
+		 */
+		{
+			// Блокируем доступ к глобальному кешу шлюза на запись
+			const locker_t <std::shared_mutex> lock(::__awh_gateway_cache_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Если адрес является IPv4
+			if(family == AF_INET){
+				// Сохраняем IPv4-адрес шлюза в кеш
+				::__awh_gateway_cache__.address4 = awh_cast <net::addr_net_ipv4_t *> (route.gateway.get())->address;
+				// Устанавливаем флаг наличия закешированного IPv4-шлюза
+				::__awh_gateway_cache__.has4 = true;
+				// Устанавливаем время истечения кеша IPv4-шлюза
+				::__awh_gateway_cache__.expire4 = (now + AWH_GATEWAY_CACHE_TTL);
+			// Если адрес является IPv6
+			} else if(family == AF_INET6) {
+				// Сохраняем IPv6-адрес шлюза в кеш
+				::__awh_gateway_cache__.address6 = awh_cast <net::addr_net_ipv6_t *> (route.gateway.get())->address;
+				// Устанавливаем флаг наличия закешированного IPv6-шлюза
+				::__awh_gateway_cache__.has6 = true;
+				// Устанавливаем время истечения кеша IPv6-шлюза
+				::__awh_gateway_cache__.expire6 = (now + AWH_GATEWAY_CACHE_TTL);
+			}
+		}
+		// Все удачно
+		return true;
+	}
+
+	/**
+	 * @brief Структура кеша публичного IPv4-адреса NAT-PMP
+	 *
+	 * @note NAT-PMP определяет только IPv4-адрес публичной точки доступа (RFC 6886)
+	 */
+	struct NatPmpPublicCache {
+		// Флаг наличия закешированного публичного IPv4-адреса
+		bool has;
+		// Абсолютное время истечения кеша в миллисекундах
+		uint64_t expire;
+		// Публичный IPv4-адрес (сетевой порядок байт)
+		uint32_t address;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit NatPmpPublicCache() noexcept : has(false), expire(0), address(0) {}
+	} __awh_natpmp_public_cache__;
+}
+
+/**
+ * @brief Инкапсулируем статические прототипы функций в пространство имён работы с сокетами
+ *
  */
 namespace options {
 	/**
@@ -150,6 +434,131 @@ namespace options {
 };
 
 /**
+ * @brief Внутренние служебные функции, использующие пространство имён работы с сокетами
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Функция получения публичного IPv4-адреса NAT-PMP (из кеша или запросом к шлюзу)
+	 *
+	 * @param out    переменная для записи публичного IPv4-адреса (сетевой порядок байт)
+	 * @param server параметры подключения к шлюзу
+	 * @param family семейство IP-адресов (AF_INET или AF_INET6)
+	 * @param now    текущая метка времени в миллисекундах
+	 * @param log    объект работы с логами
+	 * @return       результат получения публичного IPv4-адреса
+	 */
+	static bool resolveNatPmpPublicIP(uint32_t & out, const struct sockaddr_storage & server, const int32_t family, const uint64_t now, const log_t * log) noexcept {
+		/**
+		 * Быстрый путь: читаем валидный кеш под разделяемой блокировкой
+		 */
+		{
+			// Блокируем доступ к глобальному кешу публичного IP на чтение
+			const locker_t <std::shared_mutex> lock(::__awh_natpmp_public_cache_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
+			// Если кеш ещё актуален
+			if(::__awh_natpmp_public_cache__.has && (::__awh_natpmp_public_cache__.expire > now)){
+				// Возвращаем закешированный публичный IPv4-адрес
+				out = ::__awh_natpmp_public_cache__.address;
+				// Выходим
+				return true;
+			}
+		}
+		/**
+		 * Медленный путь: запрашиваем публичный адрес у шлюза БЕЗ удержания блокировки
+		 */
+		// Выполняем создание UDP сокета
+		net::socket_t sock = ::socket(family, SOCK_DGRAM, 0);
+		// Если сокет не создан
+		if(sock == net::invalid_socket_t)
+			// Выходим
+			return false;
+		// Разрешаем повторное использование адреса сокета
+		if(!::options::reuseAddress(sock, log)){
+			// Закрываем сокет
+			::close(sock);
+			// Выходим
+			return false;
+		}
+		// Размер структуры адреса шлюза
+		const socklen_t serverLen = ((family == AF_INET6) ? sizeof(struct sockaddr_in6) : sizeof(struct sockaddr_in));
+		// Устанавливаем таймаут на запись сокета (5 секунд)
+		if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, log)){
+			// Закрываем сокет
+			::close(sock);
+			// Выходим
+			return false;
+		}
+		// Запрос публичного адреса NAT-PMP (версия=0, опкод=0)
+		uint8_t request[2] = {0, 0};
+		// Отправляем запрос публичного адреса
+		if(::sendto(sock, reinterpret_cast <char *> (request), 2, 0, reinterpret_cast <const struct sockaddr *> (&server), serverLen) != 2){
+			// Закрываем сокет
+			::close(sock);
+			// Выходим
+			return false;
+		}
+		// Устанавливаем таймаут на чтение из сокета (5 секунд)
+		if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, log)){
+			// Закрываем сокет
+			::close(sock);
+			// Выходим
+			return false;
+		}
+		// Параметры получения ответа от шлюза
+		struct sockaddr_storage from{};
+		// Размер структуры адреса отправителя
+		socklen_t fromLen = sizeof(from);
+		// Буфер для приёма ответа
+		char buffer[32];
+		// Получаем ответ от шлюза
+		const ssize_t bytes = ::recvfrom(sock, buffer, sizeof(buffer), 0, reinterpret_cast <struct sockaddr *> (&from), &fromLen);
+		// Закрываем сокет
+		::close(sock);
+		// Если получен некорректный ответ (опкод 128 = ответ на запрос публичного адреса, код результата = 0)
+		if((bytes < 12) || (static_cast <uint8_t> (buffer[1]) != 128) || (ntohs(* reinterpret_cast <const uint16_t *> (buffer + 2)) != 0))
+			// Выходим
+			return false;
+		// Извлекаем публичный IPv4-адрес (offset 8, сетевой порядок байт)
+		::memcpy(&out, buffer + 8, 4);
+		/**
+		 * Публикуем результат в кеш под эксклюзивной блокировкой
+		 */
+		{
+			// Блокируем доступ к глобальному кешу публичного IP на запись
+			const locker_t <std::shared_mutex> lock(::__awh_natpmp_public_cache_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Сохраняем публичный IPv4-адрес в кеш
+			::__awh_natpmp_public_cache__.address = out;
+			// Устанавливаем флаг наличия закешированного публичного IPv4-адреса
+			::__awh_natpmp_public_cache__.has = true;
+			// Устанавливаем время истечения кеша
+			::__awh_natpmp_public_cache__.expire = (now + AWH_NATPMP_PUBLIC_CACHE_TTL);
+		}
+		// Все удачно
+		return true;
+	}
+};
+
+/**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::eth::Port_Mapping::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Активируем работу мьютекса блокировки потока при работе с глобальным кешем IGD
+	::__awh_igd_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с глобальным кешем шлюза
+	::__awh_gateway_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	// Активируем работу мьютекса блокировки потока при работе с глобальным кешем публичного IP NAT-PMP
+	::__awh_natpmp_public_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
+/**
  * @brief Метод получения списка проброшенных портов на маршрутизаторе
  *
  * @return список параметров проброшенных портов на маршрутизаторе
@@ -161,39 +570,28 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Ищем устройства UPnP в локальной сети (3 секунды таймаут)
-		UPNPDev * devlist = ::upnpDiscover(3000, nullptr, nullptr, 0, 0, 2, nullptr);
-		// Если устройства не найдены
-		if(devlist == nullptr)
-			// Возвращаем пустой результат
-			return result;
-		// Действующий шлюз IGD
-		UPNPUrls urls = {0};
-		// Структура данных IGD
-		IGDdatas data = {0};
-		// Буфер для хранения внутреннего IP-адреса
-		vector <char> internalAddr(64, 0);
-		// Получаем действующий шлюз IGD
-		int32_t status = ::UPNP_GetValidIGD(devlist, &urls, &data, &internalAddr[0], internalAddr.size(), nullptr, 0);
-		// Освобождаем память списка устройств UPnP
-		::freeUPNPDevlist(devlist);
-		// Если не удалось получить действующий шлюз IGD
-		if(status != 1){
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strupnperror(status));
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
-			#endif
-			// Освобождаем память URL-ов UPnP
-			::FreeUPNPUrls(&urls);
+		// Параметры обнаруженного IGD-шлюза
+		IgdCache igd{};
+		// Результат выполнения операции UPnP
+		int32_t status = 0;
+		// Получаем параметры IGD-шлюза (из кеша или через обнаружение)
+		if(!::resolveIGD(igd, status, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS))){
+			// Если шлюз обнаружен, но является недействительным
+			if(status != 0){
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, ::strupnperror(status));
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
+				#endif
+			}
 			// Возвращаем пустой результат
 			return result;
 		}
@@ -221,7 +619,7 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
 			char externalAddress[64] = {0};
 			// Получаем запись проброса порта по индексу
 			status = ::UPNP_GetGenericPortMappingEntry(
-				urls.controlURL, data.first.servicetype, std::to_string(index++).c_str(),
+				igd.controlURL.c_str(), igd.serviceType.c_str(), std::to_string(index++).c_str(),
 				externalPort, internalAddress, internalPort, protocol, description, enabled, externalAddress, duration
 			);
 			// Если записи с таким индексом нет
@@ -297,8 +695,6 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
 			// Устанавливаем внешний порт в результирующую запись
 			result.back().externalPort = this->_fmk->atoi <uint16_t> (externalPort, ::strlen(externalPort));
 		}
-		// Освобождаем память URL-ов UPnP
-		::FreeUPNPUrls(&urls);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -323,11 +719,11 @@ vector <awh::eth::Port_Mapping::fwd_t> awh::eth::Port_Mapping::mappings() const 
 /**
  * @brief Метод установки/удаления проброса портов на маршрутизаторе
  *
- * @param fwd  объект параметров проброса порта
+ * @param fwd  объект параметров проброса порта (при успехе обновляется назначенным внешним портом)
  * @param mode режим включения/выключения проброса порта
  * @return     результат выполнения установки
  */
-bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode) const noexcept {
+bool awh::eth::Port_Mapping::mapping(fwd_t & fwd, const event::mode_t mode) const noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -390,8 +786,8 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						route.gateway = make_unique <net::addr_net_ipv6_t> ();
 					break;
 				}
-				// Если получаем маршрут для указанного адреса
-				if(this->_gateway.get(route)){
+				// Если получаем маршрут для указанного адреса (из кеша или через таблицу маршрутизации)
+				if(::resolveGateway(this->_gateway, route, family, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS))){
 					// Выполняем создание UDP сокета
 					net::socket_t sock = ::socket(family, SOCK_DGRAM, 0);
 					// Если сокет не создан
@@ -616,30 +1012,34 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						// Если необходимо пробросить порт
 						case static_cast <uint8_t> (event::mode_t::ENABLED):
 							// Устанавливаем время жизни (Header offset 4)
-							* reinterpret_cast <uint32_t *> (request + 4) = htonl(fwd.lifeTime);
+							(* reinterpret_cast <uint32_t *> (request + 4)) = htonl(fwd.lifeTime);
 						break;
 						// Если необходимо убрать проброшенный порт
 						case static_cast <uint8_t> (event::mode_t::DISABLED):
 							// Устанавливаем время жизни (Header offset 4)
-							* reinterpret_cast <uint32_t *> (request + 4) = htonl(0);
+							(* reinterpret_cast <uint32_t *> (request + 4)) = htonl(0);
 						break;
 					}
-					// Если описание записи пустое
+					// Локальный буфер PCP-nonce (Mapping Nonce, 12 байт) для защиты от подделки ответа
+					uint8_t nonce[12] = {0};
+					// Если описание записи не содержит достаточного количества байт для nonce
 					if(::strlen(fwd.description) < 12){
+						// Криптостойкий источник случайных чисел
+						std::random_device randev;
 						/**
-						 * Перебираем байты описания записи
+						 * Перебираем байты nonce
 						 */
 						for(uint8_t i = 0; i < 12; ++i)
-							// Заполняем описание записи случайными байтами
-							const_cast <fwd_t &> (fwd).description[i] = request[24 + i] = (std::rand() % 255);
-					// Если описание записи не пустое
+							// Заполняем nonce случайными байтами и копируем в поле запроса
+							nonce[i] = request[24 + i] = static_cast <uint8_t> (randev());
+					// Если описание записи содержит достаточно байт
 					} else {
 						/**
-						 * Перебираем байты описания записи
+						 * Перебираем байты nonce
 						 */
 						for(uint8_t i = 0; i < 12; ++i)
-							// Копируем описание записи в поле запроса
-							request[24 + i] = fwd.description[i];
+							// Используем описание записи как nonce и копируем в поле запроса
+							nonce[i] = request[24 + i] = static_cast <uint8_t> (fwd.description[i]);
 					}
 					/**
 					 * Определяем протокол проброса порта
@@ -658,9 +1058,9 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						break;
 					}
 					// Устанавливаем внутренний порт (Offset 40)
-					* reinterpret_cast <uint16_t *> (request + 40) = htons(fwd.internalPort);
+					(* reinterpret_cast <uint16_t *> (request + 40)) = htons(fwd.internalPort);
 					// Устанавливаем внешний порт (Offset 42) (0 = авто)
-					* reinterpret_cast <uint16_t *> (request + 42) = htons(fwd.externalPort);
+					(* reinterpret_cast <uint16_t *> (request + 42)) = htons(fwd.externalPort);
 					// Устанавливаем таймаут на запись сокета (5 секунд)
 					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
 						// Закрываем сокет
@@ -788,10 +1188,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						switch(static_cast <uint8_t> (mode)){
 							// Если необходимо пробросить порт
 							case static_cast <uint8_t> (event::mode_t::ENABLED): {
-								// Проверяем совпадение внутреннего порта
-								if((result = (fwd.internalPort == ntohs(* reinterpret_cast <const uint16_t *> (buffer + 42))))){
-									// При получении ответа (возможно, позже):
-									if(!(result = (::memcmp(buffer + 24, &fwd.description[0], 12) == 0))){
+								// Проверяем совпадение внутреннего порта (эхо в ответе, offset 40)
+								if((result = (fwd.internalPort == ntohs(* reinterpret_cast <const uint16_t *> (buffer + 40))))){
+									// Проверяем совпадение nonce для защиты от подделки ответа
+									if(!(result = (::memcmp(buffer + 24, nonce, 12) == 0))){
 										/**
 										 * Если включён режим отладки
 										 */
@@ -818,6 +1218,27 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 											// Записываем ошибку в лог
 											this->_log->print("Response was forged by an attacker on PCP", log_t::flag_t::CRITICAL);
 										#endif
+									// Если ответ подлинный
+									} else {
+										// Сохраняем назначенный маршрутизатором внешний порт (Assigned External Port, offset 42)
+										fwd.externalPort = ntohs(* reinterpret_cast <const uint16_t *> (buffer + 42));
+										// Сохраняем назначенное маршрутизатором время жизни проброса порта (Lifetime, offset 4)
+										fwd.lifeTime = ntohl(* reinterpret_cast <const uint32_t *> (buffer + 4));
+										// Префикс IPv4-mapped IPv6 адреса (::ffff:0:0)
+										static const uint8_t v4MappedPrefix[12] = {0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0xFF, 0xFF};
+										// Если назначенный внешний адрес (Assigned External IP, offset 44) является IPv4-mapped IPv6
+										if(::memcmp(buffer + 44, v4MappedPrefix, 12) == 0){
+											// Инициализируем объект внешнего IPv4-адреса
+											fwd.externalAddress = make_unique <net::addr_net_ipv4_t> ();
+											// Сохраняем назначенный внешний IPv4-адрес (последние 4 байта, сетевой порядок)
+											::memcpy(&awh_cast <net::addr_net_ipv4_t *> (fwd.externalAddress.get())->address, buffer + 56, 4);
+										// Если назначенный внешний адрес является IPv6
+										} else {
+											// Инициализируем объект внешнего IPv6-адреса
+											fwd.externalAddress = make_unique <net::addr_net_ipv6_t> ();
+											// Сохраняем назначенный внешний IPv6-адрес (16 байт, сетевой порядок)
+											::memcpy(&awh_cast <net::addr_net_ipv6_t *> (fwd.externalAddress.get())->address[0], buffer + 44, 16);
+										}
 									}
 								// Если установленный порт не соответствует
 								} else {
@@ -851,10 +1272,10 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							} break;
 							// Если необходимо убрать проброшенный порт
 							case static_cast <uint8_t> (event::mode_t::DISABLED): {
-								// Проверяем совпадение внешнего порта
-								if((result = (fwd.externalPort == ntohs(* reinterpret_cast <const uint16_t *> (buffer + 42))))){
-									// При получении ответа (возможно, позже):
-									if(!(result = (::memcmp(buffer + 24, &fwd.description[0], 12) == 0))){
+								// Проверяем совпадение внутреннего порта (эхо в ответе, offset 40)
+								if((result = (fwd.internalPort == ntohs(* reinterpret_cast <const uint16_t *> (buffer + 40))))){
+									// Проверяем совпадение nonce для защиты от подделки ответа
+									if(!(result = (::memcmp(buffer + 24, nonce, 12) == 0))){
 										/**
 										 * Если включён режим отладки
 										 */
@@ -946,50 +1367,39 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 			} break;
 			// Если тип проброса порта является UPNP
 			case static_cast <uint8_t> (type_t::UPNP): {
-				// Ищем устройства UPnP в локальной сети (3 секунды таймаут)
-				UPNPDev * devlist = ::upnpDiscover(3000, nullptr, nullptr, 0, 0, 2, nullptr);
-				// Если устройства не найдены
-				if(devlist == nullptr)
-					// Возвращаем пустой результат
-					return result;
-				// Действующий шлюз IGD
-				UPNPUrls urls = {0};
-				// Структура данных IGD
-				IGDdatas data = {0};
-				// Буфер для хранения внутреннего IP-адреса
-				vector <char> internalAddress(64, 0);
-				// Получаем действующий шлюз IGD
-				int32_t status = ::UPNP_GetValidIGD(devlist, &urls, &data, &internalAddress[0], internalAddress.size(), nullptr, 0);
-				// Освобождаем память списка устройств UPnP
-				::freeUPNPDevlist(devlist);
-				// Если не удалось получить действующий шлюз IGD
-				if(status != 1){
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug(
-							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
-								fwd.lifeTime,
-								fwd.description,
-								fwd.internalPort,
-								fwd.externalPort,
-								static_cast <uint16_t> (fwd.type),
-								static_cast <uint16_t> (fwd.proto),
-								static_cast <uint16_t> (mode)
-							), log_t::flag_t::WARNING, ::strupnperror(status)
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
-					#endif
-					// Освобождаем память URL-ов UPnP
-					::FreeUPNPUrls(&urls);
+				// Параметры обнаруженного IGD-шлюза
+				IgdCache igd{};
+				// Результат выполнения операции UPnP
+				int32_t status = 0;
+				// Получаем параметры IGD-шлюза (из кеша или через обнаружение)
+				if(!::resolveIGD(igd, status, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS))){
+					// Если шлюз обнаружен, но является недействительным
+					if(status != 0){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug(
+								"%s", __PRETTY_FUNCTION__,
+								make_tuple(
+									fwd.lifeTime,
+									fwd.description,
+									fwd.internalPort,
+									fwd.externalPort,
+									static_cast <uint16_t> (fwd.type),
+									static_cast <uint16_t> (fwd.proto),
+									static_cast <uint16_t> (mode)
+								), log_t::flag_t::WARNING, ::strupnperror(status)
+							);
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strupnperror(status));
+						#endif
+					}
 					// Возвращаем пустой результат
 					return result;
 				}
@@ -1042,15 +1452,15 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						// Пробрасываем порт на маршрутизаторе
 						status = ::UPNP_AddPortMapping(
 							// Устанавливаем URL управления
-							urls.controlURL,
+							igd.controlURL.c_str(),
 							// Устанавливаем тип сервиса
-							data.first.servicetype,
+							igd.serviceType.c_str(),
 							// Устанавливаем внешний порт
 							externalPort,
 							// Устанавливаем внутренний порт
 							internalPort,
 							// Устанавливаем внутренний IP-адрес
-							&internalAddress[0],
+							igd.internalAddress.c_str(),
 							// Устанавливаем описание проброса порта
 							(::strlen(fwd.description) == 0 ? this->_fmk->format("%s (%s)", AWH_NAME, AWH_SHORT_NAME).c_str() : &fwd.description[0]),
 							// Устанавливаем протокол порта
@@ -1070,9 +1480,9 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						// Удаляем проброс порта на маршрутизаторе
 						status = ::UPNP_DeletePortMapping(
 							// Устанавливаем URL управления
-							urls.controlURL,
+							igd.controlURL.c_str(),
 							// Устанавливаем тип сервиса
-							data.first.servicetype,
+							igd.serviceType.c_str(),
 							// Устанавливаем внешний порт
 							externalPort,
 							// Устанавливаем протокол порта
@@ -1082,8 +1492,6 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						);
 					} break;
 				}
-				// Очищаем память URL-ов UPnP
-				::FreeUPNPUrls(&urls);
 				// Если возникла ошибка
 				if(!(result = (status == UPNPCOMMAND_SUCCESS))){
 					/**
@@ -1164,8 +1572,8 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						route.gateway = make_unique <net::addr_net_ipv6_t> ();
 					break;
 				}
-				// Если получаем маршрут для указанного адреса
-				if(this->_gateway.get(route)){
+				// Если получаем маршрут для указанного адреса (из кеша или через таблицу маршрутизации)
+				if(::resolveGateway(this->_gateway, route, family, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS))){
 					// Выполняем создание UDP сокета
 					net::socket_t sock = ::socket(family, SOCK_DGRAM, 0);
 					// Если сокет не создан
@@ -1250,96 +1658,12 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 							::memcpy(&server, &gw, size);
 						} break;
 					}
-					// Устанавливаем таймаут на запись сокета (5 секунд)
-					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
-						// Закрываем сокет
-						::close(sock);
-						// Возвращаем результат
-						return result;
-					}
-					// === 3. Шаг 1: Запрос публичного IP (обязательный!) ===
-					uint8_t request[12] = {0}; // версия=0, опкод=0
-					// Отправляем запрос на проброс порта
-					ssize_t bytes = ::sendto(sock, reinterpret_cast <char *> (request), 2, 0, reinterpret_cast <struct sockaddr *> (&server), size);
-					// Если не удалось отправить запрос
-					if(bytes <= 0){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
-									fwd.lifeTime,
-									fwd.description,
-									fwd.internalPort,
-									fwd.externalPort,
-									static_cast <uint16_t> (fwd.type),
-									static_cast <uint16_t> (fwd.proto),
-									static_cast <uint16_t> (mode)
-								),
-								log_t::flag_t::CRITICAL, ::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Закрываем сокет
-						::close(sock);
-						// Возвращаем результат
-						return result;
-					}
-					// Устанавливаем таймаут на чтение из сокета (5 секунд)
-					if(!::options::timeout(sock, awh::net::socket_event_t::READ, 5000, this->_log)){
-						// Закрываем сокет
-						::close(sock);
-						// Возвращаем результат
-						return result;
-					}
+					// Буфер запроса NAT-PMP (RFC 6886)
+					uint8_t request[12] = {0};
 					// Буфер для приёма ответа
 					char buffer[1024];
-					// Получаем ответ от шлюза
-					bytes = ::recvfrom(sock, buffer, sizeof(buffer) - 1, 0, reinterpret_cast <struct sockaddr *> (&client), &size);
-					// Если не удалось отправить запрос
-					if((bytes < 12) || (static_cast <uint8_t> (buffer[1]) != 128)){
-						/**
-						 * Если включён режим отладки
-						 */
-						#if DEBUG_MODE
-							// Записываем ошибку в лог
-							this->_log->debug(
-								"%s", __PRETTY_FUNCTION__,
-								make_tuple(
-									fwd.lifeTime,
-									fwd.description,
-									fwd.internalPort,
-									fwd.externalPort,
-									static_cast <uint16_t> (fwd.type),
-									static_cast <uint16_t> (fwd.proto),
-									static_cast <uint16_t> (mode)
-								),
-								log_t::flag_t::CRITICAL, ::strerror(errno)
-							);
-						/**
-						 * Если режим отладки не включён
-						 */
-						#else
-							// Записываем ошибку в лог
-							this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
-						#endif
-						// Закрываем сокет
-						::close(sock);
-						// Возвращаем результат
-						return result;
-					}
-					// Устанавливаем терминальный нулевой символ в буфере
-					buffer[bytes] = '\0';
-					// === 4. Шаг 2: Запрос проброса порта ===
-					::memset(request, 0, sizeof(request));
+					// Количество переданных/принятых байт
+					ssize_t bytes = 0;
 					// Устанавливаем версию протокола NAT-PMP
 					request[0] = 0;
 					/**
@@ -1368,18 +1692,18 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						// Если необходимо пробросить порт
 						case static_cast <uint8_t> (event::mode_t::ENABLED):
 							// Устанавливаем время жизни (секунды)
-							* reinterpret_cast <uint32_t *> (request + 8) = htonl(fwd.lifeTime);
+							(* reinterpret_cast <uint32_t *> (request + 8)) = htonl(fwd.lifeTime);
 						break;
 						// Если необходимо убрать проброшенный порт
 						case static_cast <uint8_t> (event::mode_t::DISABLED):
 							// Устанавливаем время жизни (секунды)
-							* reinterpret_cast <uint32_t *> (request + 8) = htonl(0);
+							(* reinterpret_cast <uint32_t *> (request + 8)) = htonl(0);
 						break;
 					}
 					// Устанавливаем внутренний порт
-					* reinterpret_cast <uint16_t *> (request + 4) = htons(fwd.internalPort);
+					(* reinterpret_cast <uint16_t *> (request + 4)) = htons(fwd.internalPort);
 					// Устанавливаем внешний порт = 0 (авто)
-					* reinterpret_cast <uint16_t *> (request + 6) = htons(fwd.externalPort);
+					(* reinterpret_cast <uint16_t *> (request + 6)) = htons(fwd.externalPort);
 					// Устанавливаем таймаут на запись сокета (5 секунд)
 					if(!::options::timeout(sock, awh::net::socket_event_t::WRITE, 5000, this->_log)){
 						// Закрываем сокет
@@ -1505,8 +1829,8 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 						switch(static_cast <uint8_t> (mode)){
 							// Если необходимо пробросить порт
 							case static_cast <uint8_t> (event::mode_t::ENABLED): {
-								// Если установленный порт не соответствует
-								if(!(result = (fwd.externalPort == ntohs(* reinterpret_cast <const uint16_t *> (buffer + 10))))){
+								// Проверяем совпадение внутреннего порта (эхо в ответе, offset 8) - внешний порт может быть назначен автоматически
+								if(!(result = (fwd.internalPort == ntohs(* reinterpret_cast <const uint16_t *> (buffer + 8))))){
 									/**
 									 * Если включён режим отладки
 									 */
@@ -1533,6 +1857,21 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
 										// Записываем ошибку в лог
 										this->_log->print("Port NAT-PMP mapping failed", log_t::flag_t::CRITICAL);
 									#endif
+								// Если проброс порта выполнен успешно
+								} else {
+									// Сохраняем назначенный маршрутизатором внешний порт (Mapped External Port, offset 10)
+									fwd.externalPort = ntohs(* reinterpret_cast <const uint16_t *> (buffer + 10));
+									// Сохраняем назначенное маршрутизатором время жизни проброса порта (Lifetime, offset 12)
+									fwd.lifeTime = ntohl(* reinterpret_cast <const uint32_t *> (buffer + 12));
+									// Публичный IPv4-адрес NAT-PMP (сетевой порядок байт)
+									uint32_t publicIp = 0;
+									// Определяем публичный внешний IPv4-адрес (из кеша или запросом к шлюзу) и сохраняем его в результат
+									if(::resolveNatPmpPublicIP(publicIp, server, family, this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS), this->_log) && (publicIp != 0)){
+										// Инициализируем объект внешнего IPv4-адреса
+										fwd.externalAddress = make_unique <net::addr_net_ipv4_t> ();
+										// Сохраняем назначенный публичный внешний IPv4-адрес
+										awh_cast <net::addr_net_ipv4_t *> (fwd.externalAddress.get())->address = publicIp;
+									}
 								}
 							} break;
 							// Если необходимо убрать проброшенный порт
@@ -1639,7 +1978,19 @@ bool awh::eth::Port_Mapping::mapping(const fwd_t & fwd, const event::mode_t mode
  * @param log объект работы с логами
  */
 awh::eth::Port_Mapping::Port_Mapping(const fmk_t * fmk, const log_t * log) noexcept :
- _gateway(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log) {}
+ _gateway(fmk, log), _addr(fmk, log), _fmk(fmk), _log(log) {
+	/**
+	 * Выполняем одноразовую инициализацию мьютексов для кешей IGD и шлюза для всех экземпляров класса Port_Mapping
+	 */
+	std::call_once(::__awh_init_once__, [this]() noexcept {
+		// Активируем работу мьютекса блокировки потока при работе с глобальным кэшем IGD
+		::__awh_igd_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		// Активируем работу мьютекса блокировки потока при работе с глобальным кэшем шлюза
+		::__awh_gateway_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+		// Активируем работу мьютекса блокировки потока при работе с глобальным кэшем публичного IP NAT-PMP
+		::__awh_natpmp_public_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	});
+}
 /**
  * @brief Деструктор
  *

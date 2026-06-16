@@ -124,7 +124,8 @@ using namespace std;
  */
 #if __NetBSD__ || __OpenBSD__
 	/**
-	 * Инкапсулируем функции Process Resolver в пространство имён
+	 * @brief Инкапсулируем функции Process Resolver в пространство имён
+	 *
 	 */
 	namespace procre {
 		/**

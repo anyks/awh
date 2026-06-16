@@ -93,9 +93,9 @@ namespace awh {
 					 *
 					 */
 					explicit Forwarding() noexcept :
-					type(type_t::NONE), proto(proto_t::NONE), lifeTime(0),
-					internalPort(0), externalPort(0), description{0},
-					internalAddress{nullptr}, externalAddress{nullptr} {}
+					 type(type_t::NONE), proto(proto_t::NONE), lifeTime(0),
+					 internalPort(0), externalPort(0), description{0},
+					 internalAddress{nullptr}, externalAddress{nullptr} {}
 				} fwd_t;
 			private:
 				// Объект работы с маршрутами
@@ -110,6 +110,13 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
+			public:
+				/**
 				 * @brief Метод получения списка проброшенных портов на маршрутизаторе
 				 *
 				 * @return список параметров проброшенных портов на маршрутизаторе
@@ -119,11 +126,13 @@ namespace awh {
 				/**
 				 * @brief Метод установки/удаления проброса портов на маршрутизаторе
 				 *
-				 * @param fwd  объект параметров проброса порта
+				 * @note При успешном пробросе (ENABLED) назначенный маршрутизатором внешний порт записывается в fwd.externalPort
+				 *
+				 * @param fwd  объект параметров проброса порта (при успехе обновляется назначенным внешним портом)
 				 * @param mode режим включения/выключения проброса порта
 				 * @return     результат выполнения установки
 				 */
-				bool mapping(const fwd_t & fwd, const event::mode_t mode) const noexcept;
+				bool mapping(fwd_t & fwd, const event::mode_t mode) const noexcept;
 			public:
 				/**
 				 * @brief Конструктор
