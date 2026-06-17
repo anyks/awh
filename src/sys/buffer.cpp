@@ -182,7 +182,7 @@ bool awh::Buffer::rss(const size_t size) noexcept {
 		// Определяем требуемый итоговый размер буфера данных
 		const size_t required = (payload + size);
 		// Если требуемый размер выходит за пределы максимального лимита
-		if(required > this->_maxMemory)
+		if(required > this->_range.maxMemory)
 			// Сообщаем что выделить память невозможно
 			return false;
 		// Увеличиваем буфер данных до требуемого размера
@@ -784,7 +784,7 @@ void * awh::Buffer::prepare(const size_t size) noexcept {
 		if(this->_fmk != nullptr)
 			// Формируем подробное сообщение об ошибке
 			message = "You are trying to map " + this->_fmk->bytes(static_cast <double> (this->size() + size)) +
-				" of data into a " + this->_fmk->bytes(static_cast <double> (this->_maxMemory)) + " data buffer, which is impossible";
+			          " of data into a " + this->_fmk->bytes(static_cast <double> (this->_range.maxMemory)) + " data buffer, which is impossible";
 		// Записываем ошибку в лог
 		this->error(__PRETTY_FUNCTION__, message.c_str());
 		// Возвращаем пустое значение
@@ -1049,7 +1049,7 @@ void awh::Buffer::setMaxMemory(const size_t size) noexcept {
 	// Если максимальный размер потребляемой памяти передан
 	if(size > 0)
 		// Выполняем установку максимального размера потребляемой памяти
-		this->_maxMemory = size;
+		this->_range.maxMemory = size;
 }
 /**
  * @brief Метод обмена очередями
@@ -1078,7 +1078,7 @@ void awh::Buffer::swap(Buffer & buffer) noexcept {
 	// Выполняем обмен диапазонами записей
 	::swap(this->_range, buffer._range);
 	// Выполняем обмен максимальными размерами памяти
-	::swap(this->_maxMemory, buffer._maxMemory);
+	::swap(this->_range.maxMemory, buffer._range.maxMemory);
 }
 /**
  * @brief Метод установки объекта логирования
@@ -1297,7 +1297,7 @@ awh::Buffer & awh::Buffer::operator = (buffer_t && buffer) noexcept {
 		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
 		// Копируем максимальный размер памяти
-		this->_maxMemory = buffer._maxMemory;
+		this->_range.maxMemory = buffer._range.maxMemory;
 		// Сбрасываем последний итератор стороннего буфера
 		buffer._range.end = 0;
 		// Сбрасываем начальный итератор стороннего буфера
@@ -1336,7 +1336,7 @@ awh::Buffer & awh::Buffer::operator = (const buffer_t & buffer) noexcept {
 		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
 		// Копируем максимальный размер памяти
-		this->_maxMemory = buffer._maxMemory;
+		this->_range.maxMemory = buffer._range.maxMemory;
 		// Копируем данные буфера
 		this->_buffer.assign(buffer._buffer.begin(), buffer._buffer.end());
 	/**
@@ -1386,7 +1386,7 @@ bool awh::Buffer::operator == (const buffer_t & buffer) const noexcept {
  * @brief Разрешаем пустое значение объекта
  *
  */
-awh::Buffer::Buffer() noexcept : _maxMemory(AWH_MAX_MEMORY_BUFFER), _fmk(nullptr), _log(nullptr) {}
+awh::Buffer::Buffer() noexcept : _fmk(nullptr), _log(nullptr) {}
 /**
  * @brief Конструктор перемещения
  *
@@ -1412,7 +1412,7 @@ awh::Buffer::Buffer(buffer_t && buffer) noexcept {
 		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
 		// Копируем максимальный размер памяти
-		this->_maxMemory = buffer._maxMemory;
+		this->_range.maxMemory = buffer._range.maxMemory;
 		// Сбрасываем последний итератор стороннего буфера
 		buffer._range.end = 0;
 		// Сбрасываем начальный итератор стороннего буфера
@@ -1448,7 +1448,7 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
 		// Копируем начальный итератор
 		this->_range.begin = buffer._range.begin;
 		// Копируем максимальный размер памяти
-		this->_maxMemory = buffer._maxMemory;
+		this->_range.maxMemory = buffer._range.maxMemory;
 		// Копируем данные буфера
 		this->_buffer.assign(buffer._buffer.begin(), buffer._buffer.end());
 	/**
@@ -1465,8 +1465,7 @@ awh::Buffer::Buffer(const buffer_t & buffer) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Buffer::Buffer(const fmk_t * fmk, const log_t * log) noexcept :
- _maxMemory(AWH_MAX_MEMORY_BUFFER), _fmk(fmk), _log(log) {}
+awh::Buffer::Buffer(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *

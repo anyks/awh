@@ -542,7 +542,7 @@ uint32_t awh::Notifier::event() noexcept {
 				 */
 				while(size < 4){
 					// Выполняем чтение данных
-					bytes = static_cast <int8_t> (::recv(this->_socks[0], buffer + size, 4, 0));
+					bytes = static_cast <int8_t> (::recv(this->_socks[0], buffer + size, 4 - size, 0));
 					// Если данные прочитанны
 					if(bytes > 0)
 						// Увеличиваем количество прочитанных данных

@@ -61,13 +61,16 @@ namespace awh {
 			 *
 			 */
 			typedef struct Range {
-				size_t end;   // Конец записи
-				size_t begin; // Начало записи
+				size_t end;       // Конец записи
+				size_t begin;     // Начало записи
+				size_t maxMemory; // Максимальный размер выделения памяти
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Range() noexcept : end(0), begin(0) {}
+				explicit Range() noexcept :
+				 end(0), begin(0),
+				 maxMemory(AWH_MAX_MEMORY_BUFFER) {}
 			} __attribute__((packed)) range_t;
 		public:
 			/**
@@ -253,16 +256,13 @@ namespace awh {
 			// Объект диапазонов записей
 			range_t _range;
 		private:
-			// Максимальный размер выделения памяти
-			size_t _maxMemory;
-		private:
 			// Буфер данных выделенной памяти
 			vector <uint8_t> _buffer;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk;
+			const fmk_t * _fmk = nullptr;
 			// Объект работы с логами
-			const log_t * _log;
+			const log_t * _log = nullptr;
 		private:
 			/**
 			 * @brief Метод контроля памяти

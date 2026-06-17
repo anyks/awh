@@ -73,14 +73,16 @@ namespace awh {
 			 *
 			 */
 			typedef struct Range {
-				size_t end;   // Конец записи
-				size_t begin; // Начало записи
-				size_t count; // Количество добавленных записей
+				size_t end;    // Конец записи
+				size_t begin;  // Начало записи
+				size_t count;  // Количество добавленных записей
+				size_t offset; // Смещение для чтения данных
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Range() noexcept : end(0), begin(0), count(0) {}
+				explicit Range() noexcept :
+				 end(0), begin(0), count(0), offset(0) {}
 			} __attribute__((packed)) range_t;
 			/**
 			 * @brief Структура параметров максимальных значений
@@ -108,9 +110,6 @@ namespace awh {
 			// Объект диапазонов записей
 			range_t _range;
 		private:
-			// Смещение для чтения данных
-			size_t _offset;
-		private:
 			// Буфер данных выделенной памяти
 			vector <uint8_t> _buffer;
 		private:
@@ -120,9 +119,9 @@ namespace awh {
 			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Объект фреймворка
-			const fmk_t * _fmk;
+			const fmk_t * _fmk = nullptr;
 			// Объект работы с логами
-			const log_t * _log;
+			const log_t * _log = nullptr;
 		private:
 			/**
 			 * @brief Метод контроля памяти

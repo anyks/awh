@@ -175,7 +175,7 @@ void awh::Queue::pop() noexcept {
 			// Размер верхней записи в очереди
 			size_t size = 0;
 			// Сбрасываем смещение чтения данных
-			this->_offset = 0;
+			this->_range.offset = 0;
 			// Извлекаем текущее значение размера записи
 			::memcpy(&size, &this->_buffer[this->_range.begin], sizeof(size));
 			// Если размер записи получен
@@ -211,14 +211,14 @@ void awh::Queue::pop() noexcept {
 void awh::Queue::clear() noexcept {
 	// Выполняем блокировку потока
 	const locker_t <> lock(this->_mtx);
-	// Сбрасываем смещение чтения данных
-	this->_offset = 0;
 	// Выполняем сброс конца очереди
 	this->_range.end = 0;
 	// Выполняем сброс начала очереди
 	this->_range.begin = 0;
 	// Выполняем сброс количества записей в очереди
 	this->_range.count = 0;
+	// Сбрасываем смещение чтения данных
+	this->_range.offset = 0;
 }
 /**
  * @brief Метод полной очистки памяти
@@ -229,14 +229,14 @@ void awh::Queue::reset() noexcept {
 	const locker_t <> lock(this->_mtx);
 	// Если буфер данных не пустой
 	if(!this->_buffer.empty()){
-		// Сбрасываем смещение чтения данных
-		this->_offset = 0;
 		// Выполняем сброс конца очереди
 		this->_range.end = 0;
 		// Выполняем сброс начала очереди
 		this->_range.begin = 0;
 		// Выполняем сброс количества записей в очереди
 		this->_range.count = 0;
+		// Сбрасываем смещение чтения данных
+		this->_range.offset = 0;
 		// Выполняем освобождение памяти
 		vector <decltype(this->_buffer)::value_type> ().swap(this->_buffer);
 	}
@@ -267,7 +267,7 @@ size_t awh::Queue::size() const noexcept {
 		// Извлекаем текущее значение размера записи
 		::memcpy(&result, &this->_buffer[this->_range.begin], sizeof(result));
 		// Вычитаем смещение чтения данных (смещение не может превышать размер записи)
-		result -= ::min(result, this->_offset);
+		result -= ::min(result, this->_range.offset);
 	}
 	// Возвращаем результат
 	return result;
@@ -296,7 +296,7 @@ const void * awh::Queue::data() const noexcept {
 	// Если буфер данных не пустой и записи есть
 	if(!this->_buffer.empty() && (this->_range.count > 0))
 		// Возвращаем данные записи в бинарном виде
-		result = (&this->_buffer[0] + this->_range.begin + sizeof(size_t) + this->_offset);
+		result = (&this->_buffer[0] + this->_range.begin + sizeof(size_t) + this->_range.offset);
 	// Возвращаем результат
 	return result;
 }
@@ -315,7 +315,7 @@ void awh::Queue::commit(const size_t size) noexcept {
 		// Извлекаем текущее значение размера записи
 		::memcpy(&length, &this->_buffer[this->_range.begin], sizeof(length));
 		// Выполняем фиксацию смещения, не позволяя ему превысить размер записи
-		this->_offset = ::min(length, this->_offset + size);
+		this->_range.offset = ::min(length, this->_range.offset + size);
 	}
 }
 /**
@@ -540,7 +540,7 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(queue._buffer);
 		// Выполняем обмен смещениями чтения данных
-		std::swap(this->_offset, queue._offset);
+		std::swap(this->_range.offset, queue._range.offset);
 		/**
 		 * Выполняем обмен последними итераторами (поля упакованной структуры обмениваем через копирование значений)
 		 */
@@ -691,8 +691,6 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 		if((queue._log != nullptr) && (this->_log == nullptr))
 			// Копируем объект для работы с логами установлен
 			this->_log = queue._log;
-		// Выполняем установку смещения чтения данных
-		this->_offset = queue._offset;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(queue._buffer);
 		// Выполняем копирование последнего итератора
@@ -701,18 +699,20 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
 		this->_range.count = queue._range.count;
+		// Выполняем установку смещения чтения данных
+		this->_range.offset = queue._range.offset;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
 		this->_max.records = queue._max.records;
-		// Выполняем сброс смещения чтения данных сторонней очереди
-		queue._offset = 0;
 		// Выполняем сброс последнего итератора сторонней очереди
 		queue._range.end = 0;
 		// Выполняем сброс начального итератора сторонней очереди
 		queue._range.begin = 0;
 		// Выполняем сброс количества добавленных записей сторонней очереди
 		queue._range.count = 0;
+		// Выполняем сброс смещения чтения данных сторонней очереди
+		queue._range.offset = 0;
 		// Уведомляем ожидающие потоки о возможном появлении данных
 		this->_cv.notify_all();
 	/**
@@ -759,14 +759,14 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 		if((queue._log != nullptr) && (this->_log == nullptr))
 			// Копируем объект для работы с логами установлен
 			this->_log = queue._log;
-		// Выполняем установку смещения чтения данных
-		this->_offset = queue._offset;
 		// Выполняем копирование последнего итератора
 		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
 		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
 		this->_range.count = queue._range.count;
+		// Выполняем установку смещения чтения данных
+		this->_range.offset = queue._range.offset;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
@@ -812,7 +812,7 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 			std::lock(lock1, lock2);
 		}
 		// Если не совпадает количество записей или смещение чтения данных
-		if((this->_range.count != queue._range.count) || (this->_offset != queue._offset))
+		if((this->_range.count != queue._range.count) || (this->_range.offset != queue._range.offset))
 			// Очереди не равны
 			return false;
 		// Получаем размер активных данных каждой из текущей очереди
@@ -843,7 +843,7 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
  * @brief Разрешаем пустое значение объекта
  *
  */
-awh::Queue::Queue() noexcept : _offset(0), _fmk(nullptr), _log(nullptr) {}
+awh::Queue::Queue() noexcept : _fmk(nullptr), _log(nullptr) {}
 /**
  * @brief Конструктор перемещения
  *
@@ -870,26 +870,26 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 			this->_log = queue._log;
 		// Выполняем перемещение буфера данных
 		this->_buffer = ::move(queue._buffer);
-		// Выполняем установку смещения чтения данных
-		this->_offset = queue._offset;
 		// Выполняем копирование последнего итератора
 		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
 		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
 		this->_range.count = queue._range.count;
+		// Выполняем установку смещения чтения данных
+		this->_range.offset = queue._range.offset;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
 		this->_max.records = queue._max.records;
-		// Выполняем сброс смещения чтения данных сторонней очереди
-		queue._offset = 0;
 		// Выполняем сброс последнего итератора сторонней очереди
 		queue._range.end = 0;
 		// Выполняем сброс начального итератора сторонней очереди
 		queue._range.begin = 0;
 		// Выполняем сброс количества добавленных записей сторонней очереди
 		queue._range.count = 0;
+		// Выполняем сброс смещения чтения данных сторонней очереди
+		queue._range.offset = 0;
 	/**
 	 * Если возникает ошибка
 	 */
@@ -924,14 +924,14 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 			this->_log = queue._log;
 		// Выполняем копирование буфера данных
 		this->_buffer = queue._buffer;
-		// Выполняем установку смещения чтения данных
-		this->_offset = queue._offset;
 		// Выполняем копирование последнего итератора
 		this->_range.end = queue._range.end;
 		// Выполняем копирование начального итератора
 		this->_range.begin = queue._range.begin;
 		// Выполняем копирование количества добавленных записей
 		this->_range.count = queue._range.count;
+		// Выполняем установку смещения чтения данных
+		this->_range.offset = queue._range.offset;
 		// Выполняем копирование максимального размера памяти
 		this->_max.memory = queue._max.memory;
 		// Выполняем копирование максимального количества записей
@@ -950,7 +950,7 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
  */
-awh::Queue::Queue(const fmk_t * fmk, const log_t * log) noexcept : _offset(0), _fmk(fmk), _log(log) {}
+awh::Queue::Queue(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
 /**
  * @brief Деструктор
  *

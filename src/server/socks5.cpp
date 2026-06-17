@@ -1940,6 +1940,22 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										switch(static_cast <uint8_t> (i->second.udp.host->type)){
 											// Если тип данных соответствует FQDN
 											case static_cast <uint8_t> (net::type_t::FQDN): {
+												// Вычисляем длину полезной нагрузки UDP с защитой от переполнения приёмника кэша фиксированного размера
+												const size_t payload = ::min((size > i->second.udp.size) ? (size - i->second.udp.size) : static_cast <size_t> (0), sizeof(cache_t::buffer));
+												// Если фактическая длина полезной нагрузки превышает размер приёмника кэша - фиксируем в логах (данные усекаются)
+												if((size > i->second.udp.size) && ((size - i->second.udp.size) > sizeof(cache_t::buffer))){
+													// Если включён режим отладки
+													#if DEBUG_MODE
+														// Записываем предупреждение в лог
+														this->_log->debug("UDP relay payload size %zu exceeds cache buffer %zu, data truncated", __PRETTY_FUNCTION__, make_tuple(eid, buffer, size), log_t::flag_t::WARNING, size - i->second.udp.size, sizeof(cache_t::buffer));
+													/**
+													 * Если режим отладки не включён
+													 */
+													#else
+														// Записываем ошибку в лог
+														this->_log->print("UDP relay payload size %zu exceeds cache buffer %zu, data truncated", log_t::flag_t::WARNING, size - i->second.udp.size, sizeof(cache_t::buffer));
+													#endif
+												}
 												// Выполняем поиск кэша для идентификатора пира
 												auto j = ::__awh_cache__.find(i->second.eid);
 												// Если кэш для этого идентификатора найден
@@ -1947,9 +1963,9 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													// Устанавливаем идентификатор пира для кэша
 													j->second.eid = eid;
 													// Устанавливаем размер буфера данных в кэше
-													j->second.size = (size - i->second.udp.size);
+													j->second.size = payload;
 													// Копируем данные запроса в кэш
-													::memcpy(j->second.buffer, buffer + i->second.udp.size, size - i->second.udp.size);
+													::memcpy(j->second.buffer, buffer + i->second.udp.size, payload);
 													// Устанавливаем порт удалённого сервера для подключения
 													j->second.attr->port = awh_cast <net::attr_fqdn_t *> (i->second.udp.host.get())->port;
 													// Устанавливаем доменное имя хоста для подключения
@@ -1961,9 +1977,9 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													// Устанавливаем идентификатор пира для кэша
 													ret.first->second.eid = eid;
 													// Устанавливаем размер буфера данных в кэше
-													ret.first->second.size = (size - i->second.udp.size);
+													ret.first->second.size = payload;
 													// Копируем данные запроса в кэш
-													::memcpy(ret.first->second.buffer, buffer + i->second.udp.size, size - i->second.udp.size);
+													::memcpy(ret.first->second.buffer, buffer + i->second.udp.size, payload);
 													// Создаём новый объект атрибутов сети для кэша
 													ret.first->second.attr = make_unique <net::attr_net_t> ();
 													// Устанавливаем порт удалённого сервера для подключения
