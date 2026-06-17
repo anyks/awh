@@ -111,13 +111,13 @@ bool awh::unit::Mediator::commit(const event::id_t eid) noexcept {
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					this->_log->debug("Failed to launch client", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
+					this->_log->debug("Failed to commit mediator", __PRETTY_FUNCTION__, make_tuple(eid), log_t::flag_t::CRITICAL);
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					this->_log->print("Failed to launch client", log_t::flag_t::CRITICAL);
+					this->_log->print("Failed to commit mediator", log_t::flag_t::CRITICAL);
 				#endif
 			}
 		}
