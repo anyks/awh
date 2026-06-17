@@ -43,7 +43,7 @@
 #include <miniupnpc/upnpcommands.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <sys/locker.hpp>
 #include <net/eth/portmap.hpp>
@@ -330,7 +330,7 @@ namespace {
 		 */
 		explicit NatPmpPublicCache() noexcept : has(false), expire(0), address(0) {}
 	} __awh_natpmp_public_cache__;
-}
+};
 
 /**
  * @brief Инкапсулируем статические прототипы функций в пространство имён работы с сокетами

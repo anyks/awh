@@ -25,11 +25,14 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <array>
 #include <random>
 #include <cerrno>
 #include <memory>
+#include <vector>
 #include <cstring>
 #include <cstdlib>
+#include <shared_mutex>
 
 /**
  * Системные заголовочные файлы
@@ -57,8 +60,9 @@
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
+#include <sys/locker.hpp>
 #include <net/eth/socket.hpp>
 
 /**
@@ -66,6 +70,270 @@
  */
 using namespace std;
 
+/**
+ * @brief Внутренние служебные объекты
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Время жизни кеша списка сетевых интерфейсов в миллисекундах
+	 *
+	 * @note Сетевые интерфейсы могут менять адреса (DHCP, переключение сети), поэтому кеш периодически обновляется
+	 */
+	constexpr uint64_t AWH_IFACE_CACHE_TTL = 0x1388;
+
+	/**
+	 * @brief Флаг одноразовой инициализации мьютексов для кешей сетевых интерфейсов
+	 *
+	 */
+	once_flag __awh_init_once__;
+
+	/**
+	 * @brief Режим безопасности работы потоков
+	 *
+	 */
+	event::mode_t __awh_thread_safety__ = event::mode_t::DISABLED;
+
+	/**
+	 * Блокировка доступа к глобальному кешу сетевых интерфейсов
+	 */
+	static lock_state_t <std::shared_mutex> __awh_iface_cache_mutex__;
+};
+
+/**
+ * @brief Внутренние служебные объекты модуля работы с сокетами
+ *
+ */
+namespace {
+	/**
+	 * Пространство имён библиотеки
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Структура записи кеша сетевого интерфейса
+	 *
+	 */
+	struct IfaceEntry {
+		// Флаг активности интерфейса (IFF_UP)
+		bool up;
+		// Имя сетевого интерфейса
+		string name;
+		// Семейство адреса (AF_INET или AF_INET6)
+		int32_t family;
+		// Индекс сетевого интерфейса
+		uint32_t index;
+		// IPv4-адрес интерфейса (сетевой порядок байт)
+		uint32_t address4;
+		// IPv6-адрес интерфейса
+		array <uint8_t, 16> address6;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit IfaceEntry() noexcept :
+		 up(false), name{""}, family(0),
+		 index(0), address4(0), address6{0} {}
+	};
+
+	/**
+	 * @brief Структура кеша списка сетевых интерфейсов
+	 *
+	 */
+	struct IfaceCache {
+		// Абсолютное время истечения кеша в миллисекундах (0 - кеш пустой)
+		uint64_t expire;
+		// Список записей сетевых интерфейсов
+		vector <IfaceEntry> entries;
+		/**
+		 * @brief Конструктор
+		 *
+		 */
+		explicit IfaceCache() noexcept : expire(0) {}
+	} __awh_iface_cache__;
+
+	/**
+	 * @brief Функция обновления кеша списка сетевых интерфейсов через getifaddrs
+	 *
+	 * @note Сбор списка интерфейсов выполняется без удержания блокировки, публикация - под эксклюзивной блокировкой
+	 *
+	 * @param now текущая метка времени в миллисекундах
+	 * @return    результат обновления кеша
+	 */
+	static bool refreshIfaceCache(const uint64_t now) noexcept {
+		// Список собранных записей сетевых интерфейсов
+		vector <IfaceEntry> entries;
+		// Список сетевых интерфейсов
+		struct ifaddrs * ptr = nullptr;
+		// Выполняем получение списка сетевых интерфейсов
+		if(::getifaddrs(&ptr) != 0)
+			// Если список интерфейсов получить не удалось, выходим
+			return false;
+		/**
+		 * Перебираем все сетевые интерфейсы
+		 */
+		for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
+			// Пропускаем интерфейсы без адреса
+			if(ifa->ifa_addr == nullptr)
+				// Переходим к следующему интерфейсу
+				continue;
+			// Определяем семейство адреса интерфейса
+			const int32_t family = ifa->ifa_addr->sa_family;
+			// Если интерфейс не относится к IPv4 или IPv6
+			if((family != AF_INET) && (family != AF_INET6))
+				// Переходим к следующему интерфейсу
+				continue;
+			// Формируем запись сетевого интерфейса
+			IfaceEntry entry;
+			// Устанавливаем имя интерфейса
+			entry.name = ifa->ifa_name;
+			// Устанавливаем семейство адреса
+			entry.family = family;
+			// Устанавливаем флаг активности интерфейса
+			entry.up = static_cast <bool> (ifa->ifa_flags & IFF_UP);
+			// Получаем индекс сетевого интерфейса
+			entry.index = ::if_nametoindex(ifa->ifa_name);
+			// Если адрес является IPv4
+			if(family == AF_INET)
+				// Сохраняем IPv4-адрес интерфейса
+				entry.address4 = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr)->sin_addr.s_addr;
+			// Если адрес является IPv6
+			else ::memcpy(entry.address6.data(), &reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr)->sin6_addr, entry.address6.size());
+			// Добавляем запись в список
+			entries.push_back(std::move(entry));
+		}
+		// Освобождаем память списка сетевых интерфейсов
+		::freeifaddrs(ptr);
+		/**
+		 * Публикуем результат в кеш под эксклюзивной блокировкой
+		 */
+		{
+			// Блокируем доступ к глобальному кешу сетевых интерфейсов на запись
+			const locker_t <std::shared_mutex> lock(::__awh_iface_cache_mutex__, locker_t <std::shared_mutex>::mode_t::EXCLUSIVE);
+			// Сохраняем собранный список интерфейсов в кеш
+			::__awh_iface_cache__.entries = std::move(entries);
+			// Устанавливаем время истечения кеша
+			::__awh_iface_cache__.expire = (now + AWH_IFACE_CACHE_TTL);
+		}
+		// Все удачно
+		return true;
+	}
+
+	/**
+	 * @brief Функция получения IPv4-адреса активного сетевого интерфейса по его имени
+	 *
+	 * @param out  переменная для записи найденного IPv4-адреса (сетевой порядок байт)
+	 * @param fmk  объект фреймворка
+	 * @param name имя сетевого интерфейса
+	 * @return     результат поиска IPv4-адреса
+	 */
+	static bool resolveIfaceIPv4(uint32_t & out, const fmk_t * fmk, string_view name) noexcept {
+		// Текущая метка времени в миллисекундах
+		const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		/**
+		 * Выполняем до двух попыток: чтение из кеша и повтор после принудительного обновления
+		 */
+		for(uint8_t attempt = 0; attempt < 2; ++attempt){
+			// Флаг актуальности кеша
+			bool fresh = false;
+			{
+				// Блокируем доступ к глобальному кешу сетевых интерфейсов на чтение
+				const locker_t <std::shared_mutex> lock(::__awh_iface_cache_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Определяем актуальность кеша
+				fresh = (::__awh_iface_cache__.expire > now);
+				// Если кеш актуален
+				if(fresh){
+					/**
+					 * Перебираем закешированные интерфейсы
+					 */
+					for(const IfaceEntry & entry : ::__awh_iface_cache__.entries){
+						// Если найден активный IPv4-интерфейс с искомым именем
+						if((entry.family == AF_INET) && entry.up && fmk->compare(entry.name, name)){
+							// Сохраняем найденный IPv4-адрес
+							out = entry.address4;
+							// Сообщаем об успехе
+							return true;
+						}
+					}
+				}
+			}
+			// Если кеш был актуален, но интерфейс не найден, дальнейший поиск бессмысленен
+			if(fresh)
+				// Выходим
+				return false;
+			// Кеш устарел - выполняем его принудительное обновление
+			if(!refreshIfaceCache(now))
+				// Если обновить кеш не удалось, выходим
+				return false;
+		}
+		// Интерфейс не найден
+		return false;
+	}
+
+	/**
+	 * @brief Функция получения индекса сетевого интерфейса по его IPv6-адресу
+	 *
+	 * @param fmk     объект фреймворка
+	 * @param address IPv6-адрес сетевого интерфейса (16 байт)
+	 * @return        индекс сетевого интерфейса (0 - интерфейс не найден)
+	 */
+	static uint32_t resolveIfaceIndexIPv6(const fmk_t * fmk, const uint8_t * address) noexcept {
+		// Текущая метка времени в миллисекундах
+		const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
+		/**
+		 * Выполняем до двух попыток: чтение из кеша и повтор после принудительного обновления
+		 */
+		for(uint8_t attempt = 0; attempt < 2; ++attempt){
+			// Флаг актуальности кеша
+			bool fresh = false;
+			{
+				// Блокируем доступ к глобальному кешу сетевых интерфейсов на чтение
+				const locker_t <std::shared_mutex> lock(::__awh_iface_cache_mutex__, locker_t <std::shared_mutex>::mode_t::SHARED);
+				// Определяем актуальность кеша
+				fresh = (::__awh_iface_cache__.expire > now);
+				// Если кеш актуален
+				if(fresh){
+					/**
+					 * Перебираем закешированные интерфейсы
+					 */
+					for(const IfaceEntry & entry : ::__awh_iface_cache__.entries){
+						// Если найден активный IPv6-интерфейс с искомым адресом
+						if((entry.family == AF_INET6) && entry.up && (::memcmp(entry.address6.data(), address, entry.address6.size()) == 0))
+							// Возвращаем индекс найденного интерфейса
+							return entry.index;
+					}
+				}
+			}
+			// Если кеш был актуален, но интерфейс не найден, дальнейший поиск бессмысленен
+			if(fresh)
+				// Выходим
+				return 0;
+			// Кеш устарел - выполняем его принудительное обновление
+			if(!refreshIfaceCache(now))
+				// Если обновить кеш не удалось, выходим
+				return 0;
+		}
+		// Интерфейс не найден
+		return 0;
+	}
+};
+
+/**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::eth::Socket::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	::__awh_thread_safety__ = (mode ? event::mode_t::ENABLED : event::mode_t::DISABLED);
+	// Активируем работу мьютекса блокировки потока при работе с глобальным кешом сетевых интерфейсов
+	::__awh_iface_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+}
 /**
  * @brief Метод получения кода ошибки
  *
@@ -372,6 +640,8 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				// Возвращаем результат
 				return result;
 			}
+			// Установка прошла успешно, поэтому в качестве запасного значения используем запрошенный размер
+			result = size;
 			// Получаем размер установленного размера буфера
 			socklen_t length = sizeof(result);
 			// Считываем установленный размер буфера на чтение
@@ -427,6 +697,8 @@ int32_t awh::eth::Socket::setBufferSize(const net::socket_t sock, const net::soc
 				// Возвращаем результат
 				return result;
 			}
+			// Установка прошла успешно, поэтому в качестве запасного значения используем запрошенный размер
+			result = size;
 			// Получаем размер установленного размера буфера
 			socklen_t length = sizeof(result);
 			// Считываем установленный размер буфера
@@ -477,17 +749,17 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4): {
-				// Получаем список сетевых интерфейсов
-				struct ifaddrs * ptr = nullptr;
-				// Выполняем получение списка сетевых интерфейсов
-				if(::getifaddrs(&ptr) != 0){
+				// IPv4-адрес найденного сетевого интерфейса
+				uint32_t address = 0;
+				// Получаем IPv4-адрес активного сетевого интерфейса по его имени (из кеша или через getifaddrs)
+				if(!::resolveIfaceIPv4(address, this->_fmk, ifname)){
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
 						this->_log->debug(
-							"Unable to get list of network interfaces",
+							"Unable to resolve address of network interface",
 							__PRETTY_FUNCTION__,
 							make_tuple(
 								sock,
@@ -500,66 +772,72 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
 					 */
 					#else
 						// Записываем ошибку в лог
-						this->_log->print("Unable to get list of network interfaces", log_t::flag_t::WARNING);
+						this->_log->print("Unable to resolve address of network interface", log_t::flag_t::WARNING);
 					#endif
 					// Возвращаем пустой результат
 					return result;
 				}
-				/**
-				 * Перебираем все сетевые интерфейсы
-				 */
-				for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-					// Пропускаем не IPv4-интерфейсы
-					if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET))
-						// Пропускаем интерфейсы, которые не являются IPv4
-						continue;
-					// Если интерфейс не активен
-					if(!(ifa->ifa_flags & IFF_UP))
-						// Пропускаем неактивные интерфейсы
-						continue;
-					// Получаем IP-адрес интерфейса
-					struct sockaddr_in * sin = reinterpret_cast <struct sockaddr_in *> (ifa->ifa_addr);
-					// Если имя интерфейса совпадает
-					if(this->_fmk->compare(ifa->ifa_name, ifname)){
-						// Создаём объект сетевого интерфейса
-						struct in_addr iface = {};
-						// Присваиваем найденный IP-адрес
-						iface.s_addr = sin->sin_addr.s_addr;
-						// Устанавливаем сетевой интерфейс для multicast пакетов
-						if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &iface, sizeof(iface))))){
-							/**
-							 * Если включён режим отладки
-							 */
-							#if DEBUG_MODE
-								// Записываем ошибку в лог
-								this->_log->debug(
-									"%s", __PRETTY_FUNCTION__,
-									make_tuple(
-										sock,
-										static_cast <uint16_t> (family),
-										ifname
-									), log_t::flag_t::WARNING,
-									::strerror(errno)
-								);
-							/**
-							 * Если режим отладки не включён
-							 */
-							#else
-								// Записываем ошибку в лог
-								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
-							#endif
-						}
-						// Выходим из цикла
-						break;
-					}
+				// Создаём объект сетевого интерфейса
+				struct in_addr iface = {};
+				// Присваиваем найденный IP-адрес
+				iface.s_addr = address;
+				// Устанавливаем сетевой интерфейс для multicast пакетов
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_MULTICAST_IF, &iface, sizeof(iface))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								ifname
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
 				}
-				// Освобождаем память от списка сетевых интерфейсов
-				::freeifaddrs(ptr);
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Формируем нуль-терминированную строку имени интерфейса (string_view может не быть нуль-терминированной)
+				const string name(ifname);
 				// Получаем индекс сетевого интерфейса по его имени
-				const uint32_t index = ::if_nametoindex(ifname.data());
+				const uint32_t index = ::if_nametoindex(name.c_str());
+				// Если индекс сетевого интерфейса получить не удалось
+				if(index == 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"Unable to get index of network interface",
+							__PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								ifname
+							), log_t::flag_t::WARNING
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("Unable to get index of network interface", log_t::flag_t::WARNING);
+					#endif
+					// Возвращаем пустой результат
+					return result;
+				}
 				// Устанавливаем сетевой интерфейс для multicast пакетов
 				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_MULTICAST_IF, &index, sizeof(index))))){
 					/**
@@ -622,21 +900,21 @@ bool awh::eth::Socket::setMulticastIface(const net::socket_t sock, const event::
  * @param intvl время между попытками
  * @return      результат работы функции
  */
-bool awh::eth::Socket::setKeepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept {
+bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) const noexcept {
 	// Переменная результата
 	bool result = false;
 	// Если максимальное количество попыток передано неправильно
 	if(cnt < 0)
 		// Выполняем компенсацию
-		const_cast <int32_t &> (cnt) = 0;
+		cnt = 0;
 	// Если время через которое происходит проверка подключения передано неправильно
 	if(idle < 0)
 		// Выполняем компенсацию
-		const_cast <int32_t &> (idle) = 0;
+		idle = 0;
 	// Если время между попытками передано неправильно
 	if(intvl < 0)
 		// Выполняем компенсацию
-		const_cast <int32_t &> (intvl) = 0;
+		intvl = 0;
 	// Устанавливаем параметр
 	int32_t keepAlive = 1;
 	// Активация постоянного подключения
@@ -993,10 +1271,12 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
 					#endif
 				}
-				// Получаем размер установленного размера буфера
-				socklen_t length = sizeof(flags);
+				// Тип сокета для определения его семейства
+				int32_t socktype = 0;
+				// Получаем размер буфера для извлечения типа сокета
+				socklen_t length = sizeof(socktype);
 				// Считываем тип сокета для определения его семейства
-				if(!(ok2 = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_TYPE, &flags, &length)))){
+				if(!(ok2 = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_TYPE, &socktype, &length)))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1020,7 +1300,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					#endif
 				}
 				// Если сокет является RAW-сокетом
-				if(ok2 && (flags == SOCK_RAW)){
+				if(ok2 && (socktype == SOCK_RAW)){
 					// Активируем/деактивируем генерацию информации о типе сервиса (TOS) в сокете
 					if(!(ok2 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_RECVTOS, &flags, sizeof(flags))))){
 						/**
@@ -1051,10 +1331,12 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 			} break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6): {
-				// Получаем размер установленного размера буфера
-				socklen_t length = sizeof(flags);
+				// Тип сокета для определения его семейства
+				int32_t socktype = 0;
+				// Получаем размер буфера для извлечения типа сокета
+				socklen_t length = sizeof(socktype);
 				// Считываем тип сокета для определения его семейства
-				if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_TYPE, &flags, &length)))){
+				if(!(result = !static_cast <bool> (::getsockopt(sock, SOL_SOCKET, SO_TYPE, &socktype, &length)))){
 					/**
 					 * Если включён режим отладки
 					 */
@@ -1078,7 +1360,7 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 					#endif
 				}
 				// Если сокет не является RAW-сокетом
-				if(flags != SOCK_RAW){
+				if(socktype != SOCK_RAW){
 					// Флаг выполнения операции
 					bool ok1 = false, ok2 = false, ok3 = false;
 					// Активируем/деактивируем генерацию информации о хопах (Hop Limit) в сокете
@@ -1478,6 +1760,8 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 			case event::options::NO_SIGILL: {
 				// Создаем структуру активации сигнала
 				struct sigaction act{0};
+				// Обнуляем маску блокируемых сигналов
+				sigemptyset(&act.sa_mask);
 				// Устанавливаем флаги перезагрузки
 				act.sa_flags = (SA_ONSTACK | SA_RESTART | SA_SIGINFO);
 				/**
@@ -1673,7 +1957,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 				 * Определяем режим блокировки
 				 */
 				switch(static_cast <uint8_t> (mode)){
-					// Если необходимо перевести сокет в блокирующий режим
+					// Если необходимо перевести сокет в неблокирующий режим
 					case static_cast <uint8_t> (net::socket_mode_t::ENABLED): {
 						// Если флаг ещё не установлен
 						if(!(result = (flags & O_NONBLOCK))){
@@ -1704,7 +1988,7 @@ bool awh::eth::Socket::switchOption(const net::socket_t sock, const event::famil
 							}
 						}
 					} break;
-					// Если необходимо перевести сокет в неблокирующий режим
+					// Если необходимо перевести сокет в блокирующий режим
 					case static_cast <uint8_t> (net::socket_mode_t::DISABLED): {
 						// Если флаг уже установлен
 						if(!(result = !(flags & O_NONBLOCK))){
@@ -2584,6 +2868,31 @@ bool awh::eth::Socket::setHops(const net::socket_t sock, const event::family_t f
 bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mode_t mode, const net::addr_net_t * group, const net::addr_net_t * source) const noexcept {
 	// Переменная результата
 	bool result = false;
+	// Если переданные адреса не инициализированы
+	if((group == nullptr) || (source == nullptr)){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"It is impossible to work with a multicast group because the address of the group or the source is not initialized",
+				__PRETTY_FUNCTION__,
+				make_tuple(
+					sock,
+					static_cast <uint16_t> (mode)
+				), log_t::flag_t::CRITICAL
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("It is impossible to work with a multicast group because the address of the group or the source is not initialized", log_t::flag_t::CRITICAL);
+		#endif
+		// Возвращаем пустой результат
+		return result;
+	}
 	/**
 	 * Выполняем перехват ошибок
 	 */
@@ -2603,7 +2912,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv4
 						case 4: {
 							// Формируем объект multicast request
-							struct ip_mreq mreq;
+							struct ip_mreq mreq{0};
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Устанавливаем адрес сетевого интерфейса
@@ -2635,36 +2944,11 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv6
 						case 16: {
 							// Формируем объект multicast request
-							struct ipv6_mreq mreq;
+							struct ipv6_mreq mreq{0};
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
-							// Устанавливаем индекс интерфейса по умолчанию
-							mreq.ipv6mr_interface = 0;
-							// Получаем список сетевых интерфейсов
-							struct ifaddrs * ptr = nullptr;
-							// Выполняем получение списка сетевых интерфейсов
-							if(::getifaddrs(&ptr) == 0){
-								/**
-								 * Перебираем все сетевые интерфейсы
-								 */
-								for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-									// Если не IPv6 адреса
-									if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
-										// Переходим к следующему интерфейсу
-										continue;
-									// Получаем указатель на структуру IPv6
-									struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
-									// Если адреса совпадают
-									if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(in6_addr)) == 0){
-										// Получаем индекс интерфейса
-										mreq.ipv6mr_interface = ::if_nametoindex(ifa->ifa_name);
-										// Завершаем поиск
-										break;
-									}
-								}
-								// Освобождаем память списка сетевых интерфейсов
-								::freeifaddrs(ptr);
-							}
+							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)
+							mreq.ipv6mr_interface = ::resolveIfaceIndexIPv6(this->_fmk, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0]);
 							// Добавляем новую multicast-группу к сокету
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_JOIN_GROUP, &mreq, sizeof(mreq))))){
 								/**
@@ -2700,7 +2984,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv4
 						case 4: {
 							// Формируем объект multicast request
-							struct ip_mreq mreq;
+							struct ip_mreq mreq{0};
 							// Устанавливаем адрес multicast-группы
 							mreq.imr_multiaddr.s_addr = awh_cast <const net::addr_net_ipv4_t *> (group)->address;
 							// Устанавливаем адрес сетевого интерфейса
@@ -2732,36 +3016,11 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 						// Если адрес является IPv6
 						case 16: {
 							// Формируем объект multicast request
-							struct ipv6_mreq mreq;
+							struct ipv6_mreq mreq{0};
 							// Устанавливаем адрес multicast-группы
 							::memcpy(&mreq.ipv6mr_multiaddr, &awh_cast <const net::addr_net_ipv6_t *> (group)->address[0], sizeof(mreq.ipv6mr_multiaddr));
-							// Удаляем multicиндекс интерфейса по умолчанию
-							mreq.ipv6mr_interface = 0;
-							// Получаем список сетевых интерфейсов
-							struct ifaddrs * ptr = nullptr;
-							// Выполняем получение списка сетевых интерфейсов
-							if(::getifaddrs(&ptr) == 0){
-								/**
-								 * Перебираем все сетевые интерфейсы
-								 */
-								for(struct ifaddrs * ifa = ptr; ifa != nullptr; ifa = ifa->ifa_next){
-									// Если не IPv6 адреса
-									if((ifa->ifa_addr == nullptr) || (ifa->ifa_addr->sa_family != AF_INET6))
-										// Переходим к следующему интерфейсу
-										continue;
-									// Получаем указатель на структуру IPv6
-									struct sockaddr_in6 * sin = reinterpret_cast <struct sockaddr_in6 *> (ifa->ifa_addr);
-									// Если адреса совпадают
-									if(::memcmp(&sin->sin6_addr, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0], sizeof(in6_addr)) == 0){
-										// Получаем индекс интерфейса
-										mreq.ipv6mr_interface = ::if_nametoindex(ifa->ifa_name);
-										// Завершаем поиск
-										break;
-									}
-								}
-								// Освобождаем память списка сетевых интерфейсов
-								::freeifaddrs(ptr);
-							}
+							// Получаем индекс сетевого интерфейса по его IPv6-адресу (из кеша или через getifaddrs)
+							mreq.ipv6mr_interface = ::resolveIfaceIndexIPv6(this->_fmk, &awh_cast <const net::addr_net_ipv6_t *> (source)->address[0]);
 							// Удаляем multicast-группу из сокета
 							if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_LEAVE_GROUP, &mreq, sizeof(mreq))))){
 								/**
@@ -2809,7 +3068,7 @@ bool awh::eth::Socket::membership(const net::socket_t sock, const net::socket_mo
 			 */
 			#else
 				// Записываем ошибку в лог
-				this->_log->print("It is impossible to work with a multicast group because the IP address types are different", log_t::flag_t::CRITICAL, error.what());
+				this->_log->print("It is impossible to work with a multicast group because the IP address types are different", log_t::flag_t::CRITICAL);
 			#endif
 		}
 	/**
@@ -3563,7 +3822,15 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
  * @param fmk объект фреймворка
  * @param log объект работы с логами
  */
-awh::eth::Socket::Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {}
+awh::eth::Socket::Socket(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fmk), _log(log) {
+	/**
+	 * Выполняем одноразовую инициализацию мьютексов для кешей IGD и шлюза для всех экземпляров класса Port_Mapping
+	 */
+	std::call_once(::__awh_init_once__, [this]() noexcept {
+		// Активируем работу мьютекса блокировки потока при работе с глобальным кэшем сетевых интерфейсов
+		::__awh_iface_cache_mutex__.enabled = (::__awh_thread_safety__ == event::mode_t::ENABLED);
+	});
+}
 /**
  * @brief Деструктор
  *

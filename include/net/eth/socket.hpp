@@ -52,6 +52,13 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
+				 * @brief Метод установки безопасности работы потоков
+				 *
+				 * @param mode флаг режима безопасности потоков
+				 */
+				void threadSafety(const bool mode) noexcept;
+			public:
+				/**
 				 * @brief Метод получения кода ошибки
 				 *
 				 * @param sock сетевой сокет
@@ -114,7 +121,7 @@ namespace awh {
 				 * @param intvl время между попытками
 				 * @return      результат работы функции
 				 */
-				bool setKeepalive(const net::socket_t sock, const int32_t cnt, const int32_t idle, const int32_t intvl) const noexcept;
+				bool setKeepalive(const net::socket_t sock, int32_t cnt, int32_t idle, int32_t intvl) const noexcept;
 			public:
 				/**
 				 * @brief Метод получения значения поля Differentiated Services Code Point (DSCP) в заголовке IP-пакета
