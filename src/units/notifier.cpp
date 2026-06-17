@@ -100,20 +100,43 @@ void awh::unit::Notifier::available(const event::id_t eid, const event::status_t
 awh::event::id_t awh::unit::Notifier::create() noexcept {
 	// Выполняем создание события уведомителя
 	event::id_t result = this->_io->event(event::node_t::NOTIFY, event::family_t::USER);
-	// Выполняем фиксацию настроек события сервера
-	if(this->_io->commit(result)){
-		// Устанавливаем функцию обратного вызова на событие записи сообщений
-		this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&notifier_t::write, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие чтения сообщений
-		this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&notifier_t::read, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие изменения состояния
-		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&notifier_t::state, this, _1, _2)));
-		// Устанавливаем функцию обратного вызова на событие получения ошибок
-		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&notifier_t::error, this, _1, _2, _3)));
-		// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
-		this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&notifier_t::available, this, _1, _2, _3)));
-		// Запускаем работу события уведомителя
-		if(!this->_io->launch(result)){
+	// Если событие уведомителя успешно создано
+	if(result > 0){
+		// Выполняем фиксацию настроек события сервера
+		if(this->_io->commit(result)){
+			// Устанавливаем функцию обратного вызова на событие записи сообщений
+			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&notifier_t::write, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие чтения сообщений
+			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&notifier_t::read, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие изменения состояния
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&notifier_t::state, this, _1, _2)));
+			// Устанавливаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&notifier_t::error, this, _1, _2, _3)));
+			// Устанавливаем функцию обратного вызова на событие доступности очереди сообщений
+			this->_io->on(result, static_cast <engine::callback::available_t> (std::bind(&notifier_t::available, this, _1, _2, _3)));
+			// Запускаем работу события уведомителя
+			if(!this->_io->launch(result)){
+				// Удаляем событие уведомителя
+				this->_io->destroy(result);
+				// Обнуляем результат
+				result = 0;
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог запуска события
+					this->_log->debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог запуска события
+					this->_log->print("Notifier event could not be launched", log_t::flag_t::WARNING);
+				#endif
+			// Добавляем идентификатор события уведомителя в список событий уведомителя
+			} else this->_events.emplace(result);
+		// Если событие уведомителя не может быть создано
+		} else {
 			// Удаляем событие уведомителя
 			this->_io->destroy(result);
 			// Обнуляем результат
@@ -122,36 +145,16 @@ awh::event::id_t awh::unit::Notifier::create() noexcept {
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
-				// Записываем ошибку в лог запуска события
-				this->_log->debug("Notifier event could not be launched", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
+				// Записываем ошибку в лог создания события
+				this->_log->debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
-				// Записываем ошибку в лог запуска события
-				this->_log->print("Notifier event could not be launched", log_t::flag_t::WARNING);
+				// Записываем ошибку в лог создания события
+				this->_log->print("Notifier event could not be created", log_t::flag_t::WARNING);
 			#endif
-		// Добавляем идентификатор события уведомителя в список событий уведомителя
-		} else this->_events.emplace(result);
-	// Если событие уведомителя не может быть создано
-	} else {
-		// Удаляем событие уведомителя
-		this->_io->destroy(result);
-		// Обнуляем результат
-		result = 0;
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог создания события
-			this->_log->debug("Notifier event could not be created", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог создания события
-			this->_log->print("Notifier event could not be created", log_t::flag_t::WARNING);
-		#endif
+		}
 	}
 	// Возвращаем результат
 	return result;
