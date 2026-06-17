@@ -61,11 +61,19 @@
 		/**
 		 * Для компилятора GCC/Clang
 		 */
-		#if __GNUC__ || __clang__
+		#if __clang__
 			/**
-			 * Формируем функцию паузы для CPU
+			 * Формируем функцию паузы для CPU (Clang)
 			 */
 			#define CPU_PAUSE() __builtin_arm_yield()
+		/**
+		 * Для компилятора GCC (в GCC нет __builtin_arm_yield)
+		 */
+		#elif __GNUC__
+			/**
+			 * Формируем функцию паузы для CPU (GCC)
+			 */
+			#define CPU_PAUSE() __asm__ __volatile__("yield")
 		/**
 		 * Для компилятора MSVC на ARM:
 		 */
@@ -82,11 +90,19 @@
 		/**
 		 * Для компилятора GCC/Clang
 		 */
-		#if __GNUC__ || __clang__
+		#if __clang__
 			/**
-			 * Формируем функцию паузы для CPU
+			 * Формируем функцию паузы для CPU (Clang)
 			 */
 			#define CPU_PAUSE() __builtin_arm_yield()
+		/**
+		 * Для компилятора GCC (в GCC нет __builtin_arm_yield)
+		 */
+		#elif __GNUC__
+			/**
+			 * Формируем функцию паузы для CPU (GCC)
+			 */
+			#define CPU_PAUSE() __asm__ __volatile__("yield")
 		/**
 		 * Для компилятора MSVC на ARM:
 		 */
@@ -134,11 +150,19 @@
 		/**
 		 * Для компилятора GCC/Clang
 		 */
-		#if __GNUC__ || __clang__
+		#if __clang__
 			/**
-			 * Формируем функцию паузы для CPU
+			 * Формируем функцию паузы для CPU (Clang)
 			 */
 			#define CPU_PAUSE() __builtin_arm_yield()
+		/**
+		 * Для компилятора GCC (в GCC нет __builtin_arm_yield)
+		 */
+		#elif __GNUC__
+			/**
+			 * Формируем функцию паузы для CPU (GCC)
+			 */
+			#define CPU_PAUSE() __asm__ __volatile__("yield")
 		/**
 		 * Для компилятора MSVC на ARM:
 		 */
@@ -201,15 +225,15 @@ namespace {
 	using namespace awh;
 
 	/**
-	 * @brief Идентификатор юнита который запустил работу цикла событий
-	 *
-	 */
-	uint64_t __awh_launcher__ = 0;
-	/**
 	 * @brief Флаг запуска работы базы событий
 	 *
 	 */
 	atomic_bool __awh_working__ = false;
+	/**
+	 * @brief Идентификатор юнита который запустил работу цикла событий
+	 *
+	 */
+	atomic_uint64_t __awh_launcher__ = 0;
 	/**
 	 * @brief Количество ссылок юнитов на базу событий
 	 *
@@ -348,8 +372,11 @@ size_t awh::unit::Unit::events() const noexcept {
 	return ::__awh_event_base__->eventsCount();
 }
 /**
- * @brief Метод остановки клиента
+ * @brief Метод остановки юнита
  *
+ * @note База событий едина на весь процесс. Реально цикл событий останавливает только
+ *       юнит-лаунчер (тот, что его запустил): он сбрасывает флаг работы и будит базу.
+ *       Остальные юниты лишь переводят себя в статус DESTROYED, не затрагивая общий цикл.
  */
 void awh::unit::Unit::stop() noexcept {
 	/**
@@ -359,7 +386,7 @@ void awh::unit::Unit::stop() noexcept {
 		// Если работа цикла событий базы событий запущена
 		if(this->_status == event::status_t::LAUNCHED){
 			// Если данный юнит запустил работу базы событий
-			if(::__awh_launcher__ == static_cast <uint64_t> (reinterpret_cast <uintptr_t> (this))){
+			if(::__awh_launcher__.load(std::memory_order_acquire) == static_cast <uint64_t> (reinterpret_cast <uintptr_t> (this))){
 				// Выполняем остановку работы цикла базы событий
 				::__awh_working__.store(false, std::memory_order_release);
 				// Разблокируем работу базы событий
@@ -392,20 +419,25 @@ void awh::unit::Unit::stop() noexcept {
 	}
 }
 /**
- * @brief Метод запуска клиента
+ * @brief Метод запуска юнита
  *
+ * @note База событий едина на весь процесс. Запустить цикл событий может только один
+ *       юнит-лаунчер: захват выполняется атомарно (compare_exchange), и для него вызов
+ *       блокирующий — поток крутится в цикле опроса до остановки. Остальные юниты,
+ *       обнаружив, что база уже работает, цикл не запускают, не блокируются и лишь
+ *       переводят себя в статус LAUNCHED.
  */
 void awh::unit::Unit::start() noexcept {
 	/**
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если работа базы событий не запущена
-		if(!::__awh_working__.load(std::memory_order_acquire)){
-			// Устанавливаем флаг запущенного цикла базы событий
-			::__awh_working__.store(true, std::memory_order_release);
+		// Ожидаемое состояние работы базы событий (база ещё не запущена)
+		bool expected = false;
+		// Если работа базы событий не запущена, атомарно захватываем её запуск (защита от гонки check-then-act)
+		if(::__awh_working__.compare_exchange_strong(expected, true, std::memory_order_acq_rel)){
 			// Запоминаем идентификатор юнита запустивщего работу базы событий
-			::__awh_launcher__ = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (this));
+			::__awh_launcher__.store(static_cast <uint64_t> (reinterpret_cast <uintptr_t> (this)), std::memory_order_release);
 			// Устанавливаем флаг статуса запуска работы юнита
 			this->_status = event::status_t::LAUNCHED;
 			// Выполняем функцию обратного вызова
@@ -413,7 +445,7 @@ void awh::unit::Unit::start() noexcept {
 			/**
 			 * Выполняем запуск работы цикла базы событий
 			 */
-			while(::__awh_working__.load(std::memory_order_relaxed)){
+			while(::__awh_working__.load(std::memory_order_acquire)){
 				/**
 				 * Выполняем опрос базы событий
 				 */
@@ -426,6 +458,8 @@ void awh::unit::Unit::start() noexcept {
 						CPU_PAUSE();
 				}
 			}
+			// Сбрасываем идентификатор юнита запустившего работу базы событий
+			::__awh_launcher__.store(0, std::memory_order_release);
 			// Устанавливаем флаг статуса остановки работы юнита
 			this->_status = event::status_t::DESTROYED;
 			// Выполняем функцию обратного вызова
@@ -629,10 +663,11 @@ awh::unit::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
  *
  */
 awh::unit::Unit::~Unit() noexcept {
-	// Уменьшаем количество ссылок на базу событий
-	::__awh_count_refs__.fetch_sub(1, memory_order_relaxed);
-	// Если все ссылки закончились
-	if(::__awh_count_refs__.load(std::memory_order_acquire) == 0){
+	/**
+	 * Уменьшаем количество ссылок на базу событий и проверяем, был ли это последний юнит
+	 * (fetch_sub возвращает предыдущее значение; acq_rel синхронизирует декременты других потоков)
+	 */
+	if(::__awh_count_refs__.fetch_sub(1, std::memory_order_acq_rel) == 1){
 		// Останавливаем работу цикла обработки базы событий
 		this->stop();
 		// Выполняем деинициализацию базы событий
