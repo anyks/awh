@@ -1239,7 +1239,7 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 		void * p = ::malloc(size);
 		// Если память не выделена
 		if(p == nullptr)
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return false;
 		/**
 		 * Если операционной системой является Linux
@@ -1252,10 +1252,10 @@ bool awh::Operating_System::warmup(const size_t size) const noexcept {
 		#endif
 		// Освобождаем — tcmalloc/jemalloc сохранят регион в пуле
 		::free(p);
-		// Возвращаем true
+		// Возвращаем положительный результат
 		return true;
 	}
-	// Возвращаем false
+	// Возвращаем отрицательный результат
 	return false;
 }
 /**
@@ -1707,7 +1707,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	bool awh::Operating_System::chown(const uid_t uid) const noexcept {
 		// Если идентификатор пользователя успешно установлен
 		if(::setuid(uid) == 0)
-			// Возвращаем true
+			// Возвращаем положительный результат
 			return true;
 		// Если идентификатор пользователя не установлен
 		else {
@@ -1740,7 +1740,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 		if(::setuid(uid) == 0){
 			// Если идентификатор групы пользователя успешно установлен
 			if(::setgid(gid) == 0)
-				// Возвращаем true
+				// Возвращаем положительный результат
 				return true;
 			// Если идентификатор группы пользователя не установлен
 			else {
@@ -1758,7 +1758,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 					this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 				#endif
 			}
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return false;
 		// Если идентификатор пользователя не установлен
 		} else {

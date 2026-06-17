@@ -46,10 +46,8 @@ void awh::unit::Tunnel::status(const event::id_t eid, const event::status_t stat
 				this->_events.erase(i);
 		}
 	}
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("state"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
  * @brief Метод обработки события доступности/недоступности очереди исходящих данных туннеля
@@ -59,10 +57,8 @@ void awh::unit::Tunnel::status(const event::id_t eid, const event::status_t stat
  * @param size   размер доступных данных очереди
  */
 void awh::unit::Tunnel::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("available"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
 }
 /**
  * @brief Метод обработки событий ошибок туннеля
@@ -72,10 +68,8 @@ void awh::unit::Tunnel::available(const event::id_t eid, const event::status_t s
  * @param description описание ошибки
  */
 void awh::unit::Tunnel::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод обработки событий получения информации о пакетах в туннеле
@@ -86,10 +80,8 @@ void awh::unit::Tunnel::error(const event::id_t eid, const event::error_t error,
  * @param info   информация о пакетах в туннеле
  */
 void awh::unit::Tunnel::info(const event::id_t eid, const event::id_t mid, const event::action_t action, const net::tun_info_t & info) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("info"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)> ("info", eid, mid, action, info);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::id_t, const event::action_t, const net::tun_info_t &)> ("info", eid, mid, action, info);
 }
 /**
  * @brief Метод фиксации настроек туннеля

@@ -40,10 +40,8 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 	switch(index){
 		// Если мы получили статус события сервера
 		case 0: {
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("status"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("status", status);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::status_t)> ("status", status);
 			// Если работа сервера запущена
 			if(status == event::status_t::LAUNCHED){
 				// Выполняем запуск работы сервера, если сервер не запущен
@@ -66,23 +64,20 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 					}
 				// Если сервер запущен удачно
 				} else {
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("launch")){
-						/**
-						 * Определяем семейство адресов, с которым работает сервер
-						 */
-						switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (&this->_unit->server)->family(this->_id.eid))){
-							// Если сервер работает с адресами IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4):
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4), this->_unit->server.getPort(this->_id.eid));
-							break;
-							// Если сервер работает с адресами IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6):
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6), this->_unit->server.getPort(this->_id.eid));
-							break;
-						}
+					/**
+					 * Определяем семейство адресов, с которым работает сервер
+					 */
+					switch(static_cast <uint8_t> (awh_cast <unit::unit_t *> (&this->_unit->server)->family(this->_id.eid))){
+						// Если сервер работает с адресами IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4):
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4), this->_unit->server.getPort(this->_id.eid));
+						break;
+						// Если сервер работает с адресами IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6):
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6), this->_unit->server.getPort(this->_id.eid));
+						break;
 					}
 					// Если сервер запущен в режиме кластера
 					if(this->_unit->server.clusterMode() == event::mode_t::ENABLED){
@@ -123,10 +118,8 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 								if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
 									// Выполняем фиксацию параметров сервера
 									if(this->_unit->server.commit(this->_id.eid)){
-										// Если функция обратного вызова установлена
-										if(this->_callback.is("ready"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV4, this->_host, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4));
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV4, this->_host, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4));
 										// Запускаем сервер
 										this->_unit->server.start();
 									}
@@ -143,10 +136,8 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 								if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
 									// Выполняем фиксацию параметров сервера
 									if(this->_unit->server.commit(this->_id.eid)){
-										// Если функция обратного вызова установлена
-										if(this->_callback.is("ready"))
-											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV6, this->_host, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6));
+										// Выполняем функцию обратного вызова
+										this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, event::family_t::IPV6, this->_host, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6));
 										// Запускаем сервер
 										this->_unit->server.start();
 									}
@@ -222,12 +213,9 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
  */
 void awh::Server::write(const event::id_t eid, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("write"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
 }
 /**
  * @brief Метод обработки события разрешения подключения
@@ -288,13 +276,8 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 		}
 		// Уничтожаем подключившегося клиента
 		this->_unit->server.destroy(cid);
-	// Если объект транспортного уровня безопасности не установлен
-	} else {
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("accept"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", eid, cid, 0);
-	}
+	// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
+	} else this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", eid, cid, 0);
 }
 /**
  * @brief Метод обработки событий изменения состояния сервера
@@ -305,10 +288,8 @@ void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept 
 void awh::Server::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("state"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 		// Если статус сервера изменился на "уничтожен"
 		if(status == event::status_t::DESTROYED){
 			// Если производится завершение работы текущего сервера
@@ -366,12 +347,9 @@ void awh::Server::state(const event::id_t eid, const event::status_t status) noe
  */
 void awh::Server::action(const event::id_t eid, const event::action_t action) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("action"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
 }
 /**
  * @brief Метод обработки информационных метаданных о дейтаграммном пакете
@@ -381,12 +359,9 @@ void awh::Server::action(const event::id_t eid, const event::action_t action) no
  */
 void awh::Server::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("traffic"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
 }
 /**
  * @brief Метод обработки событий получения данных сервером
@@ -427,10 +402,8 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 				return;
 			}
 		}
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("read"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
 	}
 }
 /**
@@ -442,12 +415,9 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
  */
 void awh::Server::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("error"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
 }
 /**
  * @brief Метод обработки попыток подключения клиента к удалённому серверу
@@ -457,12 +427,9 @@ void awh::Server::error(const event::id_t eid, const event::error_t error, const
  */
 void awh::Server::attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии
-	if(this->_dns.client->working()){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("attempts_dns"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const string &, const uint8_t)> ("attempts_dns", domain, attempts);
-	}
+	if(this->_dns.client->working())
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const string &, const uint8_t)> ("attempts_dns", domain, attempts);
 }
 /**
  * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
@@ -473,12 +440,9 @@ void awh::Server::attempts(const unit::dns_t::id_t, const string & domain, const
  */
 void awh::Server::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("available"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
 }
 /**
  * @brief Метод обработки событий истечения таймаута клиента
@@ -491,10 +455,12 @@ void awh::Server::available(const event::id_t eid, const event::status_t status,
 bool awh::Server::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
+		// Выполняем получение идентификатора функции обратного вызова
+		const callback_t::id_t fid = this->_callback.id("timeout");
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("timeout"))
+		if(this->_callback.is(fid))
 			// Выполняем функцию обратного вызова
-			return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", eid, action, delay);
+			return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t)> (fid, eid, action, delay);
 	}
 	// Возвращаем значение, указывающее на то, что клиента нужно завершить после истечения таймаута
 	return true;
@@ -508,12 +474,9 @@ bool awh::Server::timeout(const event::id_t eid, const event::action_t action, c
  */
 void awh::Server::failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии
-	if(this->_dns.client->working()){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("failure_dns"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const unit::dns_t::id_t, const unit::dns_t::record_t, const string &)> ("failure_dns", id, record, domain);
-	}
+	if(this->_dns.client->working())
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const unit::dns_t::id_t, const unit::dns_t::record_t, const string &)> ("failure_dns", id, record, domain);
 }
 /**
  * @brief Метод обработки события невозможности отправки данных клиенту
@@ -525,12 +488,9 @@ void awh::Server::failure(const unit::dns_t::id_t id, const unit::dns_t::record_
  */
 void awh::Server::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("spool"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, buffer, size);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, buffer, size);
 }
 /**
  * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
@@ -554,10 +514,8 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
 					if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
 						// Выполняем фиксацию параметров сервера
 						if(this->_unit->server.commit(this->_id.eid)){
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("ready"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4));
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV4));
 							// Запускаем сервер
 							this->_unit->server.start();
 						}
@@ -572,10 +530,8 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
 					if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
 						// Выполняем фиксацию параметров сервера
 						if(this->_unit->server.commit(this->_id.eid)){
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("ready"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6));
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->server.getAddress(this->_id.eid, event::address_t::IPV6));
 							// Запускаем сервер
 							this->_unit->server.start();
 						}
@@ -592,10 +548,8 @@ void awh::Server::resolve(const unit::dns_t::id_t, const event::family_t family,
  * @param pid текущий идентификатор процесса
  */
 void awh::Server::rebaseCluster(const pid_t old, const pid_t pid) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("cluster_rebase"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const pid_t)> ("cluster_rebase", old, pid);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const pid_t)> ("cluster_rebase", old, pid);
 }
 /**
  * @brief Метод получения события завершения работы процесса
@@ -604,10 +558,8 @@ void awh::Server::rebaseCluster(const pid_t old, const pid_t pid) noexcept {
  * @param signal сигнал, с которым завершился процесс
  */
 void awh::Server::exitCluster(const pid_t pid, const int32_t signal) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("cluster_exit"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, signal);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const int32_t)> ("cluster_exit", pid, signal);
 }
 /**
  * @brief Метод обработки события отправки сообщения процессу кластера
@@ -616,10 +568,8 @@ void awh::Server::exitCluster(const pid_t pid, const int32_t signal) noexcept {
  * @param size размер отправленного сообщения
  */
 void awh::Server::sendingCluster(const pid_t pid, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("cluster_sending"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const size_t)> ("cluster_sending", pid, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const size_t)> ("cluster_sending", pid, size);
 }
 /**
  * @brief Метод обработки событий изменения статуса кластера
@@ -628,10 +578,8 @@ void awh::Server::sendingCluster(const pid_t pid, const size_t size) noexcept {
  * @param status новый статус кластера
  */
 void awh::Server::stateCluster(const pid_t pid, const event::status_t status) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("cluster_state"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::status_t)> ("cluster_state", pid, status);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const event::status_t)> ("cluster_state", pid, status);
 }
 /**
  * @brief Метод обработки событий активации/деактивации кластера
@@ -640,10 +588,8 @@ void awh::Server::stateCluster(const pid_t pid, const event::status_t status) no
  * @param event флаг события кластера
  */
 void awh::Server::eventsCluster(const pid_t pid, const unit::cluster_t::event_t event) noexcept {
-	// Если функция получения событий кластера установлена
-	if(this->_callback.is("cluster_events"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", pid, event);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", pid, event);
 }
 /**
  * @brief Метод обработки события получения сообщения от процесса кластера
@@ -653,10 +599,8 @@ void awh::Server::eventsCluster(const pid_t pid, const unit::cluster_t::event_t 
  * @param size размер данных полученного сообщения
  */
 void awh::Server::messageCluster(const pid_t pid, const uint8_t * data, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("cluster_message"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", pid, data, size);
 }
 /**
  * @brief Метод обработки события доступности/недоступности очереди исходящих сообщений кластера
@@ -666,10 +610,8 @@ void awh::Server::messageCluster(const pid_t pid, const uint8_t * data, const si
  * @param size   размер доступных данных очереди
  */
 void awh::Server::availableCluster(const pid_t pid, const event::status_t status, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("cluster_available"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", pid, status, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", pid, status, size);
 }
 /**
  * @brief Метод обработки событий ошибок кластера
@@ -679,10 +621,8 @@ void awh::Server::availableCluster(const pid_t pid, const event::status_t status
  * @param description описание ошибки
  */
 void awh::Server::errorCluster(const pid_t pid, const event::error_t error, const string & description) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("cluster_error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("cluster_error", pid, error, description);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("cluster_error", pid, error, description);
 }
 /**
  * @brief Метод получения состояния TLS
@@ -694,10 +634,8 @@ void awh::Server::errorCluster(const pid_t pid, const event::error_t error, cons
 void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("state_tls"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::state_t)> ("state_tls", id, eid, state);
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::coder_t::state_t)> ("state_tls", id, eid, state);
 		/**
 		 * Обрабатываем входящие состояния DTLS
 		 */
@@ -741,12 +679,10 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
 				}
 			} break;
 			// Если состояние рукопожатия успешно завершено
-			case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED): {
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("accept"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", this->_id.eid, eid, id);
-			} break;
+			case static_cast <uint8_t> (tls::coder_t::state_t::HANDSHAKED):
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::id_t, const event::id_t, const tls::coder_t::id_t)> ("accept", this->_id.eid, eid, id);
+			break;
 		}
 	}
 }
@@ -759,12 +695,9 @@ void awh::Server::stateTLS(const tls::coder_t::id_t id, const event::id_t eid, c
  */
 void awh::Server::fingerprintTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::fgp_t::browser_t & browser) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("fingerprint_tls"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", id, eid, browser);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const tls::coder_t::id_t, const event::id_t, const tls::fgp_t::browser_t &)> ("fingerprint_tls", id, eid, browser);
 }
 /**
  * @brief Метод обработки ошибок TLS
@@ -835,12 +768,10 @@ void awh::Server::processTLS(const tls::coder_t::id_t id, const event::id_t eid,
 				}
 			} break;
 			// Если событие дешифрования данных TLS
-			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("read"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
-			} break;
+			case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, buffer, size);
+			break;
 		}
 	}
 }
@@ -1009,8 +940,10 @@ void awh::Server::start() noexcept {
 				if(awh_cast <unit::unit_t *> (&this->_unit->server)->status(this->_id.eid) == event::status_t::NONE){
 					// Выполняем фиксацию параметров сервера
 					if(this->_unit->server.commit(this->_id.eid)){
+						// Выполняем получение идентификатора функции обратного вызова
+						const callback_t::id_t fid = this->_callback.id("ready");
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("ready")){
+						if(this->_callback.is(fid)){
 							// Хост текущего сервера
 							string host = "";
 							/**
@@ -1034,7 +967,7 @@ void awh::Server::start() noexcept {
 								break;
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_unit->server.family(this->_id.eid), host, host);
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> (fid, this->_id.eid, this->_unit->server.family(this->_id.eid), host, host);
 						}
 						// Запускаем сервер
 						this->_unit->server.start();

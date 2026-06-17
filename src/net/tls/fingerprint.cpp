@@ -7399,7 +7399,7 @@ bool awh::tls::Fingerprint::parseH2(const uint8_t * buffer, const size_t size, h
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-	// Возвращаем false при ошибке
+	// Возвращаем отрицательный результат
 	return false;
 }
 /**

@@ -601,10 +601,8 @@ awh::unit::NTP::Servers::Servers() noexcept :
  * @param description описание ошибки события NTP-клиента
  */
 void awh::unit::NTP::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод обработки ответов от NTP-сервера на запросы NTP-клиента
@@ -624,14 +622,18 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 			return;
 		// Снимаем флаг ожидания ответа от NTP-сервера
 		this->_transfer.waiting = false;
+		// Выполняем получение идентификатора функции обратного вызова
+		callback_t::id_t fid = this->_callback.id("timestamp");
 		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
-		if(this->_callback.is("timestamp")){
+		if(this->_callback.is(fid)){
 			// Если данные ответа не получены
 			if(data == nullptr){
+				// Выполняем получение идентификатора функции обратного вызова
+				fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::INVALID_ADDRESS, "Invalid NTP response");
+					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, eid, event::error_t::INVALID_ADDRESS, "Invalid NTP response");
 			// Если данные ответа получены
 			} else {
 				// Получаем объект пакета ответа
@@ -639,26 +641,31 @@ void awh::unit::NTP::response([[maybe_unused]] const event::id_t eid, const uint
 				// Если NTP-ответ корректен
 				if(::ntp::validate(packet, size, this->_transfer.version, this->_transfer.origSec, this->_transfer.origFrac))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const uint64_t)> ("timestamp", ::ntp::timestamp(packet));
+					this->_callback.call <void (const uint64_t)> (fid, ::ntp::timestamp(packet));
 				// Если NTP-ответ некорректен
-				else if(this->_callback.is("error"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::INVALID_ADDRESS, "Invalid NTP response");
-				// Если функция обратного вызова не установлена
 				else {
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug("Invalid NTP response", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("Invalid NTP response", log_t::flag_t::WARNING);
-					#endif
+					// Выполняем получение идентификатора функции обратного вызова
+					fid = this->_callback.id("error");
+					// Если функция обратного вызова установлена
+					if(this->_callback.is(fid))
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, eid, event::error_t::INVALID_ADDRESS, "Invalid NTP response");
+					// Если функция обратного вызова не установлена
+					else {
+						/**
+						* Если включён режим отладки
+						*/
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("Invalid NTP response", __PRETTY_FUNCTION__, make_tuple(eid, size), log_t::flag_t::WARNING);
+						/**
+						* Если режим отладки не включён
+						*/
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("Invalid NTP response", log_t::flag_t::WARNING);
+						#endif
+					}
 				}
 			}
 		}
@@ -718,10 +725,12 @@ bool awh::unit::NTP::timeout([[maybe_unused]] const event::id_t eid, const event
 	} else {
 		// Снимаем флаг ожидания ответа от NTP-сервера
 		this->_transfer.waiting = false;
+		// Выполняем получение идентификатора функции обратного вызова
+		const callback_t::id_t fid = this->_callback.id("attempts");
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("attempts"))
+		if(this->_callback.is(fid))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const uint8_t)> ("attempts", this->_transfer.attempt);
+			this->_callback.call <void (const uint8_t)> (fid, this->_transfer.attempt);
 		// Если функция обратного вызова не установлена
 		else {
 			/**
@@ -1795,8 +1804,8 @@ bool awh::unit::NTP::sync(const version_t version) noexcept {
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если функция обратного вызова установлена для синхронизации с NTP-сервером
-		if(!this->_transfer.waiting && this->_callback.is("timestamp")){
+		// Если синхронизация времени с NTP-сервером ещё не выполняется
+		if(!this->_transfer.waiting){
 			// Устанавливаем флаг ожидания ответа от NTP-сервера
 			this->_transfer.waiting = true;
 			// Сбрасываем счётчик попыток выполнения запроса к NTP-серверу

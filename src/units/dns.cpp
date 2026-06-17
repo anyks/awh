@@ -2518,8 +2518,10 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Добавляем запись в кэш DNS-резолвера
 							this->pushAddressToCache(answer.name, ip.get(), answer.ttl);
 						}
+						// Выполняем получение идентификатора функции обратного вызова
+						callback_t::id_t fid = this->_callback.id("addresses");
 						// Если функция обратного вызова установлена для получения списка IP-адресов
-						if(this->_callback.is("addresses")){
+						if(this->_callback.is(fid)){
 							// Список IP-адресов для передачи в функцию обратного вызова
 							vector <unique_ptr <net::addr_t>> addresses(result.a.size());
 							/**
@@ -2532,10 +2534,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								addresses[i] = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> ("addresses", id, event::family_t::IPV4, domain, addresses);
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> (fid, id, event::family_t::IPV4, domain, addresses);
 						}
+						// Выполняем получение идентификатора функции обратного вызова
+						fid = this->_callback.id("address");
 						// Если функция обратного вызова установлена для получения IP-адресов
-						if(this->_callback.is("address")){
+						if(this->_callback.is(fid)){
 							// Выбираем стандарт рандомайзера
 							mt19937 generator(::__awh_randev__());
 							// Выполняем рандомную сортировку списка DNS-серверов
@@ -2545,7 +2549,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Устанавливаем представление IP-адреса для вывода результата
 							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV4, result.a.front().name, address.get());
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> (fid, id, event::family_t::IPV4, result.a.front().name, address.get());
 						}
 					}
 					// Если мы получили AAAA-записи в ответе
@@ -2561,8 +2565,10 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Добавляем запись в кэш DNS-резолвера
 							this->pushAddressToCache(answer.name, ip.get(), answer.ttl);
 						}
+						// Выполняем получение идентификатора функции обратного вызова
+						callback_t::id_t fid = this->_callback.id("addresses");
 						// Если функция обратного вызова установлена для получения списка IP-адресов
-						if(this->_callback.is("addresses")){
+						if(this->_callback.is(fid)){
 							// Список IP-адресов для передачи в функцию обратного вызова
 							vector <unique_ptr <net::addr_t>> addresses(result.aaaa.size());
 							/**
@@ -2575,10 +2581,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								addresses[i] = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> ("addresses", id, event::family_t::IPV6, domain, addresses);
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> (fid, id, event::family_t::IPV6, domain, addresses);
 						}
+						// Выполняем получение идентификатора функции обратного вызова
+						fid = this->_callback.id("address");
 						// Если функция обратного вызова установлена для получения IP-адресов
-						if(this->_callback.is("address")){
+						if(this->_callback.is(fid)){
 							// Выбираем стандарт рандомайзера
 							mt19937 generator(::__awh_randev__());
 							// Выполняем рандомную сортировку списка DNS-серверов
@@ -2588,7 +2596,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Устанавливаем представление IP-адреса для вывода результата
 							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, event::family_t::IPV6, result.aaaa.front().name, address.get());
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> (fid, id, event::family_t::IPV6, result.aaaa.front().name, address.get());
 						}
 					}
 					// Если мы получили NS-записи в ответе
@@ -2603,8 +2611,8 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						for(auto & answer : result.ns)
 							// Добавляем запись в контейнер серверов имён
 							ns.emplace(answer.name, answer.server);
-						// Если функция обратного вызова установлена для получения сервера имён
-						if(!ns.empty() && this->_callback.is("ns"))
+						// Если сервера имён получены
+						if(!ns.empty())
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("ns", id, ns);
 					}
@@ -2620,8 +2628,8 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						for(auto & answer : result.cname)
 							// Добавляем запись в контейнер канонических имён
 							cname.emplace(answer.name, answer.canonical);
-						// Если функция обратного вызова установлена для получения канонического имени
-						if(!cname.empty() && this->_callback.is("cname"))
+						// Если канонические имена получены
+						if(!cname.empty())
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("cname", id, cname);
 					}
@@ -2637,8 +2645,8 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						for(auto & answer : result.mx)
 							// Добавляем запись в контейнер MX-записей
 							mx.emplace(answer.name, ::make_pair(answer.server, answer.preference));
-						// Если функция обратного вызова установлена для получения MX-записей
-						if(!mx.empty() && this->_callback.is("mx"))
+						// Если MX-записи получены
+						if(!mx.empty())
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const unordered_multimap <string, std::pair <string, uint16_t>> &)> ("mx", id, mx);
 					}
@@ -2659,8 +2667,8 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								// Добавляем запись в контейнер текстовых записей
 								texts.emplace(answer.name, text);
 						}
-						// Если функция обратного вызова установлена для получения текстовых записей
-						if(!texts.empty() && this->_callback.is("txt"))
+						// Если TXT-записи получены
+						if(!texts.empty())
 							// Выполняем функцию обратного вызова
 							this->_callback.call <void (const id_t, const unordered_multimap <string, string> &)> ("txt", id, texts);
 					}
@@ -2679,8 +2687,10 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								// Добавляем запись в кэш DNS-резолвера
 								this->pushAddressToCache(answer.domain, address.get(), answer.ttl);
 						}
+						// Выполняем получение идентификатора функции обратного вызова
+						callback_t::id_t fid = this->_callback.id("addresses");
 						// Если функция обратного вызова установлена для получения списка IP-адресов
-						if(this->_callback.is("addresses")){
+						if(this->_callback.is(fid)){
 							// Список IP-адресов для передачи в функцию обратного вызова
 							vector <unique_ptr <net::addr_t>> addresses;
 							/**
@@ -2703,10 +2713,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 								}
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> ("addresses", id, event::family_t::IPV4, domain, addresses);
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const vector <unique_ptr <net::addr_t>> &)> (fid, id, event::family_t::IPV4, domain, addresses);
 						}
+						// Выполняем получение идентификатора функции обратного вызова
+						fid = this->_callback.id("address");
 						// Если функция обратного вызова установлена для получения IP-адресов
-						if(this->_callback.is("address")){
+						if(this->_callback.is(fid)){
 							// Выбираем стандарт рандомайзера
 							mt19937 generator(::__awh_randev__());
 							// Выполняем рандомную сортировку списка DNS-серверов
@@ -2733,7 +2745,7 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 							// Устанавливаем представление IP-адреса для вывода результата
 							unique_ptr <net::addr_t> address = ::move(this->_addr.source(net_addr_t::endian_t::LITTLE));
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, family, result.ptr.front().domain, address.get());
+							this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> (fid, id, family, result.ptr.front().domain, address.get());
 						}
 					}
 					// Если мы получили SOA-записи в ответе
@@ -2742,14 +2754,10 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 						 * Перебираем все SOA-записи в ответе от DNS-сервера
 						 */
 						for(auto & answer : result.soa){
-							// Если функция обратного вызова установлена для получения SOA-записей
-							if(this->_callback.is("soa"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, string_view, string_view)> ("soa", id, answer.name, answer.mname);
-							// Если функция обратного вызова установлена для получения RNAME-записей
-							if(this->_callback.is("rname"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const id_t, string_view, string_view)> ("rname", id, answer.name, answer.rname);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const id_t, string_view, string_view)> ("soa", id, answer.name, answer.mname);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const id_t, string_view, string_view)> ("rname", id, answer.name, answer.rname);
 						}
 					}
 				}
@@ -2758,10 +2766,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			case 1: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
 				const string error = this->_fmk->format("DNS query format error to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				// Выполняем получение идентификатора функции обратного вызова
+				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::UNKNOWN, error);
+					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, eid, event::error_t::UNKNOWN, error);
 				// Если callback ошибки не установлен
 				else {
 					/**
@@ -2783,10 +2793,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			case 2: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
 				const string error = this->_fmk->format("DNS server failure %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				// Выполняем получение идентификатора функции обратного вызова
+				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, error);
+					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, eid, event::error_t::CONNECTION_FAIL, error);
 				// Если callback ошибки не установлен
 				else {
 					/**
@@ -2808,10 +2820,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			case 3: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
 				const string error = this->_fmk->format("Domain name %s referenced in the query for nameserver %s does not exist", domain.c_str(), this->_io->getTarget(eid).c_str());
+				// Выполняем получение идентификатора функции обратного вызова
+				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, eid, event::error_t::NOT_FOUND, error);
 				// Если callback ошибки не установлен
 				else {
 					/**
@@ -2833,10 +2847,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			case 4: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
 				const string error = this->_fmk->format("DNS server is not implemented at %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				// Выполняем получение идентификатора функции обратного вызова
+				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::INVALID_ADDRESS, error);
+					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, eid, event::error_t::INVALID_ADDRESS, error);
 				// Если callback ошибки не установлен
 				else {
 					/**
@@ -2858,10 +2874,12 @@ void awh::unit::DNS::response(const event::id_t eid, const uint8_t * data, const
 			case 5: {
 				// Формируем текст сообщения об ошибке DNS-резолвера
 				const string error = this->_fmk->format("DNS request is refused to nameserver %s for domain %s", this->_io->getTarget(eid).c_str(), domain.c_str());
+				// Выполняем получение идентификатора функции обратного вызова
+				const callback_t::id_t fid = this->_callback.id("error");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("error"))
+				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::ACCESS_DENIED, error);
+					this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, eid, event::error_t::ACCESS_DENIED, error);
 				// Если callback ошибки не установлен
 				else {
 					/**
@@ -3043,10 +3061,12 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 			}
 			// Если декодирование доменного имени прошло успешно и попытки исчерпаны
 			if(notifyTimeout && !domain.empty()){
+				// Выполняем получение идентификатора функции обратного вызова
+				const callback_t::id_t fid = this->_callback.id("attempts");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("attempts"))
+				if(this->_callback.is(fid))
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const id_t, const string &, const uint8_t)> ("attempts", id, domain, attempt);
+					this->_callback.call <void (const id_t, const string &, const uint8_t)> (fid, id, domain, attempt);
 				// Если функция обратного вызова не установлена
 				else {
 					/**
@@ -3069,10 +3089,8 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
 						this->_log->print("DNS resolver timeout for domain '%s' (attempts: %u)", log_t::flag_t::WARNING, domain.c_str(), attempt);
 					#endif
 				}
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("failure"))
-					// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
-					this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record, domain);
+				// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+				this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record, domain);
 			}
 		}
 	/**
@@ -3104,10 +3122,8 @@ bool awh::unit::DNS::timeout(const event::id_t eid, const event::action_t action
  * @param description описание ошибки события DNS-резолвера
  */
 void awh::unit::DNS::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод установки функций обратного вызова
@@ -6433,7 +6449,7 @@ bool awh::unit::DNS::search(const id_t id, string_view ip, const uint32_t alive)
 	if(!this->_resolver.idv4.empty())
 		// Выполняем обратный DNS-запрос для IPv4
 		return this->search(id, event::family_t::IPV4, ip, alive);
-	// Возвращаем false
+	// Возвращаем отрицательный результат
 	return false;
 }
 /**
@@ -6450,7 +6466,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 	 */
 	try {
 		// Если адрес сети для выполнения запроса передан
-		if((ip != nullptr) && this->_callback.is("address")){
+		if(ip != nullptr){
 			// Признак найденной записи в кэше
 			bool cacheHit = false;
 			// Доменное имя найденной записи
@@ -6536,7 +6552,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 			if(cacheHit){
 				// Выполняем функцию обратного вызова для найденной записи в кэше
 				this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, cacheFamily, cacheDomain, ip);
-				// Возвращаем true
+				// Возвращаем положительный результат
 				return true;
 			}
 			// Блокируем доступ к состоянию передачи DNS-запросов
@@ -6547,7 +6563,7 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 				const size_t size = ::dns::request(id, record_t::PTR, domain, this->_log);
 				// Если DNS-запрос не сформирован
 				if(size == 0)
-					// Возвращаем false
+					// Возвращаем отрицательный результат
 					return false;
 				/**
 				 * Устанавливаем метку начала формирования запроса к DNS-серверу
@@ -6589,11 +6605,9 @@ bool awh::unit::DNS::search(const id_t id, const net::addr_t * ip, const uint32_
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("failure"))
-							// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
-							this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::PTR, domain);
-						// Возвращаем false
+						// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+						this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::PTR, domain);
+						// Возвращаем отрицательный результат
 						return false;
 					// Если очередь ещё может вместить в себя новый пакет
 					} else {
@@ -6688,8 +6702,8 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 	 */
 	try {
 		// Если адрес сети для выполнения запроса не передан
-		if(ip.empty() || !this->_callback.is("address"))
-			// Возвращаем false
+		if(ip.empty())
+			// Возвращаем отрицательный результат
 			return false;
 		// Тип IP-адреса для парсинга
 		net_addr_t::type_t type = net_addr_t::type_t::NONE;
@@ -6709,14 +6723,14 @@ bool awh::unit::DNS::search(const id_t id, const event::family_t family, string_
 			break;
 			// Если семейство события не определено
 			default:
-				// Возвращаем false
+				// Возвращаем отрицательный результат
 				return false;
 		}
 		// Локальный парсер сетевых адресов
 		net_addr_t addr(this->_fmk, this->_log);
 		// Если IP-адрес не распознан
 		if(!addr.parse(ip, type))
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return false;
 		// Получаем IP-адрес в исходном виде
 		unique_ptr <net::addr_t> parsed = ::move(addr.source(net_addr_t::endian_t::LITTLE));
@@ -6763,7 +6777,7 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 			const size_t size = ::dns::request(id, record, domain, this->_log);
 			// Если DNS-запрос не сформирован
 			if(size == 0)
-				// Возвращаем false
+				// Возвращаем отрицательный результат
 				return false;
 			// Блокируем доступ к состоянию передачи DNS-запросов
 			const locker_t <> lock(this->_mtx);
@@ -6807,11 +6821,9 @@ bool awh::unit::DNS::request(const id_t id, const record_t record, string_view d
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					}
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("failure"))
-						// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
-						this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record, string{domain});
-					// Возвращаем false
+					// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+					this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record, string{domain});
+					// Возвращаем отрицательный результат
 					return false;
 				// Если очередь ещё может вместить в себя новый пакет
 				} else {
@@ -6907,7 +6919,7 @@ bool awh::unit::DNS::resolve(const id_t id, string_view domain, const uint32_t a
 	if(!this->_resolver.idv4.empty())
 		// Выполняем разрешение доменного имени
 		return this->resolve(id, event::family_t::IPV4, domain, alive);
-	// Возвращаем false
+	// Возвращаем отрицательный результат
 	return false;
 }
 /**
@@ -6924,8 +6936,8 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 	 * Выполняем перехват ошибок
 	 */
 	try {
-		// Если доменное имя передано и функция обратного вызова установлена для получения IP-адресов
-		if(!domain.empty() && this->_callback.is("address")){
+		// Если доменное имя передано
+		if(!domain.empty()){
 			// Признак найденной записи в кэше
 			bool cacheHit = false;
 			// IP-адрес найденной записи (копия)
@@ -6993,7 +7005,7 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 			if(cacheHit){
 				// Выполняем функцию обратного вызова для найденной записи в кэше
 				this->_callback.call <void (const id_t, const event::family_t, const string &, const net::addr_t *)> ("address", id, cacheFamily, string{domain}, cacheAddress.get());
-				// Возвращаем true
+				// Возвращаем положительный результат
 				return true;
 			}
 			// Блокируем доступ к состоянию передачи DNS-запросов
@@ -7050,17 +7062,15 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("failure"))
-							// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
-							this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::NONE, string{domain});
-						// Возвращаем false
+						// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+						this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::NONE, string{domain});
+						// Возвращаем отрицательный результат
 						return false;
 					}
 				}
 				// Если DNS-запрос не сформирован
 				if(size == 0)
-					// Возвращаем false
+					// Возвращаем отрицательный результат
 					return false;
 				/**
 				 * Устанавливаем метку начала формирования запроса к DNS-серверу
@@ -7102,25 +7112,22 @@ bool awh::unit::DNS::resolve(const id_t id, const event::family_t family, string
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("failure")){
-							/**
-							 * Определяем семейство события
-							 */
-							switch(static_cast <uint8_t> (family)){
-								// Для семейства IPv4
-								case static_cast <uint8_t> (event::family_t::IPV4):
-									// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
-									this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::A, string{domain});
-								break;
-								// Для семейства IPv6
-								case static_cast <uint8_t> (event::family_t::IPV6):
-									// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
-									this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::AAAA, string{domain});
-								break;
-							}
+						/**
+						 * Определяем семейство события
+						 */
+						switch(static_cast <uint8_t> (family)){
+							// Для семейства IPv4
+							case static_cast <uint8_t> (event::family_t::IPV4):
+								// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+								this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::A, string{domain});
+							break;
+							// Для семейства IPv6
+							case static_cast <uint8_t> (event::family_t::IPV6):
+								// Выполняем функцию обратного вызова для неудачного резолвинга доменного имени
+								this->_callback.call <void (const id_t, const record_t, const string &)> ("failure", id, record_t::AAAA, string{domain});
+							break;
 						}
-						// Возвращаем false
+						// Возвращаем отрицательный результат
 						return false;
 					// Если очередь ещё может вместить в себя новый пакет
 					} else {

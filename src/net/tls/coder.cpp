@@ -1806,11 +1806,11 @@ namespace ssl {
 				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
 					if(::CBB_add_bytes(out, &::local::certBuffer[0], ::local::certBuffer.size()))
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return 1;
 				}
 			}
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return 0;
 		}
 		/**
@@ -1839,11 +1839,11 @@ namespace ssl {
 				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
 					if(::CBB_add_bytes(out, &::local::certBuffer[0], ::local::certBuffer.size()))
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return 1;
 				}
 			}
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return 0;
 		}
 		/**
@@ -1872,11 +1872,11 @@ namespace ssl {
 				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
 					if(::CBB_add_bytes(out, &::local::certBuffer[0], ::local::certBuffer.size()))
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return 1;
 				}
 			}
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return 0;
 		}
 		/**
@@ -1904,16 +1904,16 @@ namespace ssl {
 				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(::local::certBuffer.size() != length)
-					// Возвращаем false
+					// Возвращаем отрицательный результат
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
 				(* out) = ::CRYPTO_BUFFER_new(&::local::certBuffer[0], ::local::certBuffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
-					// Возвращаем true
+					// Возвращаем положительный результат
 					return 1;
 			}
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return 0;
 		}
 		/**
@@ -1941,16 +1941,16 @@ namespace ssl {
 				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(::local::certBuffer.size() != length)
-					// Возвращаем false
+					// Возвращаем отрицательный результат
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
 				(* out) = ::CRYPTO_BUFFER_new(&::local::certBuffer[0], ::local::certBuffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
-					// Возвращаем true
+					// Возвращаем положительный результат
 					return 1;
 			}
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return 0;
 		}
 		/**
@@ -1978,16 +1978,16 @@ namespace ssl {
 				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(::local::certBuffer.size() != length)
-					// Возвращаем false
+					// Возвращаем отрицательный результат
 					return 0;
 				// Выполняем создание объекта CRYPTO_BUFFER из входящих данных
 				(* out) = ::CRYPTO_BUFFER_new(&::local::certBuffer[0], ::local::certBuffer.size(), nullptr);
 				// Если объект CRYPTO_BUFFER создан успешно
 				if((* out) != nullptr)
-					// Возвращаем true
+					// Возвращаем положительный результат
 					return 1;
 			}
-			// Возвращаем false
+			// Возвращаем отрицательный результат
 			return 0;
 		}
 	};
@@ -2252,7 +2252,7 @@ namespace cookie {
 		::memcpy(cookie, result, length);
 		// Устанавливаем размер буфера cookie
 		(* size) = length;
-		// Возвращаем true
+		// Возвращаем положительный результат
 		return 1;
 	}
 	/**
@@ -5460,7 +5460,7 @@ bool awh::tls::Coder::peer(const id_t id, string_view ip, const uint16_t port) n
 							// Возвращаем отрицательный результат
 							return false;
 						}
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 				}

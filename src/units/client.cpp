@@ -38,12 +38,10 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 	 */
 	switch(static_cast <uint8_t> (status)){
 		// Если работа клиента запущена
-		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("clientStatus"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("clientStatus", status);
-		} break;
+		case static_cast <uint8_t> (event::status_t::LAUNCHED):
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::status_t)> ("client_status", status);
+		break;
 		// Если работа клиента подлежит уничтожению
 		case static_cast <uint8_t> (event::status_t::DESTROYED): {
 			// Если в списке событий клиента есть события
@@ -59,12 +57,14 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
 				// Очищаем список событий клиента
 				this->_events.clear();
 			}
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("client_status");
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("clientStatus")){
+			if(this->_callback.is(fid)){
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("clientStatus", status);
+				this->_callback.call <void (const event::status_t)> (fid, status);
 				// Выполняем получение функции обратного вызова
-				this->_callback.set("clientStatus", "status", this->_callback);
+				this->_callback.set(fid, this->_callback.id("status"), this->_callback);
 			}
 		} break;
 	}
@@ -76,10 +76,8 @@ void awh::unit::Client::launch(const event::status_t status) noexcept {
  * @param ok  результат подключения
  */
 void awh::unit::Client::connect(const event::id_t eid, const bool ok) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("connect"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, ok);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const bool)> ("connect", eid, ok);
 }
 /**
  * @brief Метод обработки событий записи данных клиентом
@@ -88,10 +86,8 @@ void awh::unit::Client::connect(const event::id_t eid, const bool ok) noexcept {
  * @param size размер данных для записи
  */
 void awh::unit::Client::write(const event::id_t eid, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("write"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
 }
 /**
  * @brief Метод обработки событий изменения статуса клиента
@@ -109,10 +105,8 @@ void awh::unit::Client::status(const event::id_t eid, const event::status_t stat
 			// Удаляем идентификатор события клиента
 			this->_events.erase(i);
 	}
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("state"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
  * @brief Метод обработки действий клиента
@@ -121,10 +115,8 @@ void awh::unit::Client::status(const event::id_t eid, const event::status_t stat
  * @param action действие клиента
  */
 void awh::unit::Client::action(const event::id_t eid, const event::action_t action) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("action"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
 }
 /**
  * @brief Метод обработки информационных метаданных о дейтаграммном пакете
@@ -133,10 +125,8 @@ void awh::unit::Client::action(const event::id_t eid, const event::action_t acti
  * @param info информационные метаданные о дейтаграммном пакете
  */
 void awh::unit::Client::traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("traffic"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const net::dgram_info_t &)> ("traffic", eid, info);
 }
 /**
  * @brief Метод обработки событий получения данных клиентом
@@ -146,10 +136,8 @@ void awh::unit::Client::traffic(const event::id_t eid, const net::dgram_info_t &
  * @param size размер данных события получения данных клиентом
  */
 void awh::unit::Client::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("read"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
 }
 /**
  * @brief Метод обработки события доступности/недоступности очереди исходящих данных клиента
@@ -159,10 +147,8 @@ void awh::unit::Client::read(const event::id_t eid, const uint8_t * data, const 
  * @param size   размер доступных данных очереди
  */
 void awh::unit::Client::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("available"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
 }
 /**
  * @brief Метод обработки событий истечения таймаута клиента
@@ -173,10 +159,12 @@ void awh::unit::Client::available(const event::id_t eid, const event::status_t s
  * @return       нужно ли завершить клиента после истечения таймаута
  */
 bool awh::unit::Client::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+	// Выполняем получение идентификатора функции обратного вызова
+	const callback_t::id_t fid = this->_callback.id("timeout");
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("timeout"))
+	if(this->_callback.is(fid))
 		// Выполняем функцию обратного вызова
-		return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", eid, action, delay);
+		return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t)> (fid, eid, action, delay);
 	// Возвращаем значение, указывающее на то, что клиента нужно завершить после истечения таймаута
 	return true;
 }
@@ -188,10 +176,8 @@ bool awh::unit::Client::timeout(const event::id_t eid, const event::action_t act
  * @param description описание ошибки
  */
 void awh::unit::Client::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод обработки события неотправленных данных клиента
@@ -202,10 +188,8 @@ void awh::unit::Client::error(const event::id_t eid, const event::error_t error,
  * @param size  размер данных, которые не получилось отправить
  */
 void awh::unit::Client::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("spool"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, data, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, data, size);
 }
 /**
  * @brief Метод проверки актуальности события
@@ -1055,12 +1039,14 @@ void awh::unit::Client::stop() noexcept {
 void awh::unit::Client::start() noexcept {
 	// Если работа юнита ещё не запущена
 	if(!this->working()){
+		// Выполняем получение идентификатора функции обратного вызова
+		const callback_t::id_t fid = this->_callback.id("status");
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("status"))
+		if(this->_callback.is(fid))
 			// Выполняем получение функции обратного вызова
-			this->_callback.set("status", "clientStatus", this->_callback);
+			this->_callback.set(fid, this->_callback.id("client_status"), this->_callback);
 		// Устанавливаем функцию обратного вызова на запуск системы
-		this->_callback.on <void (const event::status_t)> ("status", static_cast <void (client_t::*)(const event::status_t)> (&client_t::launch), this, _1);
+		this->_callback.on <void (const event::status_t)> (fid, static_cast <void (client_t::*)(const event::status_t)> (&client_t::launch), this, _1);
 		// Выполняем запуск работы основного юнита
 		unit_t::start();
 	}

@@ -271,10 +271,12 @@ void awh::unit::Unit::signal(const int32_t sig) const noexcept {
 		::exit(EXIT_FAILURE);
 	// Если процесс является родительским
 	} else {
+		// Выполняем получение идентификатора функции обратного вызова
+		const callback_t::id_t fid = this->_callback.id("crash");
 		// Если функция обратного вызова установлена
-		if(this->_callback.is("crash"))
+		if(this->_callback.is(fid))
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const int32_t)> ("crash", sig);
+			this->_callback.call <void (const int32_t)> (fid, sig);
 		// Выходим из приложения
 		else ::exit(sig);
 	}
@@ -366,10 +368,8 @@ void awh::unit::Unit::stop() noexcept {
 			} else {
 				// Устанавливаем флаг статуса остановки работы юнита
 				this->_status = event::status_t::DESTROYED;
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("status"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::status_t)> ("status", this->_status);
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const event::status_t)> ("status", this->_status);
 			}
 		}
 	/**
@@ -408,10 +408,8 @@ void awh::unit::Unit::start() noexcept {
 			::__awh_launcher__ = static_cast <uint64_t> (reinterpret_cast <uintptr_t> (this));
 			// Устанавливаем флаг статуса запуска работы юнита
 			this->_status = event::status_t::LAUNCHED;
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("status"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("status", this->_status);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::status_t)> ("status", this->_status);
 			/**
 			 * Выполняем запуск работы цикла базы событий
 			 */
@@ -430,18 +428,14 @@ void awh::unit::Unit::start() noexcept {
 			}
 			// Устанавливаем флаг статуса остановки работы юнита
 			this->_status = event::status_t::DESTROYED;
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("status"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("status", this->_status);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::status_t)> ("status", this->_status);
 		// Если запуск работы цикла событий ещё не выполнен
 		} else if(this->_status != event::status_t::LAUNCHED) {
 			// Устанавливаем флаг статуса запуска работы юнита
 			this->_status = event::status_t::LAUNCHED;
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("status"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("status", this->_status);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::status_t)> ("status", this->_status);
 		}
 	/**
 	 * Если возникает ошибка

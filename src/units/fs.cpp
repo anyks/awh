@@ -34,10 +34,8 @@ using namespace placeholders;
  * @param size размер сообщения
  */
 void awh::unit::Filesystem::write(const event::id_t eid, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("write"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
 }
 /**
  * @brief Метод обработки событий чтения из файла
@@ -47,10 +45,8 @@ void awh::unit::Filesystem::write(const event::id_t eid, const size_t size) noex
  * @param size размер сообщения
  */
 void awh::unit::Filesystem::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("read"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
 }
 /**
  * @brief Метод обработки состояния файловой системы
@@ -71,10 +67,8 @@ void awh::unit::Filesystem::state(const event::id_t eid, const event::status_t s
 				this->_events.erase(i);
 		}
 	}
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("state"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
  * @brief Метод обработки исключений событий файловой системы
@@ -84,10 +78,8 @@ void awh::unit::Filesystem::state(const event::id_t eid, const event::status_t s
  * @param message сообщение об ошибке
  */
 void awh::unit::Filesystem::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
 }
 /**
  * @brief Метод обработки событий каталогов
@@ -98,10 +90,8 @@ void awh::unit::Filesystem::error(const event::id_t eid, const event::error_t er
  * @param path   адрес по которому произошло событие
  */
 void awh::unit::Filesystem::vnode(const event::id_t eid, const event::action_t action, const event::vnode_t vnode, const std::string & path) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("vnode"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::action_t, const event::vnode_t, const string &)> ("vnode", eid, action, vnode, path);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::action_t, const event::vnode_t, const string &)> ("vnode", eid, action, vnode, path);
 }
 /**
  * @brief Метод уничтожения события файловой системы
@@ -131,23 +121,62 @@ awh::event::id_t awh::unit::Filesystem::create(const type_t type) noexcept {
 			result = this->_io->event(event::node_t::DIR, event::family_t::FSYS);
 		break;
 		// Если тип файловой системы является наблюдателем за файлами
-		case static_cast <uint8_t> (type_t::FILE): {
+		case static_cast <uint8_t> (type_t::FILE):
 			// Выполняем создание события файловой системы для узла файла
 			result = this->_io->event(event::node_t::FILE, event::family_t::FSYS);
+		break;
+		// Для неизвестного типа файловой системы
+		default: {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог создания события
+				this->_log->debug("Filesystem event could not be created because its type is not defined", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог создания события
+				this->_log->print("Filesystem event could not be created because its type is not defined", log_t::flag_t::WARNING);
+			#endif
+			// Возвращаем результат
+			return result;
+		}
+	}
+	// Если событие файловой системы успешно создано
+	if(result > 0){
+		// Если тип файловой системы является наблюдателем за файлами
+		if(type == type_t::FILE){
 			// Устанавливаем функцию обратного вызова на событие записи сообщений
 			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&fs_t::write, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие чтения сообщений
 			this->_io->on(result, static_cast <engine::callback::read_t> (std::bind(&fs_t::read, this, _1, _2, _3)));
-		} break;
+		}
+		// Устанавливаем функцию обратного вызова на событие изменения статуса
+		this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&fs_t::state, this, _1, _2)));
+		// Устанавливаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
+		// Устанавливаем функцию обратного вызова на событие изменения состояния каталога
+		this->_io->on(result, static_cast <engine::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
+		// Добавляем идентификатор события файловой системы в список событий файловой системы
+		this->_events.emplace(result);
+	// Если событие файловой системы не может быть создано
+	} else {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог создания события
+			this->_log->debug("Filesystem event could not be created", __PRETTY_FUNCTION__, std::make_tuple(static_cast <uint16_t> (type)), log_t::flag_t::WARNING);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог создания события
+			this->_log->print("Filesystem event could not be created", log_t::flag_t::WARNING);
+		#endif
 	}
-	// Устанавливаем функцию обратного вызова на событие изменения статуса
-	this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(&fs_t::state, this, _1, _2)));
-	// Устанавливаем функцию обратного вызова на событие получения ошибок
-	this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(&fs_t::error, this, _1, _2, _3)));
-	// Устанавливаем функцию обратного вызова на событие изменения состояния каталога
-	this->_io->on(result, static_cast <engine::callback::vnode_t> (std::bind(&fs_t::vnode, this, _1, _2, _3, _4)));
-	// Добавляем идентификатор события файловой системы в список событий файловой системы
-	this->_events.emplace(result);
 	// Возвращаем результат
 	return result;
 }

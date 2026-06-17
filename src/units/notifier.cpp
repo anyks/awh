@@ -34,10 +34,8 @@ using namespace placeholders;
  * @param size размер сообщения
  */
 void awh::unit::Notifier::write(const event::id_t eid, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("trigger"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const size_t)> ("trigger", eid, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const size_t)> ("trigger", eid, size);
 }
 /**
  * @brief Метод обработки событий чтения сообщений уведомителя
@@ -47,10 +45,8 @@ void awh::unit::Notifier::write(const event::id_t eid, const size_t size) noexce
  * @param size размер сообщения
  */
 void awh::unit::Notifier::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("notify"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("notify", eid, data, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("notify", eid, data, size);
 }
 /**
  * @brief Метод обработки состояния уведомителя
@@ -71,10 +67,8 @@ void awh::unit::Notifier::state(const event::id_t eid, const event::status_t sta
 				this->_events.erase(i);
 		}
 	}
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("state"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
  * @brief Метод обработки исключений событий уведомителя
@@ -84,10 +78,8 @@ void awh::unit::Notifier::state(const event::id_t eid, const event::status_t sta
  * @param message сообщение об ошибке
  */
 void awh::unit::Notifier::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, message);
 }
 /**
  * @brief Метод обработки событий доступного размера очереди события уведомителя
@@ -97,10 +89,8 @@ void awh::unit::Notifier::error(const event::id_t eid, const event::error_t erro
  * @param size   доступный размер очереди в байтах
  */
 void awh::unit::Notifier::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("available"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
 }
 /**
  * @brief Метод создания события уведомителя

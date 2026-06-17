@@ -34,10 +34,8 @@ using namespace placeholders;
  * @param action действие посредника
  */
 void awh::unit::Mediator::action(const event::id_t eid, const event::action_t action) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("action"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
 }
 /**
  * @brief Метод обработки событий изменения статуса посредника
@@ -58,10 +56,8 @@ void awh::unit::Mediator::status(const event::id_t eid, const event::status_t st
 				this->_events.erase(i);
 		}
 	}
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("state"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 }
 /**
  * @brief Метод обработки событий получения данных посредником
@@ -71,10 +67,8 @@ void awh::unit::Mediator::status(const event::id_t eid, const event::status_t st
  * @param size размер данных события получения данных посредником
  */
 void awh::unit::Mediator::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("read"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
 }
 /**
  * @brief Метод обработки событий ошибок посредника
@@ -84,10 +78,8 @@ void awh::unit::Mediator::read(const event::id_t eid, const uint8_t * data, cons
  * @param description описание ошибки
  */
 void awh::unit::Mediator::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод фиксации настроек посредника

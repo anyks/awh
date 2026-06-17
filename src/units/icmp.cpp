@@ -448,10 +448,8 @@ size_t awh::unit::ICMP::sendEcho(const event::id_t eid, const id_t id, const uin
  * @param description описание ошибки события ICMP-клиента
  */
 void awh::unit::ICMP::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
-	// Если функция обратного вызова установлена
-	if(this->_callback.is("error"))
-		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+	// Выполняем функцию обратного вызова
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
 }
 /**
  * @brief Метод обработки таймаута ожидания ответа ICMP-сервера
@@ -464,10 +462,12 @@ void awh::unit::ICMP::error(const event::id_t eid, const event::error_t error, c
 bool awh::unit::ICMP::timeout([[maybe_unused]] const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
 	// Снимаем флаг ожидания ответа от сервера
 	this->_transfer.waiting = false;
+	// Выполняем получение идентификатора функции обратного вызова
+	const callback_t::id_t fid = this->_callback.id("timeout");
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("timeout"))
+	if(this->_callback.is(fid))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const id_t, const uint16_t, const uint32_t)> ("timeout", this->_transfer.id, this->_transfer.count, delay);
+		this->_callback.call <void (const id_t, const uint16_t, const uint32_t)> (fid, this->_transfer.id, this->_transfer.count, delay);
 	// Если функция обратного вызова не установлена
 	else {
 		/**
@@ -734,8 +734,10 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 					} break;
 				}
 			}
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("ping");
 			// Если функция обратного вызова установлена для получения ответа от удалённого сервера
-			if(this->_callback.is("ping")){
+			if(this->_callback.is(fid)){
 				// Создаём объект ответа от удалённого сервера
 				response_t response{};
 				// Устанавливаем размер полученных данных от удалённого сервера
@@ -749,12 +751,10 @@ void awh::unit::ICMP::response(const event::id_t eid, const mode_t mode, const u
 				// Устанавливаем время ответа от удалённого сервера
 				response.elapsed = (now - this->_transfer.timestamp);
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const id_t, const response_t &)> ("ping", id, response);
+				this->_callback.call <void (const id_t, const response_t &)> (fid, id, response);
 			}
-			// Если функция обратного вызова установлена для получения метаданных дейтаграммного пакета
-			if(this->_callback.is("info"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const id_t, const net::dgram_info_t &)> ("info", id, info);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const id_t, const net::dgram_info_t &)> ("info", id, info);
 			// Если выполняется асинхронный режим пинга удалённого сервера
 			if(mode == mode_t::ASYNC){
 				// Если номер последовательности запроса меньше количества отправленных запросов
@@ -822,10 +822,12 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		if(this->_client.target == nullptr){
 			// Удаляем событие ICMP-клиента
 			this->destroyClient();
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("error");
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("error"))
+			if(this->_callback.is(fid))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", 0, event::error_t::INVALID_ADDRESS, "Target address is not set");
+				this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, 0, event::error_t::INVALID_ADDRESS, "Target address is not set");
 			// Если функция обратного вызова не установлена
 			else {
 				/**
@@ -851,10 +853,12 @@ bool awh::unit::ICMP::init(const event::family_t family) noexcept {
 		if(this->_client.target->size != expectedSize){
 			// Удаляем событие ICMP-клиента
 			this->destroyClient();
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("error");
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("error"))
+			if(this->_callback.is(fid))
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", 0, event::error_t::INVALID_ADDRESS, "Target address family mismatch");
+				this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, 0, event::error_t::INVALID_ADDRESS, "Target address family mismatch");
 			// Возвращаем результат
 			return false;
 		}
@@ -1592,10 +1596,12 @@ bool awh::unit::ICMP::ping(const id_t id, const uint16_t count, const mode_t mod
 					} else {
 						// Формируем текст сообщения об ошибке ICMP-клиента
 						const string error = "ICMP-client target address is not set";
+						// Выполняем получение идентификатора функции обратного вызова
+						const callback_t::id_t fid = this->_callback.id("error");
 						// Если функция обратного вызова установлена
-						if(this->_callback.is("error"))
+						if(this->_callback.is(fid))
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_client.eid, event::error_t::INVALID, error);
+							this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, this->_client.eid, event::error_t::INVALID, error);
 						// Если callback ошибки не установлен
 						else {
 							/**

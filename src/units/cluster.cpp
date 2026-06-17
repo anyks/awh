@@ -258,10 +258,8 @@ void awh::unit::Cluster::create() noexcept {
 					::exit(EXIT_FAILURE);
 				}
 			}
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("events"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
 		#endif
 	/**
 	 * Если возникает ошибка
@@ -348,10 +346,8 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 	switch(static_cast <uint8_t> (status)){
 		// Если работа кластера запущена
 		case static_cast <uint8_t> (event::status_t::LAUNCHED): {
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("clusterStatus"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("clusterStatus", status);
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::status_t)> ("cluster_status", status);
 			// Сбрасываем счётчик подряд идущих быстрых падений при запуске кластера
 			this->_rebirth.restarts = 0;
 			// Создаём событие пробуждения до запуска дочерних процессов (отложенная обработка сигнала SIGCHLD)
@@ -382,10 +378,8 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 			else {
 				// Записываем в лог информацию о запущенном сервере на PIPE
 				this->_log->print("Cluster [%s] has been started successfully", log_t::flag_t::INFO, this->_name.c_str());
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("events"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const pid_t, const event_t)> ("events", this->_pid, event_t::START);
 			}
 		} break;
 		// Если работа кластера подлежит уничтожение
@@ -411,12 +405,14 @@ void awh::unit::Cluster::launch(const event::status_t status) noexcept {
 				// Обнуляем идентификатор события пробуждения
 				this->_wakeup = 0;
 			}
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("cluster_status");
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("clusterStatus")){
+			if(this->_callback.is(fid)){
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::status_t)> ("clusterStatus", status);
+				this->_callback.call <void (const event::status_t)> (fid, status);
 				// Выполняем получение функции обратного вызова
-				this->_callback.set("clusterStatus", "status", this->_callback);
+				this->_callback.set(fid, this->_callback.id("status"), this->_callback);
 			}
 		} break;
 	}
@@ -569,10 +565,8 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 					if(this->_io->commit(ret.first->second->eid) && this->_io->launch(ret.first->second->eid)){
 						// Записываем в лог сообщение об успешном запуске события
 						this->_log->print("Cluster worker process [%d] has been started successfully", log_t::flag_t::INFO, ret.first->first);
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("events"))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const pid_t, const event_t)> ("events", ret.first->first, event_t::START);
+						// Выполняем функцию обратного вызова
+						this->_callback.call <void (const pid_t, const event_t)> ("events", ret.first->first, event_t::START);
 					// Если событие не может быть запущено
 					} else {
 						/**
@@ -668,10 +662,8 @@ awh::unit::cluster_t::family_t awh::unit::Cluster::spawn([[maybe_unused]] const 
 						// Выходим из приложения
 						::exit(EXIT_FAILURE);
 					}
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("rebase") && (replaced > 0))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const pid_t, const pid_t)> ("rebase", ret.first->first, replaced);
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const pid_t, const pid_t)> ("rebase", ret.first->first, replaced);
 				}
 			} break;
 		}
@@ -719,14 +711,10 @@ void awh::unit::Cluster::process([[maybe_unused]] const pid_t pid, [[maybe_unuse
 				this->release(i->second->eid);
 				// Удаляем завершившийся процесс из списка активных воркеров
 				this->_workers.erase(i);
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("exit"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const pid_t, const int32_t)> ("exit", pid, status);
-				// Если функция обратного вызова установлена
-				if(this->_callback.is("events"))
-					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const pid_t, const event_t)> ("events", pid, event_t::STOP);
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const pid_t, const int32_t)> ("exit", pid, status);
+				// Выполняем функцию обратного вызова
+				this->_callback.call <void (const pid_t, const event_t)> ("events", pid, event_t::STOP);
 				// Если разрешён автоматический перезапуск процесса
 				if(this->_rebirth.mode){
 					// Если процесс упал слишком быстро
@@ -820,8 +808,10 @@ void awh::unit::Cluster::child([[maybe_unused]] int32_t signal, [[maybe_unused]]
  * @param size размер сообщения
  */
 void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcept {
+	// Выполняем получение идентификатора функции обратного вызова
+	const callback_t::id_t fid = this->_callback.id("sending");
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("sending")){
+	if(this->_callback.is(fid)){
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
@@ -829,13 +819,13 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
 			// Если идентификатор процесса найден
 			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const size_t)> ("sending", i->second, size);
+				this->_callback.call <void (const pid_t, const size_t)> (fid, i->second, size);
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
 			if(this->_pid == ::getppid())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const size_t)> ("sending", this->_pid, size);
+				this->_callback.call <void (const pid_t, const size_t)> (fid, this->_pid, size);
 			// Если родительский процесс умер
 			else {
 				/**
@@ -865,8 +855,10 @@ void awh::unit::Cluster::write(const event::id_t eid, const size_t size) noexcep
  * @param size размер сообщения
  */
 void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
+	// Выполняем получение идентификатора функции обратного вызова
+	const callback_t::id_t fid = this->_callback.id("message");
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("message")){
+	if(this->_callback.is(fid)){
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
@@ -874,13 +866,13 @@ void awh::unit::Cluster::read(const event::id_t eid, const uint8_t * data, const
 			// Если идентификатор процесса найден
 			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("message", i->second, data, size);
+				this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> (fid, i->second, data, size);
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
 			if(this->_pid == ::getppid())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> ("message", this->_pid, data, size);
+				this->_callback.call <void (const pid_t, const uint8_t *, const size_t)> (fid, this->_pid, data, size);
 			// Если родительский процесс умер
 			else {
 				/**
@@ -925,14 +917,10 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 					if(i != this->_workers.end()){
 						// Если уничтоженное событие соответствует событию процесса
 						if(i->second->eid == eid){
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("exit"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, SIGSTOP);
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("events"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const pid_t, const event_t)> ("events", i->first, event_t::STOP);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const pid_t, const int32_t)> ("exit", i->first, SIGSTOP);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const pid_t, const event_t)> ("events", i->first, event_t::STOP);
 							// Удаляем завершившийся процесс из списка активных воркеров
 							this->_workers.erase(i);
 							// Завершаем работу процесса
@@ -961,8 +949,10 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 		} break;
 		// Если мы получили любой другой статус
 		default: {
+			// Выполняем получение идентификатора функции обратного вызова
+			const callback_t::id_t fid = this->_callback.id("state");
 			// Если функция обратного вызова установлена
-			if(this->_callback.is("state")){
+			if(this->_callback.is(fid)){
 				// Если процесс является родительским
 				if(this->master()){
 					// Выполняем поиск идентификатора процесса по идентификатору события
@@ -970,13 +960,13 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
 					// Если идентификатор процесса найден
 					if(i != this->_matching.end())
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const pid_t, const event::status_t)> ("state", i->second, status);
+						this->_callback.call <void (const pid_t, const event::status_t)> (fid, i->second, status);
 				// Если процесс является дочерним
 				} else {
 					// Если родительский процесс живой
 					if(this->_pid == ::getppid())
 						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const pid_t, const event::status_t)> ("state", this->_pid, status);
+						this->_callback.call <void (const pid_t, const event::status_t)> (fid, this->_pid, status);
 					// Если родительский процесс умер
 					else {
 						/**
@@ -1008,8 +998,10 @@ void awh::unit::Cluster::state(const event::id_t eid, const event::status_t stat
  * @param message сообщение об ошибке
  */
 void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error, const string & message) noexcept {
+	// Выполняем получение идентификатора функции обратного вызова
+	const callback_t::id_t fid = this->_callback.id("error");
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("error")){
+	if(this->_callback.is(fid)){
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
@@ -1017,13 +1009,13 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
 			// Если идентификатор процесса найден
 			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("error", i->second, error, message);
+				this->_callback.call <void (const pid_t, const event::error_t, const string &)> (fid, i->second, error, message);
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
 			if(this->_pid == ::getppid())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const event::error_t, const string &)> ("error", this->_pid, error, message);
+				this->_callback.call <void (const pid_t, const event::error_t, const string &)> (fid, this->_pid, error, message);
 			// Если родительский процесс умер
 			else {
 				/**
@@ -1053,8 +1045,10 @@ void awh::unit::Cluster::error(const event::id_t eid, const event::error_t error
  * @param size   доступный размер очереди в байтах
  */
 void awh::unit::Cluster::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
+	// Выполняем получение идентификатора функции обратного вызова
+	const callback_t::id_t fid = this->_callback.id("available");
 	// Если функция обратного вызова установлена
-	if(this->_callback.is("available")){
+	if(this->_callback.is(fid)){
 		// Если процесс является родительским
 		if(this->master()){
 			// Выполняем поиск идентификатора процесса по идентификатору события
@@ -1062,13 +1056,13 @@ void awh::unit::Cluster::available(const event::id_t eid, const event::status_t 
 			// Если идентификатор процесса найден
 			if(i != this->_matching.end())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("available", i->second, status, size);
+				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> (fid, i->second, status, size);
 		// Если процесс является дочерним
 		} else {
 			// Если родительский процесс живой
 			if(this->_pid == ::getppid())
 				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> ("available", this->_pid, status, size);
+				this->_callback.call <void (const pid_t, const event::status_t, const size_t)> (fid, this->_pid, status, size);
 			// Если родительский процесс умер
 			else {
 				/**
@@ -1153,12 +1147,14 @@ void awh::unit::Cluster::start() noexcept {
 		if(this->master()){
 			// Если работа юнита ещё не запущена
 			if(!this->working()){
+				// Выполняем получение идентификатора функции обратного вызова
+				const callback_t::id_t fid = this->_callback.id("status");
 				// Если функция обратного вызова установлена
-				if(this->_callback.is("status"))
+				if(this->_callback.is(fid))
 					// Выполняем получение функции обратного вызова
-					this->_callback.set("status", "clusterStatus", this->_callback);
+					this->_callback.set(fid, this->_callback.id("cluster_status"), this->_callback);
 				// Устанавливаем функцию обратного вызова на запуск системы
-				this->_callback.on <void (const event::status_t)> ("status", &cluster_t::launch, this, _1);
+				this->_callback.on <void (const event::status_t)> (fid, &cluster_t::launch, this, _1);
 				// Выполняем запуск работы основного юнита
 				unit_t::start();
 			}

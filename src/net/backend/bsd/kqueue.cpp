@@ -440,7 +440,7 @@ namespace {
 			bool operator == (const Origin_Identifier & other) const noexcept {
 				// Сравниваем семейство адресов
 				if(this->family != other.family)
-					// Возвращаем false
+					// Возвращаем отрицательный результат
 					return false;
 				/**
 				 * Сравниваем данные в зависимости от семейства адресов
@@ -25707,7 +25707,7 @@ namespace io {
 									// Если событие является блокирующим
 									} else eth->socket.setTimeout(peer->transfer.fd, net::socket_event_t::READ, peer->timeouts.read.delay);
 								}
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return !guard.garbage();
 							}
 						}
@@ -27178,7 +27178,7 @@ namespace io {
 							// Если событие является блокирующим установки таймаута на чтение данных
 							} else eth->socket.setTimeout(origin->transfer.fd, net::socket_event_t::READ, origin->timeouts.read.delay);
 						}
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return !guard.garbage();
 					}
 				}
@@ -48722,7 +48722,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 										switch(static_cast <uint8_t> (i->second->state.node)){
 											// Если узел является межпроцессным взаимодействием
 											case static_cast <uint8_t> (event::node_t::IPC):
-												// Возвращаем true работы функции
+												// Возвращаем положительный результат работы функции
 												return true;
 											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER): {
@@ -48874,7 +48874,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 										switch(static_cast <uint8_t> (i->second->state.node)){
 											// Если узел является межпроцессным взаимодействием
 											case static_cast <uint8_t> (event::node_t::IPC):
-												// Возвращаем true работы функции
+												// Возвращаем положительный результат работы функции
 												return true;
 											// Если узел является одноранговым узлом
 											case static_cast <uint8_t> (event::node_t::PEER): {
@@ -49367,7 +49367,7 @@ bool awh::engine::IO::setOption(const event::id_t id, const uint16_t option, con
 							i->second->state.options |= event::options::KEEPALIVE;
 						// Если необходимо деактивировать параметры keep-alive для сокета события
 						else i->second->state.options &= ~event::options::KEEPALIVE;
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 					// Если опция передана как CLOSE_ON_EXEC
@@ -49555,7 +49555,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте пользовательского события
 								user->dest = dest;
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 						}
@@ -49712,7 +49712,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте файловой системы
 								fs->dest = dest;
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 						}
@@ -49871,7 +49871,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте межпроцессного взаимодействия
 								ipc->transfer.dest = dest;
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 						}
@@ -49997,7 +49997,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте однорангового узла
 								peer->transfer.dest = dest;
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 						}
@@ -50123,7 +50123,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте однорангового узла
 								origin->transfer.dest = dest;
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 						}
@@ -50237,7 +50237,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::FILE): {
 								// Устанавливаем идентификатор события-приёмника в объекте посредника
 								mediator->dest = dest;
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 							// Если узел является межпроцессным взаимодействием
@@ -50260,7 +50260,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 									mediator->state.type = j->second->state.type;
 									// Устанавливаем протокол события в объекте посредника
 									mediator->state.protocol = j->second->state.protocol;
-									// Возвращаем true
+									// Возвращаем положительный результат
 									return true;
 								// Если не совместимы типы или семейства событий
 								} else {
@@ -50384,7 +50384,7 @@ bool awh::engine::IO::splice(const event::id_t eid, const event::id_t dest) noex
 							case static_cast <uint8_t> (event::node_t::SERVER): {
 								// Устанавливаем идентификатор события-приёмника в объекте клиента
 								client->transfer.dest = dest;
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 						}
@@ -50446,7 +50446,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						EV_SET(&event, i->first, EVFILT_USER, EV_ENABLE, NOTE_FFNOP, 0, i->second.get());
 						// Добавляем новое событие в список изменений
 						::events::add(::move(event));
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 				} break;
@@ -50479,7 +50479,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							#endif
 							// Добавляем новое событие в список изменений
 							::events::add(::move(event));
-							// Возвращаем true
+							// Возвращаем положительный результат
 							return true;
 						}
 						// Снимаем флаг ожидания выполнения события
@@ -50517,7 +50517,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						}
 						// Добавляем новое событие в список изменений
 						::events::add(::move(event));
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 				} break;
@@ -50531,7 +50531,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						::io::ipc_t * ipc = awh_cast <::io::ipc_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
 						::events::read(ipc->transfer.fd, ipc, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 				} break;
@@ -50545,7 +50545,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 						::io::tun_t * tunnel = awh_cast <::io::tun_t *> (i->second.get());
 						// Активируем событие на чтение данных из сокета
 						::events::read(tunnel->fd, tunnel, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 				} break;
@@ -50598,7 +50598,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 									// Если событие является блокирующим
 									} else this->_eth.socket.setTimeout(client->transfer.fd, net::socket_event_t::READ, client->timeouts.read.delay);
 								}
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 							// Для остальных типов сокетов
@@ -50730,7 +50730,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 								server->activity |= ::activity::READ;
 								// Активируем событие на чтение данных из сокета
 								::events::read(server->fd, server, event::mode_t::ENABLED, event::rate_t::DEFERRED, this->_log);
-								// Возвращаем true
+								// Возвращаем положительный результат
 								return true;
 							}
 							// Для остальных типов сокетов
@@ -50981,7 +50981,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						if(peer->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова с установленным флагом события
 							peer->callbacks.event(peer->id, event::action_t::DISCONNECT);
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 				} break;
@@ -51020,7 +51020,7 @@ bool awh::engine::IO::disconnect(const event::id_t id) noexcept {
 						if(client->callbacks.event != nullptr)
 							// Вызываем функцию обратного вызова с установленным флагом события
 							client->callbacks.event(client->id, event::action_t::DISCONNECT);
-						// Возвращаем true
+						// Возвращаем положительный результат
 						return true;
 					}
 				} break;

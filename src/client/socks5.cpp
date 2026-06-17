@@ -149,22 +149,15 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 									this->_log->print("This client ID=%u cannot be started", log_t::flag_t::WARNING, this->_id.eid);
 								#endif
 							}
-						// Если клиент запущен удачно
-						} else {
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("launch"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getTargetPort(this->_id.eid));
-						}
+						// Если клиент запущен удачно, выполняем функцию обратного вызова
+						} else this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getTargetPort(this->_id.eid));
 					}
 				} break;
 				// Если событие клиента остановлено
-				case static_cast <uint8_t> (event::status_t::DESTROYED): {
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("status"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::status_t)> ("status", status);
-				} break;
+				case static_cast <uint8_t> (event::status_t::DESTROYED):
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::status_t)> ("status", status);
+				break;
 			}
 		} break;
 		// Если мы получили статус события DNS-резолвера
@@ -193,10 +186,8 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 									case static_cast <uint8_t> (event::status_t::NONE): {
 										// Если событие клиента не запущено, запускаем его
 										if(this->_unit->client.commit(this->_id.eid)){
-											// Если функция обратного вызова установлена
-											if(this->_callback.is("ready"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_unit->client.family(this->_id.eid), this->_host, this->_unit->client.getTarget(this->_id.eid));
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_unit->client.family(this->_id.eid), this->_host, this->_unit->client.getTarget(this->_id.eid));
 											// Запускаем клиента
 											this->_unit->client.start();
 										}
@@ -283,13 +274,8 @@ void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept
 					}
 				}
 			}
-		// Если подключение не выполнено
-		} else {
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("connect"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
-		}
+		// Если подключение не выполнено, выполняем функцию обратного вызова
+		} else this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 	}
 }
 /**
@@ -300,12 +286,9 @@ void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept
  */
 void awh::client::Socks5::write(const event::id_t eid, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
-	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("write"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const size_t)> ("write", this->_id.eid, size);
-	}
+	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false))
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const size_t)> ("write", this->_id.eid, size);
 }
 /**
  * @brief Метод обработки событий изменения состояния клиента
@@ -316,10 +299,8 @@ void awh::client::Socks5::write(const event::id_t eid, const size_t size) noexce
 void awh::client::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("state"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
 		// Если статус клиента изменился на "уничтожен"
 		if((eid == this->_id.eid) && (status == event::status_t::DESTROYED)){
 			// Обнуляем идентификатор клиента
@@ -379,13 +360,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								#endif
 							}
 						}
-					// Если объект транспортного уровня безопасности не установлен
-					} else {
-						// Если функция обратного вызова установлена
-						if(this->_callback.is("read"))
-							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer, size);
-					}
+					// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
+					} else this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer, size);
 				// Если идентификатор клиента соответствует идентификатору UDP-клиента
 				} else if(eid == this->_endpoint.udp.eid) {
 					// Если парсинг данных от прокси-сервера выполнен успешно
@@ -413,13 +389,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 										#endif
 									}
 								}
-							// Если объект транспортного уровня безопасности не установлен
-							} else {
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("read"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size);
-							}
+							// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
+							} else this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size);
 							// Выходим из функции
 							return;
 						}
@@ -460,10 +431,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 					return;
 				// Если кадр некорректный
 				if(frame == SIZE_MAX){
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("connect"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 					// Выходим из функции
 					return;
 				}
@@ -494,10 +463,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								#endif
 							// Выполняем функцию обратного вызова
 							} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(this->_ctx.status));
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("connect"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 						} break;
 						// Если текущее состояние соответствует ожиданию выполнения подключения
 						case static_cast <uint8_t> (proto::socks5_t::state_t::CONNECT): {
@@ -625,10 +592,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									} else return;
 								}
 							}
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("connect"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 						} break;
 						// Если текущее состояние соответствует успешному завершению рукопожатия
 						case static_cast <uint8_t> (proto::socks5_t::state_t::HANDSHAKE): {
@@ -687,10 +652,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 													this->_log->print("This client does not support working with domain names, since the DNS resolver is not found", log_t::flag_t::WARNING);
 												#endif
 											}
-											// Если функция обратного вызова установлена
-											if(this->_callback.is("connect"))
-												// Выполняем функцию обратного вызова
-												this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+											// Выполняем функцию обратного вызова
+											this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 											// Выходим из функции
 											return;
 										}
@@ -807,14 +770,10 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								this->_ctx.state = proto::socks5_t::state_t::COMPLETED;
 								// Очищаем буфер накопления SOCKS5-кадров
 								this->_rx.clear();
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("ready"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_unit->client.family(eid), domain, target);
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("launch"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", eid, target, port);
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_unit->client.family(eid), domain, target);
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", eid, target, port);
 								// Если объект транспортного уровня безопасности установлен
 								if((this->_coder != nullptr) && (this->_id.sid > 0)){
 									// Если рукопожатие TLS не выполнено
@@ -839,10 +798,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									} else return;
 								// Если объект транспортного уровня безопасности не установлен
 								} else {
-									// Если функция обратного вызова установлена
-									if(this->_callback.is("connect"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
+									// Выполняем функцию обратного вызова
+									this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
 									// Выходим из функции
 									return;
 								}
@@ -862,10 +819,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									this->_log->print("Client event ID not found", log_t::flag_t::WARNING);
 								#endif
 							}
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("connect"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 						} break;
 						// В остальных случаях, проходим процедуру общения с сервером в автоматическом режиме
 						default: {
@@ -896,10 +851,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Выходим из функции
 								} else return;
 							}
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("connect"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 						}
 					}
 				// Если парсинг полного SOCKS5-кадра не выполнен
@@ -921,10 +874,8 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						#endif
 					// Выполняем функцию обратного вызова
 					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, "Failed to parse data from proxy server");
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("connect"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
 				}
 			}
 		/**
@@ -971,10 +922,8 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 					if(this->_unit->client.setTarget(this->_id.eid, addr)){
 						// Если событие клиента не запущено, запускаем его
 						if(this->_unit->client.commit(this->_id.eid)){
-							// Если функция обратного вызова установлена
-							if(this->_callback.is("ready"))
-								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->client.getTarget(this->_id.eid));
+							// Выполняем функцию обратного вызова
+							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->client.getTarget(this->_id.eid));
 							// Запускаем клиента
 							this->_unit->client.start();
 						}
@@ -997,14 +946,10 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 								const string & target = this->_unit->client.getTarget(this->_endpoint.udp.eid);
 								// Получаем порт хоста для подключения к удалённому серверу
 								const uint16_t port = this->_unit->client.getTargetPort(this->_endpoint.udp.eid);
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("ready"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, target);
-								// Если функция обратного вызова установлена
-								if(this->_callback.is("launch"))
-									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, target, port);
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, target);
+								// Выполняем функцию обратного вызова
+								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, target, port);
 								// Если объект транспортного уровня безопасности установлен
 								if((this->_coder != nullptr) && (this->_id.sid > 0)){
 									// Если рукопожатие TLS не выполнено
@@ -1026,13 +971,8 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 											#endif
 										}
 									}
-								// Если объект транспортного уровня безопасности не установлен
-								} else {
-									// Если функция обратного вызова установлена
-									if(this->_callback.is("connect"))
-										// Выполняем функцию обратного вызова
-										this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
-								}
+								// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
+								} else this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
 							// Если запуск работы клиента, работающего через прокси, не выполнен
 							} else {
 								// Если функция обратного вызова не установлена
@@ -1121,17 +1061,12 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 void awh::client::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
-		// Если функция обратного вызова установлена
-		if(this->_callback.is("state_tls"))
-			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::state_t)> ("state_tls", id, state);
+		// Выполняем функцию обратного вызова
+		this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::state_t)> ("state_tls", id, state);
 		// Если состояние рукопожатия успешно завершено
-		if(state == tls::coder_t::state_t::HANDSHAKED){
-			// Если функция обратного вызова установлена
-			if(this->_callback.is("connect"))
-				// Выполняем функцию обратного вызова
-				this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
-		}
+		if(state == tls::coder_t::state_t::HANDSHAKED)
+			// Выполняем функцию обратного вызова
+			this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
 	}
 }
 /**
@@ -1317,12 +1252,10 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 					}
 				} break;
 				// Если событие дешифрования данных TLS
-				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION): {
-					// Если функция обратного вызова установлена
-					if(this->_callback.is("read"))
-						// Выполняем функцию обратного вызова
-						this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer, size);
-				} break;
+				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
+					// Выполняем функцию обратного вызова
+					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer, size);
+				break;
 			}
 		/**
 		 * Если возникает ошибка
