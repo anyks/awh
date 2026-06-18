@@ -44,6 +44,7 @@
  * - JA3: https://ja3.zone — база известных ja3Hash → имя клиента
  * - JA4: https://github.com/FoxIO-LLC/ja4/tree/main/technical_details — спецификация и базы
  * - PeetPrint: https://github.com/nicowillis/PeetPrint — база браузерных отпечатков
+ * - API fingerprint browser: https://tls.peet.ws/api/all
  *
  * P.S. Суть работы с ТСПУ: этот код даёт те же ja3Hash/ja4/peetprintHash что и коммерческие DPI — можно воспроизвести их логику детектирования на своей стороне.
  */
