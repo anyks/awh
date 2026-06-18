@@ -2081,9 +2081,41 @@ awh::unit::Server::~Server() noexcept {
 		/**
 		 * Выполняем удаление всех событий сервера
 		 */
-		for(const auto & event : this->_events)
+		for(const auto & event : this->_events){
+			// Снимаем функцию обратного вызова на событие получения ошибок клиента
+			this->_io->on(event.first, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения действий клиента
+			this->_io->on(event.first, static_cast <engine::callback::event_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие записи данных клиенту
+			this->_io->on(event.first, static_cast <engine::callback::write_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие неотправленных данных клиенту
+			this->_io->on(event.first, static_cast <engine::callback::spool_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения статуса клиента
+			this->_io->on(event.first, static_cast <engine::callback::status_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+			this->_io->on(event.first, static_cast <engine::callback::available_t> (nullptr));
+			/**
+			 * Определяем узел к которому относится событие
+			 */
+			switch(static_cast <uint8_t> (this->_io->node(event.first))){
+				// Если узел события является одноразовым узлом
+				case static_cast <uint8_t> (event::node_t::PEER): {
+					// Снимаем функцию обратного вызова на событие чтения данных клиента
+					this->_io->on(event.first, static_cast <engine::callback::read_t> (nullptr));
+					// Снимаем функцию обратного вызова на событие истечения таймаута клиента
+					this->_io->on(event.first, static_cast <engine::callback::timeout_t> (nullptr));
+				} break;
+				// Если узел события является серверным узлом
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Снимаем функцию обратного вызова на событие разрешения подключения
+					this->_io->on(event.first, static_cast <engine::callback::accept_t> (nullptr));
+					// Снимаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
+					this->_io->on(event.first, static_cast <engine::callback::traffic_t> (nullptr));
+				} break;
+			}
 			// Удаляем событие сервера
 			this->_io->destroy(event.first);
+		}
 		// Очищаем внутренние индексы событий
 		this->_events.clear();
 		// Очищаем список клиентов сервера

@@ -26086,8 +26086,14 @@ namespace io {
 						if(ev.fflags & NOTE_WRITE){
 							// Если событие изменения директории разрешено
 							if(dir->actions & ::action::CHANGE){
-								// Вызываем функцию обратного вызова с установленным флагом события
-								dir->callbacks.event(dir->id, event::action_t::CHANGE);
+								// Если установлена функция обратного вызова
+								if(dir->callbacks.event != nullptr)
+									// Вызываем функцию обратного вызова с установленным флагом события
+									dir->callbacks.event(dir->id, event::action_t::CHANGE);
+								// Если функция обратного вызова для сигнализации переименования адреса каталога установлена
+								if(dir->callbacks.vnode != nullptr)
+									// Вызываем функцию обратного вызова
+									dir->callbacks.vnode(dir->id, event::action_t::CHANGE, event::vnode_t::DIR, awh_cast <net::addr_fs_t *> (dir->path.get())->address);
 								// Выполняем изменение содержимого в директории
 								return ::io::change(dir, io, fmk, log);
 							}

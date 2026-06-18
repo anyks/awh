@@ -347,8 +347,17 @@ awh::unit::Mediator::~Mediator() noexcept {
 		/**
 		 * Выполняем удаление всех событий посредника
 		 */
-		for(const auto & eid : events)
+		for(const auto & eid : events){
+			// Снимаем функцию обратного вызова на событие чтения данных
+			this->_io->on(eid, static_cast <engine::callback::read_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(eid, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения действий посредника
+			this->_io->on(eid, static_cast <engine::callback::event_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения статуса посредника
+			this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
 			// Удаляем событие посредника
 			this->_io->destroy(eid);
+		}
 	}
 }

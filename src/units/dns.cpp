@@ -7354,17 +7354,31 @@ awh::unit::DNS::~DNS() noexcept {
 		/**
 		 * Выполняем перебор всех DNS-резолверов IPv4 из списка для их удаления
 		 */
-		for(auto i = this->_resolver.idv4.begin(); i != this->_resolver.idv4.end(); ++i)
+		for(auto i = this->_resolver.idv4.begin(); i != this->_resolver.idv4.end(); ++i){
+			// Снимаем функцию обратного вызова на событие чтения данных
+			this->_io->on(* i, static_cast <engine::callback::read_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(* i, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие таймаута
+			this->_io->on(* i, static_cast <engine::callback::timeout_t> (nullptr));
 			// Удаляем событие DNS-резолвера
 			this->_io->destroy(* i);
+		}
 	}
 	// Если список DNS-резолверов IPv6 не пустой
 	if(!this->_resolver.idv6.empty()){
 		/**
 		 * Выполняем перебор всех DNS-резолверов IPv6 из списка для их удаления
 		 */
-		for(auto i = this->_resolver.idv6.begin(); i != this->_resolver.idv6.end(); ++i)
+		for(auto i = this->_resolver.idv6.begin(); i != this->_resolver.idv6.end(); ++i){
+			// Снимаем функцию обратного вызова на событие чтения данных
+			this->_io->on(* i, static_cast <engine::callback::read_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(* i, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие таймаута
+			this->_io->on(* i, static_cast <engine::callback::timeout_t> (nullptr));
 			// Удаляем событие DNS-резолвера
 			this->_io->destroy(* i);
+		}
 	}
 }

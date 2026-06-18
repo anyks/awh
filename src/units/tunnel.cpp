@@ -414,8 +414,17 @@ awh::unit::Tunnel::~Tunnel() noexcept {
 		/**
 		 * Выполняем удаление всех событий туннеля
 		 */
-		for(const auto & eid : events)
+		for(const auto & eid : events){
+			// Снимаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(eid, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения статуса туннеля
+			this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения информации о пакетах в туннеле
+			this->_io->on(eid, static_cast <engine::callback::tuninfo_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных туннеля
+			this->_io->on(eid, static_cast <engine::callback::available_t> (nullptr));
 			// Удаляем событие туннеля
 			this->_io->destroy(eid);
+		}
 	}
 }

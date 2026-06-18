@@ -76,6 +76,8 @@ void awh::unit::Timer::clear() noexcept {
 	for(auto & eid : this->_timers){
 		// Удаляем функцию обратного вызова для события таймера
 		this->_callback.erase(eid);
+		// Снимаем функцию обратного вызова на событие таймера
+		this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
 		// Удаляем событие таймера
 		this->_io->destroy(eid);
 	}
@@ -90,6 +92,8 @@ void awh::unit::Timer::clear() noexcept {
 void awh::unit::Timer::clear(const event::id_t eid) noexcept {
 	// Удаляем функцию обратного вызова для события таймера
 	this->_callback.erase(eid);
+	// Снимаем функцию обратного вызова на событие таймера
+	this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
 	// Удаляем событие таймера
 	this->_io->destroy(eid);
 	// Удаляем идентификатор таймера из списка активных таймеров

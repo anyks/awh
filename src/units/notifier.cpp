@@ -216,8 +216,19 @@ awh::unit::Notifier::~Notifier() noexcept {
 		/**
 		 * Выполняем удаление всех событий уведомителя
 		 */
-		for(const auto & eid : events)
+		for(const auto & eid : events){
+			// Снимаем функцию обратного вызова на событие чтения сообщений
+			this->_io->on(eid, static_cast <engine::callback::read_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие записи сообщений
+			this->_io->on(eid, static_cast <engine::callback::write_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(eid, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения состояния
+			this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие доступности очереди сообщений
+			this->_io->on(eid, static_cast <engine::callback::available_t> (nullptr));
 			// Удаляем событие уведомителя
 			this->_io->destroy(eid);
+		}
 	}
 }

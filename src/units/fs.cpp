@@ -357,8 +357,22 @@ awh::unit::Filesystem::~Filesystem() noexcept {
 		/**
 		 * Выполняем удаление всех событий файловой системы
 		 */
-		for(const auto & eid : events)
+		for(const auto & eid : events){
+			// Если тип файловой системы является наблюдателем за файлами
+			if(event::node_t::FILE == this->_io->node(eid)){
+				// Снимаем функцию обратного вызова на событие записи сообщений
+				this->_io->on(eid, static_cast <engine::callback::write_t> (nullptr));
+				// Снимаем функцию обратного вызова на событие чтения сообщений
+				this->_io->on(eid, static_cast <engine::callback::read_t> (nullptr));
+			}
+			// Снимаем функцию обратного вызова на событие изменения статуса
+			this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(eid, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения состояния каталога
+			this->_io->on(eid, static_cast <engine::callback::vnode_t> (nullptr));
 			// Удаляем событие файловой системы
 			this->_io->destroy(eid);
+		}
 	}
 }

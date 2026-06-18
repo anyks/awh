@@ -248,14 +248,18 @@ namespace servers {
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPv4
 			case static_cast <uint8_t> (event::family_t::IPV4):
-				// Разрешаем доменные имена, пока не появятся IPv4-адреса
+				/**
+				 * Разрешаем доменные имена, пока не появятся IPv4-адреса
+				 */
 				while(generalIPv4.empty() && (hostnameIndex < hostnames.size()))
 					// Разрешаем следующее доменное имя NTP-сервера
 					resolveNext();
 			break;
 			// Для семейства IPv6
 			case static_cast <uint8_t> (event::family_t::IPV6):
-				// Разрешаем доменные имена, пока не появятся IPv6-адреса
+				/**
+				 * Разрешаем доменные имена, пока не появятся IPv6-адреса
+				 */
 				while(generalIPv6.empty() && (hostnameIndex < hostnames.size()))
 					// Разрешаем следующее доменное имя NTP-сервера
 					resolveNext();
@@ -1882,7 +1886,14 @@ awh::unit::NTP::NTP(const fmk_t * fmk, const log_t * log) noexcept : unit_t(fmk,
  */
 awh::unit::NTP::~NTP() noexcept {
 	// Если событие NTP-клиента активно
-	if(this->_client.eid > 0)
+	if(this->_client.eid > 0){
+		// Снимаем функцию обратного вызова на событие чтения данных
+		this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (nullptr));
+		// Снимаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (nullptr));
+		// Снимаем функцию обратного вызова на событие таймаута
+		this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (nullptr));
 		// Удаляем событие NTP-клиента
 		this->_io->destroy(this->_client.eid);
+	}
 }

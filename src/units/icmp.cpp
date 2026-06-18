@@ -367,6 +367,12 @@ namespace dns {
 void awh::unit::ICMP::destroyClient() noexcept {
 	// Если событие ICMP-клиента активно
 	if(this->_client.eid > 0){
+		// Снимаем функцию обратного вызова на событие чтения данных
+		this->_io->on(this->_client.eid, static_cast <engine::callback::read_t> (nullptr));
+		// Снимаем функцию обратного вызова на событие получения ошибок
+		this->_io->on(this->_client.eid, static_cast <engine::callback::error_t> (nullptr));
+		// Снимаем функцию обратного вызова на событие таймаута
+		this->_io->on(this->_client.eid, static_cast <engine::callback::timeout_t> (nullptr));
 		// Удаляем событие ICMP-клиента
 		this->_io->destroy(this->_client.eid);
 		// Сбрасываем идентификатор события ICMP-клиента

@@ -1180,8 +1180,29 @@ awh::unit::Client::~Client() noexcept {
 		/**
 		 * Выполняем удаление всех событий клиента
 		 */
-		for(const auto & eid : events)
+		for(const auto & eid : events){
+			// Снимаем функцию обратного вызова на событие чтения данных
+			this->_io->on(eid, static_cast <engine::callback::read_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения ошибок
+			this->_io->on(eid, static_cast <engine::callback::error_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие неотправленных данных клиента
+			this->_io->on(eid, static_cast <engine::callback::spool_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения действий клиента
+			this->_io->on(eid, static_cast <engine::callback::event_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие записи данных
+			this->_io->on(eid, static_cast <engine::callback::write_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие изменения статуса клиента
+			this->_io->on(eid, static_cast <engine::callback::status_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
+			this->_io->on(eid, static_cast <engine::callback::traffic_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие истечения таймаута клиента
+			this->_io->on(eid, static_cast <engine::callback::timeout_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие подключения клиента к удалённому узлу
+			this->_io->on(eid, static_cast <engine::callback::connect_t> (nullptr));
+			// Снимаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+			this->_io->on(eid, static_cast <engine::callback::available_t> (nullptr));
 			// Удаляем событие клиента
 			this->_io->destroy(eid);
+		}
 	}
 }
