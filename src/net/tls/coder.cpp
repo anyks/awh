@@ -35,6 +35,13 @@
 #include <openssl/x509v3.h>
 
 /**
+ * Если BoringSSL используется в качестве криптографической библиотеки
+ */
+#ifdef OPENSSL_IS_BORINGSSL
+	#include <openssl/hpke.h>
+#endif // OPENSSL_IS_BORINGSSL
+
+/**
  * Системные заголовочные файлы
  */
 #include <arpa/inet.h>
@@ -610,11 +617,12 @@ namespace {
 	 *
 	 */
 	typedef struct Contex_Template_Security : public member_t {
-		SSL_CTX * ctx;       // Объект SSL контекста
-		X509_CRL * crl;      // Объект CRL-файла сертификата
-		string host;         // Объект хоста сервера
-		alpn_t alpn;         // Объект ALPN-протоколов
-		callback_t callback; // Функции обратных вызовов
+		SSL_CTX * ctx;        // Объект SSL контекста
+		X509_CRL * crl;       // Объект CRL-файла сертификата
+		string host;          // Объект хоста сервера
+		alpn_t alpn;          // Объект ALPN-протоколов
+		callback_t callback;  // Функции обратных вызовов
+		vector <uint8_t> ech; // ECHConfigList для клиентов / байты приватного HPKE ключа для серверов
 		/**
 		 * @brief Конструктор
 		 *
@@ -651,6 +659,7 @@ namespace {
 		alpn_t alpn;                  // Объект ALPN-протоколов
 		cookie_t cookie;              // Объект cookie SSL
 		callback_transfer_t callback; // Объект обратных вызовов
+		vector <uint8_t> ech;         // ECHConfigList (копия из CTS при создании CTL)
 		vector <uint8_t> hello;       // Буфер сборки TLS/DTLS record для apply()
 		/**
 		 * @brief Конструктор
@@ -6290,6 +6299,17 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								}
 							#endif // !OPENSSL_IS_BORINGSSL
 						}
+						// Копируем список ECHConfig из шаблона контекста безопасности
+						member->ech = cts->ech;
+						/**
+						 * Если BoringSSL используется в качестве криптографической библиотеки
+						 */
+						#ifdef OPENSSL_IS_BORINGSSL
+							// Если узел является клиентом и список ECHConfig не пустой — применяем для шифрования SNI
+							if((member->node == event::node_t::CLIENT) && !member->ech.empty())
+								// Устанавливаем список ECHConfig для зашифрованного ClientHello
+								::SSL_set1_ech_config_list(member->ssl, &member->ech[0], member->ech.size());
+						#endif // OPENSSL_IS_BORINGSSL
 						// Устанавливаем хост для уровня защищённых сокетов
 						member->host.name = cts->host;
 						// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
@@ -6479,6 +6499,17 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 								}
 							}
 						}
+						// Копируем список ECHConfig из транспортного уровня
+						member->ech = cts->ech;
+						/**
+						 * Если BoringSSL используется в качестве криптографической библиотеки
+						 */
+						#ifdef OPENSSL_IS_BORINGSSL
+							// Если узел является клиентом и список ECHConfig не пустой — применяем для шифрования SNI
+							if((member->node == event::node_t::CLIENT) && !member->ech.empty())
+								// Устанавливаем список ECHConfig для зашифрованного ClientHello
+								::SSL_set1_ech_config_list(member->ssl, &member->ech[0], member->ech.size());
+						#endif // OPENSSL_IS_BORINGSSL
 						// Устанавливаем хост для уровня защищённых сокетов
 						member->host.name = cts->host.name;
 						// Сохраняем идентификатор контекста TLS в глобальном наборе идентификаторов контекстов TLS
@@ -7179,6 +7210,389 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод получения сериализованного ECHConfigList для публикации в DNS
+ *
+ * @param id идентификатор события
+ * @return   байты ECHConfigList для DNS HTTPS-записи (сервер) или полученные из DNS (клиент).
+ *           Возвращает пустой вектор если ECH не был настроен.
+ */
+vector <uint8_t> awh::tls::Coder::getKeysECH(const id_t id) const noexcept {
+	/**
+	 * Если BoringSSL используется в качестве криптографической библиотеки
+	 */
+	#ifdef OPENSSL_IS_BORINGSSL
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
+				/**
+				 * Определяем уровень транспортной безопасности
+				 */
+				switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+					// Если уровень является шаблонным контекстом безопасности
+					case static_cast <uint8_t> (layer_t::CTS):
+						// Возвращаем сохранённый ECHConfigList из шаблона контекста
+						return reinterpret_cast <const ::cts_t *> (static_cast <uintptr_t> (id))->ech;
+					// Если уровень является транспортной передачей данных
+					case static_cast <uint8_t> (layer_t::CTL):
+						// Возвращаем сохранённый ECHConfigList из транспортного уровня
+						return reinterpret_cast <const ::ctl_t *> (static_cast <uintptr_t> (id))->ech;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif // OPENSSL_IS_BORINGSSL
+	// Возвращаем пустой вектор
+	return {};
+}
+/**
+ * @brief Метод установки ключей EncryptedClientHello (ECH)
+ *
+ * @param id   идентификатор события
+ * @param keys ключи EncryptedClientHello (ECH)
+ * @return     результат выполнения установки
+ */
+bool awh::tls::Coder::setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept {
+	/**
+	 * Если BoringSSL используется в качестве криптографической библиотеки
+	 */
+	#ifdef OPENSSL_IS_BORINGSSL
+		// Если ключи не пустые
+		if(!keys.empty())
+			// Выполняем установку ключей EncryptedClientHello (ECH)
+			return this->setKeysECH(id, &keys[0], keys.size());
+		// Выполняем установку ключей EncryptedClientHello (ECH) с пустым вектором
+		else return this->setKeysECH(id, nullptr, 0);
+	#endif // OPENSSL_IS_BORINGSSL
+	// Возвращаем результат по умолчанию
+	return false;
+}
+/**
+ * @brief Метод установки ключей EncryptedClientHello (ECH)
+ *
+ * @param id   идентификатор события
+ * @param keys ключи EncryptedClientHello (ECH)
+ * @param size размер ключей EncryptedClientHello (ECH)
+ * @return     результат выполнения установки
+ */
+bool awh::tls::Coder::setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept {
+	// Переменная результата
+	bool result = false;
+	/**
+	 * Если BoringSSL используется в качестве криптографической библиотеки
+	 */
+	#ifdef OPENSSL_IS_BORINGSSL
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем закрепление участника в глобальном реестре TLS
+			const auto pin = ::ssl::registry::pin(id);
+			// Если идентификатор контекста TLS найден
+			if(pin != nullptr){
+				/**
+				 * Определяем уровень транспортной безопасности
+				 */
+				switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+					// Если уровень является шаблонным контекстом безопасности
+					case static_cast <uint8_t> (layer_t::CTS): {
+						// Выполняем извлечение объекта шаблона контекста безопасности
+						auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+						/**
+						 * Определяем узел события к которому относится контекст TLS
+						 */
+						switch(static_cast <uint8_t> (member->node)){
+							// Если узел является клиентом
+							case static_cast <uint8_t> (event::node_t::CLIENT): {
+								/**
+								 * Для клиента: keys содержит ECHConfigList (сериализованный список из DNS HTTPS-записи).
+								 * Сохраняем список — он будет применён к каждому SSL* при вызове transport().
+								 */
+								if((result = ((keys != nullptr) && (size > 0))))
+									// Сохраняем список ECHConfig в шаблоне контекста
+									member->ech.assign(keys, keys + size);
+							} break;
+							// Если узел является сервером
+							case static_cast <uint8_t> (event::node_t::SERVER): {
+								/**
+								 * Для сервера: keys может содержать 32-байтовый приватный X25519 ключ.
+								 * Если keys пустой — генерируется новая пара ключей автоматически.
+								 * Создаём объект HPKE ключа.
+								 */
+								EVP_HPKE_KEY * key = ::EVP_HPKE_KEY_new();
+								// Если объект HPKE ключа не создан
+								if(key == nullptr){
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Failed to allocate HPKE key for ECH");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::SNI_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Записываем ошибку в лог
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+									// Выходим
+									break;
+								}
+								// Если приватный ключ передан в bytes — инициализируем из него
+								if((keys != nullptr) && (size > 0))
+									// Инициализируем HPKE ключ из переданных байтов приватного X25519 ключа
+									result = (::EVP_HPKE_KEY_init(key, ::EVP_hpke_x25519_hkdf_sha256(), keys, size) == 1);
+								// Иначе генерируем новую пару ключей X25519
+								else result = (::EVP_HPKE_KEY_generate(key, ::EVP_hpke_x25519_hkdf_sha256()) == 1);
+								// Если ключ успешно инициализирован
+								if(result){
+									// Генерируем случайный идентификатор конфигурации ECH
+									uint8_t cid = 0;
+									// Заполняем случайным значением
+									::RAND_bytes(&cid, sizeof(cid));
+									// Размер сериализованного ECHConfig
+									size_t length = 0;
+									// Указатель на сериализованный ECHConfig
+									uint8_t * config = nullptr;
+									/**
+									 * Определяем публичное имя сервера для ECHConfig
+									 * (открытое имя хоста, которое клиент увидит при неудаче ECH)
+									 */
+									const string name = (!member->host.empty() ? member->host : "localhost");
+									// Формируем ECHConfig из HPKE ключа
+									if(::SSL_marshal_ech_config(&config, &length, cid, key, name.c_str(), name.length()) == 1){
+										// Создаём объект набора ECH ключей сервера
+										SSL_ECH_KEYS * keys = ::SSL_ECH_KEYS_new();
+										// Если объект набора ECH ключей создан
+										if(keys != nullptr){
+											// Добавляем конфигурацию ECH в набор (is_retry_config=1 для публикации в DNS)
+											if(::SSL_ECH_KEYS_add(keys, 1, config, length, key) == 1){
+												// Устанавливаем набор ECH ключей в контекст SSL
+												if(!(result = (::SSL_CTX_set1_ech_keys(member->ctx, keys) == 1))){
+													// Получаем текст ошибки
+													const string error = ::ssl::error(id, "Failed to set ECH keys on SSL_CTX");
+													// Если функция обратного вызова ошибки установлена
+													if(member->callback.error != nullptr)
+														// Вызываем функцию обратного вызова ошибки
+														member->callback.error(id, error_t::SNI_FAILED, error);
+													// Если функция обратного вызова ошибки не установлена
+													else {
+														/**
+														 * Если включён режим отладки
+														 */
+														#if DEBUG_MODE
+															// Записываем ошибку в лог
+															this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
+														/**
+														 * Если режим отладки не включён
+														 */
+														#else
+															// Записываем ошибку в лог
+															this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+														#endif
+													}
+												// Если набор ECH ключей успешно установлен в контекст SSL
+												} else {
+													// Размер сериализованного ECHConfigList
+													size_t length = 0;
+													// Указатель на сериализованный ECHConfigList
+													uint8_t * retry = nullptr;
+													/**
+													 * Успех: извлекаем retry-конфиги (ECHConfigList) для публикации в DNS.
+													 * SSL_ECH_KEYS_marshal_retry_configs возвращает только те конфиги,
+													 * которые были добавлены с is_retry_config=1 — именно они
+													 * должны публиковаться в DNS HTTPS-записи eckparam.
+													 */
+													if(::SSL_ECH_KEYS_marshal_retry_configs(keys, &retry, &length) == 1){
+														/**
+														 * Сохраняем ECHConfigList в поле ech шаблона контекста
+														 * (доступно через getKeysECH() для публикации в DNS).
+														 */
+														member->ech.assign(retry, retry + length);
+														// Освобождаем временный буфер
+														::OPENSSL_free(retry);
+													}
+												}
+											}
+											// Освобождаем набор ECH ключей
+											::SSL_ECH_KEYS_free(keys);
+										}
+										// Освобождаем сериализованный ECHConfig
+										::OPENSSL_free(config);
+									// Если не удалось сериализовать ECHConfig
+									} else {
+										// Получаем текст ошибки
+										const string error = ::ssl::error(id, "Failed to marshal ECH config");
+										// Если функция обратного вызова ошибки установлена
+										if(member->callback.error != nullptr)
+											// Вызываем функцию обратного вызова ошибки
+											member->callback.error(id, error_t::SNI_FAILED, error);
+										// Если функция обратного вызова ошибки не установлена
+										else {
+											/**
+											 * Если включён режим отладки
+											 */
+											#if DEBUG_MODE
+												// Записываем ошибку в лог
+												this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
+											/**
+											 * Если режим отладки не включён
+											 */
+											#else
+												// Записываем ошибку в лог
+												this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+											#endif
+										}
+									}
+								// Если ключ не удалось инициализировать
+								} else {
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Failed to initialize HPKE key for ECH");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::SNI_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Записываем ошибку в лог
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+								// Освобождаем HPKE ключ
+								::EVP_HPKE_KEY_free(key);
+							} break;
+						}
+					} break;
+					// Если уровень является транспортной передачей данных
+					case static_cast <uint8_t> (layer_t::CTL): {
+						// Выполняем извлечение объекта транспортного уровня передачи
+						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+						// Если узел является клиентом
+						if(member->node == event::node_t::CLIENT){
+							// Для клиента на CTL уровне: keys содержит ECHConfigList, применяем сразу к SSL*
+							if((keys != nullptr) && (size > 0)){
+								// Сохраняем список ECHConfig
+								member->ech.assign(keys, keys + size);
+								// Применяем список ECHConfig для зашифрованного ClientHello
+								if(!(result = (::SSL_set1_ech_config_list(member->ssl, keys, size) == 1))){
+									// Получаем текст ошибки
+									const string error = ::ssl::error(id, "Failed to set ECH config list");
+									// Если функция обратного вызова ошибки установлена
+									if(member->callback.error != nullptr)
+										// Вызываем функцию обратного вызова ошибки
+										member->callback.error(id, error_t::SNI_FAILED, error);
+									// Если функция обратного вызова ошибки не установлена
+									else {
+										/**
+										 * Если включён режим отладки
+										 */
+										#if DEBUG_MODE
+											// Записываем ошибку в лог
+											this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.c_str());
+										/**
+										 * Если режим отладки не включён
+										 */
+										#else
+											// Записываем ошибку в лог
+											this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
+										#endif
+									}
+								}
+							}
+						// Если узел является сервером
+						} else { 
+							/**
+							 * ECH серверные ключи должны быть настроены через CTS (уровень контекста),
+							 * а не через CTL (уровень транспорта): SSL_CTX_set1_ech_keys требует SSL_CTX *.
+							 */
+							const string error = "ECH server keys must be configured at the context (CTS) level, not transport (CTL) level";
+							// Если функция обратного вызова ошибки установлена
+							if(member->callback.error != nullptr)
+								// Вызываем функцию обратного вызова ошибки
+								member->callback.error(id, error_t::INVALID_LAYER, error);
+							// Если функция обратного вызова ошибки не установлена
+							else {
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::WARNING, error.c_str());
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+								#endif
+							}
+						}
+					} break;
+				}
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	#endif // OPENSSL_IS_BORINGSSL
 	// Возвращаем результат
 	return result;
 }

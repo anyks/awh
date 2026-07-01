@@ -402,6 +402,33 @@ namespace awh {
 				id_t context(const event::node_t node, const event::protocol_t proto) noexcept;
 			public:
 				/**
+				 * @brief Метод получения сериализованного ECHConfigList для публикации в DNS
+				 *
+				 * @param id идентификатор события
+				 * @return   байты ECHConfigList для DNS HTTPS-записи (для сервера)
+				 *           или байты ECHConfigList полученные из DNS (для клиента).
+				 *           Возвращает пустой вектор если ECH не был настроен.
+				 */
+				vector <uint8_t> getKeysECH(const id_t id) const noexcept;
+				/**
+				 * @brief Метод установки ключей EncryptedClientHello (ECH)
+				 *
+				 * @param id   идентификатор события
+				 * @param keys ключи EncryptedClientHello (ECH)
+				 * @return     результат выполнения установки
+				 */
+				bool setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept;
+				/**
+				 * @brief Метод установки ключей EncryptedClientHello (ECH)
+				 *
+				 * @param id   идентификатор события
+				 * @param keys ключи EncryptedClientHello (ECH)
+				 * @param size размер ключей EncryptedClientHello (ECH)
+				 * @return     результат выполнения установки
+				 */
+				bool setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept;
+			public:
+				/**
 				 * @brief Метод шифрования данных
 				 *
 				 * @param id     идентификатор события
