@@ -408,6 +408,29 @@ namespace awh {
 				 * @return   байты ECHConfigList для DNS HTTPS-записи (для сервера)
 				 *           или байты ECHConfigList полученные из DNS (для клиента).
 				 *           Возвращает пустой вектор если ECH не был настроен.
+				 *
+				 * @details Метод возвращает ECHConfigList, сохранённый в памяти после вызова
+				 *          setKeysECH(). Для сервера содержит публичные ECHConfig, которые
+				 *          нужно опубликовать через DNS HTTPS-запись (поле eckparam), чтобы
+				 *          клиенты могли найти публичный ключ и зашифровать ClientHello.
+				 *
+				 *          Пример использования для сервера:
+				 *          @code
+				 *          // Шаг 1: настраиваем ECH на сервере
+				 *          coder.serverNameIndication(ctx, "example.com");
+				 *          coder.setKeysECH(ctx, {}); // {} = автогенерация ключа
+				 *
+				 *          // Шаг 2: получаем ECHConfigList для DNS
+				 *          vector <uint8_t> echDns = coder.getKeysECH(ctx);
+				 *          // Опубликовать echDns через DNS HTTPS-запись
+				 *          @endcode
+				 *
+				 *          Пример использования для клиента:
+				 *          @code
+				 *          // ECHConfigList из DNS HTTPS-записи был передан через setKeysECH().
+				 *          // getKeysECH() возвращает те же байты, которые были сохранены.
+				 *          vector <uint8_t> echDns = coder.getKeysECH(ctx);
+				 *          @endcode
 				 */
 				vector <uint8_t> getKeysECH(const id_t id) const noexcept;
 				/**
@@ -416,6 +439,37 @@ namespace awh {
 				 * @param id   идентификатор события
 				 * @param keys ключи EncryptedClientHello (ECH)
 				 * @return     результат выполнения установки
+				 *
+				 * @details Метод поддерживается только в BoringSSL. Поведение зависит от
+				 *          типа узла (CLIENT/SERVER) и уровня (CTS/CTL).
+				 *
+				 *          <b>Клиент (CTS или CTL):</b> @p keys — сериализованный ECHConfigList
+				 *          из DNS HTTPS-записи. Сохраняется и применяется к каждому новому
+				 *          SSL-соединению при вызове transport().
+				 *
+				 *          <b>Сервер (CTS):</b> @p keys — 32-байтовый приватный X25519 ключ.
+				 *          Если @p keys пустой — ключ генерируется автоматически.
+				 *          После успешной установки публичная часть ECHConfigList
+				 *          доступна через getKeysECH() для публикации в DNS.
+				 *          Для сервера CTL-уровень ECH не поддерживается; настройка
+				 *          должна выполняться через CTS до создания транспорта.
+				 *
+				 *          Пример для клиента:
+				 *          @code
+				 *          // ECHConfigList из DNS HTTPS-записи (поле eckparam)
+				 *          vector <uint8_t> echFromDns = fetchEchFromDns("example.com");
+				 *          coder.setKeysECH(ctx, echFromDns); // ctx = CTS клиента
+				 *          // Теперь каждый transport(ctx) будет шифровать ClientHello
+				 *          @endcode
+				 *
+				 *          Пример для сервера:
+				 *          @code
+				 *          // {} = автогенерация ключа; либо передать 32-байтовый X25519 приватный ключ
+				 *          coder.serverNameIndication(ctx, "example.com");
+				 *          coder.setKeysECH(ctx, {}); // ctx = CTS сервера
+				 *          // Получить ECHConfigList для DNS:
+				 *          vector <uint8_t> forDns = coder.getKeysECH(ctx);
+				 *          @endcode
 				 */
 				bool setKeysECH(const id_t id, const vector <uint8_t> & keys) noexcept;
 				/**
@@ -425,6 +479,12 @@ namespace awh {
 				 * @param keys ключи EncryptedClientHello (ECH)
 				 * @param size размер ключей EncryptedClientHello (ECH)
 				 * @return     результат выполнения установки
+				 *
+				 * @details Перегрузка setKeysECH() для сырого указателя вместо vector.
+				 *          Поведение идентично первой перегрузке; см. ее документацию.
+				 *
+				 *          Для сервера если @p keys равен nullptr или @p size равен 0 —
+				 *          ключ генерируется автоматически.
 				 */
 				bool setKeysECH(const id_t id, const uint8_t * keys, const size_t size) noexcept;
 			public:
