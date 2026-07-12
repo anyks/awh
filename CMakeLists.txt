@@ -527,6 +527,8 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/server.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/headers.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/provider.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
@@ -4509,10 +4511,10 @@ if (CMAKE_BUILD_TESTS)
                     -DREPORT_DIR=${AWH_COVERAGE_REPORT_DIR}
                     -DGCOVR=${GCOVR_EXECUTABLE}
                     -DGCOV_TOOL=${AWH_GCOV_TOOL}
-                    "-DTEST_BINS=$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_net>;$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_sys>"
+                    "-DTEST_BINS=$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_net>;$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_sys>;$<TARGET_FILE:${PROJECT_NAME}_UNITTEST_proto>"
                     -P ${CMAKE_SOURCE_DIR}/tests/coverage.cmake
                 # Перед формированием отчёта собираем тесты
-                DEPENDS ${PROJECT_NAME}_UNITTEST_net ${PROJECT_NAME}_UNITTEST_sys
+                DEPENDS ${PROJECT_NAME}_UNITTEST_net ${PROJECT_NAME}_UNITTEST_sys ${PROJECT_NAME}_UNITTEST_proto
                 # Рабочий каталог
                 WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
                 # Описание цели

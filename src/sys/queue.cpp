@@ -284,6 +284,232 @@ size_t awh::Queue::capacity() const noexcept {
 	return this->_buffer.capacity();
 }
 /**
+ * @brief Шаблон для метода получения конечного итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получения конечного итератора
+ *
+ * @return конечный итератор
+ */
+awh::Queue::Iterator <T> awh::Queue::end() noexcept {
+	// Выполняем установку конечного значения итератора
+	return Iterator <T> (reinterpret_cast <T *> (&this->_buffer[0] + this->_range.end));
+}
+/**
+ * Объявляем прототипы для метода получения конечного итератора
+ */
+template awh::Queue::Iterator <int8_t> awh::Queue::end <int8_t> () noexcept;
+template awh::Queue::Iterator <uint8_t> awh::Queue::end <uint8_t> () noexcept;
+template awh::Queue::Iterator <int16_t> awh::Queue::end <int16_t> () noexcept;
+template awh::Queue::Iterator <uint16_t> awh::Queue::end <uint16_t> () noexcept;
+template awh::Queue::Iterator <int32_t> awh::Queue::end <int32_t> () noexcept;
+template awh::Queue::Iterator <uint32_t> awh::Queue::end <uint32_t> () noexcept;
+template awh::Queue::Iterator <int64_t> awh::Queue::end <int64_t> () noexcept;
+template awh::Queue::Iterator <uint64_t> awh::Queue::end <uint64_t> () noexcept;
+template awh::Queue::Iterator <float> awh::Queue::end <float> () noexcept;
+template awh::Queue::Iterator <double> awh::Queue::end <double> () noexcept;
+/**
+ * Реализация под операционные системы кроме Sun Solaris
+ */
+#if !__sun__
+	template awh::Queue::Iterator <char> awh::Queue::end <char> () noexcept;
+#endif
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template awh::Queue::Iterator <size_t> awh::Queue::end <size_t> () noexcept;
+	template awh::Queue::Iterator <ssize_t> awh::Queue::end <ssize_t> () noexcept;
+#endif
+/**
+ * @brief Шаблон для метода получение начального итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получение начального итератора
+ *
+ * @return начальный итератор
+ */
+awh::Queue::Iterator <T> awh::Queue::begin() noexcept {
+	// Выполняем установку начального значения итератора
+	return Iterator <T> (reinterpret_cast <T *> (&this->_buffer[0] + this->_range.begin));
+}
+/**
+ * Объявляем прототипы для метода получение начального итератора
+ */
+template awh::Queue::Iterator <int8_t> awh::Queue::begin <int8_t> () noexcept;
+template awh::Queue::Iterator <uint8_t> awh::Queue::begin <uint8_t> () noexcept;
+template awh::Queue::Iterator <int16_t> awh::Queue::begin <int16_t> () noexcept;
+template awh::Queue::Iterator <uint16_t> awh::Queue::begin <uint16_t> () noexcept;
+template awh::Queue::Iterator <int32_t> awh::Queue::begin <int32_t> () noexcept;
+template awh::Queue::Iterator <uint32_t> awh::Queue::begin <uint32_t> () noexcept;
+template awh::Queue::Iterator <int64_t> awh::Queue::begin <int64_t> () noexcept;
+template awh::Queue::Iterator <uint64_t> awh::Queue::begin <uint64_t> () noexcept;
+template awh::Queue::Iterator <float> awh::Queue::begin <float> () noexcept;
+template awh::Queue::Iterator <double> awh::Queue::begin <double> () noexcept;
+/**
+ * Реализация под операционные системы кроме Sun Solaris
+ */
+#if !__sun__
+	template awh::Queue::Iterator <char> awh::Queue::begin <char> () noexcept;
+#endif
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template awh::Queue::Iterator <size_t> awh::Queue::begin <size_t> () noexcept;
+	template awh::Queue::Iterator <ssize_t> awh::Queue::begin <ssize_t> () noexcept;
+#endif
+/**
+ * @brief Шаблон для метода получения конечного константного итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получения конечного константного итератора
+ *
+ * @return конечный константный итератор
+ */
+awh::Queue::Const_Iterator <T> awh::Queue::end() const noexcept {
+	// Выполняем установку конечного значения итератора
+	return Const_Iterator <T> (reinterpret_cast <const T *> (&this->_buffer[0] + this->_range.end));
+}
+/**
+ * @brief Шаблон для метода получения конечного константного итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получения конечного константного итератора
+ *
+ * @return конечный константный итератор
+ */
+awh::Queue::Const_Iterator <T> awh::Queue::cend() const noexcept {
+	// Выполняем установку конечного значения итератора
+	return this->template end <T> ();
+}
+/**
+ * Объявляем прототипы для метода получения конечного константного итератора
+ */
+template awh::Queue::Const_Iterator <int8_t> awh::Queue::end <int8_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint8_t> awh::Queue::end <uint8_t> () const noexcept;
+template awh::Queue::Const_Iterator <int16_t> awh::Queue::end <int16_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint16_t> awh::Queue::end <uint16_t> () const noexcept;
+template awh::Queue::Const_Iterator <int32_t> awh::Queue::end <int32_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint32_t> awh::Queue::end <uint32_t> () const noexcept;
+template awh::Queue::Const_Iterator <int64_t> awh::Queue::end <int64_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint64_t> awh::Queue::end <uint64_t> () const noexcept;
+template awh::Queue::Const_Iterator <float> awh::Queue::end <float> () const noexcept;
+template awh::Queue::Const_Iterator <double> awh::Queue::end <double> () const noexcept;
+/**
+ * Объявляем прототипы для метода получения конечного константного итератора
+ */
+template awh::Queue::Const_Iterator <int8_t> awh::Queue::cend <int8_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint8_t> awh::Queue::cend <uint8_t> () const noexcept;
+template awh::Queue::Const_Iterator <int16_t> awh::Queue::cend <int16_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint16_t> awh::Queue::cend <uint16_t> () const noexcept;
+template awh::Queue::Const_Iterator <int32_t> awh::Queue::cend <int32_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint32_t> awh::Queue::cend <uint32_t> () const noexcept;
+template awh::Queue::Const_Iterator <int64_t> awh::Queue::cend <int64_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint64_t> awh::Queue::cend <uint64_t> () const noexcept;
+template awh::Queue::Const_Iterator <float> awh::Queue::cend <float> () const noexcept;
+template awh::Queue::Const_Iterator <double> awh::Queue::cend <double> () const noexcept;
+/**
+ * Реализация под операционные системы кроме Sun Solaris
+ */
+#if !__sun__
+	template awh::Queue::Const_Iterator <char> awh::Queue::end <char> () const noexcept;
+	template awh::Queue::Const_Iterator <char> awh::Queue::cend <char> () const noexcept;
+#endif
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template awh::Queue::Const_Iterator <size_t> awh::Queue::end <size_t> () const noexcept;
+	template awh::Queue::Const_Iterator <size_t> awh::Queue::cend <size_t> () const noexcept;
+	template awh::Queue::Const_Iterator <ssize_t> awh::Queue::end <ssize_t> () const noexcept;
+	template awh::Queue::Const_Iterator <ssize_t> awh::Queue::cend <ssize_t> () const noexcept;
+#endif
+/**
+ * @brief Шаблон для метода получения начального константного итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получения начального константного итератора
+ *
+ * @return начальный константный итератор
+ */
+awh::Queue::Const_Iterator <T> awh::Queue::begin() const noexcept {
+	// Выполняем установку начального значения итератора
+	return Const_Iterator <T> (reinterpret_cast <const T *> (&this->_buffer[0] + this->_range.begin));
+}
+/**
+ * @brief Шаблон для метода получения начального константного итератора
+ *
+ * @tparam T тип данных для подсчёта
+ */
+template <typename T>
+/**
+ * @brief Метод получения начального константного итератора
+ *
+ * @return начальный константный итератор
+ */
+awh::Queue::Const_Iterator <T> awh::Queue::cbegin() const noexcept {
+	// Выполняем установку начального значения итератора
+	return this->template begin <T> ();
+}
+/**
+ * Объявляем прототипы для метода получения начального константного итератора
+ */
+template awh::Queue::Const_Iterator <int8_t> awh::Queue::begin <int8_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint8_t> awh::Queue::begin <uint8_t> () const noexcept;
+template awh::Queue::Const_Iterator <int16_t> awh::Queue::begin <int16_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint16_t> awh::Queue::begin <uint16_t> () const noexcept;
+template awh::Queue::Const_Iterator <int32_t> awh::Queue::begin <int32_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint32_t> awh::Queue::begin <uint32_t> () const noexcept;
+template awh::Queue::Const_Iterator <int64_t> awh::Queue::begin <int64_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint64_t> awh::Queue::begin <uint64_t> () const noexcept;
+template awh::Queue::Const_Iterator <float> awh::Queue::begin <float> () const noexcept;
+template awh::Queue::Const_Iterator <double> awh::Queue::begin <double> () const noexcept;
+/**
+ * Объявляем прототипы для метода получения начального константного итератора
+ */
+template awh::Queue::Const_Iterator <int8_t> awh::Queue::cbegin <int8_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint8_t> awh::Queue::cbegin <uint8_t> () const noexcept;
+template awh::Queue::Const_Iterator <int16_t> awh::Queue::cbegin <int16_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint16_t> awh::Queue::cbegin <uint16_t> () const noexcept;
+template awh::Queue::Const_Iterator <int32_t> awh::Queue::cbegin <int32_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint32_t> awh::Queue::cbegin <uint32_t> () const noexcept;
+template awh::Queue::Const_Iterator <int64_t> awh::Queue::cbegin <int64_t> () const noexcept;
+template awh::Queue::Const_Iterator <uint64_t> awh::Queue::cbegin <uint64_t> () const noexcept;
+template awh::Queue::Const_Iterator <float> awh::Queue::cbegin <float> () const noexcept;
+template awh::Queue::Const_Iterator <double> awh::Queue::cbegin <double> () const noexcept;
+/**
+ * Реализация под операционные системы кроме Sun Solaris
+ */
+#if !__sun__
+	template awh::Queue::Const_Iterator <char> awh::Queue::begin <char> () const noexcept;
+	template awh::Queue::Const_Iterator <char> awh::Queue::cbegin <char> () const noexcept;
+#endif
+/**
+ * Если операционной системой является MacOS X или Linux
+ */
+#if __APPLE__ || __MACH__ || __Linux__
+	template awh::Queue::Const_Iterator <size_t> awh::Queue::begin <size_t> () const noexcept;
+	template awh::Queue::Const_Iterator <size_t> awh::Queue::cbegin <size_t> () const noexcept;
+	template awh::Queue::Const_Iterator <ssize_t> awh::Queue::begin <ssize_t> () const noexcept;
+	template awh::Queue::Const_Iterator <ssize_t> awh::Queue::cbegin <ssize_t> () const noexcept;
+#endif
+/**
  * @brief Получения данных указанного элемента в очереди
  *
  * @return указатель на элемент очереди

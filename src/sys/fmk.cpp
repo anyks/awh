@@ -551,14 +551,14 @@ namespace {
 			 */
 			try {
 				// Выполняем удаление пробелов в начале текста
-				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) noexcept -> bool {
+				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](const char letter) noexcept -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
+					return static_cast <bool> (::isspace(static_cast <uint8_t> (letter)));
 				}));
 				// Выполняем удаление пробелов в конце текста
-				text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) noexcept -> bool {
+				text.erase(find_if_not(text.rbegin(), text.rend(), [](const char letter) noexcept -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
+					return static_cast <bool> (::isspace(static_cast <uint8_t> (letter)));
 				}).base(), text.end());
 			/**
 			 * Если возникает ошибка
@@ -703,14 +703,14 @@ namespace {
 			 */
 			try {
 				// Выполняем удаление пробелов в начале текста
-				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) noexcept -> bool {
+				text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](const wchar_t letter) noexcept -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
+					return (static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 				}));
 				// Выполняем удаление пробелов в конце текста
-				text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) noexcept -> bool {
+				text.erase(find_if_not(text.rbegin(), text.rend(), [](const wchar_t letter) noexcept -> bool {
 					// Выполняем проверку символа на наличие пробела
-					return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
+					return (static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 				}).base(), text.end());
 			/**
 			 * Если возникает ошибка
@@ -868,7 +868,7 @@ namespace {
 			 */
 			bool isRome(const char num) const noexcept {
 				// Выполняем проверку сущестования цифры
-				return (this->_romes.find(::toupper(num)) != this->_romes.end());
+				return (this->_romes.find(static_cast <char> (::toupper(static_cast <uint8_t> (num)))) != this->_romes.end());
 			}
 			/**
 			 * @brief Метод проверки соответствия римской цифре
@@ -878,7 +878,7 @@ namespace {
 			 */
 			bool isRome(const wchar_t num) const noexcept {
 				// Выполняем проверку сущестования цифры
-				return (this->_wideRomes.find(::towupper(num)) != this->_wideRomes.end());
+				return (this->_wideRomes.find(static_cast <wchar_t> (::towupper(static_cast <wint_t> (num)))) != this->_wideRomes.end());
 			}
 		public:
 			/**
@@ -889,7 +889,7 @@ namespace {
 			 */
 			bool isArabic(const char num) const noexcept {
 				// Выполняем проверку сущестования цифры
-				return ::isdigit(static_cast <int32_t> (num));
+				return static_cast <bool> (::isdigit(static_cast <uint8_t> (num)));
 			}
 			/**
 			 * @brief Метод проверки соответствия арабской цифре
@@ -899,7 +899,7 @@ namespace {
 			 */
 			bool isArabic(const wchar_t num) const noexcept {
 				// Выполняем проверку сущестования цифры
-				return ::iswdigit(static_cast <wint_t> (num));
+				return static_cast <bool> (::iswdigit(static_cast <wint_t> (num)));
 			}
 		public:
 			/**
@@ -910,7 +910,7 @@ namespace {
 			 */
 			bool isLetter(const char letter) const noexcept {
 				// Выполняем проверку сущестования латинской буквы
-				return (this->_letters.find(::tolower(letter)) != this->_letters.end());
+				return (this->_letters.find(static_cast <char> (::tolower(static_cast <uint8_t> (letter)))) != this->_letters.end());
 			}
 			/**
 			 * @brief Метод проверки соответствия латинской букве
@@ -920,7 +920,7 @@ namespace {
 			 */
 			bool isLetter(const wchar_t letter) const noexcept {
 				// Выполняем проверку сущестования латинской буквы
-				return (this->_wideLetters.find(::towlower(letter)) != this->_wideLetters.end());
+				return (this->_wideLetters.find(static_cast <wchar_t> (::towlower(static_cast <wint_t> (letter)))) != this->_wideLetters.end());
 			}
 		public:
 			/**
@@ -933,7 +933,7 @@ namespace {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
-				auto i = this->_romes.find(::toupper(num));
+				auto i = this->_romes.find(static_cast <char> (::toupper(static_cast <uint8_t> (num))));
 				// Если римское число найдено
 				if(i != this->_romes.end())
 					// Получаем римское число в чистом виде
@@ -951,7 +951,7 @@ namespace {
 				// Переменная результата
 				uint16_t result = 0;
 				// Выполняем поиск римского числа
-				auto i = this->_wideRomes.find(::towupper(num));
+				auto i = this->_wideRomes.find(static_cast <wchar_t> (::towupper(static_cast <wint_t> (num))));
 				// Если римское число найдено
 				if(i != this->_wideRomes.end())
 					// Получаем римское число в чистом виде
@@ -1007,7 +1007,7 @@ namespace {
 				// Переменная результата
 				wchar_t result = 0;
 				// Выполняем поиск латинской буквы
-				auto i = this->_letters.find(::tolower(letter));
+				auto i = this->_letters.find(static_cast <char> (::tolower(static_cast <uint8_t> (letter))));
 				// Если латинская буква найдена
 				if(i != this->_letters.end())
 					// Получаем латинскую букву в чистом виде
@@ -1025,7 +1025,7 @@ namespace {
 				// Переменная результата
 				char result = 0;
 				// Выполняем поиск латинской буквы
-				auto i = this->_wideLetters.find(::towlower(letter));
+				auto i = this->_wideLetters.find(static_cast <wchar_t> (::towlower(static_cast <wint_t> (letter))));
 				// Если латинская буква найдена
 				if(i != this->_wideLetters.end())
 					// Получаем латинскую букву в чистом виде
@@ -1151,22 +1151,22 @@ bool awh::Framework::is(const char letter, const check_t flag) const noexcept {
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT):
 					// Выполняем проверку символа
-					result = (isprint(letter) != 0);
+					result = static_cast <bool> (::isprint(static_cast <uint8_t> (letter)));
 				break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <int32_t> (letter) == ::toupper(letter));
+					result = (static_cast <int32_t> (letter) == ::toupper(static_cast <uint8_t> (letter)));
 				break;
 				// Если установлен флаг проверки на нижний регистр
 				case static_cast <uint8_t> (check_t::LOWER):
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <int32_t> (letter) == ::tolower(letter));
+					result = (static_cast <int32_t> (letter) == ::tolower(static_cast <uint8_t> (letter)));
 				break;
 				// Если установлен флаг проверки на пробел
 				case static_cast <uint8_t> (check_t::SPACE):
 					// Выполняем проверку, является ли символ пробелом
-					result = (::isspace(letter) || (letter == 32) || (letter == 9));
+					result = static_cast <bool> (::isspace(static_cast <uint8_t> (letter)));
 				break;
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN):
@@ -1247,22 +1247,22 @@ bool awh::Framework::is(const wchar_t letter, const check_t flag) const noexcept
 				// Если установлен флаг проверки на печатаемый символ
 				case static_cast <uint8_t> (check_t::PRINT):
 					// Выполняем проверку символа
-					result = (::iswprint(letter) != 0);
+					result = static_cast <bool> (::iswprint(static_cast <wint_t> (letter)));
 				break;
 				// Если установлен флаг проверки на верхний регистр
 				case static_cast <uint8_t> (check_t::UPPER):
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <wint_t> (letter) == ::towupper(letter));
+					result = (static_cast <wint_t> (letter) == ::towupper(static_cast <wint_t> (letter)));
 				break;
 				// Если установлен флаг проверки на нижний регистр
 				case static_cast <uint8_t> (check_t::LOWER):
 					// Выполняем проверку совпадают ли символы
-					result = (static_cast <wint_t> (letter) == ::towlower(letter));
+					result = (static_cast <wint_t> (letter) == ::towlower(static_cast <wint_t> (letter)));
 				break;
 				// Если установлен флаг проверки на пробел
 				case static_cast <uint8_t> (check_t::SPACE):
 					// Выполняем проверку, является ли символ пробелом
-					result = (::iswspace(letter) || (letter == 32) || (letter == 160) || (letter == 173) || (letter == 9));
+					result = static_cast <bool> (::iswspace(static_cast <wint_t> (letter)));
 				break;
 				// Если установлен флаг проверки на латинские символы
 				case static_cast <uint8_t> (check_t::LATIAN):
@@ -1335,7 +1335,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 		// Функция проверки символа на пробельность
 		auto isSpace = [](const char letter) noexcept -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return (::isspace(static_cast <u_char> (letter)) || (letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\r') || (letter == '\f') || (letter == '\v'));
+			return static_cast <bool> (::isspace(static_cast <uint8_t> (letter)));
 		};
 		// Получаем границы представления текста
 		size_t begin = 0, end = text.size();
@@ -1378,7 +1378,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 					 */
 					for(char letter : text){
 						// Выполняем проверку символа
-						result = (::isprint(letter) != 0);
+						result = static_cast <bool> (::isprint(static_cast <uint8_t> (letter)));
 						// Если символ не печатаемый
 						if(!result)
 							// Выходим из цикла
@@ -1392,7 +1392,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку совпадают ли символы
-						result = (static_cast <int32_t> (letter) == ::toupper(letter));
+						result = (static_cast <int32_t> (letter) == ::toupper(static_cast <uint8_t> (letter)));
 						// Если символы не совпадают
 						if(!result)
 							// Выходим из цикла
@@ -1406,7 +1406,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку совпадают ли символы
-						result = (static_cast <int32_t> (letter) == ::tolower(letter));
+						result = (static_cast <int32_t> (letter) == ::tolower(static_cast <uint8_t> (letter)));
 						// Если символы не совпадают
 						if(!result)
 							// Выходим из цикла
@@ -1420,7 +1420,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку, является ли символ пробелом
-						result = (::isspace(letter) || (letter == 32) || (letter == 9));
+						result = static_cast <bool> (::isspace(static_cast <uint8_t> (letter)));
 						// Если пробел найден
 						if(result)
 							// Выходим из цикла
@@ -1450,7 +1450,7 @@ bool awh::Framework::is(string_view text, const check_t flag) const noexcept {
 								// Получаем следующую букву
 								const char second = text[index + 1];
 								// Если проверка не пройдена, проверяем на апостроф
-								if(!(result = (((letter == '-') && (first != '-') && (second != '-')) || ::isspace(letter)))){
+								if(!(result = (((letter == '-') && (first != '-') && (second != '-')) || static_cast <bool> (::isspace(static_cast <uint8_t> (letter)))))){
 									// Выполняем проверку на апостроф
 									result = (
 										(letter == '\'') && (((first != '\'') && (second != '\'')) ||
@@ -1716,7 +1716,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 		// Функция проверки символа на пробельность
 		auto isSpace = [](const wchar_t letter) noexcept -> bool {
 			// Выполняем проверку символа на наличие пробела
-			return (::iswspace(letter) || (letter == 32) || (letter == 160) || (letter == 173) || (letter == L' ') || (letter == L'\t') || (letter == L'\n') || (letter == L'\r') || (letter == L'\f') || (letter == L'\v'));
+			return (static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 		};
 		// Получаем границы представления текста
 		size_t begin = 0, end = text.size();
@@ -1759,7 +1759,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 					 */
 					for(wchar_t letter : text){
 						// Выполняем проверку символа
-						result = (::iswprint(letter) != 0);
+						result = static_cast <bool> (::iswprint(static_cast <wint_t> (letter)));
 						// Если символ не печатаемый
 						if(!result)
 							// Выходим из цикла
@@ -1773,7 +1773,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку совпадают ли символы
-						result = (static_cast <wint_t> (letter) == ::towupper(letter));
+						result = (static_cast <wint_t> (letter) == ::towupper(static_cast <wint_t> (letter)));
 						// Если символы не совпадают
 						if(!result)
 							// Выполняем выход из цикла
@@ -1787,7 +1787,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку совпадают ли символы
-						result = (static_cast <wint_t> (letter) == ::towlower(letter));
+						result = (static_cast <wint_t> (letter) == ::towlower(static_cast <wint_t> (letter)));
 						// Если символы не совпадают
 						if(!result)
 							// Выполняем выход из цикла
@@ -1801,7 +1801,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 					 */
 					for(auto & letter : text){
 						// Выполняем проверку, является ли символ пробелом
-						result = (::iswspace(letter) || (letter == 32) || (letter == 160) || (letter == 173) || (letter == 9));
+						result = (static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 						// Если пробел найден
 						if(result)
 							// Выполняем выход из цикла
@@ -1831,7 +1831,7 @@ bool awh::Framework::is(wstring_view text, const check_t flag) const noexcept {
 								// Получаем следующую букву
 								const wchar_t second = text[index + 1];
 								// Если проверка не пройдена, проверяем на апостроф
-								if(!(result = (((letter == L'-') && (first != L'-') && (second != L'-')) || ::iswspace(letter)))){
+								if(!(result = (((letter == L'-') && (first != L'-') && (second != L'-')) || static_cast <bool> (::iswspace(static_cast <wint_t> (letter)))))){
 									// Выполняем проверку на апостроф
 									result = (
 										(letter == L'\'') && (((first != L'\'') && (second != L'\'')) ||
@@ -2093,9 +2093,9 @@ bool awh::Framework::compare(string_view first, string_view second) const noexce
 	// Если строки пришли не пустыми
 	if(!first.empty() && !second.empty()){
 		// Выполняем перебор обоих строк
-		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](char a, char b) noexcept -> bool {
+		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](const char first, const char second) noexcept -> bool {
 			// Выполняем сравнение каждого символа
-			return (::tolower(a) == ::tolower(b));
+			return (::tolower(static_cast <uint8_t> (first)) == ::tolower(static_cast <uint8_t> (second)));
 		}) : false);
 	}
 	// Возвращаем значение по умолчанию
@@ -2127,9 +2127,9 @@ bool awh::Framework::compare(wstring_view first, wstring_view second) const noex
 	// Если строки пришли не пустыми
 	if(!first.empty() && !second.empty()){
 		// Выполняем перебор обоих строк
-		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](wchar_t a, wchar_t b) noexcept -> bool {
+		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
 			// Выполняем сравнение каждого символа
-			return (::towlower(a) == ::towlower(b));
+			return (::towlower(static_cast <wint_t> (first)) == ::towlower(static_cast <wint_t> (second)));
 		}) : false);
 	}
 	// Возвращаем значение по умолчанию
@@ -2660,21 +2660,19 @@ string awh::Framework::transcode(string_view text, const codepage_t codepage) co
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  */
-char awh::Framework::transform(char letter, const transform_t flag) const noexcept {
+char awh::Framework::transform(const char letter, const transform_t flag) const noexcept {
 	/**
 	 * Определяем алгоритм трансформации
 	 */
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
-		case static_cast <uint8_t> (transform_t::UPPER_CASE): {
+		case static_cast <uint8_t> (transform_t::UPPER_CASE):
 			// Выполняем перевод символа в верхний регистр
-			letter = ::toupper(letter);
-		} break;
+			return static_cast <char> (::toupper(static_cast <uint8_t> (letter)));
 		// Если передан флаг перевода строки в нижний регистр
-		case static_cast <uint8_t> (transform_t::LOWER_CASE): {
+		case static_cast <uint8_t> (transform_t::LOWER_CASE):
 			// Выполняем перевод символа в нижний регистр
-			letter = ::tolower(letter);
-		} break;
+			return static_cast <char> (::tolower(static_cast <uint8_t> (letter)));
 	}
 	// Возвращаем результат
 	return letter;
@@ -2686,21 +2684,19 @@ char awh::Framework::transform(char letter, const transform_t flag) const noexce
  * @param flag   флаг трансформации
  * @return       трансформированный символ
  */
-wchar_t awh::Framework::transform(wchar_t letter, const transform_t flag) const noexcept {
+wchar_t awh::Framework::transform(const wchar_t letter, const transform_t flag) const noexcept {
 	/**
 	 * Определяем алгоритм трансформации
 	 */
 	switch(static_cast <uint8_t> (flag)){
 		// Если передан флаг перевода строки в верхний регистр
-		case static_cast <uint8_t> (transform_t::UPPER_CASE): {
+		case static_cast <uint8_t> (transform_t::UPPER_CASE):
 			// Выполняем перевод символа в верхний регистр
-			letter = ::towupper(letter);
-		} break;
+			return static_cast <wchar_t> (::towupper(static_cast <wint_t> (letter)));
 		// Если передан флаг перевода строки в нижний регистр
-		case static_cast <uint8_t> (transform_t::LOWER_CASE): {
+		case static_cast <uint8_t> (transform_t::LOWER_CASE):
 			// Выполняем перевод символа в нижний регистр
-			letter = ::towlower(letter);
-		} break;
+			return static_cast <wchar_t> (::towlower(static_cast <wint_t> (letter)));
 	}
 	// Возвращаем результат
 	return letter;
@@ -2726,30 +2722,30 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 				// Если передан флаг удаления пробелов
 				case static_cast <uint8_t> (transform_t::TRIM): {
 					// Выполняем удаление пробелов в начале текста
-					text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](char c) -> bool {
+					text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](const char letter) -> bool {
 						// Выполняем проверку символа на наличие пробела
-						return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
+						return static_cast <bool> (::isspace(static_cast <uint8_t> (letter)));
 					}));
 					// Выполняем удаление пробелов в конце текста
-					text.erase(find_if_not(text.rbegin(), text.rend(), [](char c) -> bool {
+					text.erase(find_if_not(text.rbegin(), text.rend(), [](const char letter) -> bool {
 						// Выполняем проверку символа на наличие пробела
-						return (::isspace(c) || (c == 32) || (c == ' ') || (c == '\t') || (c == '\n') || (c == '\r') || (c == '\f') || (c == '\v'));
+						return static_cast <bool> (::isspace(static_cast <uint8_t> (letter)));
 					}).base(), text.end());
 				} break;
 				// Если передан флаг перевода строки в верхний регистр
 				case static_cast <uint8_t> (transform_t::UPPER_CASE): {
 					// Выполняем приведение к верхнему регистру
-					::transform(text.begin(), text.end(), text.begin(), [](char c){
+					::transform(text.begin(), text.end(), text.begin(), [](const char letter) -> char {
 						// Приводим к верхнему регистру каждую букву
-						return ::toupper(c);
+						return static_cast <char> (::toupper(static_cast <uint8_t> (letter)));
 					});
 				} break;
 				// Если передан флаг перевода строки в нижний регистр
 				case static_cast <uint8_t> (transform_t::LOWER_CASE): {
 					// Выполняем приведение к нижнему регистру
-					::transform(text.begin(), text.end(), text.begin(), [](char c){
+					::transform(text.begin(), text.end(), text.begin(), [](const char letter) -> char {
 						// Приводим к нижнему регистру каждую букву
-						return ::tolower(c);
+						return static_cast <char> (::tolower(static_cast <uint8_t> (letter)));
 					});
 				} break;
 				// Если передан флаг умного перевода начальных символов в верхний регистр
@@ -2767,11 +2763,11 @@ string & awh::Framework::transform(string & text, const transform_t flag) const 
 						// Если флаг перевода в верхний регистр активирован
 						if(mode)
 							// Переводим символ в верхний режим
-							text[i] = ::toupper(letter);
+							text[i] = static_cast <char> (::toupper(static_cast <uint8_t> (letter)));
 						// Переводим остальные символы в нижний регистр
-						else text[i] = ::tolower(letter);
+						else text[i] = static_cast <char> (::tolower(static_cast <uint8_t> (letter)));
 						// Если найден спецсимвол, устанавливаем флаг детекции
-						mode = ((letter == '-') || (letter == '_') || ::isspace(letter) || (letter == 32) || (letter == 9));
+						mode = ((letter == '-') || (letter == '_') || static_cast <bool> (::isspace(static_cast <uint8_t> (letter))));
 					}
 				} break;
 			}
@@ -2836,30 +2832,30 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 				// Если передан флаг удаления пробелов
 				case static_cast <uint8_t> (transform_t::TRIM): {
 					// Выполняем удаление пробелов в начале текста
-					text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](wchar_t c) -> bool {
+					text.erase(text.begin(), find_if_not(text.begin(), text.end(), [](const wchar_t letter) -> bool {
 						// Выполняем проверку символа на наличие пробела
-						return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
+						return (static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 					}));
 					// Выполняем удаление пробелов в конце текста
-					text.erase(find_if_not(text.rbegin(), text.rend(), [](wchar_t c) -> bool {
+					text.erase(find_if_not(text.rbegin(), text.rend(), [](const wchar_t letter) -> bool {
 						// Выполняем проверку символа на наличие пробела
-						return (::iswspace(c) || (c == 32) || (c == 160) || (c == 173) || (c == L' ') || (c == L'\t') || (c == L'\n') || (c == L'\r') || (c == L'\f') || (c == L'\v'));
+						return (static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 					}).base(), text.end());
 				} break;
 				// Если передан флаг перевода строки в верхний регистр
 				case static_cast <uint8_t> (transform_t::UPPER_CASE): {
 					// Выполняем приведение к верхнему регистру
-					::transform(text.begin(), text.end(), text.begin(), [](wchar_t c){
+					::transform(text.begin(), text.end(), text.begin(), [](const wchar_t letter) -> wchar_t {
 						// Приводим к верхнему регистру каждую букву
-						return ::towupper(c);
+						return static_cast <wchar_t> (::towupper(static_cast <wint_t> (letter)));
 					});
 				} break;
 				// Если передан флаг перевода строки в нижний регистр
 				case static_cast <uint8_t> (transform_t::LOWER_CASE): {
 					// Выполняем приведение к нижнему регистру
-					::transform(text.begin(), text.end(), text.begin(), [](wchar_t c){
+					::transform(text.begin(), text.end(), text.begin(), [](const wchar_t letter) -> wchar_t {
 						// Приводим к нижнему регистру каждую букву
-						return ::towlower(c);
+						return static_cast <wchar_t> (::towlower(static_cast <wint_t> (letter)));
 					});
 				} break;
 				// Если передан флаг умного перевода начальных символов в верхний регистр
@@ -2877,11 +2873,11 @@ wstring & awh::Framework::transform(wstring & text, const transform_t flag) cons
 						// Если флаг перевода в верхний регистр активирован
 						if(mode)
 							// Переводим символ в верхний режим
-							text[i] = ::towupper(letter);
+							text[i] = static_cast <wchar_t> (::towupper(static_cast <wint_t> (letter)));
 						// Переводим остальные символы в нижний регистр
-						else text[i] = ::towlower(letter);
+						else text[i] = static_cast <wchar_t> (::towlower(static_cast <wint_t> (letter)));
 						// Если найден спецсимвол, устанавливаем флаг детекции
-						mode = ((letter == L'-') || (letter == L'_') || ::iswspace(letter) || (letter == 32) || (letter == 160) || (letter == 173) || (letter == 9));
+						mode = ((letter == L'-') || (letter == L'_') || static_cast <bool> (::iswspace(static_cast <wint_t> (letter))) || (letter == 160) || (letter == 173));
 					}
 				} break;
 			}
@@ -5639,22 +5635,22 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 			/**
 			 * Преобразовываем цифру M
 			 */
-			if(::tolower(word.front()) == 'm'){
+			if(static_cast <char> (::tolower(static_cast <uint8_t> (word.front()))) == 'm'){
 				/**
 				 * Преобразовываем буквы M в начале слова
 				 */
-				for(n = 0; (i < length) && (::tolower(word[i]) == 'm'); n++, i++);
+				for(n = 0; (i < length) && (static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'm'); n++, i++);
 				// Если букв больше четырёх
 				if(n > 4)
 					// Возвращаем нулевой результат
 					return result;
 				// Добавляем значение к результату
-				v += n * 1000;
+				v += (n * 1000);
 			}
 			/**
 			 * Преобразовываем букву D и C
 			 */
-			if((i < length) && (((o = ::tolower(word[i])) == 'd') || (o == 'c'))){
+			if((i < length) && (((o = static_cast <char> (::tolower(static_cast <uint8_t> (word[i])))) == 'd') || (o == 'c'))){
 				// Если буква D
 				if(o == 'd'){
 					// Увеличиваем позицию
@@ -5665,9 +5661,9 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "CM", "CD"
 				 */
-				if((i + 1 < length) && (o = ::tolower(word[i])) == 'c'){
+				if((i + 1 < length) && (o = static_cast <char> (::tolower(static_cast <uint8_t> (word[i])))) == 'c'){
 					// Запоминаем найденный символ
-					char next = ::tolower(word[i + 1]);
+					char next = static_cast <char> (::tolower(static_cast <uint8_t> (word[i + 1])));
 					// Если это комбинация CM
 					if(next == 'm'){
 						// Увеличиваем позицию
@@ -5685,32 +5681,32 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 						/**
 						 * Преобразовываем буквы C
 						 */
-						for(n = 0; (i < length) && (::tolower(word[i]) == 'c'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'c'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
 							return result;
 						// Добавляем значение к результату
-						v += n * 100;
+						v += (n * 100);
 					}
 				// Иначе это просто буква C
-				} else if(i < length && ::tolower(word[i]) == 'c') {
+				} else if(i < length && static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'c') {
 					/**
 					 * Преобразовываем буквы C
 					 */
-					for(n = 0; (i < length) && (::tolower(word[i]) == 'c'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'c'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
 						return result;
 					// Добавляем значение к результату
-					v += n * 100;
+					v += (n * 100);
 				}
 			}
 			/**
 			 * Преобразовываем букву L и X
 			 */
-			if((i < length) && (((o = ::tolower(word[i])) == 'l') || (o == 'x'))){
+			if((i < length) && (((o = static_cast <char> (::tolower(static_cast <uint8_t> (word[i])))) == 'l') || (o == 'x'))){
 				// Если буква L
 				if(o == 'l'){
 					// Увеличиваем позицию
@@ -5721,9 +5717,9 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "XC", "XL"
 				 */
-				if((i + 1 < length) && (o = ::tolower(word[i])) == 'x'){
+				if((i + 1 < length) && (o = static_cast <char> (::tolower(static_cast <uint8_t> (word[i])))) == 'x'){
 					// Запоминаем найденный символ
-					char next = ::tolower(word[i + 1]);
+					char next = static_cast <char> (::tolower(static_cast <uint8_t> (word[i + 1])));
 					// Если это комбинация XC
 					if(next == 'c'){
 						// Увеличиваем позицию
@@ -5741,32 +5737,32 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 						/**
 						 * Преобразовываем буквы X
 						 */
-						for(n = 0; (i < length) && (::tolower(word[i]) == 'x'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'x'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
 							return result;
 						// Добавляем значение к результату
-						v += n * 10;
+						v += (n * 10);
 					}
 				// Иначе это просто буква X
-				} else if(i < length && ::tolower(word[i]) == 'x') {
+				} else if(i < length && static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'x') {
 					/**
 					 * Преобразовываем буквы X
 					 */
-					for(n = 0; (i < length) && (::tolower(word[i]) == 'x'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'x'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
 						return result;
 					// Добавляем значение к результату
-					v += n * 10;
+					v += (n * 10);
 				}
 			}
 			/**
 			 * Преобразовываем букву V и I
 			 */
-			if((i < length) && (((o = ::tolower(word[i])) == 'v') || (o == 'i'))){
+			if((i < length) && (((o = static_cast <char> (::tolower(static_cast <uint8_t> (word[i])))) == 'v') || (o == 'i'))){
 				// Если буква V
 				if(o == 'v'){
 					// Увеличиваем позицию
@@ -5777,9 +5773,9 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "IX", "IV"
 				 */
-				if((i + 1 < length) && (o = ::tolower(word[i])) == 'i'){
+				if((i + 1 < length) && (o = static_cast <char> (::tolower(static_cast <uint8_t> (word[i])))) == 'i'){
 					// Запоминаем найденный символ
-					char next = ::tolower(word[i + 1]);
+					char next = static_cast <char> (::tolower(static_cast <uint8_t> (word[i + 1])));
 					// Если это комбинация IX
 					if(next == 'x'){
 						// Увеличиваем позицию
@@ -5797,7 +5793,7 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 						/**
 						 * Преобразовываем буквы I
 						 */
-						for(n = 0; (i < length) && (::tolower(word[i]) == 'i'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'i'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
@@ -5806,11 +5802,11 @@ uint16_t awh::Framework::rome2arabic(string_view word) const noexcept {
 						v += n;
 					}
 				// Иначе это просто буква I
-				} else if(i < length && ::tolower(word[i]) == 'i') {
+				} else if(i < length && static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'i') {
 					/**
 					 * Преобразовываем буквы I
 					 */
-					for(n = 0; (i < length) && (::tolower(word[i]) == 'i'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <char> (::tolower(static_cast <uint8_t> (word[i]))) == 'i'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
@@ -5903,22 +5899,22 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 			/**
 			 * Преобразовываем цифру M
 			 */
-			if(::towlower(word.front()) == L'm'){
+			if(static_cast <wchar_t> (::towlower(static_cast <wint_t> (word.front()))) == L'm'){
 				/**
 				 * Преобразовываем буквы M в начале слова
 				 */
-				for(n = 0; (i < length) && (::towlower(word[i]) == L'm'); n++, i++);
+				for(n = 0; (i < length) && (static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'm'); n++, i++);
 				// Если букв больше четырёх
 				if(n > 4)
 					// Возвращаем нулевой результат
 					return result;
 				// Добавляем значение к результату
-				v += n * 1000;
+				v += (n * 1000);
 			}
 			/**
 			 * Преобразовываем букву D и C
 			 */
-			if((i < length) && (((o = ::towlower(word[i])) == L'd') || (o == L'c'))){
+			if((i < length) && (((o = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i])))) == L'd') || (o == L'c'))){
 				// Если буква D
 				if(o == L'd'){
 					// Увеличиваем позицию
@@ -5929,9 +5925,9 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "CM", "CD"
 				 */
-				if((i + 1 < length) && (o = ::towlower(word[i])) == L'c'){
+				if((i + 1 < length) && (o = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i])))) == L'c'){
 					// Запоминаем найденный символ
-					wchar_t next = ::towlower(word[i + 1]);
+					wchar_t next = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i + 1])));
 					// Если это комбинация CM
 					if(next == L'm'){
 						// Увеличиваем позицию
@@ -5949,32 +5945,32 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 						/**
 						 * Преобразовываем буквы C
 						 */
-						for(n = 0; (i < length) && (::towlower(word[i]) == L'c'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'c'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
 							return result;
 						// Добавляем значение к результату
-						v += n * 100;
+						v += (n * 100);
 					}
 				// Иначе это просто буква C
-				} else if(i < length && ::towlower(word[i]) == L'c') {
+				} else if(i < length && static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'c') {
 					/**
 					 * Преобразовываем буквы C
 					 */
-					for(n = 0; (i < length) && (::towlower(word[i]) == L'c'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'c'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
 						return result;
 					// Добавляем значение к результату
-					v += n * 100;
+					v += (n * 100);
 				}
 			}
 			/**
 			 * Преобразовываем букву L и X
 			 */
-			if((i < length) && (((o = ::towlower(word[i])) == L'l') || (o == L'x'))){
+			if((i < length) && (((o = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i])))) == L'l') || (o == L'x'))){
 				// Если буква L
 				if(o == L'l'){
 					// Увеличиваем позицию
@@ -5985,9 +5981,9 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "XC", "XL"
 				 */
-				if((i + 1 < length) && (o = ::towlower(word[i])) == L'x'){
+				if((i + 1 < length) && (o = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i])))) == L'x'){
 					// Запоминаем найденный символ
-					wchar_t next = ::towlower(word[i + 1]);
+					wchar_t next = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i + 1])));
 					// Если это комбинация XC
 					if(next == L'c'){
 						// Увеличиваем позицию
@@ -6005,32 +6001,32 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 						/**
 						 * Преобразовываем буквы X
 						 */
-						for(n = 0; (i < length) && (::towlower(word[i]) == L'x'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'x'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
 							return result;
 						// Добавляем значение к результату
-						v += n * 10;
+						v += (n * 10);
 					}
 				// Иначе это просто буква X
-				} else if(i < length && ::towlower(word[i]) == L'x') {
+				} else if(i < length && static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'x') {
 					/**
 					 * Преобразовываем буквы X
 					 */
-					for(n = 0; (i < length) && (::towlower(word[i]) == L'x'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'x'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
 						return result;
 					// Добавляем значение к результату
-					v += n * 10;
+					v += (n * 10);
 				}
 			}
 			/**
 			 * Преобразовываем букву V и I
 			 */
-			if((i < length) && (((o = ::towlower(word[i])) == L'v') || (o == L'i'))){
+			if((i < length) && (((o = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i])))) == L'v') || (o == L'i'))){
 				// Если буква V
 				if(o == L'v'){
 					// Увеличиваем позицию
@@ -6041,9 +6037,9 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 				/**
 				 * Проверяем наличие следующего символа для комбинаций типа "IX", "IV"
 				 */
-				if((i + 1 < length) && (o = ::towlower(word[i])) == L'i'){
+				if((i + 1 < length) && (o = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i])))) == L'i'){
 					// Запоминаем найденный символ
-					wchar_t next = ::towlower(word[i + 1]);
+					wchar_t next = static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i + 1])));
 					// Если это комбинация IX
 					if(next == L'x'){
 						// Увеличиваем позицию
@@ -6061,7 +6057,7 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 						/**
 						 * Преобразовываем буквы I
 						 */
-						for(n = 0; (i < length) && (::towlower(word[i]) == L'i'); n++, i++);
+						for(n = 0; (i < length) && (static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'i'); n++, i++);
 						// Если букв больше четырёх
 						if(n > 4)
 							// Возвращаем нулевой результат
@@ -6070,11 +6066,11 @@ uint16_t awh::Framework::rome2arabic(wstring_view word) const noexcept {
 						v += n;
 					}
 				// Иначе это просто буква I
-				} else if(i < length && ::towlower(word[i]) == L'i') {
+				} else if(i < length && static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'i') {
 					/**
 					 * Преобразовываем буквы I
 					 */
-					for(n = 0; (i < length) && (::towlower(word[i]) == L'i'); n++, i++);
+					for(n = 0; (i < length) && (static_cast <wchar_t> (::towlower(static_cast <wint_t> (word[i]))) == L'i'); n++, i++);
 					// Если букв больше четырёх
 					if(n > 4)
 						// Возвращаем нулевой результат
@@ -7362,7 +7358,7 @@ bool awh::Framework::exists(string_view word, string_view text) const noexcept {
 			// Выполняем регистронезависимый поиск слова в тексте
 			const auto i = std::search(text.begin(), text.end(), word.begin(), word.end(), [](const char first, const char second) noexcept -> bool {
 				// Выполняем сравнение символов без учёта регистра
-				return (::tolower(static_cast <u_char> (first)) == ::tolower(static_cast <u_char> (second)));
+				return (::tolower(static_cast <uint8_t> (first)) == ::tolower(static_cast <uint8_t> (second)));
 			});
 			// Возвращаем результат проверки
 			return (i != text.end());
@@ -7423,7 +7419,7 @@ bool awh::Framework::exists(wstring_view word, wstring_view text) const noexcept
 			// Выполняем регистронезависимый поиск слова в тексте
 			const auto i = std::search(text.begin(), text.end(), word.begin(), word.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
 				// Выполняем сравнение символов без учёта регистра
-				return (::towlower(first) == ::towlower(second));
+				return (::towlower(static_cast <wint_t> (first)) == ::towlower(static_cast <wint_t> (second)));
 			});
 			// Возвращаем результат проверки
 			return (i != text.end());
@@ -8207,7 +8203,7 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 	// Размер количество байт
 	double result = 0.;
 	// Если строка передана и начинается с цифры
-	if(!str.empty() && std::isdigit(str[0])){
+	if(!str.empty() && static_cast <bool> (::isdigit(static_cast <uint8_t> (str[0])))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -8219,7 +8215,7 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 			 */
 			for(size_t i = 0; i < str.size(); i++){
 				// Если текущий символ является пробельным
-				if(std::isspace(str[i])){
+				if(static_cast <bool> (::isspace(static_cast <uint8_t> (str[i])))){
 					// Если позиция конца значения не установлена
 					if(stop == 0)
 						// Устанавливаем позицию конца значения
@@ -8227,7 +8223,7 @@ double awh::Framework::bytes(const string_view str) const noexcept {
 					// Устанавливаем позицию начала значения
 					else start = (i + 1);
 				// Если текущий символ не является цифрой
-				} else if(!std::isdigit(str[i])) {
+				} else if(!static_cast <bool> (::isdigit(static_cast <uint8_t> (str[i])))) {
 					// Если установлена позиция конца значения
 					if(stop > 0)
 						// Получаем значение рзамерности данных
@@ -8415,7 +8411,7 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 	// Переменная результата
 	size_t result = 0;
 	// Если строка передана и начинается с цифры
-	if(!str.empty() && std::isdigit(str[0])){
+	if(!str.empty() && static_cast <bool> (::isdigit(static_cast <uint8_t> (str[0])))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -8427,7 +8423,7 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 			 */
 			for(size_t i = 0; i < str.size(); i++){
 				// Если текущий символ является пробельным
-				if(std::isspace(str[i])){
+				if(static_cast <bool> (::isspace(static_cast <uint8_t> (str[i])))){
 					// Если позиция конца значения не установлена
 					if(stop == 0)
 						// Устанавливаем позицию конца значения
@@ -8435,7 +8431,7 @@ size_t awh::Framework::bpsSize(const string_view str) const noexcept {
 					// Устанавливаем позицию начала значения
 					else start = (i + 1);
 				// Если текущий символ не является цифрой
-				} else if(!std::isdigit(str[i])) {
+				} else if(!static_cast <bool> (::isdigit(static_cast <uint8_t> (str[i])))) {
 					// Значение скорости
 					float speed = .0f;
 					// Если установлена позиция конца значения
@@ -8546,7 +8542,7 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 	// Переменная результата
 	size_t result = 0;
 	// Если строка передана и начинается с цифры
-	if(!str.empty() && std::isdigit(str[0])){
+	if(!str.empty() && static_cast <bool> (::isdigit(static_cast <uint8_t> (str[0])))){
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -8558,7 +8554,7 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 			 */
 			for(size_t i = 0; i < str.size(); i++){
 				// Если текущий символ является пробельным
-				if(std::isspace(str[i])){
+				if(static_cast <bool> (::isspace(static_cast <uint8_t> (str[i])))){
 					// Если позиция конца значения не установлена
 					if(stop == 0)
 						// Устанавливаем позицию конца значения
@@ -8566,7 +8562,7 @@ size_t awh::Framework::bpsBuffer(const string_view str) const noexcept {
 					// Устанавливаем позицию начала значения
 					else start = (i + 1);
 				// Если текущий символ не является цифрой
-				} else if(!std::isdigit(str[i])) {
+				} else if(!static_cast <bool> (::isdigit(static_cast <uint8_t> (str[i])))) {
 					// Значение скорости
 					float speed = .0f;
 					// Если установлена позиция конца значения

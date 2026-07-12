@@ -358,7 +358,7 @@ namespace awh {
 			 * @param flag   флаг трансформации
 			 * @return       трансформированный символ
 			 */
-			char transform(char letter, const transform_t flag) const noexcept;
+			char transform(const char letter, const transform_t flag) const noexcept;
 			/**
 			 * @brief Метод трансформации одного символа
 			 *
@@ -366,7 +366,7 @@ namespace awh {
 			 * @param flag   флаг трансформации
 			 * @return       трансформированный символ
 			 */
-			wchar_t transform(wchar_t letter, const transform_t flag) const noexcept;
+			wchar_t transform(const wchar_t letter, const transform_t flag) const noexcept;
 		public:
 			/**
 			 * @brief Метод трансформации строки

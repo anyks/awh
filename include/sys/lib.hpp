@@ -129,13 +129,6 @@
 #define HTTP_HEADER_ACCEPT "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,image/apng,*/*;q=0.8,application/signed-exchange;v=b3;q=0.9"
 
 /**
- * Параметры сети
- */
-
-// Версия HTTP протокола
-#define HTTP_VERSION 1.1
-
-/**
  * Параметры сервера
  */
 

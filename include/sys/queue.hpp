@@ -43,6 +43,7 @@
  */
 #include <vector>
 #include <cstdint>
+#include <cstddef>
 #include <condition_variable>
 
 /**
@@ -104,6 +105,243 @@ namespace awh {
 			 * Создаём тип данных добавляемой записи
 			 */
 			typedef std::pair <const void *, size_t> record_t;
+			/**
+			 * @brief Шаблон типа данных итератора
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Предварительное объявление константного итератора
+			 *
+			 */
+			class Const_Iterator;
+			/**
+			 * @brief Шаблон типа данных итератора
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Класс итератора как вложенный класс
+			 *
+			 */
+			class Iterator {
+				private:
+					// Позиция в бинарной очереди
+					T * _ptr;
+				private:
+					/**
+					 * @brief Разрешаем доступ к позиции константному итератору
+					 *
+					 */
+					template <typename U> friend class Const_Iterator;
+				public:
+					/**
+					 * @brief Оператор разыменования
+					 *
+					 * @return значение элемента
+					 */
+					const T & operator * () const noexcept {
+						// Извлекаем значение сдвига итератора
+						return * this->_ptr;
+					}
+				public:
+					/**
+					 * @brief Оператор смещения вперед
+					 *
+					 * @return значение текущего итератора
+					 */
+					Iterator & operator ++ () noexcept {
+						// Выполняем смещение текущего значения итератора
+						++this->_ptr;
+						// Возвращаем текущее значение итератора
+						return (* this);
+					}
+					/**
+					 * @brief Оператор смещения назад
+					 *
+					 * @return значение текущего итератора
+					 */
+					Iterator & operator -- () noexcept {
+						// Выполняем смещение текущего значения итератора
+						--this->_ptr;
+						// Возвращаем текущее значение итератора
+						return (* this);
+					}
+				public:
+					/**
+					 * @brief Оператор сравнения соответствия итератора
+					 *
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator == (const Iterator & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr == other._ptr);
+					}
+					/**
+					 * @brief Оператора сравнения несоответствия итератора
+					 *
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator != (const Iterator & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr != other._ptr);
+					}
+					/**
+					 * @brief Оператор сравнения соответствия итератора
+					 *
+					 * @param other константный итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator == (const Const_Iterator <T> & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr == other._ptr);
+					}
+					/**
+					 * @brief Оператора сравнения несоответствия итератора
+					 *
+					 * @param other константный итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator != (const Const_Iterator <T> & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr != other._ptr);
+					}
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param ptr позиция в контейнере
+					 */
+					explicit Iterator(T * ptr) noexcept : _ptr(ptr) {}
+			};
+			/**
+			 * @brief Шаблон типа данных итератора
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Создаём тип данных итератора
+			 *
+			 */
+			using iterator_t = Iterator <T>;
+			/**
+			 * @brief Шаблон типа данных константного итератора
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Класс константного итератора как вложенный класс
+			 *
+			 */
+			class Const_Iterator {
+				private:
+					// Позиция в бинарной очереди
+					const T * _ptr;
+				private:
+					/**
+					 * @brief Разрешаем доступ к позиции обычному итератору
+					 *
+					 */
+					template <typename U> friend class Iterator;
+				public:
+					/**
+					 * @brief Оператор разыменования
+					 *
+					 * @return значение элемента
+					 */
+					const T & operator * () const noexcept {
+						// Извлекаем значение сдвига итератора
+						return * this->_ptr;
+					}
+				public:
+					/**
+					 * @brief Оператор смещения вперед
+					 *
+					 * @return значение текущего итератора
+					 */
+					Const_Iterator & operator ++ () noexcept {
+						// Выполняем смещение текущего значения итератора
+						++this->_ptr;
+						// Возвращаем текущее значение итератора
+						return (* this);
+					}
+					/**
+					 * @brief Оператор смещения назад
+					 *
+					 * @return значение текущего итератора
+					 */
+					Const_Iterator & operator -- () noexcept {
+						// Выполняем смещение текущего значения итератора
+						--this->_ptr;
+						// Возвращаем текущее значение итератора
+						return (* this);
+					}
+				public:
+					/**
+					 * @brief Оператор сравнения соответствия итератора
+					 *
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator == (const Const_Iterator & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr == other._ptr);
+					}
+					/**
+					 * @brief Оператора сравнения несоответствия итератора
+					 *
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator != (const Const_Iterator & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr != other._ptr);
+					}
+					/**
+					 * @brief Оператор сравнения соответствия итератора
+					 *
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator == (const Iterator <T> & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr == other._ptr);
+					}
+					/**
+					 * @brief Оператора сравнения несоответствия итератора
+					 *
+					 * @param other итератор для сравнения
+					 * @return      результат сравнения
+					 */
+					bool operator != (const Iterator <T> & other) const noexcept {
+						// Выполняем сравнение итератора
+						return (this->_ptr != other._ptr);
+					}
+				public:
+					/**
+					 * @brief Конструктор
+					 *
+					 * @param ptr позиция в контейнере
+					 */
+					explicit Const_Iterator(const T * ptr) noexcept : _ptr(ptr) {}
+			};
+			/**
+			 * @brief Шаблон типа данных константного итератора
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Создаём тип данных константного итератора
+			 *
+			 */
+			using const_iterator_t = Const_Iterator <T>;
 		private:
 			// Размеры максимальныйх ограничений
 			max_t _max;
@@ -178,6 +416,79 @@ namespace awh {
 			 * @return количество памяти которую занимает очередь
 			 */
 			size_t capacity() const noexcept;
+		public:
+			/**
+			 * @brief Шаблон для метода получения конечного итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получения конечного итератора
+			 *
+			 * @return конечный итератор
+			 */
+			iterator_t <T> end() noexcept;
+			/**
+			 * @brief Шаблон для метода получение начального итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получение начального итератора
+			 *
+			 * @return начальный итератор
+			 */
+			iterator_t <T> begin() noexcept;
+			/**
+			 * @brief Шаблон для метода получения конечного константного итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получения конечного константного итератора
+			 *
+			 * @return конечный константный итератор
+			 */
+			const_iterator_t <T> end() const noexcept;
+			/**
+			 * @brief Шаблон для метода получения конечного константного итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получения конечного константного итератора
+			 *
+			 * @return конечный константный итератор
+			 */
+			const_iterator_t <T> cend() const noexcept;
+			/**
+			 * @brief Шаблон для метода получения начального константного итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получения начального константного итератора
+			 *
+			 * @return начальный константный итератор
+			 */
+			const_iterator_t <T> begin() const noexcept;
+			/**
+			 * @brief Шаблон для метода получения начального константного итератора
+			 *
+			 * @tparam T тип данных для подсчёта
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод получения начального константного итератора
+			 *
+			 * @return начальный константный итератор
+			 */
+			const_iterator_t <T> cbegin() const noexcept;
 		public:
 			/**
 			 * @brief Получения данных указанного элемента в очереди
@@ -326,6 +637,120 @@ namespace awh {
 			 *
 			 */
 			~Queue() noexcept;
+		private:
+			/**
+			 * @brief Шаблон типа данных обёртки очереди
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Класс обёртки очереди
+			 *
+			 */
+			class view {
+				// Очередь которую необходимо обернуть
+				Queue & _queue;
+			public:
+				/**
+				 * @brief Метод получения конечного итератора
+				 *
+				 * @return конечный итератор очереди
+				 */
+				auto end() noexcept -> decltype(this->_queue.template end <T> ()) {
+					// Возвращаем конечный итератор очереди
+					return this->_queue.template end <T> ();
+				}
+				/**
+				 * @brief Метод получения начального итератора
+				 *
+				 * @return начальный итератор очереди
+				 */
+				auto begin() noexcept -> decltype(this->_queue.template begin <T> ()) {
+					// Возвращаем начальный итератор очереди
+					return this->_queue.template begin <T> ();
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param queue обёртываемая очередь
+				 */
+				explicit view(Queue & queue) noexcept : _queue(queue) {}
+			};
+		public:
+			/**
+			 * @brief Шаблон типа данных обёртки очереди
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод обёртки бинарной очереди
+			 *
+			 * @return обёрнутая бинарная очередь
+			 */
+			view <T> as() & {
+				// Возвращаем очередь по ссылке — только для lvalue
+				return view <T> (* this);
+			}
+		private:
+			/**
+			 * @brief Шаблон типа данных константной обёртки очереди
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Класс константной обёртки очереди
+			 *
+			 */
+			class const_view {
+				// Очередь которую необходимо обернуть
+				const Queue & _queue;
+			public:
+				/**
+				 * @brief Метод получения конечного итератора
+				 *
+				 * @return конечный итератор очереди
+				 */
+				auto end() const noexcept -> decltype(this->_queue.template end <T> ()) {
+					// Возвращаем конечный итератор очереди
+					return this->_queue.template end <T> ();
+				}
+				/**
+				 * @brief Метод получения начального итератора
+				 *
+				 * @return начальный итератор очереди
+				 */
+				auto begin() const noexcept -> decltype(this->_queue.template begin <T> ()) {
+					// Возвращаем начальный итератор очереди
+					return this->_queue.template begin <T> ();
+				}
+			public:
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param queue обёртываемая очередь
+				 */
+				explicit const_view(const Queue & queue) noexcept : _queue(queue) {}
+			};
+		public:
+			/**
+			 * @brief Шаблон типа данных константной обёртки очереди
+			 *
+			 * @tparam T тип итератора
+			 */
+			template <typename T>
+			/**
+			 * @brief Метод константной обёртки бинарной очереди
+			 *
+			 * @return обёрнутая бинарная очередь
+			 */
+			const_view <T> as() const & {
+				// Возвращаем очередь по константной ссылке — только для lvalue
+				return const_view <T> (* this);
+			}
 	} queue_t;
 };
 
