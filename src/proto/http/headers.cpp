@@ -28,6 +28,30 @@ using namespace std;
  */
 namespace {
 	/**
+	 * @brief Функция приведения ASCII-символа к нижнему регистру
+	 *
+	 * @details Названия HTTP-заголовков и методов состоят исключительно из ASCII-символов,
+	 *          поэтому используется быстрое ветвление вместо locale-зависимой ::tolower,
+	 *          что исключает влияние текущей локали и ускоряет горячий путь сравнения/хеширования.
+	 *
+	 * @param letter символ для приведения к нижнему регистру
+	 * @return       символ в нижнем регистре
+	 */
+	uint8_t toLower(const uint8_t letter) noexcept {
+		// Если символ является заглавной латинской буквой - приводим его к нижнему регистру
+		return (((letter >= 'A') && (letter <= 'Z')) ? static_cast <uint8_t> (letter + 32) : letter);
+	}
+	/**
+	 * @brief Функция проверки, является ли ASCII-символ пробельным
+	 *
+	 * @param letter символ для проверки
+	 * @return       результат проверки
+	 */
+	bool isSpace(const uint8_t letter) noexcept {
+		// Проверяем принадлежность символа к набору пробельных символов ASCII
+		return ((letter == ' ') || (letter == '\t') || (letter == '\n') || (letter == '\v') || (letter == '\f') || (letter == '\r'));
+	}
+	/**
 	 * @brief Функция комбинирования хеш-кодов
 	 *
 	 * @param seed  исходный хеш-код
@@ -51,7 +75,7 @@ namespace {
 		 */
 		for(const auto letter : name)
 			// Комбинируем хеш-код очередного символа названия заголовка (в нижнем регистре)
-			::combine(result, hash <uint8_t> {}(static_cast <uint8_t> (::tolower(static_cast <uint8_t> (letter)))));
+			::combine(result, hash <uint8_t> {}(toLower(static_cast <uint8_t> (letter))));
 		// Возвращаем хеш-код
 		return result;
 	}
@@ -75,32 +99,12 @@ namespace {
 		 */
 		for(size_t i = 0; i < first.size(); i++){
 			// Если очередная пара букв не совпадает - строки не равны
-			if(::tolower(static_cast <uint8_t> (first[i])) != ::tolower(static_cast <uint8_t> (second[i])))
+			if(toLower(static_cast <uint8_t> (first[i])) != toLower(static_cast <uint8_t> (second[i])))
 				// Возвращаем значение по умолчанию
 				return false;
 		}
 		// Строки полностью совпадают без учёта регистра
 		return true;
-	}
-	/**
-	 * @brief Функция проверки уникальности названия заголовка в списке
-	 *
-	 * @param names список уже добавленных названий
-	 * @param name  название заголовка для проверки
-	 * @return      результат проверки уникальности
-	 */
-	bool findByName(const vector <string> & names, string_view name) noexcept {
-		/**
-		 * Выполняем перебор уже добавленных названий
-		 */
-		for(const auto & item : names){
-			// Если название заголовка уже присутствует в списке
-			if(equals(item, name))
-				// Возвращаем положительный результат проверки
-				return true;
-		}
-		// Название заголовка ещё не встречалось
-		return false;
 	}
 	/**
 	 * @brief Шаблон функции поиска заголовка по названию без учёта регистра
@@ -266,16 +270,18 @@ namespace {
 		return "0.0";
 	}
 	/**
-	 * @brief Функция дописывания одной строки HTTP-заголовка с учётом версии протокола
+	 * @brief Функция дописывания названия HTTP-заголовка с приведением регистра к канонической форме протокола
 	 *
-	 * @details Заголовок дописывается напрямую в результирующую строку без создания промежуточных временных строк,
-	 *          что сокращает количество аллокаций при печати всех заголовков.
+	 * @details Для протоколов семейства HTTP/2 (HTTP/2, HTTP/3 и их модификации) названия заголовков обязаны быть
+	 *          в нижнем регистре (RFC 9113 §8.2), для остальных версий применяется «умный» регистр: первая буква
+	 *          и буквы после разделителей ('-', '_', пробел) переводятся в верхний регистр, остальные - в нижний.
+	 *          Название дописывается напрямую в результирующую строку без создания промежуточных временных строк.
 	 *
-	 * @param result результирующая строка, в которую дописывается заголовок
-	 * @param header название и значение форматируемого заголовка
+	 * @param result результирующая строка, в которую дописывается название заголовка
+	 * @param name   исходное название заголовка
 	 * @param proto  версия протокола HTTP-запроса/ответа
 	 */
-	void appendHeader(string & result, const awh::http::Headers::header_t & header, const awh::http::proto_t proto) noexcept {
+	void appendCasedName(string & result, string_view name, const awh::http::proto_t proto) noexcept {
 		/**
 		 * Определяем версию протокола передачи данных
 		 */
@@ -290,12 +296,12 @@ namespace {
 				/**
 				 * Дописываем название заголовка, приводя каждый символ к нижнему регистру без создания промежуточной строки
 				 */
-				for(const auto & letter : header.name)
+				for(const auto & letter : name)
 					// Дописываем очередной символ названия заголовка в нижнем регистре
-					result.push_back(static_cast <char> (::tolower(static_cast <uint8_t> (letter))));
+					result.push_back(static_cast <char> (toLower(static_cast <uint8_t> (letter))));
 			} break;
-			// Для остальных версий протокола название заголовка дописывается без изменения регистра
-			default:
+			// Для остальных версий протокола название заголовка приводится к «умному» регистру
+			default: {
 				// Символ с которым ведётся работа в данный момент
 				char letter = 0;
 				// Флаг детекции символа
@@ -303,20 +309,62 @@ namespace {
 				/**
 				 * Переходим по всем буквам слова и формируем новую строку
 				 */
-				for(size_t i = 0; i < header.name.length(); i++){
+				for(size_t i = 0; i < name.length(); i++){
 					// Получаем символ с которым ведётся работа в данный момент
-					letter = header.name[i];
+					letter = name[i];
 					// Если флаг перевода в верхний регистр активирован
-					if(mode)
-						// Переводим символ в верхний режим
-						result.push_back(static_cast <char> (::toupper(static_cast <uint8_t> (letter))));
+					if(mode){
+						// Приводим символ к нижнему регистру
+						const uint8_t lower = toLower(static_cast <uint8_t> (letter));
+						// Переводим строчную латинскую букву в верхний регистр, прочие символы оставляем без изменений
+						result.push_back(static_cast <char> (((lower >= 'a') && (lower <= 'z')) ? (lower - 32) : lower));
 					// Переводим остальные символы в нижний регистр
-					else result.push_back(static_cast <char> (::tolower(static_cast <uint8_t> (letter))));
+					} else result.push_back(static_cast <char> (toLower(static_cast <uint8_t> (letter))));
 					// Если найден спецсимвол, устанавливаем флаг детекции
-					mode = ((letter == '-') || (letter == '_') || static_cast <bool> (::isspace(static_cast <uint8_t> (letter))));
+					mode = ((letter == '-') || (letter == '_') || isSpace(static_cast <uint8_t> (letter)));
 				}
-			break;
+			}
 		}
+	}
+	/**
+	 * @brief Функция приведения названия HTTP-заголовка к канонической форме протокола
+	 *
+	 * @param name  исходное название заголовка
+	 * @param proto версия протокола HTTP-запроса/ответа
+	 * @return      название заголовка в канонической для протокола форме
+	 */
+	string caseName(string_view name, const awh::http::proto_t proto) noexcept {
+		// Результат работы функции - название заголовка в канонической форме
+		string result = "";
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Резервируем память под нормализованное название заголовка
+			result.reserve(name.size());
+			// Приводим название заголовка к канонической для протокола форме
+			appendCasedName(result, name, proto);
+		// Если возникает ошибка выделения памяти - возвращаем название в исходном виде
+		} catch(const exception &) {
+			// Возвращаем исходное название заголовка без нормализации
+			return string(name);
+		}
+		// Выводим результат
+		return result;
+	}
+	/**
+	 * @brief Функция дописывания одной строки HTTP-заголовка с учётом версии протокола
+	 *
+	 * @details Заголовок дописывается напрямую в результирующую строку без создания промежуточных временных строк,
+	 *          что сокращает количество аллокаций при печати всех заголовков.
+	 *
+	 * @param result результирующая строка, в которую дописывается заголовок
+	 * @param header название и значение форматируемого заголовка
+	 * @param proto  версия протокола HTTP-запроса/ответа
+	 */
+	void appendHeader(string & result, const awh::http::Headers::header_t & header, const awh::http::proto_t proto) noexcept {
+		// Дописываем название заголовка в канонической для протокола форме
+		appendCasedName(result, header.name, proto);
 		// Дописываем разделитель названия и значения заголовка
 		result.append(": ");
 		// Дописываем значение заголовка
@@ -383,16 +431,37 @@ namespace {
 				case static_cast <uint8_t> (awh::http::traffic_t::REQUEST): {
 					// Приводим провайдер к типу запроса клиента (безопасно, так как тип подтверждён флагом traffic)
 					const auto * request = static_cast <const awh::http::request_t *> (provider);
-					// Формируем псевдозаголовок метода запроса (:method) - обязателен и следует первым согласно RFC 7540
-					{
+					// Получаем текстовое название метода запроса
+					const string_view methodName = ::method(request->method);
+					// Формируем псевдозаголовок метода запроса (:method) - обязателен и следует первым согласно RFC 9113
+					if(!methodName.empty()){
 						// Создаём псевдозаголовок метода запроса
 						awh::http::Headers::header_t header{};
 						// Формируем псевдозаголовок метода запроса
-						header.from(":method", ::method(request->method));
+						header.from(":method", methodName);
 						// Если псевдозаголовок сформирован корректно - добавляем его в результат
 						if(!header.name.empty())
 							// Добавляем псевдозаголовок метода запроса в результат
 							result.push_back(::move(header));
+					}
+					/**
+					 * Для метода CONNECT формируется только псевдозаголовок :authority (RFC 9113 §8.5),
+					 * а псевдозаголовки :scheme и :path должны отсутствовать
+					 */
+					if(request->method == awh::http::method_t::CONNECT){
+						// Формируем псевдозаголовок авторитета (:authority) из URI запроса (для CONNECT это цель "host:port")
+						if(!request->uri.empty()){
+							// Создаём псевдозаголовок авторитета
+							awh::http::Headers::header_t header{};
+							// Формируем псевдозаголовок авторитета
+							header.from(":authority", request->uri);
+							// Если псевдозаголовок сформирован корректно - добавляем его в результат
+							if(!header.name.empty())
+								// Добавляем псевдозаголовок авторитета в результат
+								result.push_back(::move(header));
+						}
+						// Прерываем формирование псевдозаголовков для метода CONNECT
+						break;
 					}
 					// Значения псевдозаголовков схемы, авторитета и пути запроса
 					string scheme = "", authority = "", path = request->uri;
@@ -443,7 +512,7 @@ namespace {
 							result.push_back(::move(header));
 					}
 					// Формируем псевдозаголовок пути запроса (:path) - обязателен для всех методов, кроме CONNECT
-					{
+					if(!path.empty()){
 						// Создаём псевдозаголовок пути запроса
 						awh::http::Headers::header_t header{};
 						// Формируем псевдозаголовок пути запроса
@@ -516,9 +585,7 @@ namespace {
 	 * @param message текст сообщения об ошибке
 	 * @param flag    флаг важности сообщения
 	 */
-	void printError(const awh::log_t * log, const char * func, const char * message, const awh::log_t::flag_t flag = awh::log_t::flag_t::CRITICAL) noexcept {
-		// Помечаем название функции как используемое (задействуется только в режиме отладки)
-		(void) func;
+	void printError(const awh::log_t * log, [[maybe_unused]] const char * func, const char * message, const awh::log_t::flag_t flag = awh::log_t::flag_t::CRITICAL) noexcept {
 		// Если объект лога установлен
 		if(log != nullptr){
 			/**
@@ -563,13 +630,13 @@ namespace {
  * @return      ссылка на текущий объект заголовка
  */
 awh::http::Headers::Header & awh::http::Headers::Header::from(string_view name, string_view value) noexcept {
-	// Если название и значение заголовка переданы
-	if(!name.empty() && !value.empty()){
+	// Если название заголовка передано (пустое значение допустимо согласно RFC 9110)
+	if(!name.empty()){
 		// Устанавливаем название заголовка
 		this->name = name;
 		// Устанавливаем значение заголовка
 		this->value = value;
-	// Если название или значение заголовка не переданы
+	// Если название заголовка не передано
 	} else {
 		// Сбрасываем название заголовка
 		this->name.clear();
@@ -634,7 +701,7 @@ bool awh::http::Headers::Header_Name_Equal::operator()(const string & first, con
  * @param message текст сообщения об ошибке
  * @param flag    флаг важности сообщения
  */
-void awh::http::Headers::Iterator::error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
+void awh::http::Headers::Iterator::_error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
 	::printError(this->_log, func, message, flag);
 }
@@ -654,7 +721,7 @@ awh::http::Headers::Iterator::operator iterator() noexcept {
  */
 awh::http::Headers::Iterator::pointer awh::http::Headers::Iterator::operator -> () noexcept {
 	// Выводим результат
-	return &const_cast <header_t &> (* this->_it);
+	return &(* this->_it);
 }
 /**
  * @brief Оператор разыменования заголовка
@@ -663,7 +730,7 @@ awh::http::Headers::Iterator::pointer awh::http::Headers::Iterator::operator -> 
  */
 awh::http::Headers::Iterator::reference awh::http::Headers::Iterator::operator * () noexcept {
 	// Выводим результат
-	return const_cast <header_t &> (* this->_it);
+	return (* this->_it);
 }
 /**
  * @brief Оператор смещения вперед
@@ -682,7 +749,7 @@ awh::http::Headers::Iterator & awh::http::Headers::Iterator::operator ++ () noex
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return (* this);
@@ -743,7 +810,7 @@ awh::http::Headers::Iterator::Iterator(iterator it, const log_t * log) noexcept 
  * @param message текст сообщения об ошибке
  * @param flag    флаг важности сообщения
  */
-void awh::http::Headers::Const_Iterator::error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
+void awh::http::Headers::Const_Iterator::_error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
 	::printError(this->_log, func, message, flag);
 }
@@ -763,7 +830,7 @@ awh::http::Headers::Const_Iterator::operator const_iterator() const noexcept {
  */
 awh::http::Headers::Const_Iterator::pointer awh::http::Headers::Const_Iterator::operator -> () const noexcept {
 	// Выводим результат
-	return &const_cast <header_t &> (* this->_it);
+	return &(* this->_it);
 }
 /**
  * @brief Оператор разыменования заголовка
@@ -772,7 +839,7 @@ awh::http::Headers::Const_Iterator::pointer awh::http::Headers::Const_Iterator::
  */
 awh::http::Headers::Const_Iterator::reference awh::http::Headers::Const_Iterator::operator * () const noexcept {
 	// Выводим результат
-	return const_cast <header_t &> (* this->_it);
+	return (* this->_it);
 }
 /**
  * @brief Оператор смещения вперед
@@ -791,7 +858,7 @@ awh::http::Headers::Const_Iterator & awh::http::Headers::Const_Iterator::operato
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return (* this);
@@ -846,13 +913,99 @@ awh::http::Headers::Const_Iterator::Const_Iterator(const_iterator it, const log_
  _it(it), _log(log) {}
 
 /**
+ * @brief Метод приведения названий всех заголовков к канонической форме текущего протокола
+ *
+ * @details Для протоколов семейства HTTP/2 названия приводятся к нижнему регистру, для остальных -
+ *          к «умному» регистру. Вызывается при изменении протокола, чтобы единая семантика
+ *          регистра соблюдалась при любом способе доступа к заголовкам (не только при печати).
+ */
+void awh::http::Headers::_recase() noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		/**
+		 * Приводим название каждого заголовка к канонической для текущего протокола форме
+		 */
+		for(auto & header : this->_headers)
+			// Нормализуем регистр названия заголовка (длина не меняется, поэтому счётчик памяти корректировать не требуется)
+			header.name = ::caseName(header.name, this->_proto);
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Записываем ошибку в лог
+		this->_error(__PRETTY_FUNCTION__, error.what());
+	}
+}
+/**
+ * @brief Шаблон добавления нового заголовка
+ *
+ * @tparam Name    тип названия добавляемого заголовка
+ * @tparam Content тип содержимого добавляемого заголовка
+ */
+template <typename Name, typename Content>
+/**
+ * @brief Метод добавления нового заголовка
+ *
+ * @param name    название заголовка
+ * @param content содержимое заголовка
+ * @return        общее количество заголовков
+ */
+size_t awh::http::Headers::_emplace(Name && name, Content && content) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Формируем новый заголовок
+		header_t header{};
+		// Если название заголовка передано (пустое значение допустимо согласно RFC 9110; при пустом названии заголовок останется пустым)
+		if(!name.empty()){
+			// Устанавливаем название заголовка, приводя его к канонической для текущего протокола форме
+			header.name = ::caseName(::forward <Name> (name), this->_proto);
+			// Устанавливаем значение заголовка (перемещаем строку при передаче временного объекта)
+			header.value = ::forward <Content> (content);
+		}
+		// Если заголовок сформирован корректно (название не пустое)
+		if(!header.name.empty()){
+			// Если максимальное количество заголовков ещё не превышено
+			if(this->_headers.size() < this->_max.records){
+				// Вычисляем объём полезной нагрузки добавляемого заголовка (название и значение)
+				const size_t payload = (header.name.size() + header.value.size());
+				// Если добавление заголовка не превысит максимальный объём потребляемой памяти
+				if((this->_memory + payload) <= this->_max.memory){
+					// Добавляем сформированный заголовок в список
+					this->_headers.push_back(::move(header));
+					// Увеличиваем счётчик потребляемой памяти на объём добавленного заголовка
+					this->_memory += payload;
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		// Записываем ошибку в лог
+		this->_error(__PRETTY_FUNCTION__, error.what());
+	}
+	// Возвращаем общее количество заголовков после попытки добавления
+	return this->_headers.size();
+}
+/**
+ * Объявляем прототипы для метода добавления нового заголовка
+ */
+template size_t awh::http::Headers::_emplace <string &&, string &&> (string &&, string &&) noexcept;
+template size_t awh::http::Headers::_emplace <string &&, const string &> (string &&, const string &) noexcept;
+template size_t awh::http::Headers::_emplace <const string &, string &&> (const string &, string &&) noexcept;
+template size_t awh::http::Headers::_emplace <const string &, const string &> (const string &, const string &) noexcept;
+/**
  * @brief Метод вывода сообщения об ошибке в лог
  *
  * @param func    название функции, в которой произошла ошибка
  * @param message текст сообщения об ошибке
  * @param flag    флаг важности сообщения
  */
-void awh::http::Headers::error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
+void awh::http::Headers::_error(const char * func, const char * message, const log_t::flag_t flag) const noexcept {
 	// Выводим сообщение об ошибке в лог через общую функцию логирования
 	::printError(this->_log, func, message, flag);
 }
@@ -900,8 +1053,13 @@ awh::http::proto_t awh::http::Headers::proto() const noexcept {
  * @param proto протокол HTTP-запроса/ответа
  */
 void awh::http::Headers::proto(const proto_t proto) noexcept {
-	// Устанавливаем протокол HTTP-запроса/ответа
-	this->_proto = proto;
+	// Если протокол действительно изменился
+	if(this->_proto != proto){
+		// Устанавливаем протокол HTTP-запроса/ответа
+		this->_proto = proto;
+		// Приводим названия всех заголовков к канонической форме нового протокола
+		this->_recase();
+	}
 }
 /**
  * @brief Метод получения объекта провайдера HTTP-запроса/ответа
@@ -938,7 +1096,7 @@ bool awh::http::Headers::provider(unique_ptr <provider_t> & provider) const noex
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -966,7 +1124,7 @@ void awh::http::Headers::provider(const provider_t * provider) noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -1016,17 +1174,12 @@ string awh::http::Headers::startline() const noexcept {
 				case static_cast <uint8_t> (traffic_t::RESPONSE): {
 					// Безопасно приводим провайдер к типу ответа сервера (тип подтверждён флагом traffic)
 					const response_t * response = static_cast <const response_t *> (this->_provider.get());
-					// Получаем сообщение сервера, установленное пользователем
-					string message = response->message;
-					// Если сообщение сервера не установлено - подставляем стандартное сообщение по коду ответа
-					if(message.empty()){
-						// Ищем стандартное сообщение, соответствующее коду ответа сервера
-						auto i = messages.find(response->code);
-						// Если стандартное сообщение найдено
-						if(i != messages.end())
-							// Устанавливаем найденное сообщение сервера
-							message = i->second;
-					}
+					// Получаем сообщение сервера, установленное пользователем (без копирования)
+					string_view message = response->message;
+					// Если сообщение сервера не установлено - подставляем стандартное сообщение по коду ответа (для неизвестного кода вернётся пустое представление)
+					if(message.empty())
+						// Устанавливаем стандартное сообщение, соответствующее коду ответа сервера
+						message = statusMessage(response->code);
 					// Формируем стартовую строку ответа сервера в формате "HTTP/Версия Код Сообщение"
 					result.append("HTTP/");
 					// Формируем строку версии протокола в формате "HTTP/Версия"
@@ -1047,7 +1200,7 @@ string awh::http::Headers::startline() const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -1182,7 +1335,7 @@ void awh::http::Headers::startline(const string_view startline) noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -1201,8 +1354,10 @@ void awh::http::Headers::erase(string_view name) noexcept {
 		for(auto i = this->_headers.begin(); i != this->_headers.end();){
 			// Если название заголовка совпадает с указанным
 			if(::equals(i->name, name)){
-				// Уменьшаем счётчик потребляемой памяти на объём удаляемого заголовка
-				this->_memory -= (i->name.size() + i->value.size());
+				// Вычисляем объём полезной нагрузки удаляемого заголовка
+				const size_t payload = (i->name.size() + i->value.size());
+				// Уменьшаем счётчик потребляемой памяти, не допуская переполнения вниз при возможной внешней рассинхронизации
+				this->_memory -= ((payload <= this->_memory) ? payload : this->_memory);
 				// Удаляем текущий заголовок и переходим к следующему
 				i = this->_headers.erase(i);
 			// Переходим к следующему заголовку
@@ -1213,7 +1368,7 @@ void awh::http::Headers::erase(string_view name) noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -1235,8 +1390,10 @@ awh::http::Headers::iterator_t awh::http::Headers::erase(const iterator_t & it) 
 		const Iterator::iterator target = static_cast <Iterator::iterator> (copy);
 		// Удаляем элемент только если итератор указывает на существующий заголовок (erase(end()) - неопределённое поведение)
 		if(target != this->_headers.end()){
-			// Уменьшаем счётчик потребляемой памяти на объём удаляемого заголовка
-			this->_memory -= (target->name.size() + target->value.size());
+			// Вычисляем объём полезной нагрузки удаляемого заголовка
+			const size_t payload = (target->name.size() + target->value.size());
+			// Уменьшаем счётчик потребляемой памяти, не допуская переполнения вниз при возможной внешней рассинхронизации
+			this->_memory -= ((payload <= this->_memory) ? payload : this->_memory);
 			// Удаляем элемент, соответствующий переданному итератору, получая следующий сырой итератор
 			const Iterator::iterator next = this->_headers.erase(target);
 			// Оборачиваем полученный сырой итератор в класс-обёртку
@@ -1247,7 +1404,7 @@ awh::http::Headers::iterator_t awh::http::Headers::erase(const iterator_t & it) 
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -1340,12 +1497,16 @@ vector <string> awh::http::Headers::names() const noexcept {
 	try {
 		// Резервируем память под список названий заголовков
 		result.reserve(this->_headers.size());
+		// Набор уже добавленных названий для проверки уникальности без учёта регистра за амортизированное O(1)
+		unordered_set <string, header_name_hash_t, header_name_equal_t> seen;
+		// Резервируем память под набор проверенных названий
+		seen.reserve(this->_headers.size());
 		/**
 		 * Проходим по всем установленным заголовкам
 		 */
 		for(const auto & header : this->_headers){
-			// Если название заголовка ещё не было добавлено в список
-			if(!::findByName(result, header.name))
+			// Если название заголовка ещё не было добавлено в список - добавляем его в результат
+			if(seen.emplace(header.name).second)
 				// Добавляем уникальное название заголовка в результат
 				result.push_back(header.name);
 		}
@@ -1354,7 +1515,7 @@ vector <string> awh::http::Headers::names() const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -1386,71 +1547,11 @@ vector <string> awh::http::Headers::range(string_view name) const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
 }
-/**
- * @brief Шаблон добавления нового заголовка
- *
- * @tparam Name    тип названия добавляемого заголовка
- * @tparam Content тип содержимого добавляемого заголовка
- */
-template <typename Name, typename Content>
-/**
- * @brief Метод добавления нового заголовка
- *
- * @param name    название заголовка
- * @param content содержимое заголовка
- * @return        общее количество заголовков
- */
-size_t awh::http::Headers::_emplace(Name && name, Content && content) noexcept {
-	/**
-	 * Выполняем отлов ошибок
-	 */
-	try {
-		// Формируем новый заголовок
-		header_t header;
-		// Если название и значение заголовка переданы (при некорректных данных заголовок останется пустым)
-		if(!name.empty() && !content.empty()){
-			// Устанавливаем название заголовка (перемещаем строку при передаче временного объекта)
-			header.name = ::forward <Name> (name);
-			// Устанавливаем значение заголовка (перемещаем строку при передаче временного объекта)
-			header.value = ::forward <Content> (content);
-		}
-		// Если заголовок сформирован корректно (название не пустое)
-		if(!header.name.empty()){
-			// Если максимальное количество заголовков ещё не превышено
-			if(this->_headers.size() < this->_max.records){
-				// Вычисляем объём полезной нагрузки добавляемого заголовка (название и значение)
-				const size_t payload = (header.name.size() + header.value.size());
-				// Если добавление заголовка не превысит максимальный объём потребляемой памяти
-				if((this->_memory + payload) <= this->_max.memory){
-					// Добавляем сформированный заголовок в список
-					this->_headers.push_back(::move(header));
-					// Увеличиваем счётчик потребляемой памяти на объём добавленного заголовка
-					this->_memory += payload;
-				}
-			}
-		}
-	/**
-	 * Если возникает ошибка
-	 */
-	} catch(const exception & error) {
-		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
-	}
-	// Возвращаем общее количество заголовков после попытки добавления
-	return this->_headers.size();
-}
-/**
- * Объявляем прототипы для метода добавления нового заголовка
- */
-template size_t awh::http::Headers::_emplace <string &&, string &&> (string &&, string &&) noexcept;
-template size_t awh::http::Headers::_emplace <string &&, const string &> (string &&, const string &) noexcept;
-template size_t awh::http::Headers::_emplace <const string &, string &&> (const string &, string &&) noexcept;
-template size_t awh::http::Headers::_emplace <const string &, const string &> (const string &, const string &) noexcept;
 /**
  * @brief Метод добавления или замены заголовка
  *
@@ -1480,12 +1581,14 @@ size_t awh::http::Headers::emplace(string && name, string && content) noexcept {
  * @return        общее количество заголовков
  */
 size_t awh::http::Headers::emplace(const char * name, string && content) noexcept {
+	// Нормализуем название заголовка, защищаясь от нулевого указателя
+	const char * key = ((name != nullptr) ? name : "");
 	// Если название заголовка указано - удаляем все его прежние вхождения перед заменой
-	if((name != nullptr) && (* name != '\0'))
+	if((* key) != '\0')
 		// Удаляем все прежние вхождения заголовка с указанным названием
-		this->erase(name);
-	// Делегируем перегрузке с переносом обеих строк (название из C-строки, содержимое переносим)
-	return this->emplace(string(name), ::move(content));
+		this->erase(key);
+	// Добавляем новый заголовок напрямую, избегая повторного удаления (название из C-строки, содержимое переносим)
+	return this->_emplace(string(key), ::move(content));
 }
 /**
  * @brief Метод добавления или замены заголовка
@@ -1502,8 +1605,8 @@ size_t awh::http::Headers::emplace(string && name, const char * content) noexcep
 	if(!name.empty())
 		// Удаляем все прежние вхождения заголовка с указанным названием
 		this->erase(name);
-	// Делегируем перегрузке с переносом обеих строк (название переносим, содержимое из C-строки)
-	return this->emplace(::move(name), string(content));
+	// Добавляем новый заголовок напрямую, избегая повторного удаления (название переносим, содержимое из C-строки с защитой от нулевого указателя)
+	return this->_emplace(::move(name), string((content != nullptr) ? content : ""));
 }
 /**
  * @brief Метод добавления или замены заголовка
@@ -1570,12 +1673,14 @@ size_t awh::http::Headers::emplace(const string & name, string && content) noexc
  * @return        общее количество заголовков
  */
 size_t awh::http::Headers::emplace(const char * name, const char * content) noexcept {
+	// Нормализуем название заголовка, защищаясь от нулевого указателя
+	const char * key = ((name != nullptr) ? name : "");
 	// Если название заголовка указано - удаляем все его прежние вхождения перед заменой
-	if((name != nullptr) && (* name != '\0'))
+	if((* key) != '\0')
 		// Удаляем все прежние вхождения заголовка с указанным названием
-		this->erase(name);
-	// Делегируем перегрузке с переносом обеих строк (C-строки преобразуются во временные объекты)
-	return this->emplace(string(name), string(content));
+		this->erase(key);
+	// Добавляем новый заголовок напрямую, избегая повторного удаления (C-строки преобразуются во временные объекты с защитой от нулевого указателя)
+	return this->_emplace(string(key), string((content != nullptr) ? content : ""));
 }
 /**
  * @brief Метод добавления или замены заголовка
@@ -1588,12 +1693,14 @@ size_t awh::http::Headers::emplace(const char * name, const char * content) noex
  * @return        общее количество заголовков
  */
 size_t awh::http::Headers::emplace(const char * name, const string & content) noexcept {
+	// Нормализуем название заголовка, защищаясь от нулевого указателя
+	const char * key = ((name != nullptr) ? name : "");
 	// Если название заголовка указано - удаляем все его прежние вхождения перед заменой
-	if((name != nullptr) && (* name != '\0'))
+	if((* key) != '\0')
 		// Удаляем все прежние вхождения заголовка с указанным названием
-		this->erase(name);
-	// Делегируем перегрузке с переносом названия и копированием содержимого
-	return this->emplace(string(name), content);
+		this->erase(key);
+	// Добавляем новый заголовок напрямую, избегая повторного удаления (название из C-строки, содержимое копируем)
+	return this->_emplace(string(key), content);
 }
 /**
  * @brief Метод добавления или замены заголовка
@@ -1610,8 +1717,8 @@ size_t awh::http::Headers::emplace(const string & name, const char * content) no
 	if(!name.empty())
 		// Удаляем все прежние вхождения заголовка с указанным названием
 		this->erase(name);
-	// Делегируем перегрузке с копированием названия и переносом содержимого
-	return this->emplace(name, string(content));
+	// Добавляем новый заголовок напрямую, избегая повторного удаления (название копируем, содержимое из C-строки с защитой от нулевого указателя)
+	return this->_emplace(name, string((content != nullptr) ? content : ""));
 }
 /**
  * @brief Метод добавления или замены заголовка
@@ -1690,7 +1797,7 @@ string awh::http::Headers::print(const http::proto_t proto) const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -1723,7 +1830,7 @@ string awh::http::Headers::print(string_view name, const http::proto_t proto) co
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -1823,7 +1930,7 @@ void awh::http::Headers::merge(const Headers & headers) noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -1957,7 +2064,7 @@ awh::http::Headers::operator unique_ptr <provider_t> () const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -2006,7 +2113,7 @@ awh::http::Headers::operator fields_t() const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -2059,7 +2166,7 @@ awh::http::Headers::operator entries_t() const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -2089,7 +2196,7 @@ awh::http::Headers::operator map_t() const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -2119,7 +2226,7 @@ awh::http::Headers::operator multimap_t() const noexcept {
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Выводим результат
 	return result;
@@ -2166,55 +2273,32 @@ bool awh::http::Headers::operator == (const Headers & headers) const noexcept {
 	 * Выполняем отлов ошибок
 	 */
 	try {
-		// Список уже проверенных названий заголовков (без учёта регистра)
-		vector <string> seen;
-		// Резервируем память под вспомогательный список
-		seen.reserve(this->_headers.size());
+		// Тип карты частот значений заголовка (значение -> кратность), значения чувствительны к регистру
+		using values_t = unordered_map <string, size_t>;
+		// Тип группировки значений по названию заголовка без учёта регистра
+		using groups_t = unordered_map <string, values_t, header_name_hash_t, header_name_equal_t>;
+		// Группируем значения по названию заголовка для текущего контейнера
+		groups_t self;
+		// Резервируем память под группировку значений текущего контейнера
+		self.reserve(this->_headers.size());
 		/**
-		 * Проходим по всем заголовкам текущего списка
+		 * Подсчитываем кратность значений по каждому названию заголовка текущего контейнера
 		 */
-		for(const auto & header : this->_headers){
-			// Пропускаем название заголовка, если оно уже было проверено ранее
-			if(::findByName(seen, header.name))
-				// Пропускаем заголовок, так как он уже был проверен ранее
-				continue;
-			// Добавляем название заголовка в список проверенных
-			seen.push_back(header.name);
-			// Создаём карту частот значений заголовков текущего списка
-			unordered_map <string, size_t> counts;
-			/**
-			 * Подсчитываем частоты значений заголовков текущего списка
-			 */
-			for(const auto & item : this->_headers){
-				// Если название заголовка совпадает с текущим
-				if(::equals(item.name, header.name))
-					// Увеличиваем счётчик частоты значения заголовка
-					++counts[item.value];
-			}
-			/**
-			 * Вычитаем частоты значений заголовков сравниваемого списка
-			 */
-			for(const auto & item : headers._headers){
-				// Если название заголовка совпадает с текущим
-				if(!::equals(item.name, header.name))
-					// Пропускаем заголовок, так как он не совпадает по названию
-					continue;
-				// Ищем значение заголовка среди частот текущего списка
-				const auto found = counts.find(item.value);
-				// Если такого значения нет - контейнеры не равны
-				if(found == counts.end())
-					// Возвращаем результат сравнения
-					return false;
-				// Уменьшаем частоту значения, удаляя запись при обнулении счётчика
-				if(--found->second == 0)
-					// Удаляем запись о частоте значения заголовка, если она достигла нуля
-					counts.erase(found);
-			}
-			// Если остались несопоставленные значения - контейнеры не равны (кратность значений отличается)
-			if(!counts.empty())
-				// Возвращаем результат сравнения
-				return false;
-		}
+		for(const auto & header : this->_headers)
+			// Увеличиваем счётчик кратности значения для соответствующего названия заголовка
+			++self[header.name][header.value];
+		// Группируем значения по названию заголовка для сравниваемого контейнера
+		groups_t other;
+		// Резервируем память под группировку значений сравниваемого контейнера
+		other.reserve(headers._headers.size());
+		/**
+		 * Подсчитываем кратность значений по каждому названию заголовка сравниваемого контейнера
+		 */
+		for(const auto & header : headers._headers)
+			// Увеличиваем счётчик кратности значения для соответствующего названия заголовка
+			++other[header.name][header.value];
+		// Контейнеры равны, если совпадают группировки значений (сравнение unordered_map не зависит от порядка)
+		return (self == other);
 	/**
 	 * Если возникает ошибка - считаем контейнеры не равными
 	 */
@@ -2222,8 +2306,6 @@ bool awh::http::Headers::operator == (const Headers & headers) const noexcept {
 		// Возвращаем результат сравнения
 		return false;
 	}
-	// Все заголовки совпадают с учётом кратности значений - контейнеры равны
-	return true;
 }
 /**
  * @brief Оператор несравнения двух заголовков
@@ -2304,7 +2386,7 @@ awh::http::Headers & awh::http::Headers::operator = (const Headers & headers) no
 		 */
 		} catch(const exception & error) {
 			// Записываем ошибку в лог
-			this->error(__PRETTY_FUNCTION__, error.what());
+			this->_error(__PRETTY_FUNCTION__, error.what());
 		}
 	}
 	// Возвращаем текущий контейнер заголовков
@@ -2374,12 +2456,14 @@ awh::http::Headers & awh::http::Headers::operator = (const fields_t & headers) n
 		}
 		// Автоматически определяем протокол на основе состава переданных заголовков
 		this->_proto = (headers.empty() ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1));
+		// Приводим названия всех заголовков к канонической форме определённого протокола
+		this->_recase();
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий контейнер заголовков
 	return (* this);
@@ -2405,12 +2489,14 @@ awh::http::Headers & awh::http::Headers::operator = (const entries_t & headers) 
 			this->_emplace(header.name, header.value);
 		// Автоматически определяем протокол на основе состава переданных заголовков
 		this->_proto = ::detectProto(headers);
+		// Приводим названия всех заголовков к канонической форме определённого протокола
+		this->_recase();
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий контейнер заголовков
 	return (* this);
@@ -2443,12 +2529,14 @@ awh::http::Headers & awh::http::Headers::operator = (const multimap_t & headers)
 		}
 		// Автоматически определяем протокол на основе состава переданных заголовков
 		this->_proto = (headers.empty() ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1));
+		// Приводим названия всех заголовков к канонической форме определённого протокола
+		this->_recase();
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий контейнер заголовков
 	return (* this);
@@ -2481,12 +2569,14 @@ awh::http::Headers & awh::http::Headers::operator = (initializer_list <header_t>
 		}
 		// Автоматически определяем протокол на основе состава переданных заголовков
 		this->_proto = ((headers.size() == 0) ? proto_t::NONE : (http2 ? proto_t::HTTP2 : proto_t::HTTP1));
+		// Приводим названия всех заголовков к канонической форме определённого протокола
+		this->_recase();
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 	// Возвращаем текущий контейнер заголовков
 	return (* this);
@@ -2743,6 +2833,27 @@ awh::http::Headers::Headers(const fmk_t * fmk, const log_t * log) noexcept :
 /**
  * @brief Конструктор
  *
+ * @param proto протокол HTTP-запроса/ответа
+ */
+awh::http::Headers::Headers(const proto_t proto, const fmk_t * fmk, const log_t * log) noexcept :
+ Headers(proto, static_cast <const provider_t *> (nullptr), fields_t {}, fmk, log) {}
+/**
+ * @brief Конструктор
+ *
+ * @param provider объект провайдера HTTP-запроса/ответа
+ */
+awh::http::Headers::Headers(const provider_t * provider, const fmk_t * fmk, const log_t * log) noexcept :
+ Headers(proto_t::NONE, provider, fields_t {}, fmk, log) {}
+/**
+ * @brief Конструктор
+ *
+ * @param provider объект провайдера HTTP-запроса/ответа
+ */
+awh::http::Headers::Headers(unique_ptr <provider_t> && provider, const fmk_t * fmk, const log_t * log) noexcept :
+ Headers(proto_t::NONE, ::move(provider), fields_t {}, fmk, log) {}
+/**
+ * @brief Конструктор
+ *
  * @param headers список заголовков инициализации
  * @param fmk     объект фреймворка
  * @param log     объект для работы с логами
@@ -2922,15 +3033,18 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
 			// Добавляем заголовок в текущий набор с сохранением дубликатов
 			this->_emplace(header.name, header.value);
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
-		if(this->_proto == proto_t::NONE)
+		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
 			this->_proto = ::detectProto(headers);
+			// Приводим названия всех заголовков к канонической форме определённого протокола
+			this->_recase();
+		}
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -2959,15 +3073,18 @@ awh::http::Headers::Headers(const proto_t proto, const provider_t * provider, co
 			// Добавляем заголовок в текущий набор с сохранением дубликатов
 			this->_emplace(header.name, header.value);
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
-		if(this->_proto == proto_t::NONE)
+		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
 			this->_proto = ::detectProto(headers);
+			// Приводим названия всех заголовков к канонической форме определённого протокола
+			this->_recase();
+		}
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -3014,15 +3131,18 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
 			// Добавляем заголовок в текущий набор с сохранением дубликатов
 			this->_emplace(header.name, header.value);
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
-		if(this->_proto == proto_t::NONE)
+		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
 			this->_proto = ::detectProto(headers);
+			// Приводим названия всех заголовков к канонической форме определённого протокола
+			this->_recase();
+		}
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**
@@ -3047,15 +3167,18 @@ awh::http::Headers::Headers(const proto_t proto, unique_ptr <provider_t> && prov
 			// Добавляем заголовок в текущий набор с сохранением дубликатов
 			this->_emplace(header.name, header.value);
 		// Если протокол явно не был указан - определяем его автоматически по составу переданных заголовков
-		if(this->_proto == proto_t::NONE)
+		if(this->_proto == proto_t::NONE){
 			// Автоматически определяем протокол на основе состава переданных заголовков
 			this->_proto = ::detectProto(headers);
+			// Приводим названия всех заголовков к канонической форме определённого протокола
+			this->_recase();
+		}
 	/**
 	 * Если возникает ошибка
 	 */
 	} catch(const exception & error) {
 		// Записываем ошибку в лог
-		this->error(__PRETTY_FUNCTION__, error.what());
+		this->_error(__PRETTY_FUNCTION__, error.what());
 	}
 }
 /**

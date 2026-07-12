@@ -98,6 +98,18 @@ if (CMAKE_EVENT_MAX_LOOP_WAIT)
     message(STATUS "Build with max event loop wait: ${CMAKE_EVENT_MAX_LOOP_WAIT}\n")
 endif (CMAKE_EVENT_MAX_LOOP_WAIT)
 
+# Если активирован флаг установки максимального количества заголовков в HTTP запросе/ответе (по умолчанию: 500)
+if (CMAKE_MAX_COUNT_HEADERS)
+    add_compile_definitions(AWH_MAX_COUNT_HEADERS=${CMAKE_MAX_COUNT_HEADERS})
+    message(STATUS "Build with max count headers: ${CMAKE_MAX_COUNT_HEADERS}\n")
+endif (CMAKE_MAX_COUNT_HEADERS)
+
+# Если активирован флаг установки максимального количества памяти для хранения заголовков в HTTP запросе/ответе (по умолчанию: 10485760 = 10Mb)
+if (CMAKE_MAX_MEMORY_HEADERS)
+    add_compile_definitions(AWH_MAX_MEMORY_HEADERS=${CMAKE_MAX_MEMORY_HEADERS})
+    message(STATUS "Build with max memory headers: ${CMAKE_MAX_MEMORY_HEADERS}\n")
+endif (CMAKE_MAX_MEMORY_HEADERS)
+
 # Если активирован флаг установки максимального размера очереди (по умолчанию: 1000)
 if (CMAKE_MAX_RECORDS_QUEUE)
     add_compile_definitions(AWH_MAX_RECORDS_QUEUE=${CMAKE_MAX_RECORDS_QUEUE})

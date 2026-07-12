@@ -36,14 +36,16 @@
 #endif
 
 /**
- * Стандартная библиотека
+ * Стандартные заголовочные файлы
  */
+#include <string>
 #include <vector>
 #include <unordered_set>
+#include <unordered_map>
 #include <initializer_list>
 
 /**
- * Подключаем наши заголовочные файлы
+ * Подключаем заголовочные файлы проекта
  */
 #include "provider.hpp"
 #include "../../sys/fmk.hpp"
@@ -237,7 +239,7 @@ namespace awh {
 						 * @param message текст сообщения об ошибке
 						 * @param flag    флаг важности сообщения
 						 */
-						void error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
+						void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
 					public:
 						/**
 						 * @brief Оператор преобразования в сырой итератор
@@ -346,7 +348,7 @@ namespace awh {
 						 * @param message текст сообщения об ошибке
 						 * @param flag    флаг важности сообщения
 						 */
-						void error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
+						void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
 					public:
 						/**
 						 * @brief Оператор преобразования в сырой константный итератор
@@ -430,7 +432,7 @@ namespace awh {
 					explicit Max() noexcept :
 					 memory(AWH_MAX_MEMORY_HEADERS),
 					 records(AWH_MAX_COUNT_HEADERS) {}
-				} __attribute__((packed)) max_t;
+				} max_t;
 			private:
 				// Размеры максимальныйх ограничений
 				max_t _max;
@@ -453,13 +455,38 @@ namespace awh {
 				const log_t * _log = nullptr;
 			private:
 				/**
+				 * @brief Метод приведения названий всех заголовков к канонической форме текущего протокола
+				 *
+				 * @details Для протоколов семейства HTTP/2 названия приводятся к нижнему регистру, для остальных -
+				 *          к «умному» регистру. Вызывается при изменении протокола, чтобы единая семантика
+				 *          регистра соблюдалась при любом способе доступа к заголовкам (не только при печати).
+				 */
+				void _recase() noexcept;
+			private:
+				/**
+				 * @brief Шаблон добавления нового заголовка
+				 *
+				 * @tparam Name    тип названия добавляемого заголовка
+				 * @tparam Content тип содержимого добавляемого заголовка
+				 */
+				template <typename Name, typename Content>
+				/**
+				 * @brief Метод добавления нового заголовка
+				 *
+				 * @param name    название заголовка
+				 * @param content содержимое заголовка
+				 * @return        общее количество заголовков
+				 */
+				size_t _emplace(Name && name, Content && content) noexcept;
+			private:
+				/**
 				 * @brief Метод вывода сообщения об ошибке в лог
 				 *
 				 * @param func    название функции, в которой произошла ошибка
 				 * @param message текст сообщения об ошибке
 				 * @param flag    флаг важности сообщения
 				 */
-				void error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
+				void _error(const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) const noexcept;
 			public:
 				/**
 				 * @brief Метод очистки всех данных заголовков
@@ -592,22 +619,6 @@ namespace awh {
 				 * @return     список значений одинаковых заголовков
 				 */
 				vector <string> range(string_view name) const noexcept;
-			private:
-				/**
-				 * @brief Шаблон добавления нового заголовка
-				 *
-				 * @tparam Name    тип названия добавляемого заголовка
-				 * @tparam Content тип содержимого добавляемого заголовка
-				 */
-				template <typename Name, typename Content>
-				/**
-				 * @brief Метод добавления нового заголовка
-				 *
-				 * @param name    название заголовка
-				 * @param content содержимое заголовка
-				 * @return        общее количество заголовков
-				 */
-				size_t _emplace(Name && name, Content && content) noexcept;
 			public:
 				/**
 				 * @brief Метод добавления или замены заголовка
@@ -1218,6 +1229,25 @@ namespace awh {
 				 * @param log объект для работы с логами
 				 */
 				explicit Headers(const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param proto протокол HTTP-запроса/ответа
+				 */
+				explicit Headers(const proto_t proto, const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param provider объект провайдера HTTP-запроса/ответа
+				 */
+				explicit Headers(const provider_t * provider, const fmk_t * fmk, const log_t * log) noexcept;
+				/**
+				 * @brief Конструктор
+				 *
+				 * @param provider объект провайдера HTTP-запроса/ответа
+				 */
+				explicit Headers(unique_ptr <provider_t> && provider, const fmk_t * fmk, const log_t * log) noexcept;
+			public:
 				/**
 				 * @brief Конструктор
 				 *

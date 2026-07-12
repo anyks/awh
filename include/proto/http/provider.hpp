@@ -21,6 +21,7 @@
 #include <map>
 #include <memory>
 #include <string>
+#include <string_view>
 
 /**
  * Подключаем наши заголовочные файлы
@@ -44,56 +45,87 @@ namespace awh {
 	 */
 	namespace http {
 		/**
-		 * @brief Сообщения HTTP-ответов сервера
+		 * @brief Функция получения стандартного сообщения HTTP-ответа по коду
 		 *
+		 * @details Таблица сообщений хранится как локальная static constexpr-таблица указателей на строковые
+		 *          литералы: данные размещаются в .rodata, без конструкторов при старте программы и без
+		 *          динамических аллокаций. Функция помечена inline, поэтому во всей программе существует
+		 *          единственный экземпляр таблицы (без inline-переменных, требующих C++17).
+		 *
+		 * @param code код ответа сервера
+		 * @return     стандартное сообщение либо пустое представление, если код неизвестен
 		 */
-		static const map <uint16_t, string> messages = {
-			{0, "Not Answer"},
-			{100, "Continue"},
-			{101, "Switching Protocols"},
-			{102, "Processing"},
-			{103, "Early Hints"},
-			{200, "OK"},
-			{201, "Created"},
-			{202, "Accepted"},
-			{203, "Non-Authoritative Information"},
-			{204, "No Content"},
-			{205, "Reset Content"},
-			{206, "Partial Content"},
-			{300, "Multiple Choice"},
-			{301, "Moved Permanently"},
-			{302, "Found"},
-			{303, "See Other"},
-			{304, "Not Modified"},
-			{305, "Use Proxy"},
-			{306, "Switch Proxy"},
-			{307, "Temporary Redirect"},
-			{308, "Permanent Redirect"},
-			{400, "Bad Request"},
-			{401, "Authentication Required"},
-			{402, "Payment Required"},
-			{403, "Forbidden"},
-			{404, "Not Found"},
-			{405, "Method Not Allowed"},
-			{406, "Not Acceptable"},
-			{407, "Proxy Authentication Required"},
-			{408, "Request Timeout"},
-			{409, "Conflict"},
-			{410, "Gone"},
-			{411, "Length Required"},
-			{412, "Precondition Failed"},
-			{413, "Request Entity Too Large"},
-			{414, "Request-URI Too Long"},
-			{415, "Unsupported Media Type"},
-			{416, "Requested Range Not Satisfiable"},
-			{417, "Expectation Failed"},
-			{500, "Internal Server Error"},
-			{501, "Not Implemented"},
-			{502, "Bad Gateway"},
-			{503, "Service Unavailable"},
-			{504, "Gateway Timeout"},
-			{505, "HTTP Version Not Supported"}
-		};
+		inline string_view statusMessage(const uint16_t code) noexcept {
+			/**
+			 * @brief Структура записи таблицы стандартных сообщений HTTP-ответов сервера
+			 *
+			 */
+			struct Message {
+				// Код ответа сервера
+				uint16_t code = 0;
+				// Стандартное сообщение сервера (указатель на строковый литерал в .rodata)
+				const char * text = nullptr;
+			};
+			// Таблица стандартных сообщений HTTP-ответов сервера
+			static constexpr Message messages[] = {
+				{0, "Not Answer"},
+				{100, "Continue"},
+				{101, "Switching Protocols"},
+				{102, "Processing"},
+				{103, "Early Hints"},
+				{200, "OK"},
+				{201, "Created"},
+				{202, "Accepted"},
+				{203, "Non-Authoritative Information"},
+				{204, "No Content"},
+				{205, "Reset Content"},
+				{206, "Partial Content"},
+				{300, "Multiple Choice"},
+				{301, "Moved Permanently"},
+				{302, "Found"},
+				{303, "See Other"},
+				{304, "Not Modified"},
+				{305, "Use Proxy"},
+				{306, "Switch Proxy"},
+				{307, "Temporary Redirect"},
+				{308, "Permanent Redirect"},
+				{400, "Bad Request"},
+				{401, "Authentication Required"},
+				{402, "Payment Required"},
+				{403, "Forbidden"},
+				{404, "Not Found"},
+				{405, "Method Not Allowed"},
+				{406, "Not Acceptable"},
+				{407, "Proxy Authentication Required"},
+				{408, "Request Timeout"},
+				{409, "Conflict"},
+				{410, "Gone"},
+				{411, "Length Required"},
+				{412, "Precondition Failed"},
+				{413, "Request Entity Too Large"},
+				{414, "Request-URI Too Long"},
+				{415, "Unsupported Media Type"},
+				{416, "Requested Range Not Satisfiable"},
+				{417, "Expectation Failed"},
+				{500, "Internal Server Error"},
+				{501, "Not Implemented"},
+				{502, "Bad Gateway"},
+				{503, "Service Unavailable"},
+				{504, "Gateway Timeout"},
+				{505, "HTTP Version Not Supported"}
+			};
+			/**
+			 * Выполняем перебор таблицы стандартных сообщений
+			 */
+			for(const auto & item : messages){
+				// Если код ответа совпадает - возвращаем соответствующее стандартное сообщение
+				if(item.code == code)
+					// Возвращаем найденное стандартное сообщение
+					return item.text;
+			}
+			// Стандартное сообщение для указанного кода не найдено
+			return "";
+		}
 
 		/**
 		 * @brief Класс провайдера
