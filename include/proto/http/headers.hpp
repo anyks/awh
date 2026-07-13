@@ -20,9 +20,9 @@
  */
 #ifndef AWH_MAX_COUNT_HEADERS
 	/**
-	 * Устанавливаем максимальное количество заголовков в 500
+	 * Устанавливаем максимальное количество заголовков в 100
 	 */
-	#define AWH_MAX_COUNT_HEADERS 0x1F4
+	#define AWH_MAX_COUNT_HEADERS 0x64
 #endif
 
 /**
@@ -30,9 +30,9 @@
  */
 #ifndef AWH_MAX_MEMORY_HEADERS
 	/**
-	 * Устанавливаем максимальное значение потребляемой памяти 10Mb
+	 * Устанавливаем максимальное значение потребляемой памяти 16 КБ
 	 */
-	#define AWH_MAX_MEMORY_HEADERS 0xA00000
+	#define AWH_MAX_MEMORY_HEADERS 0x4000
 #endif
 
 /**
