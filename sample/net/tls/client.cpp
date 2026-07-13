@@ -82,8 +82,8 @@ int32_t main(int32_t argc, char * argv[]){
 		tls.grease(cts, event::mode_t::ENABLED);
 		// Устанавливаем компрессор для транспортного уровня TLS
 		tls.compressors(cts, {
-			compressor_t::method_t::BROTLI,
-			compressor_t::method_t::ZSTD
+			compressor::method_t::BROTLI,
+			compressor::method_t::ZSTD
 		});
 		// Создаём идентификатор транспортного уровня DTLS
 		tls::coder_t::id_t ctl = tls.transport(cts);

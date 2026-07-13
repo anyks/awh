@@ -42,7 +42,7 @@ TEST_F(CompressorFixture, ResetAndCreateCompressorTest){
 	// Проверяем, что объект компрессии сброшен
 	ASSERT_TRUE(this->_compressor == nullptr);
 	// Создаём объект компрессии заново
-	this->_compressor = std::make_unique <awh::compressor_t> (this->_log.get());
+	this->_compressor = std::make_unique <awh::compressor::block_t> (this->_log.get());
 	// Проверяем, что объект компрессии создан
 	ASSERT_TRUE(this->_compressor != nullptr);
 }
@@ -55,9 +55,9 @@ TEST_F(CompressorFixture, ReCreateCompressorTest){
 	// Проверяем, что объект компрессии создан
 	ASSERT_TRUE(this->_compressor != nullptr);
 	// Создаём объект компрессии заново
-	this->_compressor = std::make_unique <awh::compressor_t> (this->_log.get());
+	this->_compressor = std::make_unique <awh::compressor::block_t> (this->_log.get());
 	// Отключаем потокобезопасность
-	this->_compressor->threadSafety(awh::compressor_t::mode_t::DISABLED);
+	this->_compressor->threadSafety(false);
 	// Проверяем, что объект компрессии создан
 	ASSERT_TRUE(this->_compressor != nullptr);
 }

@@ -19,7 +19,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
-#include "../../../include/sys/compressor.hpp"
+#include "../../../include/compressor/block.hpp"
 
 /**
  * @brief Класс фикстуры для тестов компрессии
@@ -32,7 +32,7 @@ class CompressorFixture : public testing::Test {
 		// Объект логов
 		std::unique_ptr <awh::log_t> _log;
 		// Объект компрессии
-		std::unique_ptr <awh::compressor_t> _compressor;
+		std::unique_ptr <awh::compressor::block_t> _compressor;
 	public:
 		/**
 		 * @brief Метод инициализации тестовой среды

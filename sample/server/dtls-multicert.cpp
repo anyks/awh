@@ -284,15 +284,15 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	// Устанавливаем компрессор для транспортного уровня TLS для базового шаблона TLS
 	tls.compressors(cts1, {
-		compressor_t::method_t::ZLIB,
-		compressor_t::method_t::ZSTD,
-		compressor_t::method_t::BROTLI
+		compressor::method_t::ZLIB,
+		compressor::method_t::ZSTD,
+		compressor::method_t::BROTLI
 	});
 	// Устанавливаем компрессор для транспортного уровня TLS для шаблона TLS с точным доменным именем
 	tls.compressors(cts2, {
-		compressor_t::method_t::ZLIB,
-		compressor_t::method_t::ZSTD,
-		compressor_t::method_t::BROTLI
+		compressor::method_t::ZLIB,
+		compressor::method_t::ZSTD,
+		compressor::method_t::BROTLI
 	});
 	// Устанавливаем идентификатор TLS для сервера
 	server.setSecurityId(cts1);

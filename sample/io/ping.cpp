@@ -407,7 +407,9 @@ int32_t main(int32_t argc, char * argv[]){
 					icmp.code = 0;
 					// Последовательность
 					uint16_t sequence = 0;
-					// Выполняем пинг 10 раз
+					/**
+					 * Выполняем пинг 10 раз
+					 */
 					for(uint8_t i = 0; i < 10; i++){
 						// Устанавливаем номер последовательности
 						icmp.sequence = htons(sequence);

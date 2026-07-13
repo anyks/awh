@@ -27,7 +27,7 @@
 #include "../event.hpp"
 #include "../../sys/fmk.hpp"
 #include "../../sys/log.hpp"
-#include "../../sys/compressor.hpp"
+#include "../../compressor/block.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -199,7 +199,7 @@ namespace awh {
 				// Объект работы с IP-адресами
 				net_addr_t _addr;
 				// Объект работы с компрессией
-				awh::compressor_t _compressor;
+				awh::compressor::block_t _compressor;
 			private:
 				// Объект работы с отпечатками TLS
 				const fgp_t * _fgp;
@@ -611,7 +611,7 @@ namespace awh {
 				 * @param id     идентификатор события
 				 * @param methods список поддерживаемых алгоритмов компрессии сертификата
 				 */
-				void compressors(const id_t id, const vector <awh::compressor_t::method_t> & methods) noexcept;
+				void compressors(const id_t id, const vector <awh::compressor::method_t> & methods) noexcept;
 			public:
 				/**
 				 * @brief Метод генерации заранее клиентом эфемерного ключа и отправки серверу для поддерживаемых групп эллиптических кривых

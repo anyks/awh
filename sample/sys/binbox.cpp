@@ -50,7 +50,9 @@ int32_t main(int32_t argc, char * argv[]){
 	binbox.add("Float", 3.1415926f);
 	binbox.add("Double", 3.14159265358979323846);
 	binbox.add("Boolean", true);
-	// Проверяем все записи в контейнере
+	/**
+	 * Проверяем все записи в контейнере
+	 */
 	for(auto & record : binbox){
 		// Возвращаем размер данных
 		cout << "Size: " << record.size << endl;
@@ -65,7 +67,9 @@ int32_t main(int32_t argc, char * argv[]){
 	binbox.save("binbox.dat");
 	// Загружаем контейнер из файла
 	binbox.load("binbox.dat");
-	// Проверяем все записи в контейнере
+	/**
+	 * Проверяем все записи в контейнере после загрузки из файла
+	 */
 	for(auto & record : binbox){
 		// Возвращаем размер данных
 		cout << "Size: " << record.size << endl;

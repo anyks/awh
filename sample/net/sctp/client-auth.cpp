@@ -1415,7 +1415,9 @@ int32_t main(int32_t argc, char * argv[]){
 		vector <net::sctp::auth_chunk_t> chunks;
 		// Выполняем извлечение чанков аутентификации SCTP-сокета
 		sctp.authenticateChunks(eid, event::origin_t::LOCAL, chunks);
-		// Перебираем все извлечённые чанки
+		/**
+		 * Перебираем все извлечённые чанки
+		 */
 		for(auto & chunk : chunks)
 			// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 			cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
@@ -1520,7 +1522,9 @@ int32_t main(int32_t argc, char * argv[]){
 							vector <net::sctp::auth_chunk_t> chunks;
 							// Выполняем извлечение чанков аутентификации SCTP-сокета
 							sctp.authenticateChunks(eid, event::origin_t::LOCAL, chunks);
-							// Перебираем все извлечённые чанки
+							/**
+							 * Перебираем все извлечённые чанки
+							 */
 							for(auto & chunk : chunks)
 								// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 								cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;
@@ -1632,7 +1636,9 @@ int32_t main(int32_t argc, char * argv[]){
 					cout << "  - Pending Data: " << status.penddata << endl;
 					// Выполняем извлечение чанков аутентификации SCTP-сокета
 					sctp.authenticateChunks(eid, event::origin_t::REMOTE, chunks);
-					// Перебираем все извлечённые чанки
+					/**
+					 * Перебираем все извлечённые чанки
+					 */
 					for(auto & chunk : chunks)
 						// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 						cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << endl;

@@ -63,7 +63,9 @@ int32_t main(int32_t argc, char * argv[]){
 				if(cluster.master()){
 					// Текст сообщения для отправки
 					const string message = "Hello from master process!";
-					// Переходим по всему списку дочерних процессов
+					/**
+					 * Переходим по всему списку дочерних процессов
+					 */
 					for(auto & pid : cluster.workers())
 						// Отправляем сообщение всем дочерним процессам
 						cluster.send(pid, message.c_str(), message.length());

@@ -1785,11 +1785,6 @@ namespace ssl {
 	 */
 	namespace compressor {
 		/**
-		 * Используем пространство имён AWH
-		 */
-		using namespace awh;
-
-		/**
 		 * @brief Функция обратного вызова для компрессии данных методом Zlib
 		 *
 		 * @param ssl  объект SSL
@@ -1806,11 +1801,11 @@ namespace ssl {
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
 				::local::certBuffer.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::ZLIB, ::local::certBuffer);
+				compressor->compress(in, size, awh::compressor::method_t::ZLIB, ::local::certBuffer);
 				// Если буфер не пустой
 				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
@@ -1839,11 +1834,11 @@ namespace ssl {
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
 				::local::certBuffer.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::BROTLI, ::local::certBuffer);
+				compressor->compress(in, size, awh::compressor::method_t::BROTLI, ::local::certBuffer);
 				// Если буфер не пустой
 				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
@@ -1872,11 +1867,11 @@ namespace ssl {
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после компрессии
 				::local::certBuffer.clear();
 				// Выполняем компрессию данных
-				compressor->compress(in, size, awh::compressor_t::method_t::ZSTD, ::local::certBuffer);
+				compressor->compress(in, size, awh::compressor::method_t::ZSTD, ::local::certBuffer);
 				// Если буфер не пустой
 				if(!::local::certBuffer.empty()){
 					// Выполняем копирование данных в выходной буфер
@@ -1906,11 +1901,11 @@ namespace ssl {
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
 				::local::certBuffer.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::ZLIB, ::local::certBuffer);
+				compressor->decompress(in, size, awh::compressor::method_t::ZLIB, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(::local::certBuffer.size() != length)
 					// Возвращаем отрицательный результат
@@ -1943,11 +1938,11 @@ namespace ssl {
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
 				::local::certBuffer.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::BROTLI, ::local::certBuffer);
+				compressor->decompress(in, size, awh::compressor::method_t::BROTLI, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(::local::certBuffer.size() != length)
 					// Возвращаем отрицательный результат
@@ -1980,11 +1975,11 @@ namespace ssl {
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Получаем объект компрессора из контекста SSL
-				awh::compressor_t * compressor = reinterpret_cast <awh::compressor_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
+				awh::compressor::block_t * compressor = reinterpret_cast <awh::compressor::block_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[3]));
 				// Буфер для хранения данных после декомпрессии
 				::local::certBuffer.clear();
 				// Выполняем декомпрессию данных
-				compressor->decompress(in, size, awh::compressor_t::method_t::ZSTD, ::local::certBuffer);
+				compressor->decompress(in, size, awh::compressor::method_t::ZSTD, ::local::certBuffer);
 				// Если размер декомпрессированных данных не соответствует ожидаемому
 				if(::local::certBuffer.size() != length)
 					// Возвращаем отрицательный результат
@@ -2113,19 +2108,19 @@ namespace cookie {
 		// Если функция обратного вызова ошибки не установлена
 		else {
 			// Получаем объект логирования
-			awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+			log_t * log = reinterpret_cast <log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 			/**
 			 * Если включён режим отладки
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
+				log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.c_str());
 			/**
 			 * Если режим отладки не включён
 			 */
 			#else
 				// Записываем ошибку в лог
-				log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
+				log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 			#endif
 		}
 		// Выходим из функции с неудачей
@@ -2164,19 +2159,19 @@ namespace cookie {
 				// Если функция обратного вызова ошибки не установлена
 				else {
 					// Получаем объект логирования
-					awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+					log_t * log = reinterpret_cast <log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 					/**
 					 * Если включён режим отладки
 					 */
 					#if DEBUG_MODE
 						// Записываем ошибку в лог
-						log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
+						log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.c_str());
 					/**
 					 * Если режим отладки не включён
 					 */
 					#else
 						// Записываем ошибку в лог
-						log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
+						log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 					#endif
 				}
 				// Выходим и сообщаем, что генерация куков не удалась
@@ -2210,19 +2205,19 @@ namespace cookie {
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
-				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+				log_t * log = reinterpret_cast <log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
+					log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в log
-					log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
+					log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 				#endif
 			}
 			// Выходим и сообщаем, что генерация куков не удалась
@@ -2331,19 +2326,19 @@ namespace cookie {
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
-				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+				log_t * log = reinterpret_cast <log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::CRITICAL, error.c_str());
+					log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", awh::log_t::flag_t::CRITICAL, error.c_str());
+					log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
 				#endif
 			}
 			// Выходим и сообщаем, что генерация куков не удалась
@@ -2562,19 +2557,19 @@ namespace verify {
 			// Если функция обратного вызова ошибки не установлена
 			else {
 				// Получаем объект логирования
-				awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
+				log_t * log = reinterpret_cast <log_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[2]));
 				/**
 				 * Если включён режим отладки
 				 */
 				#if DEBUG_MODE
 					// Записываем ошибку в лог
-					log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
+					log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.c_str());
 				/**
 				 * Если режим отладки не включён
 				 */
 				#else
 					// Записываем ошибку в лог
-					log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
+					log->print("%s", log_t::flag_t::WARNING, error.c_str());
 				#endif
 			}
 		}
@@ -2813,19 +2808,19 @@ namespace verify {
 						// Если функция обратного вызова ошибки не установлена
 						else {
 							// Получаем объект логирования
-							awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
+							log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
 							/**
 							 * Если включён режим отладки
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
+								log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.c_str());
 							/**
 							 * Если режим отладки не включён
 							 */
 							#else
 								// Записываем ошибку в лог
-								log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
+								log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
 					// Если данные сертификата получены
@@ -2849,19 +2844,19 @@ namespace verify {
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								// Получаем объект логирования
-								awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
+								log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
 								/**
 								 * Если включён режим отладки
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
+									log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.c_str());
 								/**
 								 * Если режим отладки не включён
 								 */
 								#else
 									// Записываем ошибку в лог
-									log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
+									log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							}
 						// Если имя эмитента получено
@@ -2881,9 +2876,9 @@ namespace verify {
 								 */
 								#if DEBUG_MODE
 									// Получаем объект логирования
-									awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
+									log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
 									// Записываем в лог сообщение
-									log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", awh::log_t::flag_t::INFO, member->host.c_str(), fqdn);
+									log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, member->host.c_str(), fqdn);
 								#endif
 							// Если ресурс не найден тогда выводим сообщение об ошибке
 							} else {
@@ -2926,7 +2921,7 @@ namespace verify {
 								// Выполняем получение идентификатора контекста TLS
 								const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 								// Получаем объект фреймворка
-								awh::fmk_t * fmk = reinterpret_cast <awh::fmk_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[5]));
+								fmk_t * fmk = reinterpret_cast <fmk_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[5]));
 								// Если функция обратного вызова состояния установлена
 								if(member->callback.state != nullptr)
 									// Вызываем функцию обратного вызова состояния
@@ -2940,19 +2935,19 @@ namespace verify {
 								// Если функция обратного вызова ошибки не установлена
 								else {
 									// Получаем объект логирования
-									awh::log_t * log = reinterpret_cast <awh::log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
+									log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
 									/**
 									 * Если включён режим отладки
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, {}, awh::log_t::flag_t::WARNING, error.c_str());
+										log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.c_str());
 									/**
 									 * Если режим отладки не включён
 									 */
 									#else
 										// Записываем ошибку в лог
-										log->print("%s", awh::log_t::flag_t::WARNING, error.c_str());
+										log->print("%s", log_t::flag_t::WARNING, error.c_str());
 									#endif
 								}
 							}
@@ -6180,7 +6175,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Привязываем текущий объект лога к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[2], const_cast <log_t *> (this->_log));
 						// Привязываем текущий объект компрессора к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <awh::compressor_t *> (&this->_compressor));
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor::block_t *> (&this->_compressor));
 						// Создаём объект BIO для чтения
 						member->bio.read = ::BIO_new(::BIO_s_mem());
 						// Создаём объект BIO для записи
@@ -6389,7 +6384,7 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 						// Привязываем текущий объект лога к SSL объекту
 						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[2], const_cast <log_t *> (this->_log));
 						// Привязываем текущий объект компрессора к SSL объекту
-						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <awh::compressor_t *> (&this->_compressor));
+						::SSL_set_ex_data(member->ssl, ::__awh_ssl_index__[3], const_cast <compressor::block_t *> (&this->_compressor));
 						// Создаём объект BIO для чтения
 						member->bio.read = ::BIO_new(::BIO_s_mem());
 						// Создаём объект BIO для записи
@@ -9270,7 +9265,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									// Если тип расширения соответствует compress_certificate
 									case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
 										// Список поддерживаемых методов компрессии сертификата TLS
-										vector <awh::compressor_t::method_t> methods;
+										vector <compressor::method_t> methods;
 										/**
 										 * Перебираем весь список поддерживаемых компрессоров
 										 */
@@ -9282,17 +9277,17 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 												// Если компрессор является Zlib
 												case static_cast <uint8_t> (compressor_t::ZLIB):
 													// Добавляем метод компрессии Zlib в список поддерживаемых методов компрессии
-													methods.push_back(awh::compressor_t::method_t::ZLIB);
+													methods.push_back(compressor::method_t::ZLIB);
 												break;
 												// Если компрессор является ZSTD (Zstandard)
 												case static_cast <uint8_t> (compressor_t::ZSTD):
 													// Добавляем метод компрессии ZSTD в список поддерживаемых методов компрессии
-													methods.push_back(awh::compressor_t::method_t::ZSTD);
+													methods.push_back(compressor::method_t::ZSTD);
 												break;
 												// Если компрессор является Brotli
 												case static_cast <uint8_t> (compressor_t::BROTLI):
 													// Добавляем метод компрессии Brotli в список поддерживаемых методов компрессии
-													methods.push_back(awh::compressor_t::method_t::BROTLI);
+													methods.push_back(compressor::method_t::BROTLI);
 												break;
 											}
 										}
@@ -9436,7 +9431,7 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 									// Если тип расширения соответствует compress_certificate
 									case static_cast <uint8_t> (awh::tls::extension_type_t::COMPRESS_CERTIFICATE): {
 										// Список поддерживаемых методов компрессии сертификата TLS
-										vector <awh::compressor_t::method_t> methods;
+										vector <compressor::method_t> methods;
 										/**
 										 * Перебираем весь список поддерживаемых компрессоров
 										 */
@@ -9448,17 +9443,17 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 												// Если компрессор является Zlib
 												case static_cast <uint8_t> (compressor_t::ZLIB):
 													// Добавляем метод компрессии Zlib в список поддерживаемых методов компрессии
-													methods.push_back(awh::compressor_t::method_t::ZLIB);
+													methods.push_back(compressor::method_t::ZLIB);
 												break;
 												// Если компрессор является ZSTD (Zstandard)
 												case static_cast <uint8_t> (compressor_t::ZSTD):
 													// Добавляем метод компрессии ZSTD в список поддерживаемых методов компрессии
-													methods.push_back(awh::compressor_t::method_t::ZSTD);
+													methods.push_back(compressor::method_t::ZSTD);
 												break;
 												// Если компрессор является Brotli
 												case static_cast <uint8_t> (compressor_t::BROTLI):
 													// Добавляем метод компрессии Brotli в список поддерживаемых методов компрессии
-													methods.push_back(awh::compressor_t::method_t::BROTLI);
+													methods.push_back(compressor::method_t::BROTLI);
 												break;
 											}
 										}
@@ -10397,7 +10392,7 @@ void awh::tls::Coder::signature(const id_t id, const vector <signature_t> & sign
  * @param id     идентификатор события
  * @param methods список поддерживаемых алгоритмов компрессии сертификата
  */
-void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t::method_t> & methods) noexcept {
+void awh::tls::Coder::compressors(const id_t id, const vector <compressor::method_t> & methods) noexcept {
 	/**
 	 * Если мы используем BoringSSL или версия OpenSSL соответствует или выше версии 3.2
 	 */
@@ -10429,7 +10424,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 								 */
 								switch(static_cast <uint8_t> (method)){
 									// Если алгоритм компрессии сертификата соответствует Zlib
-									case static_cast <uint8_t> (awh::compressor_t::method_t::ZLIB): {
+									case static_cast <uint8_t> (compressor::method_t::ZLIB): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -10469,7 +10464,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует Brotli
-									case static_cast <uint8_t> (awh::compressor_t::method_t::BROTLI): {
+									case static_cast <uint8_t> (compressor::method_t::BROTLI): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -10509,7 +10504,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
-									case static_cast <uint8_t> (awh::compressor_t::method_t::ZSTD): {
+									case static_cast <uint8_t> (compressor::method_t::ZSTD): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -10593,7 +10588,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 								 */
 								switch(static_cast <uint8_t> (method)){
 									// Если алгоритм компрессии сертификата соответствует Zlib
-									case static_cast <uint8_t> (awh::compressor_t::method_t::ZLIB): {
+									case static_cast <uint8_t> (compressor::method_t::ZLIB): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -10633,7 +10628,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует Brotli
-									case static_cast <uint8_t> (awh::compressor_t::method_t::BROTLI): {
+									case static_cast <uint8_t> (compressor::method_t::BROTLI): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,
@@ -10673,7 +10668,7 @@ void awh::tls::Coder::compressors(const id_t id, const vector <awh::compressor_t
 										}
 									} break;
 									// Если алгоритм компрессии сертификата соответствует ZStandard (Zstd)
-									case static_cast <uint8_t> (awh::compressor_t::method_t::ZSTD): {
+									case static_cast <uint8_t> (compressor::method_t::ZSTD): {
 										// Устанавливаем поддерживаемый алгоритм компрессии сертификата для TLS 1.3
 										if(::SSL_CTX_add_cert_compression_alg(
 											member->ctx,

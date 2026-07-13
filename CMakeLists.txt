@@ -110,6 +110,12 @@ if (CMAKE_MAX_MEMORY_HEADERS)
     message(STATUS "Build with max memory headers: ${CMAKE_MAX_MEMORY_HEADERS}\n")
 endif (CMAKE_MAX_MEMORY_HEADERS)
 
+# Если активирован флаг установки размера блока для потокового сжатия (по умолчанию: 65536 = 64 КБ)
+if (CMAKE_COMPRESSOR_STREAM_CHUNK)
+    add_compile_definitions(AWH_COMPRESSOR_STREAM_CHUNK=${CMAKE_COMPRESSOR_STREAM_CHUNK})
+    message(STATUS "Build with compressor stream chunk: ${CMAKE_COMPRESSOR_STREAM_CHUNK}\n")
+endif (CMAKE_COMPRESSOR_STREAM_CHUNK)
+
 # Если активирован флаг установки максимального размера очереди (по умолчанию: 1000)
 if (CMAKE_MAX_RECORDS_QUEUE)
     add_compile_definitions(AWH_MAX_RECORDS_QUEUE=${CMAKE_MAX_RECORDS_QUEUE})
@@ -512,7 +518,6 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
-    "${CMAKE_SOURCE_DIR}/src/sys/compressor.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/nwt.cpp"
@@ -536,12 +541,13 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/client/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/server/socks5.cpp"
+    "${CMAKE_SOURCE_DIR}/src/compressor/block.cpp"
+    "${CMAKE_SOURCE_DIR}/src/compressor/stream.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/socks5.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/client.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/headers.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/provider.cpp"
-    "${CMAKE_SOURCE_DIR}/src/compressor/stateless.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
@@ -779,8 +785,10 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с шифрованием и хэшированием
     option(CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE "Build Crypto app sample" ON)
 
-    # Устанавливаем имя приложения работы с компрессией данных
-    SET(COMPRESSOR_APP_SYS_NAME sys-compressor)
+    # Устанавливаем имя приложения блочной компрессии данных
+    SET(COMPRESSOR_APP_BLOCK_NAME compressor-block)
+    # Устанавливаем имя приложения потоковой компрессии данных
+    SET(COMPRESSOR_APP_STREAM_NAME compressor-stream)
     # Указываем что нужно собрать приложение работы с компрессией данных
     option(CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE "Build Compressor app sample" ON)
 
@@ -1252,8 +1260,10 @@ if (${CMAKE_BUILD_SAMPLES})
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample Compressor: Yes\n")
-        # Выполняем создание приложения работы с компрессией данных
-        add_sample(${COMPRESSOR_APP_SYS_NAME} sample/sys/compressor.cpp sys)
+        # Выполняем создание приложения блочной компрессии данных
+        add_sample(${COMPRESSOR_APP_BLOCK_NAME} sample/compressor/block.cpp compressor)
+        # Выполняем создание приложения потоковой компрессии данных
+        add_sample(${COMPRESSOR_APP_STREAM_NAME} sample/compressor/stream.cpp compressor)
     # Если не нужно собирать семплы для работы с компрессией данных
     else()
         # Выводим сообщение о сборке семпла
@@ -2016,7 +2026,13 @@ if (CMAKE_SHARED_BUILD_LIB)
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
             # Выполняем сборку приложения компрессии данных
             target_link_libraries(
-                ${COMPRESSOR_APP_SYS_NAME}
+                ${COMPRESSOR_APP_BLOCK_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            target_link_libraries(
+                ${COMPRESSOR_APP_STREAM_NAME}
                 ${AWH_LIB_NAME}
                 ${TCMALLOC_LIBRARIES}
                 ${AWH_FLAGS}
@@ -2920,7 +2936,14 @@ else (CMAKE_SHARED_BUILD_LIB)
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
             # Выполняем сборку приложения компрессии данных
             target_link_libraries(
-                ${COMPRESSOR_APP_SYS_NAME}
+                ${COMPRESSOR_APP_BLOCK_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            target_link_libraries(
+                ${COMPRESSOR_APP_STREAM_NAME}
                 ${AWH_LIB_NAME}
                 ${DEPEND_LIBRARY}
                 ${TCMALLOC_LIBRARIES}
@@ -3784,10 +3807,16 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать семплы для работы с компрессией данных
             if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
-                # Выполняем сборку приложения компрессии данных
-                add_custom_command(TARGET "${COMPRESSOR_APP_SYS_NAME}" POST_BUILD
-                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${COMPRESSOR_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${COMPRESSOR_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                # Выполняем сборку приложения блочной компрессии данных
+                add_custom_command(TARGET "${COMPRESSOR_APP_BLOCK_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${COMPRESSOR_APP_BLOCK_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${COMPRESSOR_APP_BLOCK_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+                # Выполняем сборку приложения потоковой компрессии данных
+                add_custom_command(TARGET "${COMPRESSOR_APP_STREAM_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${COMPRESSOR_APP_STREAM_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${COMPRESSOR_APP_STREAM_NAME}\" to enable core dump on MacOS X"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -4279,8 +4308,10 @@ if (${CMAKE_BUILD_SAMPLES})
 
             # Если нужно собрать семплы для работы с компрессией данных
             if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
-                # Выполняем анализ приложения компрессии данных
-                pvs_studio_add_target(TARGET ${COMPRESSOR_APP_SYS_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${COMPRESSOR_APP_SYS_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения блочной компрессии данных
+                pvs_studio_add_target(TARGET ${COMPRESSOR_APP_BLOCK_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${COMPRESSOR_APP_BLOCK_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
+                # Выполняем анализ приложения потоковой компрессии данных
+                pvs_studio_add_target(TARGET ${COMPRESSOR_APP_STREAM_NAME}.analyze ALL OUTPUT FORMAT json ANALYZE ${COMPRESSOR_APP_STREAM_NAME} MODE GA:1,2 LOG target.err ARGS -e ${CMAKE_CURRENT_BINARY_DIR})
             endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с каталогами
@@ -4755,8 +4786,10 @@ if (${CMAKE_BUILD_SAMPLES})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
-        # Устанавливаем приложение работы с компрессией данных
-        install(TARGETS ${COMPRESSOR_APP_SYS_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение блочной компрессии данных
+        install(TARGETS ${COMPRESSOR_APP_BLOCK_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение потоковой компрессии данных
+        install(TARGETS ${COMPRESSOR_APP_STREAM_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с каталогами

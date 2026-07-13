@@ -27,9 +27,9 @@ struct CompressorTestParameter {
 	// Размер скользящего окна
 	int16_t wbits = 0;
 	// Уровень компрессии
-	awh::compressor_t::level_t level = awh::compressor_t::level_t::NONE;
+	awh::compressor::level_t level = awh::compressor::level_t::NONE;
 	// Метод компрессии
-	awh::compressor_t::method_t method = awh::compressor_t::method_t::NONE;
+	awh::compressor::method_t method = awh::compressor::method_t::NONE;
 };
 
 /**
@@ -68,62 +68,62 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, CompressorTestParameterizedFixture,
 		CompressorTestParameter({
 			"Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::BEST,
-			awh::compressor_t::method_t::LZ4
+			awh::compressor::level_t::BEST,
+			awh::compressor::method_t::LZ4
 		}),
 		CompressorTestParameter({
 			"Anyks Framework, Anyks Framework, Anyks Framework, Anyks Framework, Anyks Framework, Anyks Framework!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::SPEED,
-			awh::compressor_t::method_t::LZMA
+			awh::compressor::level_t::SPEED,
+			awh::compressor::method_t::LZMA
 		}),
 		CompressorTestParameter({
 			"Compression and Decompression Test, Compression and Decompression Test, Compression and Decompression Test!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::NORMAL,
-			awh::compressor_t::method_t::GZIP
+			awh::compressor::level_t::NORMAL,
+			awh::compressor::method_t::GZIP
 		}),
 		CompressorTestParameter({
 			"Parameterized Unit Test for Compressor Class, Parameterized Unit Test for Compressor Class, Parameterized Unit Test for Compressor Class!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::BEST,
-			awh::compressor_t::method_t::ZSTD
+			awh::compressor::level_t::BEST,
+			awh::compressor::method_t::ZSTD
 		}),
 		CompressorTestParameter({
 			"Unit Testing with Google Test Framework, Unit Testing with Google Test Framework, Unit Testing with Google Test Framework!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::SPEED,
-			awh::compressor_t::method_t::BROTLI
+			awh::compressor::level_t::SPEED,
+			awh::compressor::method_t::BROTLI
 		}),
 		CompressorTestParameter({
 			"Data Compression Techniques in C++, Data Compression Techniques in C++, Data Compression Techniques in C++!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::NORMAL,
-			awh::compressor_t::method_t::BZIP2
+			awh::compressor::level_t::NORMAL,
+			awh::compressor::method_t::BZIP2
 		}),
 		CompressorTestParameter({
 			"Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::BEST,
-			awh::compressor_t::method_t::DEFLATE
+			awh::compressor::level_t::BEST,
+			awh::compressor::method_t::DEFLATE
 		}),
 		CompressorTestParameter({
 			"Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::SPEED,
-			awh::compressor_t::method_t::LIZARD
+			awh::compressor::level_t::SPEED,
+			awh::compressor::method_t::LIZARD
 		}),
 		CompressorTestParameter({
 			"Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::NORMAL,
-			awh::compressor_t::method_t::SNAPPY
+			awh::compressor::level_t::NORMAL,
+			awh::compressor::method_t::SNAPPY
 		}),
 		CompressorTestParameter({
 			"Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::BEST,
-			awh::compressor_t::method_t::DENSITY
+			awh::compressor::level_t::BEST,
+			awh::compressor::method_t::DENSITY
 		})
 	)
 );
@@ -138,7 +138,7 @@ struct CompressorTakeoverTestParameter {
 	// Размер скользящего окна
 	int16_t wbits = 0;
 	// Уровень компрессии
-	awh::compressor_t::level_t level = awh::compressor_t::level_t::NONE;
+	awh::compressor::level_t level = awh::compressor::level_t::NONE;
 };
 
 /**
@@ -161,14 +161,14 @@ TEST_P(CompressorTakeoverTestParameterizedFixture, CompressorTakeoverTest){
 	// Устанавливаем размер скользящего окна GZip
 	this->_compressor->wbitsGZip(this->_parameter.wbits);
 	// Включаем флаг переиспользования контекста компрессии/декомпрессии
-	this->_compressor->takeoverGZip(awh::compressor_t::event_t::ENCODE, true);
-	this->_compressor->takeoverGZip(awh::compressor_t::event_t::DECODE, true);
+	this->_compressor->takeoverGZip(awh::compressor::event_t::ENCODE, true);
+	this->_compressor->takeoverGZip(awh::compressor::event_t::DECODE, true);
 	// Выполняем компрессию данных
-	std::vector <uint8_t> compressed = std::move(this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, awh::compressor_t::method_t::DEFLATE));
+	std::vector <uint8_t> compressed = std::move(this->_compressor->compress <std::vector <uint8_t>> (this->_parameter.text, awh::compressor::method_t::DEFLATE));
 	// Проверяем что результат компрессии не пустой
 	ASSERT_FALSE(compressed.empty());
 	// Проверяем что результат декомпрессии совпадает с исходным текстом
-	ASSERT_EQ(this->_parameter.text, this->_compressor->decompress <std::string> (compressed, awh::compressor_t::method_t::DEFLATE));
+	ASSERT_EQ(this->_parameter.text, this->_compressor->decompress <std::string> (compressed, awh::compressor::method_t::DEFLATE));
 }
 
 /**
@@ -180,37 +180,37 @@ INSTANTIATE_TEST_SUITE_P(TestParameters, CompressorTakeoverTestParameterizedFixt
 		CompressorTakeoverTestParameter({
 			"Hello World, Hello World, Hello World, Hello World, Hello World, Hello World!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::BEST
+			awh::compressor::level_t::BEST
 		}),
 		CompressorTakeoverTestParameter({
 			"Anyks Framework, Anyks Framework, Anyks Framework, Anyks Framework, Anyks Framework, Anyks Framework!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::SPEED
+			awh::compressor::level_t::SPEED
 		}),
 		CompressorTakeoverTestParameter({
 			"Compression and Decompression Test, Compression and Decompression Test, Compression and Decompression Test!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::NORMAL
+			awh::compressor::level_t::NORMAL
 		}),
 		CompressorTakeoverTestParameter({
 			"Parameterized Unit Test for Compressor Class, Parameterized Unit Test for Compressor Class, Parameterized Unit Test for Compressor Class!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::BEST
+			awh::compressor::level_t::BEST
 		}),
 		CompressorTakeoverTestParameter({
 			"Unit Testing with Google Test Framework, Unit Testing with Google Test Framework, Unit Testing with Google Test Framework!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::SPEED
+			awh::compressor::level_t::SPEED
 		}),
 		CompressorTakeoverTestParameter({
 			"Data Compression Techniques in C++, Data Compression Techniques in C++, Data Compression Techniques in C++!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::NORMAL
+			awh::compressor::level_t::NORMAL
 		}),
 		CompressorTakeoverTestParameter({
 			"Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval, Efficient Data Storage and Retrieval!!!!!!!!!!!!!!!!?",
 			15,
-			awh::compressor_t::level_t::BEST
+			awh::compressor::level_t::BEST
 		})
 	)
 );

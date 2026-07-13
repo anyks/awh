@@ -53,7 +53,9 @@ int32_t main(int32_t argc, char * argv[]){
 	// dns.addServer("127.0.0.1");
 	// Устанавливаем функцию обратного вызова на событие получения канонического имени при резолвинге доменного имени
 	dns.on <void (const unit::dns_t::id_t, const unordered_multimap <string, string> &)> ("cname", [&log](const unit::dns_t::id_t did, const unordered_multimap <string, string> & cname) noexcept -> void {
-		// Записываем в лог информацию об успешно резолвленных канонических именах
+		/**
+		 * Записываем в лог информацию об успешно резолвленных канонических именах
+		 */
 		for(const auto & [fqdn, ip] : cname)
 			// Записываем в лог информацию об успешно резолвленном каноническом имени
 			log.print("Успешно резолвлено каноническое имя %s в IP-адрес: %s (ID: %u)", log_t::flag_t::INFO, fqdn.c_str(), ip.c_str(), did);

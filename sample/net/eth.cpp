@@ -113,7 +113,9 @@ int32_t main(int32_t argc, char * argv[]){
 	} else cout << "Gateway not found." << endl;
 	// Печатаем заголовок в отладочный вывод примера списка сетевых интерфейсов
 	cout << " --- Ifaces Example --- " << endl;
-	// Получаем список сетевых интерфейсов системы
+	/**
+	 * Получаем список сетевых интерфейсов системы
+	 */
 	for(auto & iface : iface.available())
 		// Возвращаем список сетевых интерфейсов системы
 		cout << "Interface: " << iface << endl;
@@ -144,7 +146,9 @@ int32_t main(int32_t argc, char * argv[]){
 	if(iface.flag(tunnel, event::eth_flag_t::UP, event::mode_t::ENABLED)){
 		// Записываем в лог сообщение об успешной установке флага интерфейса
 		cout << " Set interface " << tunnel << " UP" << endl;
-		// Перебираем все установленные флаги туннельного интерфейса
+		/**
+		 * Перебираем все установленные флаги туннельного интерфейса
+		 */
 		for(auto & flag : iface.flags(tunnel))
 			// Возвращаем флаг туннельного интерфейса
 			cout << "  Flag: " << static_cast <uint16_t> (flag) << endl;
@@ -152,7 +156,9 @@ int32_t main(int32_t argc, char * argv[]){
 		if(iface.flag(tunnel, event::eth_flag_t::UP, event::mode_t::DISABLED)){
 			// Записываем в лог сообщение об успешной установке флага интерфейса
 			cout << " Set interface " << tunnel << " DOWN" << endl;
-			// Перебираем все установленные флаги туннельного интерфейса
+			/**
+			 * Перебираем все установленные флаги туннельного интерфейса
+			 */
 			for(auto & flag : iface.flags(tunnel))
 				// Возвращаем флаг туннельного интерфейса
 				cout << "  Flag: " << static_cast <uint16_t> (flag) << endl;

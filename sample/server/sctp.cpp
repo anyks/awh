@@ -383,9 +383,9 @@ int32_t main(int32_t argc, char * argv[]){
 	});
 	// Устанавливаем компрессор для транспортного уровня TLS
 	tls.compressors(cts, {
-		compressor_t::method_t::ZLIB,
-		compressor_t::method_t::ZSTD,
-		compressor_t::method_t::BROTLI
+		compressor::method_t::ZLIB,
+		compressor::method_t::ZSTD,
+		compressor::method_t::BROTLI
 	});
 	// Включаем проверку имени хоста TLS
 	tls.validateServerNameIndication(cts, false);

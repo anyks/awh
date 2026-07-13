@@ -652,10 +652,16 @@ int32_t main(int32_t argc, char * argv[]){
 	cout << " URI Port: " << uri.port() << endl;
 	cout << " URI Fragment: " << uri.fragment() << endl;
 
+	/**
+	 * Выводим сегменты пути и параметры запроса URI
+	 */
 	for(const auto & segment : uri.path())
 		cout << " URI Path Segment: " << segment << endl;
 	cout << endl;
 
+	/**
+	 * Выводим параметры запроса URI
+	 */
 	for(const auto & [key, value] : uri.query())
 		cout << " URI Query Parameter: " << key << " = " << value << endl;
 	cout << endl;

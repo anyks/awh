@@ -28,6 +28,11 @@ using namespace std;
  */
 namespace {
 	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
 	 * @brief Функция приведения ASCII-символа к нижнему регистру
 	 *
 	 * @details Названия HTTP-заголовков и методов состоят исключительно из ASCII-символов,
@@ -139,45 +144,45 @@ namespace {
 	 * @param method текстовое название метода HTTP-запроса
 	 * @return       метод HTTP-запроса
 	 */
-	awh::http::method_t method(string_view method) noexcept {
+	http::method_t method(string_view method) noexcept {
 		// Если название метода соответствует GET
 		if(equals(method, "GET"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::GET;
+			return http::method_t::GET;
 		// Если название метода соответствует PUT
 		else if(equals(method, "PUT"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::PUT;
+			return http::method_t::PUT;
 		// Если название метода соответствует DELETE
 		else if(equals(method, "DELETE"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::DEL;
+			return http::method_t::DEL;
 		// Если название метода соответствует POST
 		else if(equals(method, "POST"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::POST;
+			return http::method_t::POST;
 		// Если название метода соответствует HEAD
 		else if(equals(method, "HEAD"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::HEAD;
+			return http::method_t::HEAD;
 		// Если название метода соответствует PATCH
 		else if(equals(method, "PATCH"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::PATCH;
+			return http::method_t::PATCH;
 		// Если название метода соответствует TRACE
 		else if(equals(method, "TRACE"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::TRACE;
+			return http::method_t::TRACE;
 		// Если название метода соответствует OPTIONS
 		else if(equals(method, "OPTIONS"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::OPTIONS;
+			return http::method_t::OPTIONS;
 		// Если название метода соответствует CONNECT
 		else if(equals(method, "CONNECT"))
 			// Возвращаем метод HTTP-запроса
-			return awh::http::method_t::CONNECT;
+			return http::method_t::CONNECT;
 		// Метод не распознан
-		return awh::http::method_t::NONE;
+		return http::method_t::NONE;
 	}
 	/**
 	 * @brief Функция получения текстового названия метода HTTP-запроса
@@ -185,45 +190,45 @@ namespace {
 	 * @param method метод HTTP-запроса
 	 * @return       текстовое название метода HTTP-запроса
 	 */
-	string_view method(const awh::http::method_t method) noexcept {
+	string_view method(const http::method_t method) noexcept {
 		/**
 		 * Определяем текстовое название метода HTTP-запроса
 		 */
 		switch(static_cast <uint8_t> (method)){
 			// Если метоод соответствует GET
-			case static_cast <uint8_t> (awh::http::method_t::GET):
+			case static_cast <uint8_t> (http::method_t::GET):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "GET";
 			// Если метоод соответствует PUT
-			case static_cast <uint8_t> (awh::http::method_t::PUT):
+			case static_cast <uint8_t> (http::method_t::PUT):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "PUT";
 			// Если метоод соответствует DELETE
-			case static_cast <uint8_t> (awh::http::method_t::DEL):
+			case static_cast <uint8_t> (http::method_t::DEL):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "DELETE";
 			// Если метоод соответствует POST
-			case static_cast <uint8_t> (awh::http::method_t::POST):
+			case static_cast <uint8_t> (http::method_t::POST):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "POST";
 			// Если метоод соответствует HEAD
-			case static_cast <uint8_t> (awh::http::method_t::HEAD):
+			case static_cast <uint8_t> (http::method_t::HEAD):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "HEAD";
 			// Если метоод соответствует PATCH
-			case static_cast <uint8_t> (awh::http::method_t::PATCH):
+			case static_cast <uint8_t> (http::method_t::PATCH):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "PATCH";
 			// Если метоод соответствует TRACE
-			case static_cast <uint8_t> (awh::http::method_t::TRACE):
+			case static_cast <uint8_t> (http::method_t::TRACE):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "TRACE";
 			// Если метоод соответствует OPTIONS
-			case static_cast <uint8_t> (awh::http::method_t::OPTIONS):
+			case static_cast <uint8_t> (http::method_t::OPTIONS):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "OPTIONS";
 			// Если метоод соответствует CONNECT
-			case static_cast <uint8_t> (awh::http::method_t::CONNECT):
+			case static_cast <uint8_t> (http::method_t::CONNECT):
 				// Возвращаем текстовое название метода HTTP-запроса
 				return "CONNECT";
 		}
@@ -236,33 +241,33 @@ namespace {
 	 * @param version версия протокола HTTP
 	 * @return        версия протокола HTTP в текстовом виде (например "1.1")
 	 */
-	string version(const awh::http::version_t version) noexcept {
+	string version(const http::version_t version) noexcept {
 		/**
 		 * Определяем текстовое представление версии протокола HTTP
 		 */
 		switch(static_cast <uint8_t> (version)){
 			// Если версия протокола соответствует HTTP/1.0
-			case static_cast <uint8_t> (awh::http::version_t::HTTP1_0):
+			case static_cast <uint8_t> (http::version_t::HTTP1_0):
 				// Возвращаем текстовое представление версии протокола
 				return "1.0";
 			// Если версия протокола соответствует HTTP/1.1
-			case static_cast <uint8_t> (awh::http::version_t::HTTP1_1):
+			case static_cast <uint8_t> (http::version_t::HTTP1_1):
 				// Возвращаем текстовое представление версии протокола
 				return "1.1";
 			// Если версия протокола соответствует HTTP/2
-			case static_cast <uint8_t> (awh::http::version_t::HTTP2):
+			case static_cast <uint8_t> (http::version_t::HTTP2):
 				// Возвращаем текстовое представление версии протокола
 				return "2.0";
 			// Если версия протокола соответствует HTTP/3
-			case static_cast <uint8_t> (awh::http::version_t::HTTP3):
+			case static_cast <uint8_t> (http::version_t::HTTP3):
 				// Возвращаем текстовое представление версии протокола
 				return "3.0";
 			// Если версия протокола соответствует HTTP/4
-			case static_cast <uint8_t> (awh::http::version_t::HTTP4):
+			case static_cast <uint8_t> (http::version_t::HTTP4):
 				// Возвращаем текстовое представление версии протокола
 				return "4.0";
 			// Если версия протокола соответствует HTTP/5
-			case static_cast <uint8_t> (awh::http::version_t::HTTP5):
+			case static_cast <uint8_t> (http::version_t::HTTP5):
 				// Возвращаем текстовое представление версии протокола
 				return "5.0";
 		}
@@ -281,18 +286,18 @@ namespace {
 	 * @param name   исходное название заголовка
 	 * @param proto  версия протокола HTTP-запроса/ответа
 	 */
-	void appendCasedName(string & result, string_view name, const awh::http::proto_t proto) noexcept {
+	void appendCasedName(string & result, string_view name, const http::proto_t proto) noexcept {
 		/**
 		 * Определяем версию протокола передачи данных
 		 */
 		switch(proto){
 			// Для протоколов HTTP/2, HTTP/3 и их модификаций (Proxy, Websocket) названия заголовков обязаны быть в нижнем регистре
-			case awh::http::proto_t::HTTP2:
-			case awh::http::proto_t::HTTP3:
-			case awh::http::proto_t::PROXY2:
-			case awh::http::proto_t::PROXY3:
-			case awh::http::proto_t::WEBSOCKET2:
-			case awh::http::proto_t::WEBSOCKET3: {
+			case http::proto_t::HTTP2:
+			case http::proto_t::HTTP3:
+			case http::proto_t::PROXY2:
+			case http::proto_t::PROXY3:
+			case http::proto_t::WEBSOCKET2:
+			case http::proto_t::WEBSOCKET3: {
 				/**
 				 * Дописываем название заголовка, приводя каждый символ к нижнему регистру без создания промежуточной строки
 				 */
@@ -333,7 +338,7 @@ namespace {
 	 * @param proto версия протокола HTTP-запроса/ответа
 	 * @return      название заголовка в канонической для протокола форме
 	 */
-	string caseName(string_view name, const awh::http::proto_t proto) noexcept {
+	string caseName(string_view name, const http::proto_t proto) noexcept {
 		// Результат работы функции - название заголовка в канонической форме
 		string result = "";
 		/**
@@ -362,7 +367,7 @@ namespace {
 	 * @param header название и значение форматируемого заголовка
 	 * @param proto  версия протокола HTTP-запроса/ответа
 	 */
-	void appendHeader(string & result, const awh::http::Headers::header_t & header, const awh::http::proto_t proto) noexcept {
+	void appendHeader(string & result, const http::Headers::header_t & header, const http::proto_t proto) noexcept {
 		// Дописываем название заголовка в канонической для протокола форме
 		appendCasedName(result, header.name, proto);
 		// Дописываем разделитель названия и значения заголовка
@@ -388,7 +393,7 @@ namespace {
 	 * @param headers набор заголовков для анализа
 	 * @return        определённая версия протокола HTTP
 	 */
-	awh::http::proto_t detectProto(const Range & headers) noexcept {
+	http::proto_t detectProto(const Range & headers) noexcept {
 		// Флаг наличия хотя бы одного заголовка для анализа
 		bool hasHeaders = false;
 		/**
@@ -400,14 +405,14 @@ namespace {
 			// Если название заголовка является псевдозаголовком HTTP/2 (начинается с двоеточия)
 			if(!header.name.empty() && (header.name.front() == ':'))
 				// Заголовки соответствуют семейству протоколов HTTP/2
-				return awh::http::proto_t::HTTP2;
+				return http::proto_t::HTTP2;
 		}
 		// Если заголовки отсутствуют - протокол не определён
 		if(!hasHeaders)
 			// Возвращаем значение по умолчанию
-			return awh::http::proto_t::NONE;
+			return http::proto_t::NONE;
 		// Псевдозаголовки не обнаружены - заголовки соответствуют протоколу HTTP/1.1
-		return awh::http::proto_t::HTTP1;
+		return http::proto_t::HTTP1;
 	}
 	/**
 	 * @brief Функция формирования списка псевдозаголовков протокола HTTP/2 на основе объекта провайдера
@@ -418,9 +423,9 @@ namespace {
 	 * @param provider объект провайдера HTTP-запроса/ответа
 	 * @return         список псевдозаголовков протокола HTTP/2
 	 */
-	vector <awh::http::Headers::header_t> pseudoHeaders(const awh::http::provider_t * provider) noexcept {
+	vector <http::Headers::header_t> pseudoHeaders(const http::provider_t * provider) noexcept {
 		// Результат работы функции - список псевдозаголовков
-		vector <awh::http::Headers::header_t> result;
+		vector <http::Headers::header_t> result;
 		// Если объект провайдера установлен
 		if(provider != nullptr){
 			/**
@@ -428,15 +433,15 @@ namespace {
 			 */
 			switch(static_cast <uint8_t> (provider->traffic)){
 				// Если передан запрос клиента
-				case static_cast <uint8_t> (awh::http::traffic_t::REQUEST): {
+				case static_cast <uint8_t> (http::traffic_t::REQUEST): {
 					// Приводим провайдер к типу запроса клиента (безопасно, так как тип подтверждён флагом traffic)
-					const auto * request = static_cast <const awh::http::request_t *> (provider);
+					const auto * request = static_cast <const http::request_t *> (provider);
 					// Получаем текстовое название метода запроса
 					const string_view methodName = ::method(request->method);
 					// Формируем псевдозаголовок метода запроса (:method) - обязателен и следует первым согласно RFC 9113
 					if(!methodName.empty()){
 						// Создаём псевдозаголовок метода запроса
-						awh::http::Headers::header_t header{};
+						http::Headers::header_t header{};
 						// Формируем псевдозаголовок метода запроса
 						header.from(":method", methodName);
 						// Если псевдозаголовок сформирован корректно - добавляем его в результат
@@ -448,11 +453,11 @@ namespace {
 					 * Для метода CONNECT формируется только псевдозаголовок :authority (RFC 9113 §8.5),
 					 * а псевдозаголовки :scheme и :path должны отсутствовать
 					 */
-					if(request->method == awh::http::method_t::CONNECT){
+					if(request->method == http::method_t::CONNECT){
 						// Формируем псевдозаголовок авторитета (:authority) из URI запроса (для CONNECT это цель "host:port")
 						if(!request->uri.empty()){
 							// Создаём псевдозаголовок авторитета
-							awh::http::Headers::header_t header{};
+							http::Headers::header_t header{};
 							// Формируем псевдозаголовок авторитета
 							header.from(":authority", request->uri);
 							// Если псевдозаголовок сформирован корректно - добавляем его в результат
@@ -492,7 +497,7 @@ namespace {
 					// Формируем псевдозаголовок схемы (:scheme), только если она определена
 					if(!scheme.empty()){
 						// Создаём псевдозаголовок схемы
-						awh::http::Headers::header_t header{};
+						http::Headers::header_t header{};
 						// Формируем псевдозаголовок схемы
 						header.from(":scheme", scheme);
 						// Если псевдозаголовок сформирован корректно - добавляем его в результат
@@ -503,7 +508,7 @@ namespace {
 					// Формируем псевдозаголовок авторитета (:authority), только если он определён
 					if(!authority.empty()){
 						// Создаём псевдозаголовок авторитета
-						awh::http::Headers::header_t header{};
+						http::Headers::header_t header{};
 						// Формируем псевдозаголовок авторитета
 						header.from(":authority", authority);
 						// Если псевдозаголовок сформирован корректно - добавляем его в результат
@@ -514,7 +519,7 @@ namespace {
 					// Формируем псевдозаголовок пути запроса (:path) - обязателен для всех методов, кроме CONNECT
 					if(!path.empty()){
 						// Создаём псевдозаголовок пути запроса
-						awh::http::Headers::header_t header{};
+						http::Headers::header_t header{};
 						// Формируем псевдозаголовок пути запроса
 						header.from(":path", path);
 						// Если псевдозаголовок сформирован корректно - добавляем его в результат
@@ -524,11 +529,11 @@ namespace {
 					}
 				} break;
 				// Если передан ответ сервера
-				case static_cast <uint8_t> (awh::http::traffic_t::RESPONSE): {
+				case static_cast <uint8_t> (http::traffic_t::RESPONSE): {
 					// Приводим провайдер к типу ответа сервера (безопасно, так как тип подтверждён флагом traffic)
-					const auto * response = static_cast <const awh::http::response_t *> (provider);
+					const auto * response = static_cast <const http::response_t *> (provider);
 					// Формируем псевдозаголовок кода ответа сервера
-					awh::http::Headers::header_t header{};
+					http::Headers::header_t header{};
 					// Формируем псевдозаголовок кода ответа сервера
 					header.from(":status", ::to_string(response->code));
 					// Если псевдозаголовок сформирован корректно - добавляем его в результат
@@ -547,9 +552,9 @@ namespace {
 	 * @param headers список заголовков для преобразования
 	 * @return        набор заголовков
 	 */
-	awh::http::Headers::fields_t convert(const awh::http::Headers::multimap_t & headers) noexcept {
+	http::Headers::fields_t convert(const http::Headers::multimap_t & headers) noexcept {
 		// Результирующий список заголовков
-		awh::http::Headers::fields_t result;
+		http::Headers::fields_t result;
 		/**
 		 * Выполняем отлов ошибок
 		 */
@@ -561,7 +566,7 @@ namespace {
 			 */
 			for(const auto & item : headers){
 				// Создаём новый заголовок на основе пары ключ-значение
-				awh::http::Headers::header_t header{};
+				http::Headers::header_t header{};
 				// Заполняем название и значение заголовка через фабричный метод
 				header.from(item.first, item.second);
 				// Если заголовок сформирован корректно (название не пустое) - добавляем его в результирующий список
@@ -585,7 +590,7 @@ namespace {
 	 * @param message текст сообщения об ошибке
 	 * @param flag    флаг важности сообщения
 	 */
-	void printError(const awh::log_t * log, [[maybe_unused]] const char * func, const char * message, const awh::log_t::flag_t flag = awh::log_t::flag_t::CRITICAL) noexcept {
+	void printError(const log_t * log, [[maybe_unused]] const char * func, const char * message, const log_t::flag_t flag = log_t::flag_t::CRITICAL) noexcept {
 		// Если объект лога установлен
 		if(log != nullptr){
 			/**
@@ -604,7 +609,7 @@ namespace {
 		// Если объект логирования не установлен
 		} else {
 			// Определяем текстовый префикс важности сообщения
-			const char * prefix = ((flag == awh::log_t::flag_t::WARNING) ? "WARNING" : "ERROR");
+			const char * prefix = ((flag == log_t::flag_t::WARNING) ? "WARNING" : "ERROR");
 			/**
 			 * Если включён режим отладки
 			 */
