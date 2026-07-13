@@ -541,6 +541,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/socks5/server.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/headers.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/provider.cpp"
+    "${CMAKE_SOURCE_DIR}/src/compressor/stateless.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 

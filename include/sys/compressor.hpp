@@ -89,9 +89,9 @@ namespace awh {
 			 *
 			 */
 			typedef struct BufferGZip {
-				// Создаем поток GZip для компрессии
+				// Поток GZip для компрессии
 				std::any compress;
-				// Создаем поток GZip для декомпрессии
+				// Поток GZip для декомпрессии
 				std::any decompress;
 			} buffer_gzip_t;
 			/**
@@ -100,9 +100,9 @@ namespace awh {
 			 */
 			typedef struct Takeover {
 				// Флаг переиспользования контекста компрессии
-				std::atomic_bool compress;
+				atomic_bool compress;
 				// Флаг переиспользования контекста декомпрессии
-				std::atomic_bool decompress;
+				atomic_bool decompress;
 				/**
 				 * @brief Конструктор
 				 *
@@ -116,7 +116,7 @@ namespace awh {
 			 */
 			typedef struct Zlib {
 				// Размер скользящего окна (атомарный для потокобезопасного доступа)
-				std::atomic <int16_t> wbits;
+				atomic_int16_t wbits;
 				/**
 				 * @brief Конструктор
 				 *
@@ -133,7 +133,7 @@ namespace awh {
 				// Буфер GZip
 				buffer_gzip_t buffer;
 				// Размер скользящего окна (атомарный для потокобезопасного доступа)
-				std::atomic <int16_t> wbits;
+				atomic_int16_t wbits;
 				/**
 				 * @brief Конструктор
 				 *
@@ -142,7 +142,7 @@ namespace awh {
 			} gzip_t;
 		private:
 			// Уровни компрессии (атомарные для потокобезопасного доступа)
-			std::atomic <uint32_t> _level[5];
+			atomic_uint32_t _level[5];
 		private:
 			// Структура Zlib
 			mutable zlib_t _zlib;
