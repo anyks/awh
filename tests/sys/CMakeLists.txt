@@ -261,6 +261,7 @@ if(${GTest_FOUND})
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 compressor/compressor.cpp
                 compressor/parameterized.cpp
+                compressor/stream.cpp
             )
         # Если не нужно собрать тесты для работы с компрессором
         else()
