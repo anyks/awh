@@ -142,33 +142,12 @@ namespace awh {
 			virtual void status(const uint8_t index, const event::status_t status) noexcept;
 		protected:
 			/**
-			 * @brief Метод обработки событий записи данных клиентом
-			 *
-			 * @param eid  идентификатор клиента
-			 * @param size размер данных для записи
-			 */
-			virtual void write(const event::id_t eid, const size_t size) noexcept;
-			/**
 			 * @brief Метод обработки события разрешения подключения
 			 *
 			 * @param eid идентификатор сервера
 			 * @param cid идентификатор клиента
 			 */
 			virtual void accept(const event::id_t eid, const event::id_t cid) noexcept;
-			/**
-			 * @brief Метод обработки событий изменения состояния сервера
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param status новый статус сервера
-			 */
-			virtual void state(const event::id_t eid, const event::status_t status) noexcept;
-			/**
-			 * @brief Метод обработки действий сервера
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param action действие сервера
-			 */
-			virtual void action(const event::id_t eid, const event::action_t action) noexcept;
 			/**
 			 * @brief Метод обработки информационных метаданных о дейтаграммном пакете
 			 *
@@ -177,45 +156,12 @@ namespace awh {
 			 */
 			virtual void traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept;
 			/**
-			 * @brief Метод обработки событий получения данных сервером
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param buffer буфер данных сервера
-			 * @param size   размер данных сервера
-			 */
-			virtual void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
-			/**
-			 * @brief Метод обработки события ошибки
-			 *
-			 * @param eid     идентификатор события
-			 * @param error   код ошибки
-			 * @param message сообщение об ошибке
-			 */
-			virtual void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
-			/**
 			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
 			 *
 			 * @param domain   доменное имя для разрешения
 			 * @param attempts количество попыток подключения
 			 */
 			virtual void attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept;
-			/**
-			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param status статус доступности очереди
-			 * @param size   размер доступных данных очереди
-			 */
-			virtual void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
-			/**
-			 * @brief Метод обработки событий истечения таймаута клиента
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param action тип действия для истёкшего таймаута
-			 * @param delay  задержка таймаута в миллисекундах
-			 * @return       нужно ли завершить клиента после истечения таймаута
-			 */
-			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
 			/**
 			 * @brief Метод обработки неудачного разрешения доменного имени
 			 *
@@ -225,15 +171,6 @@ namespace awh {
 			 */
 			virtual void failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept;
 			/**
-			 * @brief Метод обработки события невозможности отправки данных клиенту
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param error  тип ошибки отправки данных
-			 * @param buffer данные, которые не получилось отправить
-			 * @param size   размер данных, которые не получилось отправить
-			 */
-			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
-			/**
 			 * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
 			 *
 			 * @param family семейство адресов (IPv4/IPv6)
@@ -241,6 +178,78 @@ namespace awh {
 			 * @param addr   указатель на структуру для хранения результата разрешения
 			 */
 			virtual void resolve(const unit::dns_t::id_t, const event::family_t family, const string & domain, const net::addr_t * addr) noexcept;
+		public:
+			/**
+			 * @brief Метод обработки событий записи данных клиентом
+			 *
+			 * @param eid  идентификатор клиента
+			 * @param size размер данных для записи
+			 * @param ctx  промежуточный контекст для передачи в функцию обратного вызова
+			 */
+			virtual void write(const event::id_t eid, const size_t size, void * ctx) noexcept;
+			/**
+			 * @brief Метод обработки событий изменения состояния сервера
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param status новый статус сервера
+			 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+			 */
+			virtual void state(const event::id_t eid, const event::status_t status, void * ctx) noexcept;
+			/**
+			 * @brief Метод обработки действий сервера
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param action действие сервера
+			 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+			 */
+			virtual void action(const event::id_t eid, const event::action_t action, void * ctx) noexcept;
+			/**
+			 * @brief Метод обработки событий получения данных сервером
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param buffer буфер данных сервера
+			 * @param size   размер данных сервера
+			 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+			 */
+			virtual void read(const event::id_t eid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
+			/**
+			 * @brief Метод обработки события ошибки
+			 *
+			 * @param eid     идентификатор события
+			 * @param error   код ошибки
+			 * @param message сообщение об ошибке
+			 * @param ctx     промежуточный контекст для передачи в функцию обратного вызова
+			 */
+			virtual void error(const event::id_t eid, const event::error_t error, const string & message, void * ctx) noexcept;
+			/**
+			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param status статус доступности очереди
+			 * @param size   размер доступных данных очереди
+			 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+			 */
+			virtual void available(const event::id_t eid, const event::status_t status, const size_t size, void * ctx) noexcept;
+			/**
+			 * @brief Метод обработки событий истечения таймаута клиента
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param action тип действия для истёкшего таймаута
+			 * @param delay  задержка таймаута в миллисекундах
+			 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+			 * @return       нужно ли завершить клиента после истечения таймаута
+			 */
+			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, void * ctx) noexcept;
+			/**
+			 * @brief Метод обработки события невозможности отправки данных клиенту
+			 *
+			 * @param eid    идентификатор клиента
+			 * @param error  тип ошибки отправки данных
+			 * @param buffer данные, которые не получилось отправить
+			 * @param size   размер данных, которые не получилось отправить
+			 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
+			 */
+			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 		protected:
 			/**
 			 * @brief Метод обработки события пересоздания процесса
@@ -335,8 +344,9 @@ namespace awh {
 			 * @param event  тип события TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 * @param size   размер данных для события шифрования/дешифрования TLS
+			 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
 			 */
-			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void processTLS(const tls::coder_t::id_t id, const event::id_t eid, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 		public:
 			/**
 			 * @brief Метод очистки чёрного списка события
@@ -442,6 +452,15 @@ namespace awh {
 			 * @return    результат проверки
 			 */
 			virtual bool isAlive(const event::id_t eid) const noexcept;
+		public:
+			/**
+			 * @brief Метод установки промежуточного контекста события подключённого клиента
+			 *
+			 * @param eid идентификатор события сервера
+			 * @param ctx указатель на контекст события
+			 * @return    результат выполнения установки
+			 */
+			virtual bool setContext(const event::id_t eid, void * ctx) noexcept;
 		public:
 			/**
 			 * @brief Метод перевода события в режим прослушивания входящих соединений

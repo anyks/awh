@@ -904,7 +904,7 @@ void awh::server::Socks5::status(const uint8_t index, const event::status_t stat
 									this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
 							// Выполняем функцию обратного вызова
-							} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_id.eid, event::error_t::NOT_FOUND, error);
+							} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", this->_id.eid, event::error_t::NOT_FOUND, error, nullptr);
 						}
 					} break;
 					// Если событие DNS-резолвера остановлено
@@ -1488,7 +1488,7 @@ void awh::server::Socks5::statusClient(const event::id_t eid, const event::statu
 			break;
 		}
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+		this->_callback.call <void (const event::id_t, const event::status_t, void *)> ("state", eid, status, nullptr);
 	}
 }
 /**
@@ -1612,7 +1612,7 @@ void awh::server::Socks5::errorClient(const event::id_t eid, const event::error_
 		// Если идентификатор клиента найден в списке
 		if(i != this->_clients.end())
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::error_t, const string &)> (fid, i->second, error, message);
+			this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> (fid, i->second, error, message, nullptr);
 	}
 }
 /**
@@ -1635,7 +1635,7 @@ bool awh::server::Socks5::timeoutClient(const event::id_t eid, const event::acti
 			// Если идентификатор клиента найден в списке
 			if(i != this->_clients.end())
 				// Выполняем функцию обратного вызова
-				return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t)> (fid, i->second, action, delay);
+				return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t, void *)> (fid, i->second, action, delay, nullptr);
 		}
 	}
 	// Возвращаем значение, указывающее на то, что клиента нужно завершить после истечения таймаута
@@ -1780,8 +1780,9 @@ void awh::server::Socks5::accept(const event::id_t eid, const event::id_t cid) n
  *
  * @param eid    идентификатор клиента
  * @param status новый статус сервера
+ * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::server::Socks5::state(const event::id_t eid, const event::status_t status) noexcept {
+void awh::server::Socks5::state(const event::id_t eid, const event::status_t status, void * ctx) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -1789,7 +1790,7 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
 		// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 		if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+			this->_callback.call <void (const event::id_t, const event::status_t, void *)> ("state", eid, status, ctx);
 			// Если статус сервера изменился на "уничтожен"
 			if(status == event::status_t::DESTROYED){
 				// Если производится завершение работы текущего сервера или одного из поддерживаемых UDP-серверов
@@ -1900,8 +1901,9 @@ void awh::server::Socks5::state(const event::id_t eid, const event::status_t sta
  * @param eid    идентификатор клиента
  * @param buffer буфер данных сервера
  * @param size   размер данных сервера
+ * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept {
+void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		/**
@@ -2021,7 +2023,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													// Выполняем функцию обратного вызова
-													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", eid, event::error_t::NOT_FOUND, error, nullptr);
 												// Если резолвинг хоста не выполнен, выходим
 												} else return;
 											} break;
@@ -2274,7 +2276,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					// Выполняем функцию обратного вызова
-					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", eid, event::error_t::NOT_FOUND, error, nullptr);
 				// Если текущее состояние находится ещё в процессе общения с SOCKS5-прокси-клиентом
 				} else {
 					// Добавляем данные в буфер накопления SOCKS5-кадров
@@ -2329,7 +2331,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 											this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(i->second.ctx.status));
 										#endif
 									// Выполняем функцию обратного вызова
-									} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(i->second.ctx.status));
+									} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(i->second.ctx.status), nullptr);
 									// Удаляем подключённого пира
 									this->_unit->server.destroy(eid);
 									// Выходим из функции
@@ -2385,7 +2387,7 @@ void awh::server::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 																	this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 																#endif
 															// Выполняем функцию обратного вызова
-															} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+															} else this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", eid, event::error_t::NOT_FOUND, error, nullptr);
 														// Если резолвинг хоста не выполнен, выходим
 														} else return;
 													}
@@ -5591,7 +5593,7 @@ awh::server::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
 	this->_client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &server::socks5_t::errorClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
+	this->_client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие кластерных событий сервера
 	this->_unit->server.on <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", &server::socks5_t::eventsCluster, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения кластерного сообщения
@@ -5615,7 +5617,7 @@ awh::server::Socks5::Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * 
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
 	this->_client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &server::socks5_t::errorClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
+	this->_client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &server::socks5_t::timeoutClient, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие кластерных событий сервера
 	this->_unit->server.on <void (const pid_t, const unit::cluster_t::event_t)>  ("cluster_events", &server::socks5_t::eventsCluster, this, _1, _2);
 	// Устанавливаем функцию обратного вызова на событие получения кластерного сообщения

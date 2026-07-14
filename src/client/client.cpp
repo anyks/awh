@@ -2209,7 +2209,7 @@ awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
 	this->_unit->client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_unit->client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	this->_unit->client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 	this->_unit->client.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
@@ -2261,7 +2261,7 @@ awh::Client::Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) no
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
 	this->_unit->client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_unit->client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	this->_unit->client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 	this->_unit->client.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
@@ -2295,7 +2295,7 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
 	this->_unit->client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_unit->client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	this->_unit->client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 	this->_unit->client.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
@@ -2380,7 +2380,7 @@ awh::Client::Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, co
 	// Устанавливаем функцию обратного вызова на событие ошибок клиента
 	this->_unit->client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_unit->client.on <void (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	this->_unit->client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
 	this->_unit->client.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
 	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента

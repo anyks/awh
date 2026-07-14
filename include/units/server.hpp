@@ -147,8 +147,9 @@ namespace awh {
 				 *
 				 * @param eid  идентификатор события
 				 * @param size размер данных для записи
+				 * @param ctx  промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void write(const event::id_t eid, const size_t size) noexcept;
+				void write(const event::id_t eid, const size_t size, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки события разрешения подключения
@@ -163,8 +164,9 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события
 				 * @param action действие сервера
+				 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void action(const event::id_t eid, const event::action_t action) noexcept;
+				void action(const event::id_t eid, const event::action_t action, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки событий изменения статуса кластера
@@ -178,8 +180,9 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор события
 				 * @param status новый статус сервера
+				 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void status(const event::id_t eid, const event::status_t status) noexcept;
+				void status(const event::id_t eid, const event::status_t status, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки информационных метаданных о дейтаграммном пакете
@@ -211,8 +214,9 @@ namespace awh {
 				 * @param eid  идентификатор события
 				 * @param data данные события получения данных сервером
 				 * @param size размер данных события получения данных сервером
+				 * @param ctx  промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept;
+				void read(const event::id_t eid, const uint8_t * data, const size_t size, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки события доступности/недоступности очереди исходящих сообщений кластера
@@ -228,8 +232,9 @@ namespace awh {
 				 * @param eid    идентификатор события
 				 * @param status статус доступности очереди
 				 * @param size   размер доступных данных очереди
+				 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
+				void available(const event::id_t eid, const event::status_t status, const size_t size, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки событий истечения таймаута подключённого клиента
@@ -237,9 +242,10 @@ namespace awh {
 				 * @param eid    идентификатор подключённого клиента
 				 * @param action тип действия для истекшего таймаута
 				 * @param delay  задержка таймаута в миллисекундах
+				 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
 				 * @return       нужно ли завершить клиента после истечения таймаута
 				 */
-				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
+				bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки событий ошибок кластера
@@ -255,8 +261,9 @@ namespace awh {
 				 * @param eid         идентификатор события
 				 * @param error       тип ошибки
 				 * @param description описание ошибки
+				 * @param ctx         промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void error(const event::id_t eid, const event::error_t error, const string & description) noexcept;
+				void error(const event::id_t eid, const event::error_t error, const string & description, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки события неотправленных данных сервера
@@ -265,8 +272,9 @@ namespace awh {
 				 * @param error тип ошибки отправки данных
 				 * @param data  данные, которые не получилось отправить
 				 * @param size  размер данных, которые не получилось отправить
+				 * @param ctx   промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept;
+				void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size, void * ctx) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки актуальности события
@@ -370,6 +378,15 @@ namespace awh {
 				 * @return    результат выполнения возобновления
 				 */
 				bool resume(const event::id_t eid) noexcept;
+			public:
+				/**
+				 * @brief Метод установки промежуточного контекста события подключённого клиента
+				 *
+				 * @param eid идентификатор события сервера
+				 * @param ctx указатель на контекст события
+				 * @return    результат выполнения установки
+				 */
+				bool setContext(const event::id_t eid, void * ctx) noexcept;
 			public:
 				/**
 				 * @brief Метод перевода события в режим прослушивания входящих соединений

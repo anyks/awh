@@ -309,16 +309,18 @@ namespace awh {
 				 *
 				 * @param eid    идентификатор клиента
 				 * @param status новый статус сервера
+				 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void state(const event::id_t eid, const event::status_t status) noexcept;
+				void state(const event::id_t eid, const event::status_t status, void * ctx) noexcept;
 				/**
 				 * @brief Метод обработки событий получения данных сервером
 				 *
 				 * @param eid    идентификатор клиента
 				 * @param buffer буфер данных сервера
 				 * @param size   размер данных сервера
+				 * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
 				 */
-				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+				void read(const event::id_t eid, const uint8_t * buffer, const size_t size, void * ctx) noexcept;
 			private:
 				/**
 				 * @brief Метод обработки неудачного резолвинга доменного имени

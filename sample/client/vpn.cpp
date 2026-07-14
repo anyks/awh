@@ -375,11 +375,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setTarget("anyks.com") && client.setTargetPort(3333)){
 		// Регистрируем функцию обратного вызова на событие изменения статуса тоннеля
-		tunnel.on <void (const event::id_t, const event::status_t)> ("status", &Executor::statusVPN, &executor, _1, _2);
+		tunnel.on <void (const event::id_t, const event::status_t)> ("state", &Executor::statusVPN, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие ошибок тоннеля
 		tunnel.on <void (const event::id_t, const event::error_t, const string &)> ("error", &Executor::errorVPN, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие изменения статуса посредника
-		mediator.on <void (const event::id_t, const event::status_t)> ("status", &Executor::statusVPN, &executor, _1, _2);
+		mediator.on <void (const event::id_t, const event::status_t)> ("state", &Executor::statusVPN, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие чтения данных посредником
 		mediator.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::readVPN, &executor, _1, _2, _3, &client);
 		// Регистрируем функцию обратного вызова на событие ошибок посредника

@@ -338,10 +338,11 @@ void awh::unit::Server::sending(const pid_t pid, const size_t size) noexcept {
  *
  * @param eid  идентификатор события
  * @param size размер данных для записи
+ * @param ctx  промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::unit::Server::write(const event::id_t eid, const size_t size) noexcept {
+void awh::unit::Server::write(const event::id_t eid, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const event::id_t, const size_t)> ("write", eid, size);
+	this->_callback.call <void (const event::id_t, const size_t, void *)> ("write", eid, size, ctx);
 }
 /**
  * @brief Метод обработки события разрешения подключения
@@ -351,21 +352,21 @@ void awh::unit::Server::write(const event::id_t eid, const size_t size) noexcept
  */
 void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	// Устанавливаем функцию обратного вызова на событие изменения действий клиента
-	this->_io->on(cid, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2)));
+	this->_io->on(cid, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие записи данных клиенту
-	this->_io->on(cid, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2)));
+	this->_io->on(cid, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие чтения данных клиента
-	this->_io->on(cid, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3)));
+	this->_io->on(cid, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиенту
-	this->_io->on(cid, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4)));
+	this->_io->on(cid, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_io->on(cid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3)));
+	this->_io->on(cid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-	this->_io->on(cid, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t)> (&server_t::status), this, _1, _2)));
+	this->_io->on(cid, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие получения ошибок клиента
-	this->_io->on(cid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3)));
+	this->_io->on(cid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, nullptr)));
 	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-	this->_io->on(cid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t)> (&server_t::available), this, _1, _2, _3)));
+	this->_io->on(cid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t, void *)> (&server_t::available), this, _1, _2, _3, nullptr)));
 	// Регистрируем связь клиентского события с сервером
 	this->linkClient(eid, cid);
 	// Выполняем функцию обратного вызова
@@ -376,10 +377,11 @@ void awh::unit::Server::accept(const event::id_t eid, const event::id_t cid) noe
  *
  * @param eid    идентификатор события
  * @param action действие сервера
+ * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::unit::Server::action(const event::id_t eid, const event::action_t action) noexcept {
+void awh::unit::Server::action(const event::id_t eid, const event::action_t action, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const event::id_t, const event::action_t)> ("action", eid, action);
+	this->_callback.call <void (const event::id_t, const event::action_t, void *)> ("action", eid, action, ctx);
 }
 /**
  * @brief Метод обработки событий изменения статуса кластера
@@ -396,8 +398,9 @@ void awh::unit::Server::status(const pid_t pid, const event::status_t status) no
  *
  * @param eid    идентификатор события
  * @param status новый статус сервера
+ * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::unit::Server::status(const event::id_t eid, const event::status_t status) noexcept {
+void awh::unit::Server::status(const event::id_t eid, const event::status_t status, void * ctx) noexcept {
 	// Если статус сервера представляет из себя уничтожение
 	if(status == event::status_t::DESTROYED){
 		// Выполняем поиск идентификатора события сервера в списке событий
@@ -415,7 +418,7 @@ void awh::unit::Server::status(const event::id_t eid, const event::status_t stat
 		}
 	}
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+	this->_callback.call <void (const event::id_t, const event::status_t, void *)> ("state", eid, status, ctx);
 }
 /**
  * @brief Метод обработки информационных метаданных о дейтаграммном пакете
@@ -500,10 +503,11 @@ void awh::unit::Server::message(const pid_t pid, const uint8_t * data, const siz
  * @param eid  идентификатор события
  * @param data данные события получения данных сервером
  * @param size размер данных события получения данных сервером
+ * @param ctx  промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::unit::Server::read(const event::id_t eid, const uint8_t * data, const size_t size) noexcept {
+void awh::unit::Server::read(const event::id_t eid, const uint8_t * data, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", eid, data, size);
+	this->_callback.call <void (const event::id_t, const uint8_t *, const size_t, void *)> ("read", eid, data, size, ctx);
 }
 /**
  * @brief Метод обработки события доступности/недоступности очереди исходящих сообщений кластера
@@ -522,10 +526,11 @@ void awh::unit::Server::available(const pid_t pid, const event::status_t status,
  * @param eid    идентификатор события
  * @param status статус доступности очереди
  * @param size   размер доступных данных очереди
+ * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::unit::Server::available(const event::id_t eid, const event::status_t status, const size_t size) noexcept {
+void awh::unit::Server::available(const event::id_t eid, const event::status_t status, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const event::id_t, const event::status_t, const size_t)> ("available", eid, status, size);
+	this->_callback.call <void (const event::id_t, const event::status_t, const size_t, void *)> ("available", eid, status, size, ctx);
 }
 /**
  * @brief Метод обработки событий истечения таймаута подключённого клиента
@@ -533,15 +538,16 @@ void awh::unit::Server::available(const event::id_t eid, const event::status_t s
  * @param eid    идентификатор подключённого клиента
  * @param action тип действия для истекшего таймаута
  * @param delay  задержка таймаута в миллисекундах
+ * @param ctx    промежуточный контекст для передачи в функцию обратного вызова
  * @return       нужно ли завершить клиента после истечения таймаута
  */
-bool awh::unit::Server::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept {
+bool awh::unit::Server::timeout(const event::id_t eid, const event::action_t action, const uint32_t delay, void * ctx) noexcept {
 	// Выполняем получение идентификатора функции обратного вызова
 	const callback_t::id_t fid = this->_callback.id("timeout");
 	// Если функция обратного вызова установлена
 	if(this->_callback.is(fid))
 		// Выполняем функцию обратного вызова
-		return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t)> (fid, eid, action, delay);
+		return this->_callback.call <bool (const event::id_t, const event::action_t, const uint32_t, void *)> (fid, eid, action, delay, ctx);
 	// Возвращаем значение, указывающее на то, что клиента нужно завершить после истечения таймаута
 	return true;
 }
@@ -562,10 +568,11 @@ void awh::unit::Server::error(const pid_t pid, const event::error_t error, const
  * @param eid         идентификатор события
  * @param error       тип ошибки
  * @param description описание ошибки
+ * @param ctx         промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::unit::Server::error(const event::id_t eid, const event::error_t error, const string & description) noexcept {
+void awh::unit::Server::error(const event::id_t eid, const event::error_t error, const string & description, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, error, description);
+	this->_callback.call <void (const event::id_t, const event::error_t, const string &, void *)> ("error", eid, error, description, ctx);
 }
 /**
  * @brief Метод обработки события неотправленных данных сервера
@@ -574,10 +581,11 @@ void awh::unit::Server::error(const event::id_t eid, const event::error_t error,
  * @param error тип ошибки отправки данных
  * @param data  данные, которые не получилось отправить
  * @param size  размер данных, которые не получилось отправить
+ * @param ctx   промежуточный контекст для передачи в функцию обратного вызова
  */
-void awh::unit::Server::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size) noexcept {
+void awh::unit::Server::spool(const event::id_t eid, const event::send_error_t error, const uint8_t * data, const size_t size, void * ctx) noexcept {
 	// Выполняем функцию обратного вызова
-	this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", eid, error, data, size);
+	this->_callback.call <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t, void *)> ("spool", eid, error, data, size, ctx);
 }
 /**
  * @brief Метод проверки актуальности события
@@ -868,6 +876,63 @@ bool awh::unit::Server::resume(const event::id_t eid) noexcept {
 		return this->_io->resume(eid);
 	// Возвращаем значение по умолчанию
 	return false;
+}
+/**
+ * @brief Метод установки промежуточного контекста события подключённого клиента
+ *
+ * @param eid идентификатор события сервера
+ * @param ctx указатель на контекст события
+ * @return    результат выполнения установки
+ */
+bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
+	// Переменная результата
+	bool result = false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Если событие сервера является актуальным
+		if(this->isActual(eid)){
+			// Если событие принадлежит к подключённому клиенту
+			if((result = (this->_io->node(eid) == event::node_t::PEER))){
+				// Устанавливаем функцию обратного вызова на событие изменения действий клиента
+				this->_io->on(eid, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, ctx)));
+				// Устанавливаем функцию обратного вызова на событие записи данных клиенту
+				this->_io->on(eid, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, ctx)));
+				// Устанавливаем функцию обратного вызова на событие чтения данных клиента
+				this->_io->on(eid, static_cast <engine::callback::read_t> (std::bind(&server_t::read, this, _1, _2, _3, ctx)));
+				// Устанавливаем функцию обратного вызова на событие неотправленных данных клиенту
+				this->_io->on(eid, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, ctx)));
+				// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+				this->_io->on(eid, static_cast <engine::callback::timeout_t> (std::bind(&server_t::timeout, this, _1, _2, _3, ctx)));
+				// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+				this->_io->on(eid, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, ctx)));
+				// Устанавливаем функцию обратного вызова на событие получения ошибок клиента
+				this->_io->on(eid, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, ctx)));
+				// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+				this->_io->on(eid, static_cast <engine::callback::available_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, const size_t, void *)> (&server_t::available), this, _1, _2, _3, ctx)));
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(eid, ctx), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем результат
+	return result;
 }
 /**
  * @brief Метод перевода события в режим прослушивания входящих соединений
@@ -1778,19 +1843,19 @@ awh::event::id_t awh::unit::Server::issue(const event::family_t family, const ev
 		// Если событие сервера успешно создано
 		if(result > 0){
 			// Устанавливаем функцию обратного вызова на событие изменения действий сервера
-			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2)));
+			this->_io->on(result, static_cast <engine::callback::event_t> (std::bind(&server_t::action, this, _1, _2, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие записи данных
-			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2)));
+			this->_io->on(result, static_cast <engine::callback::write_t> (std::bind(&server_t::write, this, _1, _2, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие разрешения подключения
 			this->_io->on(result, static_cast <engine::callback::accept_t> (std::bind(&server_t::accept, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие получения информационных метаданных о дейтаграммном пакете
 			this->_io->on(result, static_cast <engine::callback::traffic_t> (std::bind(&server_t::traffic, this, _1, _2)));
 			// Устанавливаем функцию обратного вызова на событие неотправленных данных сервера
-			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4)));
+			this->_io->on(result, static_cast <engine::callback::spool_t> (std::bind(&server_t::spool, this, _1, _2, _3, _4, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
-			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t)> (&server_t::status), this, _1, _2)));
+			this->_io->on(result, static_cast <engine::callback::status_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::status_t, void *)> (&server_t::status), this, _1, _2, nullptr)));
 			// Устанавливаем функцию обратного вызова на событие получения ошибок
-			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &)> (&server_t::error), this, _1, _2, _3)));
+			this->_io->on(result, static_cast <engine::callback::error_t> (std::bind(static_cast <void (server_t::*)(const event::id_t, const event::error_t, const string &, void *)> (&server_t::error), this, _1, _2, _3, nullptr)));
 			// Добавляем идентификатор события сервера в список событий сервера
 			this->_events.emplace(result, 0);
 		}

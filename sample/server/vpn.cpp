@@ -188,7 +188,7 @@ class Executor {
 		 * @param eid  идентификатор клиента
 		 * @param size размер данных для записи
 		 */
-		void write(const event::id_t eid, const size_t size) noexcept {
+		void write(const event::id_t eid, const size_t size, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем в лог информацию о событии записи данных клиентом
 			this->_log->print("Client write event: %zu bytes", log_t::flag_t::INFO, size);
 		}
@@ -201,7 +201,7 @@ class Executor {
 		 * @param size   размер данных
 		 * @param server объект сервера
 		 */
-		void read(const event::id_t eid, const event::id_t tid, const uint8_t * data, const size_t size, server_t * server) noexcept {
+		void read(const event::id_t eid, const event::id_t tid, const uint8_t * data, const size_t size, [[maybe_unused]] void * ctx, server_t * server) noexcept {
 			// Если данные получены
 			if(size >= sizeof(record_t)){
 				// Объект получаемых данных
@@ -295,7 +295,7 @@ class Executor {
 		 * @param eid    идентификатор клиента
 		 * @param status новый статус клиента
 		 */
-		void state(const event::id_t eid, const event::status_t status) noexcept {
+		void state(const event::id_t eid, const event::status_t status, [[maybe_unused]] void * ctx) noexcept {
 			/**
 			 * Обрабатываем статус клиента
 			 */
@@ -368,7 +368,7 @@ class Executor {
 		 * @param error  код ошибки
 		 * @param message сообщение об ошибке
 		 */
-		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message) noexcept {
+		void error([[maybe_unused]] const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & message, [[maybe_unused]] void * ctx) noexcept {
 			// Записываем ошибку в лог
 			this->_log->print("Server error: %s", log_t::flag_t::CRITICAL, message.c_str());
 		}
@@ -424,11 +424,11 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем IP-адрес события туннеля и максимальный размер пакета для передачи данных по сети
 	if(tunnel.setAddress(tun, event::address_t::IPV4, "10.0.0.1") && tunnel.setMaximumTransmissionUnit(tun, 1400)){
 		// Регистрируем функцию обратного вызова на событие изменения статуса тоннеля
-		tunnel.on <void (const event::id_t, const event::status_t)> ("status", &Executor::statusVPN, &executor, _1, _2);
+		tunnel.on <void (const event::id_t, const event::status_t)> ("state", &Executor::statusVPN, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие ошибок тоннеля
 		tunnel.on <void (const event::id_t, const event::error_t, const string &)> ("error", &Executor::errorVPN, &executor, _1, _2, _3);
 		// Регистрируем функцию обратного вызова на событие изменения статуса посредника
-		mediator.on <void (const event::id_t, const event::status_t)> ("status", &Executor::statusVPN, &executor, _1, _2);
+		mediator.on <void (const event::id_t, const event::status_t)> ("state", &Executor::statusVPN, &executor, _1, _2);
 		// Регистрируем функцию обратного вызова на событие чтения данных посредником
 		mediator.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::readVPN, &executor, _1, _2, _3, &server);
 		// Регистрируем функцию обратного вызова на событие ошибок посредника
@@ -442,15 +442,15 @@ int32_t main(int32_t argc, char * argv[]){
 				// Регистрируем функцию обратного вызова на событие изменения статуса сервера
 				server.on <void (const event::status_t)> ("status", &Executor::status, &executor, _1, &server);
 				// Регистрируем функцию обратного вызова на событие записи данных сервером
-				server.on <void (const event::id_t, const size_t)> ("write", &Executor::write, &executor, _1, _2);
+				server.on <void (const event::id_t, const size_t, void *)> ("write", &Executor::write, &executor, _1, _2, _3);
 				// Регистрируем функцию обратного вызова на событие изменения статуса клиентов
-				server.on <void (const event::id_t, const event::status_t)> ("state", &Executor::state, &executor, _1, _2);
+				server.on <void (const event::id_t, const event::status_t, void *)> ("state", &Executor::state, &executor, _1, _2, _3);
 				// Регистрируем функцию обратного вызова на событие запуска сервера
 				server.on <void (const string &, const uint16_t)> ("launch", &Executor::launch, &executor, _1, _2, &server);
 				// Регистрируем функцию обратного вызова на событие ошибок сервера
-				server.on <void (const event::id_t, const event::error_t, const string &)> ("error", &Executor::error, &executor, _1, _2, _3);
+				server.on <void (const event::id_t, const event::error_t, const string &, void *)> ("error", &Executor::error, &executor, _1, _2, _3, _4);
 				// Регистрируем функцию обратного вызова на событие чтения данных сервером
-				server.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &Executor::read, &executor, _1, tun, _2, _3, &server);
+				server.on <void (const event::id_t, const uint8_t *, const size_t, void *)> ("read", &Executor::read, &executor, _1, tun, _2, _3, _4, &server);
 				// Регистрируем функцию обратного вызова на событие готовности сервера к работе
 				server.on <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", &Executor::ready, &executor, _1, _2, _3, _4);
 				// Регистрируем функцию обратного вызова на событие подключения клиента к серверу
