@@ -266,6 +266,15 @@ namespace awh {
 			void read(string_view filename, T & result, const seek_t seek = seek_t::BEGIN, const size_t offset = 0) const noexcept;
 		public:
 			/**
+			 * @brief Метод рекурсивного чтения больших файлов блоками с обратным вызовом
+			 *
+			 * @param filename путь к файлу для чтения
+			 * @param size     размер блока для чтения
+			 * @param callback функция обратного вызова для обработки прочитанных данных
+			 */
+			void read(string_view filename, const size_t size, const function <void (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback) const noexcept;
+		public:
+			/**
 			 * @brief Шаблон метода записи в файл бинарных данных
 			 *
 			 * @tparam T тип буфера данных

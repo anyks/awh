@@ -2769,6 +2769,245 @@ template void awh::Filesystem::read(string_view, vector <char> &, const seek_t, 
  */
 template void awh::Filesystem::read(string_view, vector <uint8_t> &, const seek_t, const size_t) const noexcept;
 /**
+ * @brief Метод рекурсивного чтения больших файлов блоками с обратным вызовом
+ *
+ * @param filename путь к файлу для чтения
+ * @param size     размер блока для чтения
+ * @param callback функция обратного вызова для обработки прочитанных данных
+ */
+void awh::Filesystem::read(string_view filename, const size_t size, const function <void (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback) const noexcept {
+	// Если буфер данных передан
+	if(!filename.empty() && (size > 0) && (callback != nullptr)){
+		/**
+		 * Выполняем перехват ошибок
+		 */
+		try {
+			// Выполняем извлечение актуального значения адреса
+			const string & address = this->fullpath(filename, true);
+			// Если адрес получен правильный и указывает на файл
+			if(!address.empty() && (this->type(address) == type_t::FILE)){
+				/**
+				 * Для операционной системы MS Windows
+				 */
+				#if _WIN32 || _WIN64
+					// Создаём объект работы с файлом
+					handle_guard_t file(::CreateFileW(this->_fmk->convert(address).c_str(), GENERIC_READ, FILE_SHARE_READ, nullptr, OPEN_EXISTING, FILE_ATTRIBUTE_NORMAL, nullptr));
+					// Если открыть файл открыт нормально
+					if(file.valid()){
+						// Объект для хранения полного размера файла
+						LARGE_INTEGER fileSize;
+						// Если размер файла получить не удалось
+						if(!::GetFileSizeEx(file, &fileSize)){
+							// Создаём буфер сообщения ошибки
+							wchar_t message[0xFF] = {0};
+							// Выполняем формирование текста ошибки
+							::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, message);
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+							#endif
+							// Выходим из метода (дескриптор будет закрыт автоматически)
+							return;
+						}
+						// Если файл не пустой (для пустого файла проекция создать невозможно)
+						if(fileSize.QuadPart > 0){
+							// Создаём объект проекции файла в память в режиме только для чтения
+							handle_guard_t mapping(::CreateFileMappingW(file, nullptr, PAGE_READONLY, 0, 0, nullptr));
+							// Если создать проекцию файла не удалось
+							if(!mapping.valid()){
+								// Создаём буфер сообщения ошибки
+								wchar_t message[0xFF] = {0};
+								// Выполняем формирование текста ошибки
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, message);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								#endif
+								// Выходим из метода (дескрипторы будут закрыты автоматически)
+								return;
+							}
+							// Отображаем весь файл в адресное пространство процесса (zero-copy)
+							const void * addr = ::MapViewOfFile(mapping, FILE_MAP_READ, 0, 0, 0);
+							// Если отобразить проекцию файла не удалось
+							if(addr == nullptr){
+								// Создаём буфер сообщения ошибки
+								wchar_t message[0xFF] = {0};
+								// Выполняем формирование текста ошибки
+								::FormatMessageW(FORMAT_MESSAGE_FROM_SYSTEM | FORMAT_MESSAGE_IGNORE_INSERTS, 0, ::GetLastError(), 0, message, 0xFF, 0);
+								/**
+								 * Если включён режим отладки
+								 */
+								#if DEBUG_MODE
+									// Записываем ошибку в лог
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, message);
+								/**
+								 * Если режим отладки не включён
+								 */
+								#else
+									// Записываем ошибку в лог
+									this->_log->print(L"%s", log_t::flag_t::CRITICAL, message);
+								#endif
+								// Выходим из метода (дескрипторы будут закрыты автоматически)
+								return;
+							}
+							// Общий размер файла
+							const size_t total = static_cast <size_t> (fileSize.QuadPart);
+							/**
+							 * Перебираем файл блоками, передавая указатели напрямую из проекции
+							 */
+							for(size_t position = 0; position < total; position += size){
+								// Определяем размер текущего блока
+								const size_t bytes = ::min(size, (total - position));
+								// Определяем размер оставшихся данных после текущего блока
+								const size_t left = (total - position - bytes);
+								// Передаём указатель прямо из проекции файла без копирования данных
+								callback(static_cast <const uint8_t *> (addr) + position, bytes, position, left);
+							}
+							// Освобождаем проекцию файла из адресного пространства процесса
+							::UnmapViewOfFile(addr);
+						}
+					}
+				/**
+				 * Для операционной системы не являющейся MS Windows
+				 */
+				#else
+					// Структура статистики файла
+					struct stat info{};
+					// Файловый дескриптор файла
+					fd_guard_t fd(::open(address.c_str(), O_RDONLY));
+					// Если файл не открыт
+					if(!fd.valid()){
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					// Если получить статистику файла не удалось
+					} else if(::fstat(fd, &info) < 0) {
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+						#endif
+					// Если файл не пустой (пустой файл проецировать в память нельзя)
+					} else if(info.st_size > 0) {
+						// Общий размер файла
+						const size_t total = static_cast <size_t> (info.st_size);
+						// Отображаем весь файл в адресное пространство процесса (zero-copy)
+						void * addr = ::mmap(nullptr, total, PROT_READ, MAP_PRIVATE, fd, 0);
+						// Если отобразить проекцию файла не удалось
+						if(addr == MAP_FAILED){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Записываем ошибку в лог
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+							/**
+							 * Если режим отладки не включён
+							 */
+							#else
+								// Записываем ошибку в лог
+								this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+							#endif
+						// Если проекция файла создана удачно
+						} else {
+							/**
+							 * Подсказываем ядру о последовательном характере чтения данных
+							 */
+							#if defined(MADV_SEQUENTIAL)
+								// Активируем упреждающее чтение страниц проекции файла
+								::madvise(addr, total, MADV_SEQUENTIAL);
+							#endif
+							/**
+							 * Перебираем файл блоками, передавая указатели напрямую из проекции
+							 */
+							for(size_t position = 0; position < total; position += size){
+								// Определяем размер текущего блока
+								const size_t bytes = ::min(size, (total - position));
+								// Определяем размер оставшихся данных после текущего блока
+								const size_t left = (total - position - bytes);
+								// Передаём указатель прямо из проекции файла без копирования данных
+								callback(static_cast <const uint8_t *> (addr) + position, bytes, position, left);
+							}
+							// Освобождаем проекцию файла из адресного пространства процесса
+							::munmap(addr, total);
+						}
+					}
+				#endif
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const ios_base::failure & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+	}
+}
+/**
  * @brief Шаблон метода записи в файл бинарных данных
  *
  * @tparam T тип буфера данных
