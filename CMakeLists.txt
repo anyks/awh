@@ -110,6 +110,12 @@ if (CMAKE_MAX_MEMORY_HEADERS)
     message(STATUS "Build with max memory headers: ${CMAKE_MAX_MEMORY_HEADERS}\n")
 endif (CMAKE_MAX_MEMORY_HEADERS)
 
+# Если активирован флаг установки размера итераций PBKDF2 для вывода ключа AES из пароля (по умолчанию: 100000)
+if (CMAKE_CRYPTO_AES_ROUNDS)
+    add_compile_definitions(AWH_CRYPTO_AES_ROUNDS=${CMAKE_CRYPTO_AES_ROUNDS})
+    message(STATUS "Build with crypto AES rounds: ${CMAKE_CRYPTO_AES_ROUNDS}\n")
+endif (CMAKE_CRYPTO_AES_ROUNDS)
+
 # Если активирован флаг установки размера блока для потокового сжатия (по умолчанию: 65536 = 64 КБ)
 if (CMAKE_COMPRESSOR_STREAM_CHUNK)
     add_compile_definitions(AWH_COMPRESSOR_STREAM_CHUNK=${CMAKE_COMPRESSOR_STREAM_CHUNK})

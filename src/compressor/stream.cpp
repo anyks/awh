@@ -80,7 +80,7 @@
 using namespace std;
 
 /**
- * @brief Пространство имён компрессора
+ * @brief Пространство имён AWH
  *
  */
 namespace awh {

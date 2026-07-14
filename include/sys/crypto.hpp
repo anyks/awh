@@ -21,7 +21,6 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <any>
 #include <array>
 #include <string>
 #include <vector>
@@ -34,6 +33,16 @@
 #include "locker.hpp"
 
 /**
+ * Если количество итераций PBKDF2 для вывода ключа AES не определено
+ */
+#ifndef AWH_CRYPTO_AES_ROUNDS
+	/**
+	 * Устанавливаем количество итераций PBKDF2 по умолчанию для вывода ключа AES из пароля
+	 */
+	#define AWH_CRYPTO_AES_ROUNDS 0x186A0
+#endif
+
+/**
  * @brief Основное пространство имён
  *
  */
@@ -43,6 +52,20 @@ namespace awh {
 	 */
 	using namespace std;
 
+	/**
+	 * @brief Предварительное объявление непрозрачного контекста стейта AES-шифрования
+	 *
+	 * @details Полное определение скрыто в модуле реализации,
+	 *          что позволяет не подключать заголовочные файлы стороннего криптопровайдера (OpenSSL) в публичный интерфейс.
+	 */
+	struct state_t;
+	/**
+	 * @brief Предварительное объявление непрозрачного контекста ключа RSA
+	 *
+	 * @details Полное определение скрыто в модуле реализации,
+	 *          что позволяет не подключать заголовочные файлы стороннего криптопровайдера (OpenSSL) в публичный интерфейс.
+	 */
+	struct key_rsa_t;
 	/**
 	 * @brief Класс криптографии
 	 *
@@ -91,25 +114,40 @@ namespace awh {
 				SHA384 = 0x05, // Хэш SHA384
 				SHA512 = 0x06  // Хэш SHA512
 			};
+		private:
+			/**
+			 * @brief Структура параметров RSA
+			 *
+			 */
+			typedef struct Params_RSA {
+				// Количество итераций PBKDF2 для вывода ключа AES из пароля
+				uint32_t rounds;
+				// Соль шифрования
+				string salt;
+				// Пароль шифрования
+				string password;
+				// Стейт AES шифрования
+				state_t * state;
+				// Объект RSA ключа
+				key_rsa_t * key;
+				/**
+				 * @brief Конструктор
+				 *
+				 */
+				explicit Params_RSA() noexcept :
+				 rounds(AWH_CRYPTO_AES_ROUNDS),
+				 salt{""}, password{""},
+				 state(nullptr), key(nullptr) {}
+			} params_rsa_t;
 		public:
 			/**
 			 * @brief Тип 128-битного хэша
 			 *
 			 */
-			using uint128_t = std::array <uint8_t, 16>;
+			using uint128_t = array <uint8_t, 16>;
 		private:
-			// Объект RSA ключа
-			std::any _key;
 			// Стейт AES шифрования
-			std::any _state;
-		private:
-			// Количество раундов шифрования
-			int32_t _rounds;
-		private:
-			// Соль шифрования
-			string _salt;
-			// Пароль шифрования
-			string _password;
+			params_rsa_t _params;
 		private:
 			// Локер для потокобезопасной работы
 			mutable lock_state_t <std::mutex> _mtx;
@@ -127,11 +165,11 @@ namespace awh {
 			void threadSafety(const bool mode) noexcept;
 		public:
 			/**
-			 * @brief Метод установки количества раундов шифрования
+			 * @brief Метод установки количества итераций PBKDF2 для вывода ключа AES
 			 *
-			 * @param round количество раундов шифрования
+			 * @param round количество итераций PBKDF2
 			 */
-			void roundAES(const int32_t round) noexcept;
+			void roundAES(const uint32_t round) noexcept;
 		public:
 			/**
 			 * @brief Метод установки соли шифрования
