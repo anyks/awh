@@ -28,6 +28,8 @@
 #include <utility>
 #include <functional>
 #include <string_view>
+#include <unordered_map>
+#include <unordered_set>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -59,10 +61,27 @@ namespace awh {
 		 *          а конкретная схема (Basic/Digest/Bearer/HMAC) выбирается методом type()
 		 *          и реализуется внутренней стратегией scheme_t.
 		 *
+		 * @par Жизненный цикл и состояние
+		 * Метод type() при каждой смене схемы автоматически вызывает reset() и сбрасывает
+		 * временное состояние (счётчики Digest, таблицы replay, разобранные поля HMAC).
+		 * Учётные данные (user/pass/token), ключ подписи (key/keyId), realm, uri, method,
+		 * entity и callbacks при этом сохраняются.
+		 *
+		 * Метод reset() можно вызывать вручную между запросами на одном объекте auth_t,
+		 * если требуется начать новый цикл авторизации без смены схемы (например, после
+		 * ошибки parse() или при повторном использовании соединения).
+		 *
+		 * @par Рекомендации по размещению auth_t
+		 * - Клиент: один auth_t на HTTP-сессию или TCP-соединение.
+		 * - Сервер Basic/Bearer: допустим один shared auth_t на воркер (состояние не
+		 *   накапливается между запросами).
+		 * - Сервер Digest/HMAC: рекомендуется auth_t на соединение или запрос, так как
+		 *   схемы хранят nonce/opaque, таблицы replay (lncs, usedNonces) и выданные ключи.
+		 *
 		 * @par Пример использования (клиент)
 		 * @code{.cpp}
 		 * // Создаём модуль авторизации на стороне клиента
-		 * auth_t auth(fmk, log, auth_t::owner_t::CLIENT);
+		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
 		 * // Выбираем схему DIGEST с алгоритмом SHA-256
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * // При необходимости включаем сессионный режим алгоритма (SHA-256-sess)
@@ -81,7 +100,7 @@ namespace awh {
 		 * @par Пример использования (сервер)
 		 * @code{.cpp}
 		 * // Создаём модуль авторизации на стороне сервера
-		 * auth_t auth(fmk, log, auth_t::owner_t::SERVER);
+		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
 		 * // Выбираем схему DIGEST с алгоритмом SHA-256
 		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
 		 * // При необходимости включаем сессионный режим алгоритма (SHA-256-sess)
@@ -103,7 +122,7 @@ namespace awh {
 		 * @par Пример использования (клиент, подпись запроса HMAC, RFC 9421)
 		 * @code{.cpp}
 		 * // Создаём модуль авторизации на стороне клиента
-		 * auth_t auth(fmk, log, auth_t::owner_t::CLIENT);
+		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
 		 * // Выбираем схему подписи HMAC с алгоритмом SHA-256
 		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
 		 * // Указываем секретный ключ и его идентификатор
@@ -113,9 +132,50 @@ namespace awh {
 		 * auth.component("@method", "POST");
 		 * auth.component("@authority", "example.com");
 		 * auth.component("@path", "/foo");
+		 * // Опционально: задать параметры подписи до формирования заголовков
+		 * const uint64_t now = fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+		 * auth.signCreated(now);
+		 * auth.signExpires(now + 300); // срок действия 5 минут (если нужен)
+		 * auth.signNonce("unique-request-id"); // одноразовое значение (опционально)
 		 * // Получаем набор заголовков подписи (Signature-Input и Signature)
 		 * vector <pair <string, string>> headers;
 		 * auth.headers(headers);
+		 * @endcode
+		 *
+		 * @par Пример использования (сервер, проверка HMAC, RFC 9421)
+		 * @code{.cpp}
+		 * auth_t auth(auth_t::owner_t::SERVER, fmk, log);
+		 * auth.type(auth_t::type_t::HMAC, auth_t::hash_t::SHA256);
+		 * // Допуск расхождения часов клиента и сервера (по умолчанию 60 с)
+		 * auth.mode.clockSkew(120);
+		 * // Максимальный возраст подписи без expires (рекомендуется в production, если клиент
+		 * // не передаёт expires; 0 — без ограничения)
+		 * auth.mode.signMaxAge(300);
+		 * // Восстанавливаем значения компонентов из принятого HTTP-запроса
+		 * auth.component("@method", request.method());
+		 * auth.component("@authority", request.authority());
+		 * auth.component("@path", request.path());
+		 * auth.callbackExtractKey([](const string & keyId) -> string {
+		 *     return keystore.secret(keyId);
+		 * });
+		 * // Разбираем заголовки подписи клиента
+		 * auth.parse("Signature-Input", request.header("Signature-Input"));
+		 * auth.parse("Signature", request.header("Signature"));
+		 * if(!auth.check())
+		 *     response.status(401);
+		 * @endcode
+		 *
+		 * @par Пример использования (клиент, Digest qop=auth-int)
+		 * @code{.cpp}
+		 * auth_t auth(auth_t::owner_t::CLIENT, fmk, log);
+		 * auth.type(auth_t::type_t::DIGEST, auth_t::hash_t::SHA256);
+		 * auth.user("login");
+		 * auth.pass("secret");
+		 * auth.method("POST");
+		 * auth.uri("/api/resource");
+		 * auth.parse(wwwAuthenticate); // вызов с qop="auth-int"
+		 * auth.entity(requestBody);    // обязательно: тело запроса для расчёта HA2
+		 * const string & credentials = auth.header();
 		 * @endcode
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Authorization {
@@ -148,18 +208,40 @@ namespace awh {
 				};
 			public:
 				/**
+				 * @brief Структура режима работы схемы авторизации
+				 *
+				 */
+				typedef struct Mode_Digest {
+					// Флаг наличия параметра qop (RFC 7616, иначе legacy RFC 2069)
+					bool qop;
+					// Флаг использования сессионного алгоритма (-sess)
+					bool sess;
+					// Флаг режима qop=auth-int (требует entity-body)
+					bool authInt;
+					// Штамп времени последней генерации nonce в секундах (сервер)
+					uint64_t stamp;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Mode_Digest() noexcept :
+					 qop(false), sess(false),
+					 authInt(false), stamp(0) {}
+				} mode_digest_t;
+				/**
 				 * @brief Структура параметров Digest-авторизации
+				 *
+				 * @details Поля mode.sess, mode.qop, mode.authInt, nc, nonce, opaque, lncs и др. используются
+				 *          внутренне схемой Digest. На сервере lncs хранит последние принятые
+				 *          значения nc по ключу «логин + nonce» для защиты от replay-атак.
+				 *          Таблица сбрасывается при выдаче нового nonce и при reset()/type().
 				 *
 				 */
 				typedef struct Digest {
-					// Флаг использования сессионного алгоритма (-sess)
-					bool sess;
-					// Штамп времени последней генерации nonce в секундах (сервер)
-					uint64_t stamp;
+					// Флаги состояния авторизации (для внутреннего использования схемой Digest)
+					mode_digest_t mode;
 					// Счётчик запросов клиента (nonce count)
 					string nc;
-					// Последний принятый сервером счётчик запросов (защита от повторов)
-					string lnc;
 					// Параметры HTTP-запроса (request-uri)
 					string uri;
 					// Тип защиты (quality of protection)
@@ -170,32 +252,56 @@ namespace awh {
 					string nonce;
 					// Уникальный ключ, фактически выданный сервером (для сверки при проверке)
 					string issued;
+					// Тело запроса (entity-body) для qop=auth-int
+					string entity;
 					// Временный ключ сессии сервера
 					string opaque;
 					// Уникальный ключ, генерируемый клиентом
 					string cnonce;
 					// Результат ответа клиента
 					string response;
+					// Фактически выданный сервером opaque (для сверки при проверке)
+					string issuedOpaque;
+					// Порядок ключей lncs для LRU-вытеснения (старейший — в начале)
+					vector <string> lncsOrder;
+					// Последние принятые счётчики запросов по паре «логин + nonce» (защита от повторов)
+					unordered_map <string, string> lncs;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Digest() noexcept :
-					 sess(false), stamp(0),
-					 nc{"00000000"}, lnc{"00000000"},
-					 uri{""}, qop{"auth"}, realm{""},
-					 nonce{""}, issued{""}, opaque{""},
-					 cnonce{""}, response{""} {}
+					 nc{"00000000"}, uri{""}, qop{"auth"},
+					 realm{""}, nonce{""}, issued{""}, entity{""},
+					 opaque{""}, cnonce{""}, response{""}, issuedOpaque{""} {}
 				} digest_t;
+			public:
 				/**
-				 * @brief Структура параметров авторизации подписью HMAC (RFC 9421)
+				 * @brief Структура даты подписи HMAC (RFC 9421)
 				 *
 				 */
-				typedef struct Sign {
+				typedef struct Sign_Date {
 					// Штамп времени создания подписи в секундах
 					uint64_t created;
 					// Штамп времени истечения подписи в секундах (0 — не задано)
 					uint64_t expires;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Sign_Date() noexcept : created(0), expires(0) {}
+				} sign_date_t;
+				/**
+				 * @brief Структура параметров авторизации подписью HMAC (RFC 9421)
+				 *
+				 * @details Поля created, expires и nonce включаются в Signature-Input и участвуют
+				 *          в расчёте подписи. На сервере usedNonces хранит уже принятые значения
+				 *          nonce для защиты от повторного использования подписи.
+				 *
+				 */
+				typedef struct Sign {
+					// Параметры даты подписи (created/expires)
+					sign_date_t date;
 					// Секретный ключ подписи (HMAC)
 					string key;
 					// Тег приложения (опционально)
@@ -210,19 +316,27 @@ namespace awh {
 					string params;
 					// Разобранная подпись клиента в формате BASE64 (сервер)
 					string signature;
+					// Метка подписи из заголовка Signature-Input (для сверки с Signature)
+					string inputLabel;
 					// Порядок покрываемых подписью компонентов (имена)
 					vector <string> covered;
+					// Порядок принятых nonce для LRU-вытеснения (старейший — в начале)
+					vector <string> usedNoncesOrder;
 					// Значения покрываемых компонентов (имя -> значение)
 					vector <pair <string, string>> components;
+					// Уже принятые одноразовые значения подписи (защита от replay на сервере)
+					unordered_set <string> usedNonces;
+					// Индекс компонентов по имени в нижнем регистре (для быстрого поиска)
+					unordered_map <string, size_t> componentIndex;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Sign() noexcept :
-					 created(0), expires(0),
 					 key{""}, tag{""},
 					 keyId{""}, label{"sig1"},
-					 nonce{""}, params{""}, signature{""} {}
+					 nonce{""}, params{""},
+					 signature{""}, inputLabel{""} {}
 				} sign_t;
 				/**
 				 * @brief Структура обратных вызовов для проверки учётных данных (сервер)
@@ -245,13 +359,36 @@ namespace awh {
 					 checkToken(nullptr), extractKey(nullptr),
 					 extractPass(nullptr), checkUser(nullptr) {}
 				} callback_t;
+			public:
+				/**
+				 * @brief Структура режима работы параметров авторизации
+				 *
+				 */
+				typedef struct Mode_Params {
+					// Флаг работы через прокси (Proxy-Authorization/Proxy-Authenticate)
+					bool proxy;
+					// Допустимое расхождение локальных часов при проверке HMAC (секунды)
+					uint64_t clockSkew;
+					// Максимальный возраст HMAC-подписи без expires (секунды, 0 — не ограничен)
+					uint64_t signMaxAge;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Mode_Params() noexcept :
+					 proxy(false), clockSkew(60), signMaxAge(0) {}
+				} mode_params_t;
 				/**
 				 * @brief Структура общих параметров авторизации
 				 *
+				 * @details clockSkew задаёт допуск (в секундах) при проверке created/expires
+				 *          подписи HMAC на сервере. Значение по умолчанию — 60 секунд.
+				 *          signMaxAge ограничивает срок жизни подписи без expires (0 — без лимита).
+				 *
 				 */
 				typedef struct Params {
-					// Флаг работы через прокси (Proxy-Authorization/Proxy-Authenticate)
-					bool proxy;
+					// Режим работы параметров авторизации
+					mode_params_t mode;
 					// Логин пользователя
 					string user;
 					// Пароль пользователя
@@ -260,8 +397,10 @@ namespace awh {
 					string token;
 					// HTTP-метод запроса (для расчёта ответа DIGEST)
 					string method;
-					// Алгоритм хэширования (для DIGEST/HMAC)
+					// Текущий алгоритм хэширования (может переопределяться из заголовка Digest)
 					hash_t hash;
+					// Алгоритм хэширования, заданный через type() (для DIGEST/HMAC)
+					hash_t scheme;
 					// Параметры авторизации подписью HMAC
 					sign_t sign;
 					// Параметры Digest-авторизации
@@ -273,8 +412,9 @@ namespace awh {
 					 *
 					 */
 					explicit Params() noexcept :
-					 proxy(false), user{""}, pass{""},
-					 token{""}, method{"GET"}, hash(hash_t::MD5) {}
+					 user{""}, pass{""},
+					 token{""}, method{"GET"},
+					 hash(hash_t::MD5), scheme(hash_t::MD5) {}
 				} params_t;
 			public:
 				/**
@@ -306,6 +446,31 @@ namespace awh {
 						 * @return имя заголовка авторизации
 						 */
 						string name() const noexcept;
+						/**
+						 * @brief Метод сравнения строк в постоянном времени
+						 *
+						 * @details Используется для сравнения секретов и подписей. Не делегируется
+						 *          в fmk_t::compare(), так как тот завершается досрочно и не подходит
+						 *          для криптографических сверок.
+						 *
+						 * @param left  первая строка
+						 * @param right вторая строка
+						 * @return      результат сравнения
+						 */
+						static bool secureCompare(const string_view left, const string_view right) noexcept;
+						/**
+						 * @brief Метод извлечения полезной нагрузки после названия схемы авторизации
+						 *
+						 * @details Проверяет, что заголовок начинается с указанной схемы и после неё
+						 *          следует пробельный символ (RFC 7235). Для trim и сравнения схемы
+						 *          используется fmk_t.
+						 *
+						 * @param header  значение заголовка авторизации
+						 * @param scheme  название схемы (Basic, Bearer, Digest)
+						 * @param payload полезная нагрузка после схемы
+						 * @return        результат извлечения
+						 */
+						bool schemePayload(const string_view header, const string_view scheme, string & payload) const noexcept;
 					public:
 						/**
 						 * @brief Метод проверки учётных данных (только для сервера)
@@ -401,6 +566,10 @@ namespace awh {
 				/**
 				 * @brief Метод установки типа авторизации
 				 *
+				 * @details Перед активацией новой стратегии автоматически вызывается reset().
+				 *          Сохранённые user/pass/token, key/keyId, realm, uri, method, entity
+				 *          и callbacks не затрагиваются.
+				 *
 				 * @param type тип авторизации для установки
 				 * @param hash алгоритм хэширования (для DIGEST/HMAC)
 				 */
@@ -414,6 +583,9 @@ namespace awh {
 				void user(string_view user) noexcept;
 				/**
 				 * @brief Метод установки пароля пользователя
+				 *
+				 * @details Для BASIC пароль передаётся как есть; символ «:» в пароле
+				 *          не поддерживается (RFC 7617: user-pass = userid \":\" password).
 				 *
 				 * @param pass пароль пользователя
 				 */
@@ -453,6 +625,39 @@ namespace awh {
 				 * @param label метка подписи (например, sig1)
 				 */
 				void label(string_view label) noexcept;
+			public:
+				/**
+				 * @brief Метод установки одноразового значения подписи (HMAC)
+				 *
+				 * @details Вызывается на клиенте **до** headers()/header(). Значение включается
+				 *          в Signature-Input и участвует в расчёте подписи. На сервере повторная
+				 *          проверка подписи с тем же nonce отклоняется (защита от replay).
+				 *
+				 * @param nonce одноразовое значение
+				 */
+				void signNonce(string_view nonce) noexcept;
+				/**
+				 * @brief Метод установки штампа времени создания подписи (HMAC)
+				 *
+				 * @details Вызывается на клиенте **до** headers()/header(). Значение попадает
+				 *          в Signature-Input и участвует в канонической базе подписи.
+				 *          Если передать 0, при формировании подписи будет использован текущий
+				 *          штамп времени (fmk_t::timestamp).
+				 *
+				 * @param stamp штамп времени в секундах (0 — автоматически при формировании)
+				 */
+				void signCreated(const uint64_t stamp) noexcept;
+				/**
+				 * @brief Метод установки штампа времени истечения подписи (HMAC)
+				 *
+				 * @details Вызывается на клиенте **до** headers()/header(). Сервер отклоняет
+				 *          подпись, если текущее время превышает expires (с учётом clockSkew).
+				 *          Значение 0 означает, что срок действия не ограничен.
+				 *
+				 * @param stamp штамп времени в секундах (0 — не задано)
+				 */
+				void signExpires(const uint64_t stamp) noexcept;
+			public:
 				/**
 				 * @brief Метод добавления покрываемого подписью компонента (HMAC)
 				 *
@@ -476,6 +681,15 @@ namespace awh {
 				 * @param method HTTP-метод запроса
 				 */
 				void method(string_view method) noexcept;
+				/**
+				 * @brief Метод установки тела запроса (DIGEST, qop=auth-int)
+				 *
+				 * @details Для qop=auth-int необходимо явно передать entity-body запроса
+				 *          до формирования или проверки учётных данных.
+				 *
+				 * @param entity тело HTTP-запроса (entity-body)
+				 */
+				void entity(string_view entity) noexcept;
 			public:
 				/**
 				 * @brief Метод установки названия сервера (realm)
@@ -508,11 +722,68 @@ namespace awh {
 				void session(const bool mode) noexcept;
 			public:
 				/**
+				 * @brief Метод получения допустимого расхождения локальных часов (HMAC)
+				 *
+				 * @return допуск в секундах (по умолчанию 60)
+				 */
+				uint64_t clockSkew() const noexcept;
+				/**
+				 * @brief Метод установки допустимого расхождения локальных часов (HMAC, секунды)
+				 *
+				 * @details Используется на сервере при check(): подпись принимается, если
+				 *          created не более чем на clockSkew секунд в будущем относительно
+				 *          серверного времени, а expires не более чем на clockSkew секунд
+				 *          в прошлом. Значение по умолчанию — 60. Передайте 0 для строгой
+				 *          проверки без допуска.
+				 *
+				 * @param seconds допуск при проверке created/expires (0 — только точное совпадение)
+				 */
+				void clockSkew(const uint64_t seconds) noexcept;
+			public:
+				/**
+				 * @brief Метод получения максимального возраста HMAC-подписи без expires
+				 *
+				 * @return лимит в секундах (0 — не ограничен)
+				 */
+				uint64_t signMaxAge() const noexcept;
+				/**
+				 * @brief Метод установки максимального возраста HMAC-подписи без expires (секунды)
+				 *
+				 * @details Используется на сервере при check(), если клиент не передал expires.
+				 *          Подпись отклоняется, когда now > created + signMaxAge + clockSkew.
+				 *          Значение 0 (по умолчанию) — ограничение не применяется.
+				 *          Для production-серверов HMAC рекомендуется задавать ненулевой лимит.
+				 *
+				 * @param seconds максимальный возраст подписи (0 — без ограничения)
+				 */
+				void signMaxAge(const uint64_t seconds) noexcept;
+			public:
+				/**
 				 * @brief Метод проверки учётных данных (только для сервера)
+				 *
+				 * @details На стороне CLIENT всегда возвращает true (проверка не выполняется).
 				 *
 				 * @return результат проверки
 				 */
 				bool check() noexcept;
+			public:
+				/**
+				 * @brief Метод сброса временного состояния схемы авторизации
+				 *
+				 * @details Очищает накопленное между запросами состояние:
+				 *          - Digest: mode.qop, mode.authInt, mode.stamp, nc, nonce, issued, opaque,
+				 *            cnonce, response, issuedOpaque, lncs (realm, uri, entity, mode.sess сохраняются);
+				 *          - HMAC: date.created, date.expires, nonce, params, signature, covered,
+				 *            components, componentIndex, usedNonces (key, keyId, label, tag сохраняются).
+				 *
+				 *          Не затрагивает: callbacks, user, pass, token, key, keyId, realm,
+				 *          uri, method, entity, mode.proxy, mode.clockSkew, mode.signMaxAge, hash,
+				 *          digest.mode.sess.
+				 *
+				 *          Вызывается автоматически из type(). Имеет смысл вызывать вручную
+				 *          при повторном цикле авторизации на том же auth_t без смены схемы.
+				 */
+				void reset() noexcept;
 			public:
 				/**
 				 * @brief Метод формирования исходящего заголовка авторизации
@@ -537,6 +808,16 @@ namespace awh {
 			public:
 				/**
 				 * @brief Метод разбора входящего заголовка авторизации
+				 *
+				 * @details На сервере перед разбором очищаются учётные данные предыдущего
+				 *          запроса (user/pass/token, response, nonce, nc и др.), hash
+				 *          восстанавливается до значения type(), digest.mode.sess сбрасывается.
+				 *          Для HMAC очистка выполняется только перед разбором Signature-Input
+				 *          (значение с «(»), чтобы двухшаговый разбор через parse(header)
+				 *          не затирал уже разобранный Signature-Input.
+				 *          Для Digest realm, заданный через realm(), не перезаписывается из заголовка
+				 *          клиента; несовпадение realm отклоняется при parse(). На сервере
+				 *          Digest требует username и response в учётных данных.
 				 *
 				 * @param header значение заголовка (клиент: вызов сервера, сервер: учётные данные)
 				 * @return       результат разбора

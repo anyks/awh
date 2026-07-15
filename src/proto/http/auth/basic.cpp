@@ -48,40 +48,38 @@ bool awh::http::Basic::check() noexcept {
 bool awh::http::Basic::parse(const string_view header) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если заголовок передан и фреймворк установлен
-	if(!header.empty() && (this->_crypto != nullptr)){
+	// Если заголовок передан
+	if(!header.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Название схемы авторизации
 			const string type = "Basic";
-			// Выполняем поиск схемы BASIC-авторизации
-			const size_t pos = header.find(type);
-			// Если схема авторизации не найдена - завершаем разбор
-			if(pos == string::npos)
+			// Полезная нагрузка заголовка после названия схемы
+			string payload = "";
+			// Если схема BASIC не распознана - завершаем разбор
+			if(!this->schemePayload(header, type, payload))
 				// Сообщаем о неудачном разборе
 				return result;
 			// На стороне сервера разбираем учётные данные клиента
 			if(this->_owner == auth_t::owner_t::SERVER){
-				// Если после названия схемы есть данные
-				if((pos + type.length() + 1) < header.length()){
-					// Получаем закодированные BASE64 учётные данные
-					const string base64(header.substr(pos + type.length() + 1));
+				// Удаляем крайние пробелы у полезной нагрузки
+				this->_fmk->transform(payload, fmk_t::transform_t::TRIM);
+				// Если полезная нагрузка получена
+				if(!payload.empty()){
 					// Выполняем декодирование учётных данных из BASE64
-					const string & credentials = this->_crypto->decrypt <string> (base64, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
+					const string & credentials = this->_crypto->decrypt <string> (payload, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
 					// Если учётные данные декодированы
 					if(!credentials.empty()){
 						// Выполняем поиск разделителя «логин:пароль»
 						const size_t sep = credentials.find(":");
 						// Если разделитель найден
-						if(sep != string::npos){
+						if((result = (sep != string::npos))){
 							// Извлекаем логин пользователя
 							this->_params.user = credentials.substr(0, sep);
 							// Извлекаем пароль пользователя
 							this->_params.pass = credentials.substr(sep + 1);
-							// Запоминаем успешный разбор
-							result = true;
 						}
 					}
 				}
@@ -118,60 +116,57 @@ bool awh::http::Basic::parse(const string_view header) noexcept {
 string awh::http::Basic::header(const bool full) noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если фреймворк установлен
-	if(this->_crypto != nullptr){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
 		/**
-		 * Выполняем отлов ошибок
+		 * В зависимости от стороны работы формируем заголовок авторизации
 		 */
-		try {
-			/**
-			 * В зависимости от стороны работы формируем заголовок авторизации
-			 */
-			switch(static_cast <uint8_t> (this->_owner)){
-				// На стороне клиента формируем учётные данные (Authorization)
-				case static_cast <uint8_t> (auth_t::owner_t::CLIENT): {
-					// Если логин и пароль установлены
-					if(!this->_params.user.empty() && !this->_params.pass.empty()){
-						// Формируем строку «логин:пароль»
-						const string credentials = this->_params.user + ":" + this->_params.pass;
-						// Выполняем кодирование учётных данных в BASE64
-						const string & base64 = this->_crypto->encrypt <string> (credentials, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
-						// Формируем значение заголовка авторизации
-						result = this->_fmk->format("Basic %s", base64.c_str());
-						// Если требуется вывести заголовок вместе с его именем
-						if(full)
-							// Дополняем результат именем заголовка
-							result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
-					}
-				} break;
-				// На стороне сервера формируем вызов авторизации (WWW-Authenticate)
-				case static_cast <uint8_t> (auth_t::owner_t::SERVER): {
-					// Формируем значение вызова авторизации
-					result = this->_fmk->format("Basic realm=\"%s\"", this->_params.digest.realm.c_str());
+		switch(static_cast <uint8_t> (this->_owner)){
+			// На стороне клиента формируем учётные данные (Authorization)
+			case static_cast <uint8_t> (auth_t::owner_t::CLIENT): {
+				// Если логин и пароль установлены
+				if(!this->_params.user.empty() && !this->_params.pass.empty()){
+					// Формируем строку «логин:пароль»
+					const string credentials = this->_params.user + ":" + this->_params.pass;
+					// Выполняем кодирование учётных данных в BASE64
+					const string & base64 = this->_crypto->encrypt <string> (credentials, crypto_t::hash_t::NONE, crypto_t::cipher_t::BASE64);
+					// Формируем значение заголовка авторизации
+					result = this->_fmk->format("Basic %s", base64.c_str());
 					// Если требуется вывести заголовок вместе с его именем
 					if(full)
 						// Дополняем результат именем заголовка
 						result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
-				} break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(full), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим в лог сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+				}
+			} break;
+			// На стороне сервера формируем вызов авторизации (WWW-Authenticate)
+			case static_cast <uint8_t> (auth_t::owner_t::SERVER): {
+				// Формируем значение вызова авторизации
+				result = this->_fmk->format("Basic realm=\"%s\"", this->_params.digest.realm.c_str());
+				// Если требуется вывести заголовок вместе с его именем
+				if(full)
+					// Дополняем результат именем заголовка
+					result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
+			} break;
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(full), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;

@@ -13,7 +13,17 @@
  */
 
 /**
- * Стандартные заголовочные файлы
+ * Если максимальное число HMAC-nonce не указано
+ */
+#ifndef AWH_AUTH_HMAC_NONCE_MAX
+	/**
+	 * Устанавливаем максимальное число принятых HMAC-nonce в 4096
+	 */
+	#define AWH_AUTH_HMAC_NONCE_MAX 0x1000
+#endif
+
+/**
+ * Стандартный заголовочный файл
  */
 #include <cstdlib>
 
@@ -26,6 +36,90 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * @brief Инкапсулируем статические параметры в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * Используем пространство имён AWH
+	 */
+	using namespace awh;
+
+	/**
+	 * @brief Метод сохранения принятого HMAC-nonce с LRU-вытеснением
+	 *
+	 * @param sign  параметры подписи
+	 * @param nonce одноразовое значение
+	 */
+	void rememberNonce(http::auth_t::sign_t & sign, const string & nonce) noexcept {
+		// Если достигнут лимит — удаляем самую старую запись
+		if((sign.usedNonces.size() >= AWH_AUTH_HMAC_NONCE_MAX) && !sign.usedNoncesOrder.empty()){
+			// Удаляем старейший nonce из множества
+			sign.usedNonces.erase(sign.usedNoncesOrder.front());
+			// Удаляем старейший nonce из LRU-очереди
+			sign.usedNoncesOrder.erase(sign.usedNoncesOrder.begin());
+		}
+		// Сохраняем принятый nonce
+		sign.usedNonces.insert(nonce);
+		// Добавляем nonce в конец LRU-очереди
+		sign.usedNoncesOrder.push_back(nonce);
+	}
+	/**
+	 * @brief Функция приведения ключей параметров Signature-Input к нижнему регистру
+	 *
+	 * @param params значение параметров подписи (@signature-params)
+	 * @param fmk    объект фреймворка
+	 */
+	void normalizeSignatureParamKeys(string & params, const fmk_t * fmk) noexcept {
+		// Выполняем поиск конца списка покрываемых компонентов
+		const size_t rp = params.find(')');
+		// Если список компонентов не найден
+		if(rp == string::npos)
+			// Завершаем нормализацию
+			return;
+		// Сохраняем список покрываемых компонентов
+		string result = params.substr(0, rp + 1);
+		// Извлекаем хвост с параметрами подписи
+		const string tail = params.substr(rp + 1);
+		// Список параметров подписи
+		vector <string> parts;
+		// Выполняем разделение параметров подписи
+		fmk->split(tail, ";", parts);
+		/**
+		 * Выполняем перебор всех параметров подписи
+		 */
+		for(auto & part : parts){
+			// Удаляем крайние пробелы у параметра
+			fmk->transform(part, fmk_t::transform_t::TRIM);
+			// Если параметр пустой - пропускаем его
+			if(part.empty())
+				// Переходим к следующему параметру
+				continue;
+			// Выполняем поиск разделителя «ключ=значение»
+			const size_t sep = part.find('=');
+			// Если разделитель не найден - пропускаем параметр
+			if(sep == string::npos)
+				// Переходим к следующему параметру
+				continue;
+			// Извлекаем ключ параметра
+			string key = ::move(part.substr(0, sep));
+			// Удаляем крайние пробелы у ключа
+			fmk->transform(key, fmk_t::transform_t::TRIM);
+			// Приводим ключ параметра к нижнему регистру
+			fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
+			// Добавляем разделитель «;» и ключ параметра в нижнем регистре
+			result.append(1, ';');
+			// Добавляем ключ параметра в нижнем регистре
+			result.append(key);
+			// Добавляем разделитель «=» и значение параметра
+			result.append(part.substr(sep));
+		}
+		// Сохраняем нормализованное значение параметров подписи
+		params = ::move(result);
+	}
+};
 
 /**
  * @brief Метод получения текстового имени алгоритма подписи
@@ -72,23 +166,14 @@ string awh::http::Hmac::algName() const noexcept {
  * @return     значение компонента (пустая строка, если не найден)
  */
 string awh::http::Hmac::value(string_view name) const noexcept {
-	// Формируем копию искомого имени компонента в нижнем регистре
+	// Формируем ключ компонента в нижнем регистре
 	string search(name);
-	// Приводим искомое имя компонента к нижнему регистру
+	// Приводим ключ компонента к нижнему регистру
 	this->_fmk->transform(search, fmk_t::transform_t::LOWER_CASE);
-	/**
-	 * Выполняем перебор всех покрываемых компонентов
-	 */
-	for(auto & component : this->_params.sign.components){
-		// Формируем копию имени компонента в нижнем регистре
-		string key(component.first);
-		// Приводим имя компонента к нижнему регистру
-		this->_fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
-		// Если имя компонента совпадает с искомым
-		if(key.compare(search) == 0)
-			// Выводим значение компонента
-			return component.second;
-	}
+	// Если компонент найден в индексе
+	if(const auto it = this->_params.sign.componentIndex.find(search); it != this->_params.sign.componentIndex.end())
+		// Выводим значение компонента
+		return this->_params.sign.components.at(it->second).second;
 	// Компонент с указанным именем не найден
 	return "";
 }
@@ -107,9 +192,9 @@ string awh::http::Hmac::params() noexcept {
 		// Получаем ссылку на параметры подписи
 		auth_t::sign_t & sign = this->_params.sign;
 		// Если штамп времени создания подписи не установлен
-		if(sign.created == 0)
+		if(sign.date.created == 0)
 			// Устанавливаем текущий штамп времени в секундах
-			sign.created = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+			sign.date.created = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
 		// Формируем список покрываемых компонентов из порядка их добавления
 		sign.covered.clear();
 		// Строка списка покрываемых компонентов
@@ -134,15 +219,15 @@ string awh::http::Hmac::params() noexcept {
 		// Закрываем список покрываемых компонентов
 		list.append(1, ')');
 		// Формируем параметры подписи: обязательные created и alg
-		result = this->_fmk->format("%s;created=%s;alg=\"%s\"", list.c_str(), std::to_string(sign.created).c_str(), this->algName().c_str());
+		result = this->_fmk->format("%s;created=%s;alg=\"%s\"", list.c_str(), std::to_string(sign.date.created).c_str(), this->algName().c_str());
 		// Если идентификатор ключа установлен
 		if(!sign.keyId.empty())
 			// Добавляем идентификатор ключа
 			result.append(this->_fmk->format(";keyid=\"%s\"", sign.keyId.c_str()));
 		// Если штамп времени истечения подписи установлен
-		if(sign.expires > 0)
+		if(sign.date.expires > 0)
 			// Добавляем штамп времени истечения подписи
-			result.append(this->_fmk->format(";expires=%s", std::to_string(sign.expires).c_str()));
+			result.append(this->_fmk->format(";expires=%s", std::to_string(sign.date.expires).c_str()));
 		// Если одноразовое значение подписи установлено
 		if(!sign.nonce.empty())
 			// Добавляем одноразовое значение подписи
@@ -351,6 +436,8 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				this->_fmk->transform(label, fmk_t::transform_t::TRIM);
 				// Устанавливаем метку подписи
 				sign.label = ::move(label);
+				// Запоминаем метку из Signature-Input для сверки с Signature
+				sign.inputLabel = sign.label;
 				// Извлекаем сырое значение параметров подписи
 				string rest = ::move(value.substr(eq + 1));
 				// Удаляем крайние пробелы у параметров подписи
@@ -414,6 +501,8 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 						this->_fmk->transform(key, fmk_t::transform_t::TRIM);
 						// Удаляем крайние пробелы у значения
 						this->_fmk->transform(value, fmk_t::transform_t::TRIM);
+						// Приводим ключ параметра к нижнему регистру
+						this->_fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
 						// Если значение обёрнуто в кавычки - удаляем их
 						if((value.length() > 1) && (value.front() == '"') && (value.back() == '"'))
 							// Снимаем обрамляющие кавычки
@@ -453,11 +542,11 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 						// Если параметр является штампом времени создания
 						} else if(key.compare("created") == 0)
 							// Устанавливаем штамп времени создания подписи
-							sign.created = static_cast <uint64_t> (::strtoull(value.c_str(), nullptr, 10));
+							sign.date.created = static_cast <uint64_t> (::strtoull(value.c_str(), nullptr, 10));
 						// Если параметр является штампом времени истечения
 						else if(key.compare("expires") == 0)
 							// Устанавливаем штамп времени истечения подписи
-							sign.expires = static_cast <uint64_t> (::strtoull(value.c_str(), nullptr, 10));
+							sign.date.expires = static_cast <uint64_t> (::strtoull(value.c_str(), nullptr, 10));
 						// Если параметр является одноразовым значением
 						else if(key.compare("nonce") == 0)
 							// Устанавливаем одноразовое значение подписи
@@ -467,6 +556,8 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 							// Устанавливаем тег приложения
 							sign.tag = ::move(value);
 					}
+					// Приводим ключи параметров к нижнему регистру для канонической сверки
+					::normalizeSignatureParamKeys(sign.params, this->_fmk);
 				}
 			// Если разбирается заголовок Signature
 			} else if(field.compare("signature") == 0) {
@@ -482,6 +573,10 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				string label = ::move(value.substr(0, eq));
 				// Удаляем крайние пробелы у метки подписи
 				this->_fmk->transform(label, fmk_t::transform_t::TRIM);
+				// Если метка не совпадает с Signature-Input — отклоняем разбор
+				if(!sign.inputLabel.empty() && !secureCompare(label, sign.inputLabel))
+					// Сообщаем о неудачном разборе
+					return result;
 				// Устанавливаем метку подписи
 				sign.label = ::move(label);
 				// Извлекаем значение подписи
@@ -533,6 +628,37 @@ bool awh::http::Hmac::check() noexcept {
 	if(sign.covered.empty() || sign.params.empty() || sign.signature.empty())
 		// Сообщаем о неудачной проверке
 		return false;
+	// Штамп created обязателен для проверки подписи на сервере
+	if(sign.date.created == 0)
+		// Сообщаем о неудачной проверке
+		return false;
+	// Метки Signature-Input и Signature должны совпадать
+	if(!sign.inputLabel.empty() && !secureCompare(sign.label, sign.inputLabel))
+		// Сообщаем о неудачной проверке
+		return false;
+	// Получаем текущий штамп времени в секундах
+	const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+	// Допустимое расхождение локальных часов
+	const uint64_t skew = this->_params.mode.clockSkew;
+	// Если подпись создана слишком далеко в будущем
+	if((sign.date.created > 0) && (now + skew < sign.date.created))
+		// Сообщаем о неудачной проверке
+		return false;
+	// Если срок действия подписи истёк
+	if((sign.date.expires > 0) && (now > (sign.date.expires + skew)))
+		// Сообщаем о неудачной проверке
+		return false;
+	// Если expires не задан — проверяем максимальный возраст подписи
+	if((sign.date.expires == 0) && (this->_params.mode.signMaxAge > 0) && (now > (sign.date.created + this->_params.mode.signMaxAge + skew)))
+		// Сообщаем о неудачной проверке
+		return false;
+	// Если задан одноразовый nonce — проверяем повторное использование
+	if(!sign.nonce.empty()){
+		// Если nonce уже был принят ранее
+		if(sign.usedNonces.find(sign.nonce) != sign.usedNonces.end())
+			// Сообщаем о неудачной проверке
+			return false;
+	}
 	// Извлекаем секретный ключ подписи (по идентификатору либо из параметров)
 	const string key = (this->_params.callback.extractKey != nullptr ? this->_params.callback.extractKey(sign.keyId) : sign.key);
 	// Если секретный ключ не получен
@@ -543,8 +669,16 @@ bool awh::http::Hmac::check() noexcept {
 	const string & base = this->base(sign.params);
 	// Рассчитываем ожидаемую подпись
 	const string & signature = this->sign(base, key);
-	// Сравниваем ожидаемую подпись с подписью клиента
-	return (!signature.empty() && (signature.compare(sign.signature) == 0));
+	// Если подпись не совпадает
+	if(signature.empty() || !secureCompare(signature, sign.signature))
+		// Сообщаем о неудачной проверке
+		return false;
+	// Если задан одноразовый nonce — фиксируем его как использованный
+	if(!sign.nonce.empty())
+		// Сохраняем nonce с LRU-вытеснением
+		::rememberNonce(this->_params.sign, sign.nonce);
+	// Подтверждаем успешную проверку подписи
+	return true;
 }
 /**
  * @brief Метод формирования исходящего заголовка авторизации

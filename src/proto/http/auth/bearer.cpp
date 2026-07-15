@@ -48,36 +48,28 @@ bool awh::http::Bearer::check() noexcept {
 bool awh::http::Bearer::parse(const string_view header) noexcept {
 	// Результат работы функции
 	bool result = false;
-	// Если заголовок передан и фреймворк установлен
-	if(!header.empty() && (this->_fmk != nullptr)){
+	// Если заголовок передан
+	if(!header.empty()){
 		/**
 		 * Выполняем отлов ошибок
 		 */
 		try {
 			// Название схемы авторизации
 			const string type = "Bearer";
-			// Выполняем поиск схемы BEARER-авторизации
-			const size_t pos = header.find(type);
-			// Если схема авторизации не найдена - завершаем разбор
-			if(pos == string::npos)
+			// Полезная нагрузка заголовка после названия схемы
+			string payload = "";
+			// Если схема BEARER не распознана - завершаем разбор
+			if(!this->schemePayload(header, type, payload))
 				// Сообщаем о неудачном разборе
 				return result;
 			// На стороне сервера разбираем токен доступа клиента
 			if(this->_owner == auth_t::owner_t::SERVER){
-				// Если после названия схемы есть данные
-				if((pos + type.length() + 1) < header.length()){
-					// Извлекаем токен доступа
-					string token(header.substr(pos + type.length() + 1));
-					// Удаляем крайние пробелы у токена доступа
-					this->_fmk->transform(token, fmk_t::transform_t::TRIM);
-					// Если токен доступа получен
-					if(!token.empty()){
-						// Устанавливаем токен доступа
-						this->_params.token = token;
-						// Запоминаем успешный разбор
-						result = true;
-					}
-				}
+				// Удаляем крайние пробелы у токена доступа
+				this->_fmk->transform(payload, fmk_t::transform_t::TRIM);
+				// Если токен доступа получен
+				if((result = !payload.empty()))
+					// Устанавливаем токен доступа
+					this->_params.token = ::move(payload);
 			// На стороне клиента подтверждаем распознавание схемы вызова
 			} else result = true;
 		/**
@@ -111,56 +103,53 @@ bool awh::http::Bearer::parse(const string_view header) noexcept {
 string awh::http::Bearer::header(const bool full) noexcept {
 	// Результат работы функции
 	string result = "";
-	// Если фреймворк установлен
-	if(this->_fmk != nullptr){
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
 		/**
-		 * Выполняем отлов ошибок
+		 * В зависимости от стороны работы формируем заголовок авторизации
 		 */
-		try {
-			/**
-			 * В зависимости от стороны работы формируем заголовок авторизации
-			 */
-			switch(static_cast <uint8_t> (this->_owner)){
-				// На стороне клиента формируем учётные данные (Authorization)
-				case static_cast <uint8_t> (auth_t::owner_t::CLIENT): {
-					// Если токен доступа установлен
-					if(!this->_params.token.empty()){
-						// Формируем значение заголовка авторизации
-						result = this->_fmk->format("Bearer %s", this->_params.token.c_str());
-						// Если требуется вывести заголовок вместе с его именем
-						if(full)
-							// Дополняем результат именем заголовка
-							result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
-					}
-				} break;
-				// На стороне сервера формируем вызов авторизации (WWW-Authenticate)
-				case static_cast <uint8_t> (auth_t::owner_t::SERVER): {
-					// Формируем значение вызова авторизации
-					result = this->_fmk->format("Bearer realm=\"%s\"", this->_params.digest.realm.c_str());
+		switch(static_cast <uint8_t> (this->_owner)){
+			// На стороне клиента формируем учётные данные (Authorization)
+			case static_cast <uint8_t> (auth_t::owner_t::CLIENT): {
+				// Если токен доступа установлен
+				if(!this->_params.token.empty()){
+					// Формируем значение заголовка авторизации
+					result = this->_fmk->format("Bearer %s", this->_params.token.c_str());
 					// Если требуется вывести заголовок вместе с его именем
 					if(full)
 						// Дополняем результат именем заголовка
 						result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
-				} break;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(full), log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Выводим в лог сообщение об ошибке
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
+				}
+			} break;
+			// На стороне сервера формируем вызов авторизации (WWW-Authenticate)
+			case static_cast <uint8_t> (auth_t::owner_t::SERVER): {
+				// Формируем значение вызова авторизации
+				result = this->_fmk->format("Bearer realm=\"%s\"", this->_params.digest.realm.c_str());
+				// Если требуется вывести заголовок вместе с его именем
+				if(full)
+					// Дополняем результат именем заголовка
+					result = this->_fmk->format("%s: %s\r\n", this->name().c_str(), result.c_str());
+			} break;
 		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(full), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Выводим в лог сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
 	}
 	// Выводим результат
 	return result;

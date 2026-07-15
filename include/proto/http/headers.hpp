@@ -18,21 +18,21 @@
 /**
  * Если максимальное количество заголовков не указано
  */
-#ifndef AWH_MAX_COUNT_HEADERS
+#ifndef AWH_MAX_COUNT_HTTP_HEADERS
 	/**
 	 * Устанавливаем максимальное количество заголовков в 100
 	 */
-	#define AWH_MAX_COUNT_HEADERS 0x64
+	#define AWH_MAX_COUNT_HTTP_HEADERS 0x64
 #endif
 
 /**
  * Если максимальное значение потребляемой памяти не указано
  */
-#ifndef AWH_MAX_MEMORY_HEADERS
+#ifndef AWH_MAX_MEMORY_HTTP_HEADERS
 	/**
 	 * Устанавливаем максимальное значение потребляемой памяти 16 КБ
 	 */
-	#define AWH_MAX_MEMORY_HEADERS 0x4000
+	#define AWH_MAX_MEMORY_HTTP_HEADERS 0x4000
 #endif
 
 /**
@@ -430,8 +430,8 @@ namespace awh {
 					 *
 					 */
 					explicit Max() noexcept :
-					 memory(AWH_MAX_MEMORY_HEADERS),
-					 records(AWH_MAX_COUNT_HEADERS) {}
+					 memory(AWH_MAX_MEMORY_HTTP_HEADERS),
+					 records(AWH_MAX_COUNT_HTTP_HEADERS) {}
 				} max_t;
 			private:
 				// Размеры максимальныйх ограничений

@@ -13,18 +13,75 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <cctype>
+
+/**
  * Подключаем заголовочные файлы проекта
  */
 #include <proto/http/auth/auth.hpp>
+#include <proto/http/auth/hmac.hpp>
 #include <proto/http/auth/basic.hpp>
 #include <proto/http/auth/digest.hpp>
 #include <proto/http/auth/bearer.hpp>
-#include <proto/http/auth/hmac.hpp>
 
 /**
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Подписываемся на пространство имён HTTP-протокола
+ */
+using namespace awh::http;
+
+/**
+ * @brief Инкапсулируем статические параметры в пространство имён
+ *
+ */
+namespace {
+	/**
+	 * @brief Функция очистки разобранных учётных данных предыдущего запроса (сервер)
+	 *
+	 * @param params общие параметры авторизации
+	 */
+	void clearParsedCredentials(auth_t::params_t & params) noexcept {
+		/**
+		 * Очищаем учётные данные предыдущего запроса
+		 */
+		params.user.clear();
+		params.pass.clear();
+		params.token.clear();
+		/**
+		 * Очищаем разобранные поля HMAC (key, components сохраняются)
+		 */
+		params.sign.tag.clear();
+		params.sign.nonce.clear();
+		params.sign.keyId.clear();
+		params.sign.params.clear();
+		params.sign.covered.clear();
+		params.sign.inputLabel.clear();
+		params.sign.signature.clear();
+		params.sign.date.created = 0;
+		params.sign.date.expires = 0;
+		params.sign.label        = "sig1";
+		/**
+		 * Очищаем разобранные поля Digest (issued, issuedOpaque, lncs, mode.stamp, realm сохраняются)
+		 */
+		params.digest.uri.clear();
+		params.digest.nonce.clear();
+		params.digest.cnonce.clear();
+		params.digest.opaque.clear();
+		params.digest.response.clear();
+		params.digest.mode.qop     = false;
+		params.digest.mode.sess    = false;
+		params.digest.mode.authInt = false;
+		params.digest.qop          = "auth";
+		params.digest.nc           = "00000000";
+		params.hash                = params.scheme;
+	}
+};
 
 /**
  * @brief Метод получения имени исходящего заголовка авторизации
@@ -40,9 +97,86 @@ string awh::http::Authorization::Scheme::name() const noexcept {
 	// На стороне клиента формируем имя заголовка учётных данных
 	if(this->_owner == owner_t::CLIENT)
 		// Учитываем режим работы через прокси
-		return (this->_params.proxy ? "Proxy-Authorization" : "Authorization");
+		return (this->_params.mode.proxy ? "Proxy-Authorization" : "Authorization");
 	// На стороне сервера формируем имя заголовка вызова с учётом прокси
-	return (this->_params.proxy ? "Proxy-Authenticate" : "WWW-Authenticate");
+	return (this->_params.mode.proxy ? "Proxy-Authenticate" : "WWW-Authenticate");
+}
+/**
+ * @brief Метод сравнения строк в постоянном времени
+ *
+ * @details Используется для сравнения секретов и подписей. Не делегируется
+ *          в fmk_t::compare(), так как тот завершается досрочно и не подходит
+ *          для криптографических сверок.
+ *
+ * @param left  первая строка
+ * @param right вторая строка
+ * @return      результат сравнения
+ */
+bool awh::http::Authorization::Scheme::secureCompare(const string_view left, const string_view right) noexcept {
+	// Если длины строк не совпадают
+	if(left.size() != right.size())
+		// Сообщаем о несовпадении
+		return false;
+	// Накопитель различий между строками
+	uint8_t diff = 0;
+	/**
+	 * Выполняем побайтовое сравнение
+	 */
+	for(size_t index = 0; index < left.size(); ++index)
+		// Накапливаем различия символов
+		diff |= static_cast <uint8_t> (left[index]) ^ static_cast <uint8_t> (right[index]);
+	// Подтверждаем совпадение только при отсутствии различий
+	return (diff == 0);
+}
+/**
+ * @brief Метод извлечения полезной нагрузки после названия схемы авторизации
+ *
+ * @details Проверяет, что заголовок начинается с указанной схемы и после неё
+ *          следует пробельный символ (RFC 7235). Для trim и сравнения схемы
+ *          используется fmk_t.
+ *
+ * @param header  значение заголовка авторизации
+ * @param scheme  название схемы (Basic, Bearer, Digest)
+ * @param payload полезная нагрузка после схемы
+ * @return        результат извлечения
+ */
+bool awh::http::Authorization::Scheme::schemePayload(const string_view header, const string_view scheme, string & payload) const noexcept {
+	// Если заголовок или схема не переданы
+	if(header.empty() || scheme.empty())
+		// Сообщаем о неудачном извлечении
+		return false;
+	// Копируем заголовок для нормализации через fmk_t
+	string text(header);
+	// Удаляем крайние пробелы у заголовка
+	this->_fmk->transform(text, fmk_t::transform_t::TRIM);
+	// Если длина заголовка недостаточна для схемы и полезной нагрузки
+	if(text.size() < (scheme.size() + 1))
+		// Сообщаем о неудачном извлечении
+		return false;
+	// Сравниваем название схемы без учёта регистра (RFC 7235)
+	if(!this->_fmk->compare(text.substr(0, scheme.size()), scheme))
+		// Сообщаем о неудачном извлечении
+		return false;
+	// Перемещаем индекс за название схемы
+	size_t index = scheme.size();
+	// После названия схемы должен быть пробельный символ
+	if((index >= text.size()) || !::isspace(static_cast <uint8_t> (text[index])))
+		// Сообщаем о неудачном извлечении
+		return false;
+	/**
+	 * Пропускаем пробелы после названия схемы
+	 */
+	while((index < text.size()) && ::isspace(static_cast <uint8_t> (text[index])))
+		// Переходим к следующему символу
+		++index;
+	// Если полезная нагрузка отсутствует
+	if(index >= text.size())
+		// Сообщаем о неудачном извлечении
+		return false;
+	// Извлекаем полезную нагрузку
+	payload = text.substr(index);
+	// Подтверждаем успешное извлечение
+	return true;
 }
 /**
  * @brief Метод формирования набора исходящих заголовков авторизации
@@ -112,14 +246,14 @@ awh::http::Authorization::type_t awh::http::Authorization::type() const noexcept
 /**
  * @brief Метод установки типа авторизации
  *
+ * @details Перед активацией новой стратегии вызывает reset().
+ *
  * @param type тип авторизации для установки
  * @param hash алгоритм хэширования (для DIGEST/HMAC)
  */
 void awh::http::Authorization::type(const type_t type, const hash_t hash) noexcept {
-	// Устанавливаем тип авторизации
-	this->_type = type;
-	// Устанавливаем алгоритм хэширования
-	this->_params.hash = hash;
+	// Временная стратегия выбранной схемы авторизации
+	unique_ptr <scheme_t> scheme = nullptr;
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -128,32 +262,37 @@ void awh::http::Authorization::type(const type_t type, const hash_t hash) noexce
 		 * Определяем тип авторизации
 		 */
 		switch(static_cast <uint8_t> (type)){
-			// Если тип авторизации не установлен
-			case static_cast <uint8_t> (type_t::NONE):
-				// Сбрасываем активную стратегию
-				this->_scheme = nullptr;
+			// Если тип авторизации HMAC
+			case static_cast <uint8_t> (type_t::HMAC):
+				// Создаём стратегию HMAC-авторизации
+				scheme = make_unique <hmac_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
 			break;
 			// Если тип авторизации BASIC
 			case static_cast <uint8_t> (type_t::BASIC):
 				// Создаём стратегию BASIC-авторизации
-				this->_scheme = make_unique <basic_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
+				scheme = make_unique <basic_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
 			break;
 			// Если тип авторизации DIGEST
 			case static_cast <uint8_t> (type_t::DIGEST):
 				// Создаём стратегию DIGEST-авторизации
-				this->_scheme = make_unique <digest_scheme_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
+				scheme = make_unique <digest_scheme_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
 			break;
 			// Если тип авторизации BEARER
 			case static_cast <uint8_t> (type_t::BEARER):
 				// Создаём стратегию BEARER-авторизации
-				this->_scheme = make_unique <bearer_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
-			break;
-			// Если тип авторизации HMAC
-			case static_cast <uint8_t> (type_t::HMAC):
-				// Создаём стратегию HMAC-авторизации
-				this->_scheme = make_unique <hmac_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
+				scheme = make_unique <bearer_t> (this->_owner, this->_params, &this->_crypto, this->_fmk, this->_log);
 			break;
 		}
+		// Сбрасываем временное состояние только после успешного создания стратегии
+		this->reset();
+		// Устанавливаем тип авторизации
+		this->_type = type;
+		// Устанавливаем текущий алгоритм хэширования
+		this->_params.hash = hash;
+		// Устанавливаем алгоритм хэширования схемы
+		this->_params.scheme = hash;
+		// Активируем новую стратегию
+		this->_scheme = ::move(scheme);
 	/**
 	 * Если возникает ошибка
 	 */
@@ -185,6 +324,9 @@ void awh::http::Authorization::user(string_view user) noexcept {
 /**
  * @brief Метод установки пароля пользователя
  *
+ * @details Для BASIC пароль передаётся как есть; символ «:» в пароле
+ *          не поддерживается (RFC 7617: user-pass = userid \":\" password).
+ *
  * @param pass пароль пользователя
  */
 void awh::http::Authorization::pass(string_view pass) noexcept {
@@ -210,7 +352,7 @@ void awh::http::Authorization::token(string_view token) noexcept {
  */
 void awh::http::Authorization::proxy(const bool mode) noexcept {
 	// Устанавливаем режим работы через прокси
-	this->_params.proxy = mode;
+	this->_params.mode.proxy = mode;
 }
 /**
  * @brief Метод установки секретного ключа подписи (HMAC)
@@ -242,6 +384,46 @@ void awh::http::Authorization::label(string_view label) noexcept {
 		this->_params.sign.label = label;
 }
 /**
+ * @brief Метод установки одноразового значения подписи (HMAC)
+ *
+ * @details Вызывается на клиенте **до** headers()/header(). Значение включается
+ *          в Signature-Input и участвует в расчёте подписи. На сервере повторная
+ *          проверка подписи с тем же nonce отклоняется (защита от replay).
+ *
+ * @param nonce одноразовое значение
+ */
+void awh::http::Authorization::signNonce(string_view nonce) noexcept {
+	// Устанавливаем одноразовое значение подписи
+	this->_params.sign.nonce = nonce;
+}
+/**
+ * @brief Метод установки штампа времени создания подписи (HMAC)
+ *
+ * @details Вызывается на клиенте **до** headers()/header(). Значение попадает
+ *          в Signature-Input и участвует в канонической базе подписи.
+ *          Если передать 0, при формировании подписи будет использован текущий
+ *          штамп времени (fmk_t::timestamp).
+ *
+ * @param stamp штамп времени в секундах (0 — автоматически при формировании)
+ */
+void awh::http::Authorization::signCreated(const uint64_t stamp) noexcept {
+	// Устанавливаем штамп времени создания подписи
+	this->_params.sign.date.created = stamp;
+}
+/**
+ * @brief Метод установки штампа времени истечения подписи (HMAC)
+ *
+ * @details Вызывается на клиенте **до** headers()/header(). Сервер отклоняет
+ *          подпись, если текущее время превышает expires (с учётом clockSkew).
+ *          Значение 0 означает, что срок действия не ограничен.
+ *
+ * @param stamp штамп времени в секундах (0 — не задано)
+ */
+void awh::http::Authorization::signExpires(const uint64_t stamp) noexcept {
+	// Устанавливаем штамп времени истечения подписи
+	this->_params.sign.date.expires = stamp;
+}
+/**
  * @brief Метод добавления покрываемого подписью компонента (HMAC)
  *
  * @details Порядок добавления компонентов сохраняется. Производные компоненты
@@ -252,9 +434,23 @@ void awh::http::Authorization::label(string_view label) noexcept {
  */
 void awh::http::Authorization::component(string_view name, string_view value) noexcept {
 	// Если имя компонента передано
-	if(!name.empty())
-		// Добавляем компонент в список покрываемых подписью
-		this->_params.sign.components.emplace_back(name, value);
+	if(!name.empty()){
+		// Формируем ключ компонента в нижнем регистре
+		string key(name);
+		// Приводим ключ компонента к нижнему регистру
+		this->_fmk->transform(key, fmk_t::transform_t::LOWER_CASE);
+		// Если компонент с таким именем уже добавлен
+		if(const auto it = this->_params.sign.componentIndex.find(key); it != this->_params.sign.componentIndex.end())
+			// Обновляем значение существующего компонента
+			this->_params.sign.components.at(it->second).second = value;
+		// Если компонент добавляется впервые
+		else {
+			// Добавляем компонент в список покрываемых подписью
+			this->_params.sign.componentIndex.emplace(key, this->_params.sign.components.size());
+			// Сохраняем компонент с исходным именем
+			this->_params.sign.components.emplace_back(name, value);
+		}
+	}
 }
 /**
  * @brief Метод установки параметров HTTP-запроса (DIGEST, клиент)
@@ -277,6 +473,18 @@ void awh::http::Authorization::method(string_view method) noexcept {
 	if(!method.empty())
 		// Устанавливаем HTTP-метод запроса
 		this->_params.method = method;
+}
+/**
+ * @brief Метод установки тела запроса (DIGEST, qop=auth-int)
+ *
+ * @details Для qop=auth-int необходимо явно передать entity-body запроса
+ *          до формирования или проверки учётных данных.
+ *
+ * @param entity тело HTTP-запроса (entity-body)
+ */
+void awh::http::Authorization::entity(string_view entity) noexcept {
+	// Устанавливаем тело HTTP-запроса
+	this->_params.digest.entity = entity;
 }
 /**
  * @brief Метод установки названия сервера (realm)
@@ -310,9 +518,14 @@ void awh::http::Authorization::nonce(string_view nonce) noexcept {
  */
 void awh::http::Authorization::opaque(string_view opaque) noexcept {
 	// Если временный ключ сессии сервера передан
-	if(!opaque.empty())
+	if(!opaque.empty()){
 		// Устанавливаем временный ключ сессии сервера
 		this->_params.digest.opaque = opaque;
+		// На стороне сервера фиксируем opaque как выданный (для сверки при проверке)
+		if(this->_owner == owner_t::SERVER)
+			// Запоминаем фактически выданный opaque
+			this->_params.digest.issuedOpaque = opaque;
+	}
 }
 /**
  * @brief Метод установки сессионного режима алгоритма Digest (-sess)
@@ -325,10 +538,59 @@ void awh::http::Authorization::opaque(string_view opaque) noexcept {
  */
 void awh::http::Authorization::session(const bool mode) noexcept {
 	// Устанавливаем сессионный режим алгоритма Digest
-	this->_params.digest.sess = mode;
+	this->_params.digest.mode.sess = mode;
+}
+/**
+ * @brief Метод получения допустимого расхождения локальных часов (HMAC)
+ *
+ * @return допуск в секундах (по умолчанию 60)
+ */
+uint64_t awh::http::Authorization::clockSkew() const noexcept {
+	// Выводим допуск расхождения локальных часов
+	return this->_params.mode.clockSkew;
+}
+/**
+ * @brief Метод установки допустимого расхождения локальных часов (HMAC, секунды)
+ *
+ * @details Используется на сервере при check(): подпись принимается, если
+ *          created не более чем на clockSkew секунд в будущем относительно
+ *          серверного времени, а expires не более чем на clockSkew секунд
+ *          в прошлом. Значение по умолчанию — 60. Передайте 0 для строгой
+ *          проверки без допуска.
+ *
+ * @param seconds допуск при проверке created/expires (0 — только точное совпадение)
+ */
+void awh::http::Authorization::clockSkew(const uint64_t seconds) noexcept {
+	// Устанавливаем допуск расхождения локальных часов
+	this->_params.mode.clockSkew = seconds;
+}
+/**
+ * @brief Метод получения максимального возраста HMAC-подписи без expires
+ *
+ * @return лимит в секундах (0 — не ограничен)
+ */
+uint64_t awh::http::Authorization::signMaxAge() const noexcept {
+	// Выводим максимальный возраст подписи без expires
+	return this->_params.mode.signMaxAge;
+}
+/**
+ * @brief Метод установки максимального возраста HMAC-подписи без expires (секунды)
+ *
+ * @details Используется на сервере при check(), если клиент не передал expires.
+ *          Подпись отклоняется, когда now > created + signMaxAge + clockSkew.
+ *          Значение 0 (по умолчанию) — ограничение не применяется.
+ *          Для production-серверов HMAC рекомендуется задавать ненулевой лимит.
+ *
+ * @param seconds максимальный возраст подписи (0 — без ограничения)
+ */
+void awh::http::Authorization::signMaxAge(const uint64_t seconds) noexcept {
+	// Устанавливаем максимальный возраст подписи без expires
+	this->_params.mode.signMaxAge = seconds;
 }
 /**
  * @brief Метод проверки учётных данных (только для сервера)
+ *
+ * @details На стороне CLIENT всегда возвращает true (проверка не выполняется).
  *
  * @return результат проверки
  */
@@ -339,6 +601,56 @@ bool awh::http::Authorization::check() noexcept {
 		return this->_scheme->check();
 	// Сообщаем о неудачной проверке
 	return false;
+}
+/**
+ * @brief Метод сброса временного состояния схемы авторизации
+ *
+ * @details Очищает накопленное между запросами состояние:
+ *          - Digest: mode.qop, mode.authInt, mode.stamp, nc, nonce, issued, opaque,
+ *            cnonce, response, issuedOpaque, lncs (realm, uri, entity, mode.sess сохраняются);
+ *          - HMAC: date.created, date.expires, nonce, params, signature, covered,
+ *            components, componentIndex, usedNonces (key, keyId, label, tag сохраняются).
+ *
+ *          Не затрагивает: callbacks, user, pass, token, key, keyId, realm,
+ *          uri, method, entity, mode.proxy, mode.clockSkew, mode.signMaxAge, hash,
+ *          digest.mode.sess.
+ *
+ *          Вызывается автоматически из type(). Имеет смысл вызывать вручную
+ *          при повторном цикле авторизации на том же auth_t без смены схемы.
+ */
+void awh::http::Authorization::reset() noexcept {
+	/**
+	 * Сбрасываем временное состояние Digest (realm, uri, entity и mode.sess сохраняются)
+	 */
+	auth_t::digest_t & digest = this->_params.digest;
+	digest.lncs.clear();
+	digest.nonce.clear();
+	digest.issued.clear();
+	digest.opaque.clear();
+	digest.cnonce.clear();
+	digest.response.clear();
+	digest.lncsOrder.clear();
+	digest.issuedOpaque.clear();
+	digest.mode.stamp   = 0;
+	digest.mode.qop     = false;
+	digest.mode.authInt = false;
+	digest.qop          = "auth";
+	digest.nc           = "00000000";
+	/**
+	 * Сбрасываем временное состояние HMAC (ключ и keyId сохраняются)
+	 */
+	auth_t::sign_t & sign = this->_params.sign;
+	sign.nonce.clear();
+	sign.params.clear();
+	sign.covered.clear();
+	sign.signature.clear();
+	sign.components.clear();
+	sign.inputLabel.clear();
+	sign.usedNonces.clear();
+	sign.componentIndex.clear();
+	sign.usedNoncesOrder.clear();
+	sign.date.created = 0;
+	sign.date.expires = 0;
 }
 /**
  * @brief Метод формирования исходящего заголовка авторизации
@@ -375,10 +687,31 @@ void awh::http::Authorization::headers(vector <pair <string, string>> & result) 
 /**
  * @brief Метод разбора входящего заголовка авторизации
  *
+ * @details На сервере перед разбором очищаются учётные данные предыдущего
+ *          запроса (user/pass/token, response, nonce, nc и др.), hash
+ *          восстанавливается до значения type(), digest.mode.sess сбрасывается.
+ *          Для HMAC очистка выполняется только перед разбором Signature-Input
+ *          (значение с «(»), чтобы двухшаговый разбор через parse(header)
+ *          не затирал уже разобранный Signature-Input.
+ *          Для Digest realm, заданный через realm(), не перезаписывается из заголовка
+ *          клиента; несовпадение realm отклоняется при parse(). На сервере
+ *          Digest требует username и response в учётных данных.
+ *
  * @param header значение заголовка (клиент: вызов сервера, сервер: учётные данные)
  * @return       результат разбора
  */
 bool awh::http::Authorization::parse(const string_view header) noexcept {
+	// На сервере очищаем учётные данные предыдущего запроса перед разбором
+	if((this->_owner == owner_t::SERVER) && (this->_scheme != nullptr)){
+		// HMAC: очистка только перед Signature-Input (значение содержит список компонентов)
+		if(this->_type == type_t::HMAC){
+			// Если заголовок содержит «(», значит это Signature-Input
+			if(header.find('(') != string_view::npos)
+				// Очищаем разобранные учётные данные предыдущего запроса
+				::clearParsedCredentials(this->_params);
+		// Если тип авторизации не HMAC, очищаем учётные данные всегда
+		} else ::clearParsedCredentials(this->_params);
+	}
 	// Если активная стратегия установлена - делегируем разбор ей
 	if(this->_scheme != nullptr)
 		// Выполняем разбор заголовка активной стратегией
@@ -396,6 +729,17 @@ bool awh::http::Authorization::parse(const string_view header) noexcept {
  * @return       результат разбора
  */
 bool awh::http::Authorization::parse(const string_view name, const string_view header) noexcept {
+	// На сервере очищаем stale-данные в начале разбора Signature-Input
+	if((this->_owner == owner_t::SERVER) && (this->_scheme != nullptr)){
+		// Устанавливаем имя заголовка в нижнем регистре для сравнения
+		string field(name);
+		// Приводим имя заголовка к нижнему регистру
+		this->_fmk->transform(field, fmk_t::transform_t::LOWER_CASE);
+		// Если это заголовок Signature-Input, очищаем разобранные учётные данные
+		if(field.compare("signature-input") == 0)
+			// Очищаем разобранные учётные данные предыдущего запроса
+			::clearParsedCredentials(this->_params);
+	}
 	// Если активная стратегия установлена - делегируем разбор ей
 	if(this->_scheme != nullptr)
 		// Выполняем разбор заголовка активной стратегией с указанием имени

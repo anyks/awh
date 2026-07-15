@@ -758,3 +758,835 @@ TEST_F(AuthFixture, SwitchSchemeTest){
 	// Проверяем что формируется заголовок схемы BASIC
 	ASSERT_EQ(client->header().compare(0, 6, "Basic "), 0);
 }
+
+/**
+ * @brief Метод проверки Digest для двух пользователей с одним nonce и nc=00000001
+ *
+ */
+TEST_F(AuthFixture, DigestMultiUserSameNonceTest){
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему DIGEST-авторизации
+	server->type(type_t::DIGEST);
+	// Устанавливаем название сервера
+	server->realm("anyks.com");
+	// Регистрируем функцию извлечения пароля по логину
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		// Возвращаем пароль только для известных логинов
+		if(user == "alice")
+			return "secret-a";
+		if(user == "bob")
+			return "secret-b";
+		return "";
+	});
+	// Формируем общий вызов авторизации сервера
+	const std::string challenge = server->header();
+	// Создаём клиента alice
+	std::unique_ptr <auth_t> alice = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	alice->type(type_t::DIGEST);
+	// Устанавливаем учётные данные alice
+	alice->user("alice");
+	alice->pass("secret-a");
+	alice->uri("/api/resource");
+	// Разбираем вызов сервера
+	ASSERT_TRUE(alice->parse(challenge));
+	// Формируем учётные данные alice
+	const std::string aliceCredentials = alice->header();
+	// Создаём клиента bob
+	std::unique_ptr <auth_t> bob = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	bob->type(type_t::DIGEST);
+	// Устанавливаем учётные данные bob
+	bob->user("bob");
+	bob->pass("secret-b");
+	bob->uri("/api/resource");
+	// Разбираем тот же вызов сервера
+	ASSERT_TRUE(bob->parse(challenge));
+	// Формируем учётные данные bob
+	const std::string bobCredentials = bob->header();
+	// Оба клиента должны начинать с nc=00000001
+	ASSERT_NE(aliceCredentials.find("nc=00000001"), std::string::npos);
+	ASSERT_NE(bobCredentials.find("nc=00000001"), std::string::npos);
+	// Сервер принимает alice
+	ASSERT_TRUE(server->parse(aliceCredentials));
+	ASSERT_TRUE(server->check());
+	// Сервер принимает bob с тем же nonce и тем же nc
+	ASSERT_TRUE(server->parse(bobCredentials));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки legacy Digest без параметра qop (RFC 2069)
+ *
+ */
+TEST_F(AuthFixture, DigestLegacyNoQopTest){
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему DIGEST-авторизации
+	server->type(type_t::DIGEST);
+	// Устанавливаем название сервера
+	server->realm("legacy.example");
+	// Регистрируем функцию извлечения пароля по логину
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	client->type(type_t::DIGEST);
+	// Устанавливаем учётные данные клиента
+	client->user("login");
+	client->pass("secret");
+	client->uri("/legacy");
+	// Разбираем legacy-вызов без qop
+	ASSERT_TRUE(client->parse("Digest realm=\"legacy.example\", nonce=\"legacy-nonce\", algorithm=MD5"));
+	// Формируем учётные данные клиента
+	const std::string credentials = client->header();
+	// Legacy-ответ не должен содержать nc=
+	ASSERT_EQ(credentials.find("nc="), std::string::npos);
+	// Сервер вручную принимает legacy-параметры
+	server->nonce("legacy-nonce");
+	ASSERT_TRUE(server->parse(credentials));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки Digest с realm, содержащим запятую
+ *
+ */
+TEST_F(AuthFixture, DigestRealmWithCommaTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	client->type(type_t::DIGEST);
+	// Устанавливаем учётные данные клиента
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	// Разбираем вызов с запятой внутри realm
+	ASSERT_TRUE(client->parse("Digest realm=\"foo, bar\", qop=\"auth\", nonce=\"comma-nonce\", algorithm=MD5"));
+	// Формируем учётные данные клиента
+	const std::string credentials = client->header();
+	// Проверяем что realm с запятой сохранён
+	ASSERT_NE(credentials.find("realm=\"foo, bar\""), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки отклонения заголовка с ложным префиксом схемы
+ *
+ */
+TEST_F(AuthFixture, ParseInvalidSchemePrefixTest){
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему BASIC-авторизации
+	server->type(type_t::BASIC);
+	// Проверяем что ложный префикс NotBasic отклоняется
+	ASSERT_FALSE(server->parse("NotBasic dXNlcjpwYXNz"));
+	// Переключаемся на BEARER
+	server->type(type_t::BEARER);
+	// Проверяем что ложный префикс NotBearer отклоняется
+	ASSERT_FALSE(server->parse("NotBearer token"));
+}
+
+/**
+ * @brief Метод проверки отклонения Digest с неверным opaque
+ *
+ */
+TEST_F(AuthFixture, DigestOpaqueMismatchTest){
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему DIGEST-авторизации
+	server->type(type_t::DIGEST);
+	// Устанавливаем название сервера
+	server->realm("anyks.com");
+	// Регистрируем функцию извлечения пароля по логину
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	// Формируем вызов авторизации сервера
+	const std::string challenge = server->header();
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	client->type(type_t::DIGEST);
+	// Устанавливаем учётные данные клиента
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	// Разбираем вызов сервера
+	ASSERT_TRUE(client->parse(challenge));
+	// Формируем учётные данные клиента
+	const std::string credentials = client->header();
+	// Подменяем opaque в учётных данных
+	std::string tampered = credentials;
+	const std::string badOpaque = "opaque=\"wrong-opaque-value\"";
+	const size_t pos = tampered.find("opaque=\"");
+	ASSERT_NE(pos, std::string::npos);
+	const size_t end = tampered.find('"', pos + 8);
+	ASSERT_NE(end, std::string::npos);
+	tampered.replace(pos, (end - pos + 1), badOpaque);
+	// Сервер отклоняет учётные данные с чужим opaque
+	ASSERT_TRUE(server->parse(tampered));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки полного цикла Digest с qop=auth-int
+ *
+ */
+TEST_F(AuthFixture, DigestAuthIntRoundTripTest){
+	// Тело запроса для auth-int
+	const std::string body = "{\"status\":\"ok\"}";
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему DIGEST-авторизации
+	server->type(type_t::DIGEST, hash_t::SHA256);
+	// Устанавливаем название сервера
+	server->realm("anyks.com");
+	// Устанавливаем тело запроса на сервере
+	server->entity(body);
+	// Регистрируем функцию извлечения пароля по логину
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	// Формируем вызов с auth-int
+	std::string challenge = server->header();
+	// Подменяем qop на auth-int в вызове сервера
+	const size_t qopPos = challenge.find("qop=\"auth\"");
+	ASSERT_NE(qopPos, std::string::npos);
+	challenge.replace(qopPos, 10, "qop=\"auth-int\"");
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	client->type(type_t::DIGEST, hash_t::SHA256);
+	// Устанавливаем учётные данные и тело запроса
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	client->entity(body);
+	// Разбираем вызов сервера
+	ASSERT_TRUE(client->parse(challenge));
+	// Формируем учётные данные клиента
+	const std::string credentials = client->header();
+	// Сервер проверяет auth-int учётные данные
+	ASSERT_TRUE(server->parse(credentials));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки отклонения просроченной HMAC-подписи
+ *
+ */
+TEST_F(AuthFixture, HmacExpiredSignatureTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему подписи HMAC
+	client->type(type_t::HMAC, hash_t::SHA256);
+	// Устанавливаем секретный ключ подписи
+	client->key("shared-secret-key");
+	// Устанавливаем идентификатор ключа подписи
+	client->keyId("test-key");
+	// Добавляем покрываемый компонент
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	// Контейнер для набора заголовков подписи
+	std::vector <std::pair <std::string, std::string>> headers;
+	// Формируем набор заголовков подписи
+	client->headers(headers);
+	ASSERT_EQ(headers.size(), 2u);
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему подписи HMAC
+	server->type(type_t::HMAC, hash_t::SHA256);
+	// Восстанавливаем компоненты запроса
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	// Регистрируем функцию извлечения секретного ключа
+	server->callbackExtractKey([](const std::string &) -> std::string {
+		return "shared-secret-key";
+	});
+	// Разбираем заголовки подписи
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	// Подменяем expires на прошедшее время
+	std::string input = headers.at(0).second;
+	const std::string expired = ";expires=1";
+	if(input.find(";expires=") == std::string::npos)
+		input.append(expired);
+	else {
+		const size_t pos = input.find(";expires=");
+		const size_t end = input.find(';', pos + 1);
+		if(end == std::string::npos)
+			input.replace(pos, input.size() - pos, expired);
+		else input.replace(pos, end - pos, expired);
+	}
+	ASSERT_TRUE(server->parse("Signature-Input", input));
+	// Просроченная подпись должна быть отклонена
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки обновления HMAC-компонента без дублирования
+ *
+ */
+TEST_F(AuthFixture, HmacComponentDedupTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему подписи HMAC
+	client->type(type_t::HMAC, hash_t::SHA256);
+	// Устанавливаем секретный ключ подписи
+	client->key("shared-secret-key");
+	// Дважды добавляем один и тот же компонент с разными значениями
+	client->component("@method", "GET");
+	client->component("@method", "POST");
+	// Контейнер для набора заголовков подписи
+	std::vector <std::pair <std::string, std::string>> headers;
+	// Формируем набор заголовков подписи
+	client->headers(headers);
+	ASSERT_EQ(headers.size(), 2u);
+	// В Signature-Input должен быть только один @method
+	ASSERT_NE(headers.at(0).second.find("\"@method\""), std::string::npos);
+	const size_t first = headers.at(0).second.find("\"@method\"");
+	const size_t second = headers.at(0).second.find("\"@method\"", first + 1);
+	ASSERT_EQ(second, std::string::npos);
+	// Сервер с POST должен принять подпись
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "POST");
+	server->key("shared-secret-key");
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки Digest с параметрами в смешанном регистре
+ *
+ */
+TEST_F(AuthFixture, DigestMixedCaseParamsTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	client->type(type_t::DIGEST);
+	// Устанавливаем учётные данные клиента
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	// Разбираем вызов с параметрами в нестандартном регистре
+	ASSERT_TRUE(client->parse("Digest Realm=\"anyks.com\", Qop=\"auth\", Nonce=\"case-nonce\", algorithm=MD5, Username=\"login\""));
+	// Формируем учётные данные клиента
+	const std::string credentials = client->header();
+	// Проверяем что логин и realm разобраны корректно
+	ASSERT_NE(credentials.find("username=\"login\""), std::string::npos);
+	ASSERT_NE(credentials.find("realm=\"anyks.com\""), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки отклонения Digest с некорректным nc
+ *
+ */
+TEST_F(AuthFixture, DigestInvalidNcTest){
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему DIGEST-авторизации
+	server->type(type_t::DIGEST);
+	// Устанавливаем название сервера
+	server->realm("anyks.com");
+	// Регистрируем функцию извлечения пароля по логину
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	// Формируем вызов авторизации сервера
+	const std::string challenge = server->header();
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	client->type(type_t::DIGEST);
+	// Устанавливаем учётные данные клиента
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	// Разбираем вызов сервера
+	ASSERT_TRUE(client->parse(challenge));
+	// Формируем корректные учётные данные
+	std::string credentials = client->header();
+	// Подменяем nc на некорректное значение
+	const size_t pos = credentials.find("nc=");
+	ASSERT_NE(pos, std::string::npos);
+	credentials.replace(pos, 11, "nc=0000000G");
+	// Сервер отклоняет учётные данные с некорректным nc
+	ASSERT_TRUE(server->parse(credentials));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки сброса digest-состояния при смене type()
+ *
+ */
+TEST_F(AuthFixture, DigestTypeSwitchClearsStateTest){
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	// Устанавливаем схему DIGEST-авторизации
+	server->type(type_t::DIGEST);
+	// Устанавливаем название сервера
+	server->realm("anyks.com");
+	// Регистрируем функцию изvлечения пароля по логину
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	// Формируем вызов и принимаем первый запрос
+	const std::string challenge = server->header();
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse(challenge));
+	const std::string first = client->header();
+	ASSERT_TRUE(server->parse(first));
+	ASSERT_TRUE(server->check());
+	// Переключаем схему и возвращаемся к DIGEST — replay-таблица должна сброситься
+	server->type(type_t::BASIC);
+	server->type(type_t::DIGEST);
+	server->realm("anyks.com");
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	const std::string challenge2 = server->header();
+	ASSERT_TRUE(client->parse(challenge2));
+	const std::string replay = client->header();
+	// Повтор nc=00000001 после сброса lncs должен быть принят
+	ASSERT_TRUE(server->parse(replay));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки допуска clock skew для HMAC
+ *
+ */
+TEST_F(AuthFixture, HmacClockSkewTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->keyId("test-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	// Подпись создаётся с created на 30 секунд в будущем
+	const uint64_t future = this->_fmk->timestamp <uint64_t> (awh::fmk_t::chrono_t::SECONDS) + 30;
+	client->signCreated(future);
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	ASSERT_EQ(headers.size(), 2u);
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	server->callbackExtractKey([](const std::string &) -> std::string {
+		return "shared-secret-key";
+	});
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	// С допуском по умолчанию (60 с) подпись должна быть принята
+	ASSERT_TRUE(server->check());
+	// Без допуска подпись должна быть отклонена
+	server->clockSkew(0);
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки защиты HMAC от повторного использования nonce
+ *
+ */
+TEST_F(AuthFixture, HmacNonceReplayTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	client->signNonce("unique-nonce-42");
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	ASSERT_EQ(headers.size(), 2u);
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	server->key("shared-secret-key");
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	// Первый запрос с nonce принимается
+	ASSERT_TRUE(server->check());
+	// Повторная проверка того же nonce отклоняется
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки сохранения digest.sess после reset()
+ *
+ */
+TEST_F(AuthFixture, DigestResetPreservesSessionTest){
+	// Создаём модуль авторизации на стороне сервера
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::DIGEST, hash_t::SHA256);
+	server->session(true);
+	server->realm("anyks.com");
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	const std::string challenge = server->header();
+	ASSERT_NE(challenge.find("SHA-256-sess"), std::string::npos);
+	// Создаём клиента, включаем -sess и сбрасываем временное состояние
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST, hash_t::SHA256);
+	client->session(true);
+	client->reset();
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse(challenge));
+	const std::string credentials = client->header();
+	ASSERT_NE(credentials.find("SHA-256-sess"), std::string::npos);
+	ASSERT_TRUE(server->parse(credentials));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки очистки учётных данных при неудачном parse() на сервере
+ *
+ */
+TEST_F(AuthFixture, ServerParseClearsStaleCredentialsTest){
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::BASIC);
+	server->callbackCheckUser([](const std::string & user, const std::string &) -> bool {
+		return (user == "alice");
+	});
+	ASSERT_TRUE(server->parse("Basic YWxpY2U6c2VjcmV0"));
+	ASSERT_TRUE(server->check());
+	ASSERT_FALSE(server->parse("Basic !!!invalid!!!"));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки отклонения Digest с nc=00000000
+ *
+ */
+TEST_F(AuthFixture, DigestNcZeroRejectedTest){
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::DIGEST);
+	server->realm("anyks.com");
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	const std::string challenge = server->header();
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse(challenge));
+	std::string credentials = client->header();
+	const size_t pos = credentials.find("nc=");
+	ASSERT_NE(pos, std::string::npos);
+	credentials.replace(pos, 11, "nc=00000000");
+	ASSERT_TRUE(server->parse(credentials));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки отклонения HMAC без параметра created
+ *
+ */
+TEST_F(AuthFixture, HmacMissingCreatedRejectedTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	ASSERT_EQ(headers.size(), 2u);
+	std::string input = headers.at(0).second;
+	const size_t createdPos = input.find(";created=");
+	ASSERT_NE(createdPos, std::string::npos);
+	const size_t nextSemi = input.find(';', createdPos + 1);
+	input.erase(createdPos, (nextSemi == std::string::npos ? input.size() - createdPos : nextSemi - createdPos));
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	server->key("shared-secret-key");
+	ASSERT_TRUE(server->parse("Signature-Input", input));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки разбора HMAC с параметрами в верхнем регистре
+ *
+ */
+TEST_F(AuthFixture, HmacUppercaseParamKeysTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->keyId("test-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	std::string input = headers.at(0).second;
+	input.replace(input.find("created="), 8, "Created=");
+	input.replace(input.find("keyid="), 6, "KeyId=");
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	server->callbackExtractKey([](const std::string &) -> std::string {
+		return "shared-secret-key";
+	});
+	ASSERT_TRUE(server->parse("Signature-Input", input));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки отклонения Digest с чужим realm на сервере
+ *
+ */
+TEST_F(AuthFixture, DigestWrongRealmRejectedTest){
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::DIGEST);
+	server->realm("anyks.com");
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	const std::string challenge = server->header();
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse(challenge));
+	std::string credentials = client->header();
+	const size_t pos = credentials.find("realm=\"anyks.com\"");
+	ASSERT_NE(pos, std::string::npos);
+	credentials.replace(pos, 17, "realm=\"evil.com\"");
+	ASSERT_FALSE(server->parse(credentials));
+}
+
+/**
+ * @brief Метод проверки переключения клиента с qop на legacy без qop
+ *
+ */
+TEST_F(AuthFixture, DigestQopToLegacySwitchTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse("Digest realm=\"anyks.com\", qop=\"auth\", nonce=\"nonce-qop\", algorithm=MD5"));
+	const std::string withQop = client->header();
+	ASSERT_NE(withQop.find("nc="), std::string::npos);
+	ASSERT_TRUE(client->parse("Digest realm=\"anyks.com\", nonce=\"nonce-legacy\", algorithm=MD5"));
+	const std::string legacy = client->header();
+	ASSERT_EQ(legacy.find("nc="), std::string::npos);
+	ASSERT_EQ(legacy.find("cnonce="), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки отклонения учётных данных без nonce после успешного запроса
+ *
+ */
+TEST_F(AuthFixture, DigestMissingNonceAfterClearTest){
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::DIGEST);
+	server->realm("anyks.com");
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	const std::string challenge = server->header();
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse(challenge));
+	const std::string credentials = client->header();
+	ASSERT_TRUE(server->parse(credentials));
+	ASSERT_TRUE(server->check());
+	// Учётные данные без nonce не должны проходить проверку
+	std::string noNonce = credentials;
+	const size_t pos = noNonce.find("nonce=\"");
+	ASSERT_NE(pos, std::string::npos);
+	const size_t end = noNonce.find('"', pos + 7);
+	ASSERT_NE(end, std::string::npos);
+	noNonce.erase(pos, end - pos + 1);
+	ASSERT_TRUE(server->parse(noNonce));
+	ASSERT_FALSE(server->check());
+}
+
+/**
+ * @brief Метод проверки отклонения просроченной HMAC-подписи без expires
+ *
+ */
+TEST_F(AuthFixture, HmacSignMaxAgeTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	const uint64_t now = this->_fmk->timestamp <uint64_t> (awh::fmk_t::chrono_t::SECONDS);
+	client->signCreated(now - 600);
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	server->key("shared-secret-key");
+	server->clockSkew(0);
+	server->signMaxAge(300);
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	ASSERT_FALSE(server->check());
+	server->signMaxAge(0);
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(server->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки отклонения HMAC с несовпадающими метками заголовков
+ *
+ */
+TEST_F(AuthFixture, HmacLabelMismatchTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	std::string signature = headers.at(1).second;
+	const size_t pos = signature.find('=');
+	ASSERT_NE(pos, std::string::npos);
+	signature.replace(0, pos, "sig2");
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	server->key("shared-secret-key");
+	ASSERT_TRUE(server->parse("Signature-Input", headers.at(0).second));
+	ASSERT_FALSE(server->parse("Signature", signature));
+}
+
+/**
+ * @brief Метод проверки сброса sess при переключении клиента с -sess на legacy без algorithm
+ *
+ */
+TEST_F(AuthFixture, DigestSessToLegacySwitchTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST, hash_t::SHA256);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse("Digest realm=\"anyks.com\", qop=\"auth\", nonce=\"nonce-sess\", algorithm=SHA-256-sess"));
+	const std::string withSess = client->header();
+	ASSERT_NE(withSess.find("SHA-256-sess"), std::string::npos);
+	ASSERT_TRUE(client->parse("Digest realm=\"anyks.com\", qop=\"auth\", nonce=\"nonce-legacy\""));
+	const std::string legacy = client->header();
+	ASSERT_EQ(legacy.find("-sess"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки восстановления hash схемы на сервере при отсутствии algorithm в credentials
+ *
+ */
+TEST_F(AuthFixture, DigestStaleHashAfterClearTest){
+	const auto extractPass = [](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	};
+	std::unique_ptr <auth_t> serverMd5 = this->make(owner_t::SERVER);
+	serverMd5->type(type_t::DIGEST, hash_t::MD5);
+	serverMd5->realm("anyks.com");
+	serverMd5->callbackExtractPass(extractPass);
+	const std::string challengeMd5 = serverMd5->header();
+	std::unique_ptr <auth_t> clientMd5 = this->make(owner_t::CLIENT);
+	clientMd5->type(type_t::DIGEST, hash_t::MD5);
+	clientMd5->user("login");
+	clientMd5->pass("secret");
+	clientMd5->uri("/api/resource");
+	ASSERT_TRUE(clientMd5->parse(challengeMd5));
+	const std::string md5Credentials = clientMd5->header();
+	std::unique_ptr <auth_t> serverSha256 = this->make(owner_t::SERVER);
+	serverSha256->type(type_t::DIGEST, hash_t::SHA256);
+	serverSha256->realm("anyks.com");
+	serverSha256->callbackExtractPass(extractPass);
+	ASSERT_TRUE(serverSha256->parse(md5Credentials));
+	ASSERT_TRUE(serverSha256->check());
+	std::string noAlgorithm = md5Credentials;
+	const size_t pos = noAlgorithm.find(", algorithm=");
+	ASSERT_NE(pos, std::string::npos);
+	noAlgorithm.erase(pos);
+	ASSERT_TRUE(serverSha256->parse(noAlgorithm));
+	ASSERT_FALSE(serverSha256->check());
+}
+
+/**
+ * @brief Метод проверки восстановления hash схемы на клиенте при отсутствии algorithm в challenge
+ *
+ */
+TEST_F(AuthFixture, DigestClientStaleHashTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST, hash_t::SHA256);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse("Digest realm=\"anyks.com\", qop=\"auth\", nonce=\"nonce-md5\", algorithm=MD5"));
+	ASSERT_TRUE(client->parse("Digest realm=\"anyks.com\", qop=\"auth\", nonce=\"nonce-sha256\""));
+	const std::string credentials = client->header();
+	ASSERT_NE(credentials.find("SHA-256"), std::string::npos);
+	ASSERT_EQ(credentials.find("algorithm=MD5"), std::string::npos);
+}
+
+/**
+ * @brief Метод проверки отклонения Digest-учётных данных без username и response на сервере
+ *
+ */
+TEST_F(AuthFixture, DigestInvalidCredentialsRejectedTest){
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::DIGEST, hash_t::SHA256);
+	server->realm("anyks.com");
+	ASSERT_FALSE(server->parse("Digest foo=\"bar\", nonce=\"test-nonce\""));
+}
+
+/**
+ * @brief Метод проверки двухшагового разбора HMAC через одноаргументный parse()
+ *
+ */
+TEST_F(AuthFixture, HmacSingleArgParseTest){
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->keyId("test-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::HMAC, hash_t::SHA256);
+	server->component("@method", "GET");
+	server->component("@path", "/data");
+	server->key("shared-secret-key");
+	ASSERT_TRUE(server->parse(headers.at(0).second));
+	ASSERT_TRUE(server->parse(headers.at(1).second));
+	ASSERT_TRUE(server->check());
+}
