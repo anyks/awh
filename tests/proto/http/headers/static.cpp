@@ -240,6 +240,106 @@ TEST_F(HeadersFixture, EmplaceReplaceTest){
 }
 
 /**
+ * @brief Метод проверки добавления заголовков в режиме APPEND
+ *
+ */
+TEST_F(HeadersFixture, EmplaceAppendModeTest){
+	// Добавляем первый заголовок с указанным названием в режиме добавления
+	ASSERT_EQ(this->_headers->emplace("Set-Cookie", "a=1", headers_t::mode_t::APPEND), 1u);
+	// Добавляем второй заголовок с тем же названием в режиме добавления
+	ASSERT_EQ(this->_headers->emplace("Set-Cookie", "b=2", headers_t::mode_t::APPEND), 2u);
+	// Добавляем третий заголовок с тем же названием в режиме добавления
+	ASSERT_EQ(this->_headers->emplace("Set-Cookie", "c=3", headers_t::mode_t::APPEND), 3u);
+	// Проверяем что все одноимённые заголовки сохранены
+	ASSERT_EQ(this->_headers->count("Set-Cookie"), 3u);
+	// Проверяем общее количество заголовков
+	ASSERT_EQ(this->_headers->size(), 3u);
+	// Получаем список значений одноимённых заголовков
+	std::vector <std::string> values = this->_headers->range("Set-Cookie");
+	// Сортируем значения для устойчивого сравнения (порядок добавления сохраняется, но сортируем для надёжности)
+	std::sort(values.begin(), values.end());
+	// Проверяем количество извлечённых значений
+	ASSERT_EQ(values.size(), 3u);
+	// Проверяем первое значение
+	ASSERT_EQ(values.at(0), "a=1");
+	// Проверяем второе значение
+	ASSERT_EQ(values.at(1), "b=2");
+	// Проверяем третье значение
+	ASSERT_EQ(values.at(2), "c=3");
+}
+
+/**
+ * @brief Метод проверки замены одноимённых заголовков в режиме REPLACE
+ *
+ */
+TEST_F(HeadersFixture, EmplaceReplaceModeTest){
+	// Добавляем несколько одноимённых заголовков в режиме добавления
+	this->_headers->emplace("Set-Cookie", "a=1", headers_t::mode_t::APPEND);
+	// Добавляем ещё один одноимённый заголовок в режиме добавления
+	this->_headers->emplace("Set-Cookie", "b=2", headers_t::mode_t::APPEND);
+	// Проверяем что оба заголовка сохранены
+	ASSERT_EQ(this->_headers->count("Set-Cookie"), 2u);
+	// Явно указываем режим замены при добавлении нового значения
+	ASSERT_EQ(this->_headers->emplace("Set-Cookie", "z=9", headers_t::mode_t::REPLACE), 1u);
+	// Проверяем что все прежние вхождения схлопнуты в одно
+	ASSERT_EQ(this->_headers->count("Set-Cookie"), 1u);
+	// Проверяем что осталось только новое значение
+	ASSERT_EQ(this->_headers->at("Set-Cookie"), "z=9");
+	// Проверяем общее количество заголовков
+	ASSERT_EQ(this->_headers->size(), 1u);
+}
+
+/**
+ * @brief Метод проверки режима добавления по умолчанию (REPLACE)
+ *
+ */
+TEST_F(HeadersFixture, EmplaceDefaultModeTest){
+	// Добавляем заголовок без явного указания режима
+	this->_headers->emplace("Accept", "text/html");
+	// Повторно добавляем одноимённый заголовок без явного указания режима
+	this->_headers->emplace("Accept", "application/json");
+	// Проверяем что по умолчанию используется режим замены (заголовок не продублирован)
+	ASSERT_EQ(this->_headers->count("Accept"), 1u);
+	// Проверяем что сохранено последнее значение
+	ASSERT_EQ(this->_headers->at("Accept"), "application/json");
+}
+
+/**
+ * @brief Метод проверки режима APPEND в перегрузках метода добавления заголовка
+ *
+ */
+TEST_F(HeadersFixture, EmplaceAppendOverloadsTest){
+	// Формируем константные строки для проверки перегрузок с копированием
+	const std::string constName = "X-Multi";
+	// Формируем константное значение для проверки перегрузок с копированием
+	const std::string constValue = "v-const";
+	// Добавляем заголовок через перегрузку с C-строками в режиме добавления (const char * / const char *)
+	ASSERT_EQ(this->_headers->emplace("X-Multi", "v-cstr", headers_t::mode_t::APPEND), 1u);
+	// Добавляем заголовок через перегрузку с перемещением обеих строк в режиме добавления (string && / string &&)
+	ASSERT_EQ(this->_headers->emplace(std::string("X-Multi"), std::string("v-move"), headers_t::mode_t::APPEND), 2u);
+	// Добавляем заголовок через перегрузку со строковыми представлениями в режиме добавления (string_view / string_view)
+	ASSERT_EQ(this->_headers->emplace(std::string_view("X-Multi"), std::string_view("v-view"), headers_t::mode_t::APPEND), 3u);
+	// Добавляем заголовок через перегрузку с копированием обеих строк в режиме добавления (const string & / const string &)
+	ASSERT_EQ(this->_headers->emplace(constName, constValue, headers_t::mode_t::APPEND), 4u);
+	// Проверяем что все одноимённые заголовки сохранены во всех перегрузках
+	ASSERT_EQ(this->_headers->count("X-Multi"), 4u);
+	// Получаем список значений одноимённых заголовков
+	std::vector <std::string> values = this->_headers->range("X-Multi");
+	// Сортируем значения для устойчивого сравнения
+	std::sort(values.begin(), values.end());
+	// Проверяем количество извлечённых значений
+	ASSERT_EQ(values.size(), 4u);
+	// Проверяем набор сохранённых значений
+	ASSERT_EQ(values.at(0), "v-const");
+	// Проверяем набор сохранённых значений
+	ASSERT_EQ(values.at(1), "v-cstr");
+	// Проверяем набор сохранённых значений
+	ASSERT_EQ(values.at(2), "v-move");
+	// Проверяем набор сохранённых значений
+	ASSERT_EQ(values.at(3), "v-view");
+}
+
+/**
  * @brief Метод проверки регистронезависимого доступа к заголовкам
  *
  */
