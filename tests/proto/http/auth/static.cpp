@@ -1590,3 +1590,242 @@ TEST_F(AuthFixture, HmacSingleArgParseTest){
 	ASSERT_TRUE(server->parse(headers.at(1).second));
 	ASSERT_TRUE(server->check());
 }
+
+/**
+ * @brief Метод проверки отклонения Digest legacy (без qop) в строгом режиме
+ *
+ */
+TEST_F(AuthFixture, DigestStrictModeRejectsLegacyTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему DIGEST-авторизации
+	client->type(type_t::DIGEST);
+	// Устанавливаем учётные данные клиента
+	client->user("login");
+	client->pass("secret");
+	client->uri("/legacy");
+	// Разбираем legacy-вызов без qop
+	ASSERT_TRUE(client->parse("Digest realm=\"legacy.example\", nonce=\"legacy-nonce\", algorithm=MD5"));
+	// Формируем учётные данные клиента (legacy, без nc)
+	const std::string credentials = client->header();
+	ASSERT_EQ(credentials.find("nc="), std::string::npos);
+	// Создаём модуль авторизации на стороне сервера в простом режиме
+	std::unique_ptr <auth_t> simple = this->make(owner_t::SERVER);
+	simple->type(type_t::DIGEST);
+	simple->realm("legacy.example");
+	simple->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	simple->nonce("legacy-nonce");
+	// В простом режиме legacy-учётные данные принимаются
+	ASSERT_TRUE(simple->parse(credentials));
+	ASSERT_TRUE(simple->check());
+	// Создаём модуль авторизации на стороне сервера в строгом режиме
+	std::unique_ptr <auth_t> strict = this->make(owner_t::SERVER);
+	strict->type(type_t::DIGEST);
+	strict->mode(auth_t::mode_t::STRICT);
+	strict->realm("legacy.example");
+	strict->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	strict->nonce("legacy-nonce");
+	// В строгом режиме legacy-учётные данные без qop отклоняются
+	ASSERT_TRUE(strict->parse(credentials));
+	ASSERT_FALSE(strict->check());
+}
+
+/**
+ * @brief Метод проверки байт-точной сверки параметров HMAC в строгом режиме
+ *
+ */
+TEST_F(AuthFixture, HmacStrictModeParamCaseTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	// Устанавливаем схему подписи HMAC с алгоритмом SHA-256
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->keyId("test-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	// Формируем набор заголовков подписи
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	// Подменяем ключи параметров на верхний регистр
+	std::string input = headers.at(0).second;
+	input.replace(input.find("created="), 8, "Created=");
+	input.replace(input.find("keyid="), 6, "KeyId=");
+	// Создаём функцию извлечения секретного ключа
+	const auto extractKey = [](const std::string &) -> std::string {
+		return "shared-secret-key";
+	};
+	// В простом режиме сверка регистронезависимая — подпись принимается
+	std::unique_ptr <auth_t> simple = this->make(owner_t::SERVER);
+	simple->type(type_t::HMAC, hash_t::SHA256);
+	simple->component("@method", "GET");
+	simple->component("@path", "/data");
+	simple->callbackExtractKey(extractKey);
+	ASSERT_TRUE(simple->parse("Signature-Input", input));
+	ASSERT_TRUE(simple->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(simple->check());
+	// В строгом режиме сверка байт-точная — параметры в верхнем регистре отклоняются
+	std::unique_ptr <auth_t> strict = this->make(owner_t::SERVER);
+	strict->type(type_t::HMAC, hash_t::SHA256);
+	strict->mode(auth_t::mode_t::STRICT);
+	strict->component("@method", "GET");
+	strict->component("@path", "/data");
+	strict->callbackExtractKey(extractKey);
+	ASSERT_TRUE(strict->parse("Signature-Input", input));
+	ASSERT_TRUE(strict->parse("Signature", headers.at(1).second));
+	ASSERT_FALSE(strict->check());
+	// В строгом режиме корректные (нижний регистр) параметры принимаются
+	std::unique_ptr <auth_t> strictOk = this->make(owner_t::SERVER);
+	strictOk->type(type_t::HMAC, hash_t::SHA256);
+	strictOk->mode(auth_t::mode_t::STRICT);
+	strictOk->component("@method", "GET");
+	strictOk->component("@path", "/data");
+	strictOk->callbackExtractKey(extractKey);
+	ASSERT_TRUE(strictOk->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(strictOk->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(strictOk->check());
+}
+
+/**
+ * @brief Метод проверки полного цикла Digest в строгом режиме (qop+cnonce+opaque)
+ *
+ */
+TEST_F(AuthFixture, DigestStrictModeRoundTripTest){
+	// Создаём модуль авторизации на стороне сервера в строгом режиме
+	std::unique_ptr <auth_t> server = this->make(owner_t::SERVER);
+	server->type(type_t::DIGEST);
+	server->mode(auth_t::mode_t::STRICT);
+	server->realm("anyks.com");
+	server->callbackExtractPass([](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	});
+	// Сервер формирует вызов (nonce + opaque)
+	const std::string challenge = server->header();
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	ASSERT_TRUE(client->parse(challenge));
+	const std::string credentials = client->header();
+	// Строгий сервер принимает корректные учётные данные с qop, cnonce и opaque
+	ASSERT_TRUE(server->parse(credentials));
+	ASSERT_TRUE(server->check());
+}
+
+/**
+ * @brief Метод проверки требования opaque в строгом режиме Digest
+ *
+ */
+TEST_F(AuthFixture, DigestStrictModeRequiresOpaqueTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::DIGEST);
+	client->user("login");
+	client->pass("secret");
+	client->uri("/api/resource");
+	// Разбираем вызов с qop, но без opaque
+	ASSERT_TRUE(client->parse("Digest realm=\"anyks.com\", qop=\"auth\", nonce=\"manual-nonce-abcd\", algorithm=MD5"));
+	// Формируем учётные данные клиента
+	std::string credentials = client->header();
+	// Полностью удаляем поле opaque из учётных данных (opaque не участвует в расчёте response)
+	const size_t op = credentials.find("opaque=");
+	ASSERT_NE(op, std::string::npos);
+	const size_t pre = credentials.rfind(", ", op);
+	ASSERT_NE(pre, std::string::npos);
+	const size_t opEnd = credentials.find(',', op);
+	if(opEnd == std::string::npos)
+		credentials.erase(pre);
+	else credentials.erase(pre, opEnd - pre);
+	// Убеждаемся, что поле opaque отсутствует
+	ASSERT_EQ(credentials.find("opaque="), std::string::npos);
+	// Функция извлечения пароля
+	const auto extractPass = [](const std::string & user) -> std::string {
+		return (user == "login" ? std::string("secret") : std::string(""));
+	};
+	// В простом режиме отсутствие opaque допускается
+	std::unique_ptr <auth_t> simple = this->make(owner_t::SERVER);
+	simple->type(type_t::DIGEST);
+	simple->realm("anyks.com");
+	simple->callbackExtractPass(extractPass);
+	simple->nonce("manual-nonce-abcd");
+	ASSERT_TRUE(simple->parse(credentials));
+	ASSERT_TRUE(simple->check());
+	// В строгом режиме отсутствие opaque отклоняется
+	std::unique_ptr <auth_t> strict = this->make(owner_t::SERVER);
+	strict->type(type_t::DIGEST);
+	strict->mode(auth_t::mode_t::STRICT);
+	strict->realm("anyks.com");
+	strict->callbackExtractPass(extractPass);
+	strict->nonce("manual-nonce-abcd");
+	ASSERT_TRUE(strict->parse(credentials));
+	ASSERT_FALSE(strict->check());
+}
+
+/**
+ * @brief Метод проверки ограниченного срока жизни подписи HMAC по умолчанию в строгом режиме
+ *
+ */
+TEST_F(AuthFixture, HmacStrictDefaultMaxAgeTest){
+	// Создаём модуль авторизации на стороне клиента
+	std::unique_ptr <auth_t> client = this->make(owner_t::CLIENT);
+	client->type(type_t::HMAC, hash_t::SHA256);
+	client->key("shared-secret-key");
+	client->component("@method", "GET");
+	client->component("@path", "/data");
+	// Подпись создана 10 минут назад, без expires
+	const uint64_t now = this->_fmk->timestamp <uint64_t> (awh::fmk_t::chrono_t::SECONDS);
+	client->signCreated(now - 600);
+	std::vector <std::pair <std::string, std::string>> headers;
+	client->headers(headers);
+	// Функция извлечения секретного ключа
+	const auto extractKey = [](const std::string &) -> std::string {
+		return "shared-secret-key";
+	};
+	// В простом режиме без signMaxAge подпись без expires принимается
+	std::unique_ptr <auth_t> simple = this->make(owner_t::SERVER);
+	simple->type(type_t::HMAC, hash_t::SHA256);
+	simple->component("@method", "GET");
+	simple->component("@path", "/data");
+	simple->callbackExtractKey(extractKey);
+	ASSERT_TRUE(simple->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(simple->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(simple->check());
+	// В строгом режиме применяется ограниченный срок жизни по умолчанию — старая подпись отклоняется
+	std::unique_ptr <auth_t> strict = this->make(owner_t::SERVER);
+	strict->type(type_t::HMAC, hash_t::SHA256);
+	strict->mode(auth_t::mode_t::STRICT);
+	strict->component("@method", "GET");
+	strict->component("@path", "/data");
+	strict->callbackExtractKey(extractKey);
+	ASSERT_TRUE(strict->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(strict->parse("Signature", headers.at(1).second));
+	ASSERT_FALSE(strict->check());
+	// С увеличенным настраиваемым лимитом строгого режима та же подпись принимается
+	std::unique_ptr <auth_t> relaxed = this->make(owner_t::SERVER);
+	relaxed->type(type_t::HMAC, hash_t::SHA256);
+	relaxed->mode(auth_t::mode_t::STRICT);
+	relaxed->signStrictMaxAge(1200);
+	relaxed->component("@method", "GET");
+	relaxed->component("@path", "/data");
+	relaxed->callbackExtractKey(extractKey);
+	ASSERT_EQ(relaxed->signStrictMaxAge(), static_cast <uint64_t> (1200));
+	ASSERT_TRUE(relaxed->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(relaxed->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(relaxed->check());
+	// С отключённым лимитом строгого режима (0) старая подпись без expires также принимается
+	std::unique_ptr <auth_t> unlimited = this->make(owner_t::SERVER);
+	unlimited->type(type_t::HMAC, hash_t::SHA256);
+	unlimited->mode(auth_t::mode_t::STRICT);
+	unlimited->signStrictMaxAge(0);
+	unlimited->component("@method", "GET");
+	unlimited->component("@path", "/data");
+	unlimited->callbackExtractKey(extractKey);
+	ASSERT_TRUE(unlimited->parse("Signature-Input", headers.at(0).second));
+	ASSERT_TRUE(unlimited->parse("Signature", headers.at(1).second));
+	ASSERT_TRUE(unlimited->check());
+}

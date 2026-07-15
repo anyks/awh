@@ -54,17 +54,21 @@ namespace {
 	 * @param nonce одноразовое значение
 	 */
 	void rememberNonce(http::auth_t::sign_t & sign, const string & nonce) noexcept {
+		// Если nonce уже сохранён — повторно не добавляем
+		if(sign.usedNonces.find(nonce) != sign.usedNonces.end())
+			// Завершаем сохранение
+			return;
 		// Если достигнут лимит — удаляем самую старую запись
 		if((sign.usedNonces.size() >= AWH_AUTH_HMAC_NONCE_MAX) && !sign.usedNoncesOrder.empty()){
 			// Удаляем старейший nonce из множества
 			sign.usedNonces.erase(sign.usedNoncesOrder.front());
 			// Удаляем старейший nonce из LRU-очереди
-			sign.usedNoncesOrder.erase(sign.usedNoncesOrder.begin());
+			sign.usedNoncesOrder.pop_front();
 		}
-		// Сохраняем принятый nonce
-		sign.usedNonces.insert(nonce);
 		// Добавляем nonce в конец LRU-очереди
-		sign.usedNoncesOrder.push_back(nonce);
+		const auto pos = sign.usedNoncesOrder.insert(sign.usedNoncesOrder.end(), nonce);
+		// Сохраняем принятый nonce (значение + позиция в LRU-очереди)
+		sign.usedNonces.emplace(nonce, pos);
 	}
 	/**
 	 * @brief Функция приведения ключей параметров Signature-Input к нижнему регистру
@@ -442,12 +446,12 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 				string rest = ::move(value.substr(eq + 1));
 				// Удаляем крайние пробелы у параметров подписи
 				this->_fmk->transform(rest, fmk_t::transform_t::TRIM);
-				// Сохраняем сырое значение параметров подписи
-				sign.params = rest;
 				// Выполняем поиск границ списка покрываемых компонентов
 				const size_t lp = rest.find('('), rp = rest.find(')');
 				// Если список покрываемых компонентов найден
 				if((result = ((lp != string::npos) && (rp != string::npos) && (rp > lp)))){
+					// Сохраняем сырое значение параметров подписи
+					sign.params = rest;
 					// Извлекаем содержимое списка покрываемых компонентов
 					const string inner = ::move(rest.substr(lp + 1, rp - lp - 1));
 					// Список покрываемых компонентов
@@ -556,8 +560,13 @@ bool awh::http::Hmac::parse(const string_view name, const string_view header) no
 							// Устанавливаем тег приложения
 							sign.tag = ::move(value);
 					}
-					// Приводим ключи параметров к нижнему регистру для канонической сверки
-					::normalizeSignatureParamKeys(sign.params, this->_fmk);
+					/**
+					 * В простом режиме приводим ключи параметров к нижнему регистру для лояльной сверки;
+					 * в строгом режиме сверка байт-точная — параметры подписи не модифицируются (RFC 9421)
+					 */
+					if(this->_params.mode.validation != auth_t::mode_t::STRICT)
+						// Приводим ключи параметров к нижнему регистру для канонической сверки
+						::normalizeSignatureParamKeys(sign.params, this->_fmk);
 				}
 			// Если разбирается заголовок Signature
 			} else if(field.compare("signature") == 0) {
@@ -632,6 +641,10 @@ bool awh::http::Hmac::check() noexcept {
 	if(sign.date.created == 0)
 		// Сообщаем о неудачной проверке
 		return false;
+	// В строгом режиме алгоритм подписи должен совпадать с настроенным (защита от подмены алгоритма)
+	if((this->_params.mode.validation == auth_t::mode_t::STRICT) && (this->_params.hash != this->_params.scheme))
+		// Сообщаем о неудачной проверке
+		return false;
 	// Метки Signature-Input и Signature должны совпадать
 	if(!sign.inputLabel.empty() && !secureCompare(sign.label, sign.inputLabel))
 		// Сообщаем о неудачной проверке
@@ -648,8 +661,14 @@ bool awh::http::Hmac::check() noexcept {
 	if((sign.date.expires > 0) && (now > (sign.date.expires + skew)))
 		// Сообщаем о неудачной проверке
 		return false;
+	// Определяем эффективный лимит возраста подписи без expires
+	uint64_t maxAge = this->_params.mode.signMaxAge;
+	// В строгом режиме при отсутствии явного лимита применяем значение по умолчанию (ограниченный срок жизни подписи)
+	if((maxAge == 0) && (this->_params.mode.validation == auth_t::mode_t::STRICT))
+		// Устанавливаем максимальный возраст подписи по умолчанию для строгого режима
+		maxAge = this->_params.mode.signStrictMaxAge;
 	// Если expires не задан — проверяем максимальный возраст подписи
-	if((sign.date.expires == 0) && (this->_params.mode.signMaxAge > 0) && (now > (sign.date.created + this->_params.mode.signMaxAge + skew)))
+	if((sign.date.expires == 0) && (maxAge > 0) && (now > (sign.date.created + maxAge + skew)))
 		// Сообщаем о неудачной проверке
 		return false;
 	// Если задан одноразовый nonce — проверяем повторное использование

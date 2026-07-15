@@ -21,6 +21,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <list>
 #include <memory>
 #include <string>
 #include <vector>
@@ -29,7 +30,6 @@
 #include <functional>
 #include <string_view>
 #include <unordered_map>
-#include <unordered_set>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -206,6 +206,23 @@ namespace awh {
 					DIGEST = 0x03, // DIGEST авторизация (RFC 7616)
 					BEARER = 0x04  // BEARER/Token авторизация (RFC 6750)
 				};
+				/**
+				 * @brief Режим строгости проверки учётных данных (сервер)
+				 *
+				 * @details SIMPLE — совместимый режим: допускается Digest legacy RFC 2069 (без qop),
+				 *          ключи параметров HMAC Signature-Input сверяются без учёта регистра.
+				 *          STRICT — строгое соответствие RFC:
+				 *          - Digest: отклоняется отсутствие qop (RFC 7616), обязательны cnonce и opaque,
+				 *            алгоритм из учётных данных должен совпадать с настроенным (защита от downgrade);
+				 *          - HMAC: параметры подписи сверяются байт-точно (RFC 9421), алгоритм должен
+				 *            совпадать с настроенным, а при отсутствии expires применяется ограниченный
+				 *            срок жизни подписи по умолчанию.
+				 *
+				 */
+				enum class mode_t : uint8_t {
+					SIMPLE = 0x00, // Простой (совместимый) режим
+					STRICT = 0x01  // Строгий режим (жёсткое соответствие RFC)
+				};
 			public:
 				/**
 				 * @brief Структура режима работы схемы авторизации
@@ -263,17 +280,20 @@ namespace awh {
 					// Фактически выданный сервером opaque (для сверки при проверке)
 					string issuedOpaque;
 					// Порядок ключей lncs для LRU-вытеснения (старейший — в начале)
-					vector <string> lncsOrder;
-					// Последние принятые счётчики запросов по паре «логин + nonce» (защита от повторов)
-					unordered_map <string, string> lncs;
+					list <string> lncsOrder;
+					// Последние принятые счётчики запросов по паре «логин + nonce» (значение nc + позиция в LRU-очереди)
+					unordered_map <string, pair <string, list <string>::iterator>> lncs;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Digest() noexcept :
-					 nc{"00000000"}, uri{""}, qop{"auth"},
-					 realm{""}, nonce{""}, issued{""}, entity{""},
-					 opaque{""}, cnonce{""}, response{""}, issuedOpaque{""} {}
+					 nc{"00000000"}, uri{""},
+					 qop{"auth"}, realm{""},
+					 nonce{""}, issued{""},
+					 entity{""}, opaque{""},
+					 cnonce{""}, response{""},
+					 issuedOpaque{""} {}
 				} digest_t;
 			public:
 				/**
@@ -321,13 +341,13 @@ namespace awh {
 					// Порядок покрываемых подписью компонентов (имена)
 					vector <string> covered;
 					// Порядок принятых nonce для LRU-вытеснения (старейший — в начале)
-					vector <string> usedNoncesOrder;
+					list <string> usedNoncesOrder;
 					// Значения покрываемых компонентов (имя -> значение)
 					vector <pair <string, string>> components;
-					// Уже принятые одноразовые значения подписи (защита от replay на сервере)
-					unordered_set <string> usedNonces;
 					// Индекс компонентов по имени в нижнем регистре (для быстрого поиска)
 					unordered_map <string, size_t> componentIndex;
+					// Уже принятые одноразовые значения подписи (nonce -> позиция в LRU-очереди, защита от replay на сервере)
+					unordered_map <string, list <string>::iterator> usedNonces;
 					/**
 					 * @brief Конструктор
 					 *
@@ -367,16 +387,25 @@ namespace awh {
 				typedef struct Mode_Params {
 					// Флаг работы через прокси (Proxy-Authorization/Proxy-Authenticate)
 					bool proxy;
+					// Режим строгости проверки учётных данных на сервере
+					mode_t validation;
 					// Допустимое расхождение локальных часов при проверке HMAC (секунды)
 					uint64_t clockSkew;
 					// Максимальный возраст HMAC-подписи без expires (секунды, 0 — не ограничен)
 					uint64_t signMaxAge;
+					// Максимальный возраст Digest-nonce (секунды, 0 — без ограничения по времени)
+					uint64_t nonceMaxAge;
+					// Максимальный возраст HMAC-подписи без expires в строгом режиме (секунды, 0 — не ограничен)
+					uint64_t signStrictMaxAge;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Mode_Params() noexcept :
-					 proxy(false), clockSkew(60), signMaxAge(0) {}
+					 proxy(false),
+					 validation(mode_t::SIMPLE),
+					 clockSkew(60), signMaxAge(0),
+					 nonceMaxAge(1800), signStrictMaxAge(300) {}
 				} mode_params_t;
 				/**
 				 * @brief Структура общих параметров авторизации
@@ -608,6 +637,27 @@ namespace awh {
 				void proxy(const bool mode) noexcept;
 			public:
 				/**
+				 * @brief Метод получения режима строгости проверки учётных данных
+				 *
+				 * @return режим строгости проверки (SIMPLE/STRICT)
+				 */
+				mode_t mode() const noexcept;
+				/**
+				 * @brief Метод установки режима строгости проверки учётных данных (сервер)
+				 *
+				 * @details SIMPLE (по умолчанию) — совместимый режим: сервер принимает Digest legacy
+				 *          RFC 2069 (без qop), ключи параметров HMAC Signature-Input сверяются без
+				 *          учёта регистра. STRICT — строгое соответствие RFC: для Digest обязательны
+				 *          qop, cnonce, opaque и совпадение алгоритма со схемой; для HMAC параметры
+				 *          сверяются байт-точно, алгоритм должен совпадать со схемой, а при отсутствии
+				 *          expires применяется ограниченный срок жизни подписи по умолчанию.
+				 *          Влияет только на проверку на стороне сервера.
+				 *
+				 * @param mode режим строгости проверки (SIMPLE/STRICT)
+				 */
+				void mode(const mode_t mode) noexcept;
+			public:
+				/**
 				 * @brief Метод установки секретного ключа подписи (HMAC)
 				 *
 				 * @param key секретный ключ подписи
@@ -757,6 +807,42 @@ namespace awh {
 				 * @param seconds максимальный возраст подписи (0 — без ограничения)
 				 */
 				void signMaxAge(const uint64_t seconds) noexcept;
+			public:
+				/**
+				 * @brief Метод получения максимального возраста Digest-nonce
+				 *
+				 * @return лимит в секундах (0 — без ограничения по времени)
+				 */
+				uint64_t nonceMaxAge() const noexcept;
+				/**
+				 * @brief Метод установки максимального возраста Digest-nonce (секунды)
+				 *
+				 * @details Используется на сервере: nonce считается устаревшим, если с момента
+				 *          его выдачи прошло больше указанного времени. Устаревший nonce отклоняется
+				 *          при проверке и перевыпускается при формировании нового вызова.
+				 *          Значение по умолчанию — 1800 (30 минут). Передайте 0, чтобы отключить
+				 *          ограничение по времени жизни nonce.
+				 *
+				 * @param seconds максимальный возраст nonce (0 — без ограничения)
+				 */
+				void nonceMaxAge(const uint64_t seconds) noexcept;
+			public:
+				/**
+				 * @brief Метод получения максимального возраста HMAC-подписи без expires для строгого режима
+				 *
+				 * @return лимит в секундах (0 — не ограничен)
+				 */
+				uint64_t signStrictMaxAge() const noexcept;
+				/**
+				 * @brief Метод установки максимального возраста HMAC-подписи без expires для строгого режима (секунды)
+				 *
+				 * @details Используется на сервере при check() в строгом режиме (STRICT), если клиент
+				 *          не передал expires и не задан общий signMaxAge. Значение по умолчанию — 300.
+				 *          Передайте 0, чтобы отключить ограничение по умолчанию даже в строгом режиме.
+				 *
+				 * @param seconds максимальный возраст подписи в строгом режиме (0 — без ограничения)
+				 */
+				void signStrictMaxAge(const uint64_t seconds) noexcept;
 			public:
 				/**
 				 * @brief Метод проверки учётных данных (только для сервера)

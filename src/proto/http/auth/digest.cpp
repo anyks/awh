@@ -26,6 +26,8 @@
  * Стандартные заголовочные файлы
  */
 #include <cctype>
+#include <chrono>
+#include <random>
 #include <cstdlib>
 
 /**
@@ -72,6 +74,25 @@ namespace nc {
 		return true;
 	}
 	/**
+	 * @brief Функция генерации случайного значения для непредсказуемости ключей
+	 *
+	 * @details Используется как источник энтропии при формировании серверных nonce/opaque
+	 *          и клиентского cnonce. Смешивает криптостойкий источник (random_device) с
+	 *          высокоточным временем, чтобы значения не были предсказуемыми по одному лишь
+	 *          штампу времени и realm.
+	 *
+	 * @return случайное значение в текстовом виде
+	 */
+	static string entropy() noexcept {
+		// Инициализируем генератор случайных чисел единожды на поток
+		static thread_local mt19937_64 engine(
+			static_cast <uint64_t> (random_device{}()) ^
+			static_cast <uint64_t> (chrono::steady_clock::now().time_since_epoch().count())
+		);
+		// Возвращаем две 64-битные случайные выборки в текстовом виде
+		return (::to_string(engine()) + ::to_string(engine()));
+	}
+	/**
 	 * @brief Функция разбора счётчика запросов (nc)
 	 *
 	 * @param nc    значение счётчика
@@ -105,23 +126,11 @@ namespace nc {
 	 */
 	static void touchLRU(http::auth_t::digest_t & digest, const string & key, const string & value) noexcept {
 		// Если запись уже существует — обновляем nc и переносим ключ в конец очереди
-		if(const auto it = digest.lncs.find(key); it != digest.lncs.end()){
+		if(const auto i = digest.lncs.find(key); i != digest.lncs.end()){
 			// Сохраняем последний принятый nc
-			it->second = value;
-			/**
-			 * Переносим ключ в конец LRU-очереди
-			 */
-			for(size_t index = 0; index < digest.lncsOrder.size(); ++index){
-				// Если найден ключ в очереди
-				if(digest.lncsOrder[index] == key){
-					// Удаляем ключ из текущей позиции
-					digest.lncsOrder.erase(digest.lncsOrder.begin() + static_cast <ptrdiff_t> (index));
-					// Прерываем цикл поиска
-					break;
-				}
-			}
-			// Добавляем ключ в конец LRU-очереди
-			digest.lncsOrder.push_back(key);
+			i->second.first = value;
+			// Переносим ключ в конец LRU-очереди за O(1) (перестановка узла списка)
+			digest.lncsOrder.splice(digest.lncsOrder.end(), digest.lncsOrder, i->second.second);
 			// Подтверждаем успешное обновление
 			return;
 		}
@@ -130,12 +139,12 @@ namespace nc {
 			// Удаляем старейший ключ из таблицы
 			digest.lncs.erase(digest.lncsOrder.front());
 			// Удаляем старейший ключ из LRU-очереди
-			digest.lncsOrder.erase(digest.lncsOrder.begin());
+			digest.lncsOrder.pop_front();
 		}
-		// Сохраняем новую запись replay-защиты
-		digest.lncs.emplace(key, value);
 		// Добавляем ключ в конец LRU-очереди
-		digest.lncsOrder.push_back(key);
+		const auto pos = digest.lncsOrder.insert(digest.lncsOrder.end(), key);
+		// Сохраняем новую запись replay-защиты (nc + позиция в LRU-очереди)
+		digest.lncs.emplace(key, make_pair(value, pos));
 	}
 };
 
@@ -318,6 +327,57 @@ bool awh::http::Digest::check() noexcept {
 			return false;
 		// Получаем ссылку на параметры Digest-авторизации
 		const auth_t::digest_t & digest = this->_params.digest;
+		// Если включён строгий режим проверки учётных данных
+		if(this->_params.mode.validation == auth_t::mode_t::STRICT){
+			// В строгом режиме legacy RFC 2069 (без qop) не допускается (RFC 7616)
+			if(!digest.mode.qop){
+				// Пишем диагностический лог об отклонении legacy-режима без qop
+				this->_log->print(
+					"Digest auth legacy mode without qop rejected in strict mode for user \"%s\" [nonce=\"%s\"]",
+					log_t::flag_t::WARNING,
+					this->_params.user.c_str(),
+					digest.nonce.c_str()
+				);
+				// Сообщаем о неудачной проверке
+				return false;
+			}
+			// В строгом режиме при использовании qop обязателен ключ клиента cnonce (RFC 7616)
+			if(digest.cnonce.empty()){
+				// Пишем диагностический лог об отсутствии cnonce
+				this->_log->print(
+					"Digest auth missing cnonce rejected in strict mode for user \"%s\" [nonce=\"%s\"]",
+					log_t::flag_t::WARNING,
+					this->_params.user.c_str(),
+					digest.nonce.c_str()
+				);
+				// Сообщаем о неудачной проверке
+				return false;
+			}
+			// В строгом режиме обязателен временный ключ сессии opaque
+			if(digest.opaque.empty()){
+				// Пишем диагностический лог об отсутствии opaque
+				this->_log->print(
+					"Digest auth missing opaque rejected in strict mode for user \"%s\" [nonce=\"%s\"]",
+					log_t::flag_t::WARNING,
+					this->_params.user.c_str(),
+					digest.nonce.c_str()
+				);
+				// Сообщаем о неудачной проверке
+				return false;
+			}
+			// В строгом режиме алгоритм из учётных данных должен совпадать с настроенным (защита от подмены алгоритма)
+			if(this->_params.hash != this->_params.scheme){
+				// Пишем диагностический лог о несовпадении алгоритма
+				this->_log->print(
+					"Digest auth algorithm downgrade rejected in strict mode for user \"%s\" [algorithm=%s]",
+					log_t::flag_t::WARNING,
+					this->_params.user.c_str(),
+					this->algorithm().c_str()
+				);
+				// Сообщаем о неудачной проверке
+				return false;
+			}
+		}
 		// Получаем текущий счётчик запросов клиента (nonce count)
 		uint32_t nc = 0;
 		// Если используется qop — проверяем формат и значение nc до расчёта response
@@ -338,8 +398,12 @@ bool awh::http::Digest::check() noexcept {
 		}
 		// Формируем ключ учёта replay для пары «логин + nonce»
 		const string replayKey = this->_params.user + '\x01' + digest.nonce;
-		// Получаем последний принятый сервером счётчик запросов для этой пары
-		const string lastNc = (digest.lncs.find(replayKey) != digest.lncs.end() ? digest.lncs.at(replayKey) : string{"00000000"});
+		// Получаем последний принятый сервером счётчик запросов для этой пары (за один поиск)
+		string lastNc = "00000000";
+		// Если запись о последнем принятом счётчике найдена
+		if(const auto it = digest.lncs.find(replayKey); it != digest.lncs.end())
+			// Извлекаем последний принятый счётчик запросов
+			lastNc = it->second.first;
 		// Получаем последний принятый сервером счётчик запросов
 		uint32_t last = 0;
 		// Если используется qop — разбираем последний принятый nc
@@ -380,6 +444,30 @@ bool awh::http::Digest::check() noexcept {
 			);
 			// Сообщаем о неудачной проверке
 			return false;
+		}
+		/**
+		 * Если nonce выдан самим сервером (известен штамп его генерации) — проверяем его возраст.
+		 * Это ограничивает окно повторного воспроизведения перехваченных учётных данных:
+		 * по истечении времени жизни nonce отклоняется, и клиент вынужден получить новый ключ.
+		 * Для nonce, установленного вручную (mode.stamp == 0), проверка возраста не выполняется.
+		 */
+		if((digest.mode.stamp > 0) && (this->_params.mode.nonceMaxAge > 0)){
+			// Получаем текущий штамп времени в секундах
+			const uint64_t now = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
+			// Если срок жизни выданного сервером nonce истёк
+			if((now > digest.mode.stamp) && ((now - digest.mode.stamp) >= this->_params.mode.nonceMaxAge)){
+				// Пишем диагностический лог об истечении срока жизни выданного ключа сервера
+				this->_log->print(
+					"Digest auth stale nonce for user \"%s\": nonce age=%llu s exceeds TTL=%llu s [nonce=\"%s\"]",
+					log_t::flag_t::WARNING,
+					this->_params.user.c_str(),
+					static_cast <unsigned long long> (now - digest.mode.stamp),
+					static_cast <unsigned long long> (this->_params.mode.nonceMaxAge),
+					digest.nonce.c_str()
+				);
+				// Сообщаем о неудачной проверке
+				return false;
+			}
 		}
 		/**
 		 * Проверяем, что клиент вернул именно тот opaque, который выдал сервер.
@@ -668,8 +756,8 @@ string awh::http::Digest::header(const bool full) noexcept {
 					if(digest.mode.qop && digest.cnonce.empty()){
 						// Получаем текущий штамп времени в секундах
 						const uint64_t stamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
-						// Генерируем ключ клиента на основе штампа времени
-						digest.cnonce = this->_crypto->hash <string> (::to_string(stamp) + this->_params.user, this->_params.hash);
+						// Генерируем непредсказуемый ключ клиента (штамп времени + энтропия + логин)
+						digest.cnonce = this->_crypto->hash <string> (::to_string(stamp) + ::nc::entropy() + this->_params.user, this->_params.hash);
 						// Обрезаем ключ клиента до 16 символов
 						if(digest.cnonce.length() > 16)
 							// Оставляем только первые 16 символов
@@ -739,8 +827,8 @@ string awh::http::Digest::header(const bool full) noexcept {
 				const uint64_t stamp = this->_fmk->timestamp <uint64_t> (fmk_t::chrono_t::SECONDS);
 				// Сервер всегда объявляет qop в современном вызове авторизации
 				digest.mode.qop = true;
-				// Если nonce не создан или истёк срок его жизни (30 минут)
-				if((createNonce = (digest.nonce.empty() || ((stamp - digest.mode.stamp) >= 1800)))){
+				// Если nonce не создан или истёк срок его жизни (при включённом ограничении возраста)
+				if((createNonce = (digest.nonce.empty() || ((this->_params.mode.nonceMaxAge > 0) && (stamp > digest.mode.stamp) && ((stamp - digest.mode.stamp) >= this->_params.mode.nonceMaxAge))))){
 					// Обновляем штамп времени генерации nonce
 					digest.mode.stamp = stamp;
 					// Если nonce ранее уже выдавался - запрашиваем повтор
@@ -750,8 +838,8 @@ string awh::http::Digest::header(const bool full) noexcept {
 				}
 				// Если необходимо создать новый nonce
 				if(createNonce){
-					// Генерируем уникальный nonce сервера
-					digest.nonce = this->_crypto->hash <string> (::to_string(stamp) + digest.realm, this->_params.hash);
+					// Генерируем непредсказуемый nonce сервера (штамп времени + энтропия + realm)
+					digest.nonce = this->_crypto->hash <string> (::to_string(stamp) + ::nc::entropy() + digest.realm, this->_params.hash);
 					// Запоминаем фактически выданный сервером nonce для последующей сверки
 					digest.issued = digest.nonce;
 					// Сбрасываем учёт replay для нового nonce
@@ -761,8 +849,8 @@ string awh::http::Digest::header(const bool full) noexcept {
 				}
 				// Если временный ключ сессии сервера ещё не создан
 				if(digest.opaque.empty()){
-					// Генерируем временный ключ сессии сервера
-					digest.opaque = this->_crypto->hash <string> (digest.realm, this->_params.hash);
+					// Генерируем непредсказуемый временный ключ сессии сервера (realm + энтропия)
+					digest.opaque = this->_crypto->hash <string> (digest.realm + ::nc::entropy(), this->_params.hash);
 					// Запоминаем фактически выданный opaque для последующей сверки
 					digest.issuedOpaque = digest.opaque;
 				}

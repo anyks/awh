@@ -13,7 +13,7 @@
  */
 
 /**
- * Стандартные заголовочные файлы
+ * Стандартный заголовочный файл
  */
 #include <cctype>
 
@@ -355,6 +355,30 @@ void awh::http::Authorization::proxy(const bool mode) noexcept {
 	this->_params.mode.proxy = mode;
 }
 /**
+ * @brief Метод получения режима строгости проверки учётных данных
+ *
+ * @return режим строгости проверки (SIMPLE/STRICT)
+ */
+awh::http::Authorization::mode_t awh::http::Authorization::mode() const noexcept {
+	// Выводим режим строгости проверки учётных данных
+	return this->_params.mode.validation;
+}
+/**
+ * @brief Метод установки режима строгости проверки учётных данных (сервер)
+ *
+ * @details SIMPLE (по умолчанию) — совместимый режим: сервер принимает Digest legacy
+ *          RFC 2069 (без qop), ключи параметров HMAC Signature-Input сверяются без
+ *          учёта регистра. STRICT — строгое соответствие RFC: Digest без qop
+ *          отклоняется (RFC 7616), параметры подписи HMAC сверяются байт-точно
+ *          (RFC 9421). Влияет только на проверку на стороне сервера.
+ *
+ * @param mode режим строгости проверки (SIMPLE/STRICT)
+ */
+void awh::http::Authorization::mode(const mode_t mode) noexcept {
+	// Устанавливаем режим строгости проверки учётных данных
+	this->_params.mode.validation = mode;
+}
+/**
  * @brief Метод установки секретного ключа подписи (HMAC)
  *
  * @param key секретный ключ подписи
@@ -586,6 +610,52 @@ uint64_t awh::http::Authorization::signMaxAge() const noexcept {
 void awh::http::Authorization::signMaxAge(const uint64_t seconds) noexcept {
 	// Устанавливаем максимальный возраст подписи без expires
 	this->_params.mode.signMaxAge = seconds;
+}
+/**
+ * @brief Метод получения максимального возраста Digest-nonce
+ *
+ * @return лимит в секундах (0 — без ограничения по времени)
+ */
+uint64_t awh::http::Authorization::nonceMaxAge() const noexcept {
+	// Выводим максимальный возраст Digest-nonce
+	return this->_params.mode.nonceMaxAge;
+}
+/**
+ * @brief Метод установки максимального возраста Digest-nonce (секунды)
+ *
+ * @details Используется на сервере: nonce считается устаревшим, если с момента
+ *          его выдачи прошло больше указанного времени. Устаревший nonce отклоняется
+ *          при проверке и перевыпускается при формировании нового вызова.
+ *          Значение по умолчанию — 1800 (30 минут). Передайте 0, чтобы отключить
+ *          ограничение по времени жизни nonce.
+ *
+ * @param seconds максимальный возраст nonce (0 — без ограничения)
+ */
+void awh::http::Authorization::nonceMaxAge(const uint64_t seconds) noexcept {
+	// Устанавливаем максимальный возраст Digest-nonce
+	this->_params.mode.nonceMaxAge = seconds;
+}
+/**
+ * @brief Метод получения максимального возраста HMAC-подписи без expires для строгого режима
+ *
+ * @return лимит в секундах (0 — не ограничен)
+ */
+uint64_t awh::http::Authorization::signStrictMaxAge() const noexcept {
+	// Выводим максимальный возраст подписи без expires для строгого режима
+	return this->_params.mode.signStrictMaxAge;
+}
+/**
+ * @brief Метод установки максимального возраста HMAC-подписи без expires для строгого режима (секунды)
+ *
+ * @details Используется на сервере при check() в строгом режиме (STRICT), если клиент
+ *          не передал expires и не задан общий signMaxAge. Значение по умолчанию — 300.
+ *          Передайте 0, чтобы отключить ограничение по умолчанию даже в строгом режиме.
+ *
+ * @param seconds максимальный возраст подписи в строгом режиме (0 — без ограничения)
+ */
+void awh::http::Authorization::signStrictMaxAge(const uint64_t seconds) noexcept {
+	// Устанавливаем максимальный возраст подписи без expires для строгого режима
+	this->_params.mode.signStrictMaxAge = seconds;
 }
 /**
  * @brief Метод проверки учётных данных (только для сервера)
