@@ -2773,9 +2773,10 @@ template void awh::Filesystem::read(string_view, vector <uint8_t> &, const seek_
  *
  * @param filename путь к файлу для чтения
  * @param size     размер блока для чтения
- * @param callback функция обратного вызова для обработки прочитанных данных
+ * @param callback функция обратного вызова для обработки прочитанных данных (возвращает true для продолжения чтения и false для остановки)
+ * @param offset   смещение в файле с которого следует начать чтение
  */
-void awh::Filesystem::read(string_view filename, const size_t size, const function <void (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback) const noexcept {
+void awh::Filesystem::read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset) const noexcept {
 	// Если буфер данных передан
 	if(!filename.empty() && (size > 0) && (callback != nullptr)){
 		/**
@@ -2807,7 +2808,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, message);
+								this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, message);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2833,7 +2834,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, message);
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2857,7 +2858,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, message);
+									this->_log->debug(L"%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, message);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -2873,13 +2874,15 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							/**
 							 * Перебираем файл блоками, передавая указатели напрямую из проекции
 							 */
-							for(size_t position = 0; position < total; position += size){
+							for(size_t position = offset; position < total; position += size){
 								// Определяем размер текущего блока
 								const size_t bytes = ::min(size, (total - position));
 								// Определяем размер оставшихся данных после текущего блока
 								const size_t left = (total - position - bytes);
 								// Передаём указатель прямо из проекции файла без копирования данных
-								callback(static_cast <const uint8_t *> (addr) + position, bytes, position, left);
+								if(!callback(static_cast <const uint8_t *> (addr) + position, bytes, position, left))
+									// Прерываем чтение файла по запросу вызывающей стороны
+									break;
 							}
 							// Освобождаем проекцию файла из адресного пространства процесса
 							::UnmapViewOfFile(addr);
@@ -2900,7 +2903,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2915,7 +2918,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 						 */
 						#if DEBUG_MODE
 							// Записываем ошибку в лог
-							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+							this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 						/**
 						 * Если режим отладки не включён
 						 */
@@ -2936,7 +2939,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, ::strerror(errno));
+								this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, ::strerror(errno));
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -2956,13 +2959,15 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 							/**
 							 * Перебираем файл блоками, передавая указатели напрямую из проекции
 							 */
-							for(size_t position = 0; position < total; position += size){
+							for(size_t position = offset; position < total; position += size){
 								// Определяем размер текущего блока
 								const size_t bytes = ::min(size, (total - position));
 								// Определяем размер оставшихся данных после текущего блока
 								const size_t left = (total - position - bytes);
 								// Передаём указатель прямо из проекции файла без копирования данных
-								callback(static_cast <const uint8_t *> (addr) + position, bytes, position, left);
+								if(!callback(static_cast <const uint8_t *> (addr) + position, bytes, position, left))
+									// Прерываем чтение файла по запросу вызывающей стороны
+									break;
 							}
 							// Освобождаем проекцию файла из адресного пространства процесса
 							::munmap(addr, total);
@@ -2979,7 +2984,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -2996,7 +3001,7 @@ void awh::Filesystem::read(string_view filename, const size_t size, const functi
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(filename, size, offset), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */

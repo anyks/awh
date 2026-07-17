@@ -270,9 +270,10 @@ namespace awh {
 			 *
 			 * @param filename путь к файлу для чтения
 			 * @param size     размер блока для чтения
-			 * @param callback функция обратного вызова для обработки прочитанных данных
+			 * @param callback функция обратного вызова для обработки прочитанных данных (возвращает true для продолжения чтения и false для остановки)
+			 * @param offset   смещение в файле с которого следует начать чтение
 			 */
-			void read(string_view filename, const size_t size, const function <void (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback) const noexcept;
+			void read(string_view filename, const size_t size, const function <bool (const void * buffer, const size_t size, const size_t offset, const size_t left)> & callback, const size_t offset = 0) const noexcept;
 		public:
 			/**
 			 * @brief Шаблон метода записи в файл бинарных данных
