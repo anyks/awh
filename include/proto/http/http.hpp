@@ -60,12 +60,31 @@ namespace awh {
 		};
 
 		/**
+		 * @brief Версии HTTP-протоколов соответствия
+		 *
+		 */
+		enum class proto_t : uint8_t {
+			NONE       = 0x00, // Протокол не установлен
+			UNKNOWN    = 0x01, // Протокол неизвестный
+			HTTP1      = 0x02, // Протокол принадлежит HTTP/1.1
+			HTTP2      = 0x03, // Протокол принадлежит HTTP/2
+			HTTP3      = 0x04, // Протокол принадлежит HTTP/3
+			PROXY1     = 0x05, // Протокол принадлежит Proxy over HTTP/1.1
+			PROXY2     = 0x06, // Протокол принадлежит Proxy over HTTP/2
+			PROXY3     = 0x07, // Протокол принадлежит Proxy over HTTP/3
+			WEBSOCKET1 = 0x08, // Протокол принадлежит Websocket over HTTP/1.1
+			WEBSOCKET2 = 0x09, // Протокол принадлежит Websocket over HTTP/2
+			WEBSOCKET3 = 0x0A  // Протокол принадлежит Websocket over HTTP/3
+		};
+
+		/**
 		 * @brief Распознанный HTTP-метод
 		 *
-		 * Помимо основных методов HTTP/1.1 распознаются методы WebDAV (RFC 4918)
-		 * и ряд расширений (RFC 5789, UPnP, ICAL и др.). Любой нераспознанный, но
-		 * синтаксически корректный метод даёт UNKNOWN, при этом Message::methodName
-		 * всегда содержит оригинальную строку.
+		 * @details Помимо основных методов HTTP/1.1 распознаются методы WebDAV (RFC 4918)
+		 *          и ряд расширений (RFC 5789, UPnP, ICAL и др.). Любой нераспознанный, но
+		 *          синтаксически корректный метод даёт UNKNOWN, при этом оригинальное
+		 *          написание метода сохраняется в поле request_t::methodName (прозрачное
+		 *          проксирование экзотических методов).
 		 */
 		enum class method_t : uint8_t {
 			// Метод не установлен
@@ -112,26 +131,12 @@ namespace awh {
 			SOURCE      = 0x1F, // Метод SOURCE (RFC 2068)
 			MSEARCH     = 0x20, // Метод MSEARCH (UPnP)
 			SUBSCRIBE   = 0x21, // Метод SUBSCRIBE (UPnP)
-			UNSUBSCRIBE = 0x22, // Метод UNSUBSCRIBE (UPnP)
-			MKCALENDAR  = 0x23  // Метод MKCALENDAR (RFC 4791)
-		};
-
-		/**
-		 * @brief Версии HTTP-протоколов соответствия
-		 *
-		 */
-		enum class proto_t : uint8_t {
-			NONE       = 0x00, // Протокол не установлен
-			UNKNOWN    = 0x01, // Протокол неизвестный
-			HTTP1      = 0x02, // Протокол принадлежит HTTP/1.1
-			HTTP2      = 0x03, // Протокол принадлежит HTTP/2
-			HTTP3      = 0x04, // Протокол принадлежит HTTP/3
-			PROXY1     = 0x05, // Протокол принадлежит Proxy over HTTP/1.1
-			PROXY2     = 0x06, // Протокол принадлежит Proxy over HTTP/2
-			PROXY3     = 0x07, // Протокол принадлежит Proxy over HTTP/3
-			WEBSOCKET1 = 0x08, // Протокол принадлежит Websocket over HTTP/1.1
-			WEBSOCKET2 = 0x09, // Протокол принадлежит Websocket over HTTP/2
-			WEBSOCKET3 = 0x0A  // Протокол принадлежит Websocket over HTTP/3
+			MKCALENDAR  = 0x22, // Метод MKCALENDAR (RFC 4791)
+			UNSUBSCRIBE = 0x23, // Метод UNSUBSCRIBE (UPnP)
+			/**
+			 * Нераспознанные методы
+			 */
+			UNKNOWN = 0x24  // Синтаксически корректный, но нераспознанный метод (оригинал в request_t::methodName)
 		};
 	};
 };

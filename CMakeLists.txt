@@ -572,6 +572,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/digest.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/bearer.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/parser.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http1/http.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
@@ -818,6 +819,11 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(HEADERS_APP_PROTO_NAME proto-headers)
     # Указываем что нужно собрать приложение работы с HTTP-заголовками
     option(CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE "Build HTTP Headers app sample" ON)
+
+    # Устанавливаем имя приложения работы с парсером HTTP/1.0 и HTTP/1.1
+    SET(PARSER_APP_PROTO_NAME proto-parser)
+    # Указываем что нужно собрать приложение работы с парсером HTTP/1.0 и HTTP/1.1
+    option(CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE "Build HTTP Parser app sample" ON)
 
     # Устанавливаем имя приложения блочной компрессии данных
     SET(COMPRESSOR_APP_BLOCK_NAME compressor-block)
@@ -1313,6 +1319,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample HTTP Headers: No\n")
     endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с парсером HTTP/1.0 и HTTP/1.1
+    if (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample HTTP Parser: Yes\n")
+        # Выполняем создание приложения работы с парсером HTTP/1.0 и HTTP/1.1
+        add_sample(${PARSER_APP_PROTO_NAME} sample/proto/http/parser.cpp proto)
+    # Если не нужно собирать семплы для работы с парсером HTTP/1.0 и HTTP/1.1
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample HTTP Parser: No\n")
+    endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -2101,6 +2119,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с парсером HTTP/1.0 и HTTP/1.1
+        if (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с парсером HTTP/1.0 и HTTP/1.1
+            target_link_libraries(
+                ${PARSER_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3036,6 +3065,18 @@ else (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
 
+        # Если нужно собрать семплы для работы с парсером HTTP/1.0 и HTTP/1.1
+        if (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с парсером HTTP/1.0 и HTTP/1.1
+            target_link_libraries(
+                ${PARSER_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
             # Выполняем сборку приложения компрессии данных
@@ -3928,6 +3969,16 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с парсером HTTP/1.0 и HTTP/1.1
+            if (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с парсером HTTP/1.0 и HTTP/1.1
+                add_custom_command(TARGET "${PARSER_APP_PROTO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${PARSER_APP_PROTO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${PARSER_APP_PROTO_NAME}\" to enable core dump on MacOS X"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с компрессией данных
             if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -4919,6 +4970,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с HTTP-заголовками
         install(TARGETS ${HEADERS_APP_PROTO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с парсером HTTP/1.0 и HTTP/1.1
+    if (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
+        # Устанавливаем приложение работы с парсером HTTP/1.0 и HTTP/1.1
+        install(TARGETS ${PARSER_APP_PROTO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})

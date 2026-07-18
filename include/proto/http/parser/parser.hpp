@@ -25,8 +25,9 @@
  * Подключаем наши заголовочные файлы
  */
 #include "../http.hpp"
-#include "../headers.hpp"
-#include "../../../sys/buffer.hpp"
+#include "../provider.hpp"
+#include "../../../sys/fmk.hpp"
+#include "../../../sys/log.hpp"
 #include "../../../sys/global.hpp"
 
 /**
@@ -106,20 +107,39 @@ namespace awh {
 				static constexpr uint64_t MAX_CHUNK_SIZE = (1ull * 1024 * 1024 * 1024);
 			public:
 				/**
-				 * @brief Результат итогового статуса разбора HTTP-сообщения
+				 * @brief Итоговый статус разбора HTTP-сообщения
 				 *
 				 */
 				enum class status_t : uint8_t {
-					NONE	 = 0x00, // Статус не определён
-					OK       = 0x01, // Данные приняты, но сообщение ещё не завершено — нужно ещё байтов
-					ERROR    = 0x02, // Ошибка разбора/безопасности
+					NONE     = 0x00, // Статус не определён (разбор ещё не начинался)
+					ERROR    = 0x01, // Ошибка разбора/безопасности
+					PARTIAL  = 0x02, // Данные приняты, но сообщение ещё не завершено — нужно ещё байтов
 					COMPLETE = 0x03  // Одно сообщение полностью разобрано (в буфере могут идти следующие)
+				};
+				/**
+				 * @brief Фаза разбора HTTP-сообщения
+				 *
+				 */
+				enum class phase_t : uint8_t {
+					NONE  = 0x00, // Фаза не определена
+					BEGIN = 0x01, // Начало сообщения (request-line/status-line)
+					END   = 0x02  // Конец сообщения
+				};
+				/**
+				 * @brief Партиция текущего состояния парсера
+				 *
+				 */
+				enum class part_t : uint8_t {
+					NONE    = 0x00, // Часть сообщения не определена
+					BODY    = 0x01, // Тело сообщения
+					HEADERS = 0x02, // Заголовки сообщения
+					TRAILER = 0x03  // Заголовки трейлера
 				};
 				/**
 				 * @brief Код ошибки разбора HTTP-парсера
 				 *
 				 */
-				enum class error_t : uint16_t {
+				enum class error_t : uint8_t {
 					NONE                      = 0x00, // Ошибок нет
 					INTERNAL                  = 0x01, // Внутренняя ошибка состояния
 					INVALID_EOL               = 0x02, // Ожидался LF после CR
@@ -140,7 +160,8 @@ namespace awh {
 					CHUNK_OVERFLOW            = 0x11, // Превышен лимит размера чанка
 					HEADER_OVERFLOW           = 0x12, // Превышен лимит размера заголовков
 					TOO_MANY_HEADERS          = 0x13, // Превышено число заголовков
-					CONTENT_LENGTH_CONFLICT   = 0x14  // CL+TE или несколько разных Content-Length (request smuggling)
+					CONTENT_LENGTH_CONFLICT   = 0x14, // CL+TE или несколько разных Content-Length (request smuggling)
+					PREMATURE_EOF             = 0x15  // Соединение закрыто посреди незавершённого сообщения
 				};
 			public:
 				/**
@@ -150,62 +171,23 @@ namespace awh {
 				typedef struct Flags {
 					// Тело передаётся chunked
 					bool chunked;
+					// Запрошено переключение протокола (Upgrade + Connection: upgrade, ответ 101 или успешный CONNECT)
+					bool upgrade;
 					// Сообщение полностью разобрано
 					bool complete;
 					// Соединение переиспользуемое
 					bool keepAlive;
-					// В сообщении есть заголовок Content-Length
-					bool hasContentLength;
+					// Клиент прислал заголовок [Expect: 100-continue] и ожидает промежуточный ответ до отправки тела
+					bool expectContinue;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Flags() noexcept : 
-					 chunked(false), complete(false),
-					 keepAlive(true), hasContentLength(false) {}
+					 chunked(false), upgrade(false),
+					 complete(false), keepAlive(true),
+					 expectContinue(false) {}
 				} flags_t;
-				/**
-				 * @brief Структура поддерживаемых версий протокола HTTP
-				 *
-				 */
-				typedef struct Version {
-					// Старшая версия протокола HTTP
-					uint8_t major;
-					// Младшая версия протокола HTTP
-					uint8_t minor;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Version() noexcept = default;
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param major Старшая версия HTTP
-					 * @param minor Младшая версия HTTP
-					 */
-					explicit Version(uint8_t major, uint8_t minor) noexcept :
-					 major(major), minor(minor) {}
-				} version_t;
-			public:
-				/**
-				 * @brief Структура тела HTTP-сообщения
-				 *
-				 */
-				typedef struct Body {
-					// Размер тела сообщения
-					uint64_t size;
-					// Буфер для хранения данных
-					buffer_t body;
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param fmk объект фреймворка
-					 * @param log объект для работы с логами
-					 */
-					explicit Body(const fmk_t * fmk, const log_t * log) noexcept :
-					 size(0), body(fmk, log) {}
-				} body_t;
 			public:
 				/**
 				 * @brief Структура ограничений безопасности
@@ -248,21 +230,23 @@ namespace awh {
 			public:
 				/**
 				 * @brief Класс разобранного сообщения
-				 * 
-				 * @note Заполняется по мере парсинга
+				 *
+				 * @details Если Content-Length не установлен, то значение bodySize == -1.
+				 *          Если Content-Length установлен, то значение поля bodySize >= 0.
+				 *          Если указан Transfer-Encoding: chunked, то значение поля bodySize == -1.
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Message {
 					public:
+						// Партиция текущего состояния парсера
+						part_t part;
+						// Фаза разбора HTTP-сообщения
+						phase_t phase;
 						// Флаги состояния парсера
 						flags_t flags;
-						// Буфер для хранения данных
-						body_t body;
-						// Контейнер заголовков
-						headers_t headers;
-						// Контейнер трейлеров
-						headers_t trailers;
-						// Версия протокола HTTP
-						version_t version;
+						// Ожидаемый размер тела сообщения (Content-Length)
+						int64_t bodySize;
+						// Объект провайдера заголовков сообщения
+						unique_ptr <provider_t> provider;
 					public:
 						/**
 						 * @brief Оператор перемещающего присваивания параметров сообщения
@@ -286,6 +270,13 @@ namespace awh {
 						 * @return        результат сравнения
 						 */
 						bool operator == (const Message & message) noexcept;
+						/**
+						 * @brief Оператор сравнения
+						 *
+						 * @param message объект сообщения для сравнения
+						 * @return        результат сравнения
+						 */
+						bool operator != (const Message & message) noexcept;
 					public:
 						/**
 						 * @brief Конструктор перемещения
@@ -303,14 +294,16 @@ namespace awh {
 						/**
 						 * @brief Конструктор
 						 *
-						 * @param fmk объект фреймворка
-						 * @param log объект для работы с логами
 						 */
-						explicit Message(const fmk_t * fmk, const log_t * log) noexcept;
+						explicit Message() noexcept;
 				} message_t;
 			protected:
 				// Код ошибки разбора
 				error_t _error;
+				// Итоговый статус разбора
+				status_t _status;
+				// Направление потока данных (запрос/ответ)
+				direct_t _direct;
 			protected:
 				// Настраиваемые лимиты
 				limits_t _limits;
@@ -323,10 +316,26 @@ namespace awh {
 				const log_t * _log;
 			public:
 				/**
-				 * @brief Метод очистки всех данных парсера
+				 * @brief Метод полной очистки всех данных парсера
 				 *
+				 * @details Помимо сброса состояния разбора возвращает лимиты безопасности к значениям по умолчанию
 				 */
-				void clear() noexcept;
+				virtual void clear() noexcept;
+				/**
+				 * @brief Метод сброса парсера для разбора следующего сообщения в том же соединении
+				 *
+				 * @details Дешёвый сброс между сообщениями (keep-alive/pipelining): сохраняет лимиты
+				 *          безопасности и установленные функции обратного вызова, провайдер заголовков
+				 *          не пересоздаётся, а очищается (переиспользуется выделенная память)
+				 */
+				virtual void reset() noexcept;
+			public:
+				/**
+				 * @brief Метод клонирования объекта парсера
+				 *
+				 * @return копия объекта парсера
+				 */
+				virtual unique_ptr <Parser> clone() const noexcept = 0;
 			public:
 				/**
 				 * @brief Метод получения кода ошибки разбора
@@ -334,6 +343,20 @@ namespace awh {
 				 * @return код ошибки
 				 */
 				error_t error() const noexcept;
+				/**
+				 * @brief Метод получения итогового статуса разбора
+				 *
+				 * @return итоговый статус разбора
+				 */
+				status_t status() const noexcept;
+			public:
+				/**
+				 * @brief Метод получения человекочитаемого названия кода ошибки
+				 *
+				 * @param error код ошибки разбора
+				 * @return      название кода ошибки
+				 */
+				static string errorName(const error_t error) noexcept;
 			public:
 				/**
 				 * @brief Метод получения лимитов безопасности
@@ -353,7 +376,7 @@ namespace awh {
 				 *
 				 * @return разобранное сообщение
 				 */
-				const message_t & message() noexcept;
+				const message_t & message() const noexcept;
 			public:
 				/**
 				 * @brief Конструктор

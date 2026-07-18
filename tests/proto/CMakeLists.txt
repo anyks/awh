@@ -70,6 +70,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_HEADERS_TEST "Build unit HTTP headers test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля HTTP-авторизации
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_AUTH_TEST "Build unit HTTP auth test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для подмодуля парсера HTTP/1.0 и HTTP/1.1
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER_TEST "Build unit HTTP parser test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для подмодуля провайдера HTTP-запроса/ответа
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROVIDER_TEST})
@@ -118,6 +120,22 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для подмодуля HTTP-авторизации
             message(STATUS "Build tests HTTP auth submodule: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_AUTH_TEST})
+
+        # Если нужно собрать тесты для подмодуля парсера HTTP/1.0 и HTTP/1.1
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER_TEST})
+            # Выводим сообщение о сборке тестов для подмодуля парсера HTTP/1.0 и HTTP/1.1
+            message(STATUS "Build tests HTTP parser submodule: Yes\n")
+            # Дополняем список источников тестами для подмодуля парсера HTTP/1.0 и HTTP/1.1
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                http/parser/parser.cpp
+                http/parser/static.cpp
+                http/parser/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для подмодуля парсера HTTP/1.0 и HTTP/1.1
+        else()
+            # Выводим сообщение о сборке тестов для подмодуля парсера HTTP/1.0 и HTTP/1.1
+            message(STATUS "Build tests HTTP parser submodule: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS
