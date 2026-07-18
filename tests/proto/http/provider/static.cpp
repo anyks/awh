@@ -38,7 +38,7 @@ TEST_F(ProviderFixture, RequestConstructorsTest){
 	// Проверяем конструктор по умолчанию
 	request_t request1;
 	// Проверяем направление трафика по умолчанию
-	ASSERT_EQ(request1.traffic, traffic_t::REQUEST);
+	ASSERT_EQ(request1.direct, direct_t::REQUEST);
 	// Проверяем метод запроса по умолчанию
 	ASSERT_EQ(request1.method, method_t::NONE);
 	// Проверяем версию протокола по умолчанию
@@ -91,7 +91,7 @@ TEST_F(ProviderFixture, ResponseConstructorsTest){
 	// Проверяем конструктор по умолчанию
 	response_t response1;
 	// Проверяем направление трафика по умолчанию
-	ASSERT_EQ(response1.traffic, traffic_t::RESPONSE);
+	ASSERT_EQ(response1.direct, direct_t::RESPONSE);
 	// Проверяем код ответа по умолчанию
 	ASSERT_EQ(response1.code, 0u);
 	// Проверяем версию протокола по умолчанию
@@ -243,8 +243,8 @@ TEST_F(ProviderFixture, ProviderCloneTest){
 	// Проверяем что клон создан
 	ASSERT_TRUE(clonedRequest != nullptr);
 	// Проверяем что направление трафика клона соответствует запросу
-	ASSERT_EQ(clonedRequest->traffic, traffic_t::REQUEST);
-	// Безопасно приводим клон к типу запроса (тип подтверждён флагом traffic)
+	ASSERT_EQ(clonedRequest->direct, direct_t::REQUEST);
+	// Безопасно приводим клон к типу запроса (тип подтверждён флагом direct)
 	const request_t * clonedRequestPtr = static_cast <const request_t *> (clonedRequest.get());
 	// Проверяем что производная часть склонирована без срезки
 	ASSERT_EQ(clonedRequestPtr->method, method_t::PATCH);
@@ -257,8 +257,8 @@ TEST_F(ProviderFixture, ProviderCloneTest){
 	// Проверяем что клон создан
 	ASSERT_TRUE(clonedResponse != nullptr);
 	// Проверяем что направление трафика клона соответствует ответу
-	ASSERT_EQ(clonedResponse->traffic, traffic_t::RESPONSE);
-	// Безопасно приводим клон к типу ответа (тип подтверждён флагом traffic)
+	ASSERT_EQ(clonedResponse->direct, direct_t::RESPONSE);
+	// Безопасно приводим клон к типу ответа (тип подтверждён флагом direct)
 	const response_t * clonedResponsePtr = static_cast <const response_t *> (clonedResponse.get());
 	// Проверяем что производная часть склонирована без срезки
 	ASSERT_EQ(clonedResponsePtr->code, 403u);

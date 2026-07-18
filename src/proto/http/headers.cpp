@@ -458,10 +458,10 @@ namespace {
 			/**
 			 * Определяем направление трафика (запрос/ответ), используя явный флаг вместо приведения типа через RTTI
 			 */
-			switch(static_cast <uint8_t> (provider->traffic)){
+			switch(static_cast <uint8_t> (provider->direct)){
 				// Если передан запрос клиента
-				case static_cast <uint8_t> (http::traffic_t::REQUEST): {
-					// Приводим провайдер к типу запроса клиента (безопасно, так как тип подтверждён флагом traffic)
+				case static_cast <uint8_t> (http::direct_t::REQUEST): {
+					// Приводим провайдер к типу запроса клиента (безопасно, так как тип подтверждён флагом direct)
 					const auto * request = static_cast <const http::request_t *> (provider);
 					// Получаем текстовое название метода запроса
 					const string_view methodName = ::method(request->method);
@@ -556,8 +556,8 @@ namespace {
 					}
 				} break;
 				// Если передан ответ сервера
-				case static_cast <uint8_t> (http::traffic_t::RESPONSE): {
-					// Приводим провайдер к типу ответа сервера (безопасно, так как тип подтверждён флагом traffic)
+				case static_cast <uint8_t> (http::direct_t::RESPONSE): {
+					// Приводим провайдер к типу ответа сервера (безопасно, так как тип подтверждён флагом direct)
 					const auto * response = static_cast <const http::response_t *> (provider);
 					// Формируем псевдозаголовок кода ответа сервера
 					http::Headers::header_t header{};
@@ -1188,10 +1188,10 @@ string awh::http::Headers::startline() const noexcept {
 			 * Определяем направление трафика (запрос/ответ) по явному флагу вместо приведения типа через RTTI (dynamic_cast),
 			 * что позволяет избежать накладных расходов на обход таблиц виртуальных методов
 			 */
-			switch(static_cast <uint8_t> (this->_provider->traffic)){
+			switch(static_cast <uint8_t> (this->_provider->direct)){
 				// Если установлен запрос клиента
-				case static_cast <uint8_t> (traffic_t::REQUEST): {
-					// Безопасно приводим провайдер к типу запроса клиента (тип подтверждён флагом traffic)
+				case static_cast <uint8_t> (direct_t::REQUEST): {
+					// Безопасно приводим провайдер к типу запроса клиента (тип подтверждён флагом direct)
 					const request_t * request = static_cast <const request_t *> (this->_provider.get());
 					// Формируем стартовую строку запроса клиента в формате "Метод URI HTTP/Версия"
 					result.append(::method(request->method));
@@ -1205,8 +1205,8 @@ string awh::http::Headers::startline() const noexcept {
 					result.append(::version(request->version));
 				} break;
 				// Если установлен ответ сервера
-				case static_cast <uint8_t> (traffic_t::RESPONSE): {
-					// Безопасно приводим провайдер к типу ответа сервера (тип подтверждён флагом traffic)
+				case static_cast <uint8_t> (direct_t::RESPONSE): {
+					// Безопасно приводим провайдер к типу ответа сервера (тип подтверждён флагом direct)
 					const response_t * response = static_cast <const response_t *> (this->_provider.get());
 					// Получаем сообщение сервера, установленное пользователем (без копирования)
 					string_view message = response->message;

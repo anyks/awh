@@ -25,18 +25,18 @@ using namespace std;
 /**
  * @brief Конструктор
  *
- * @param traffic направление трафика (запрос/ответ)
+ * @param direct направление трафика (запрос/ответ)
  */
-awh::http::Provider::Provider(const traffic_t traffic) noexcept :
- version(version_t::HTTP1_1), traffic(traffic) {}
+awh::http::Provider::Provider(const direct_t direct) noexcept :
+ version(version_t::HTTP1_1), direct(direct) {}
 /**
  * @brief Конструктор
  *
- * @param traffic направление трафика (запрос/ответ)
+ * @param direct  направление трафика (запрос/ответ)
  * @param version версия протокола
  */
-awh::http::Provider::Provider(const traffic_t traffic, const version_t version) noexcept :
- version(version), traffic(traffic) {}
+awh::http::Provider::Provider(const direct_t direct, const version_t version) noexcept :
+ version(version), direct(direct) {}
 
 /**
  * @brief Метод клонирования объекта запроса
@@ -122,7 +122,7 @@ bool awh::http::Request::operator != (const request_t & request) const noexcept 
  *
  * @param request объект параметров запроса клиента
  */
-awh::http::Request::Request(request_t && request) noexcept : provider_t(traffic_t::REQUEST) {
+awh::http::Request::Request(request_t && request) noexcept : provider_t(direct_t::REQUEST) {
 	// Перемещаем параметры URI-запроса
 	this->uri = ::move(request.uri);
 	// Копируем метод HTTP-запроса
@@ -139,7 +139,7 @@ awh::http::Request::Request(request_t && request) noexcept : provider_t(traffic_
  *
  * @param request объект параметров запроса клиента
  */
-awh::http::Request::Request(const request_t & request) noexcept : provider_t(traffic_t::REQUEST) {
+awh::http::Request::Request(const request_t & request) noexcept : provider_t(direct_t::REQUEST) {
 	// Копируем параметры URI-запроса
 	this->uri = request.uri;
 	// Копируем метод HTTP-запроса
@@ -151,46 +151,46 @@ awh::http::Request::Request(const request_t & request) noexcept : provider_t(tra
  * @brief Конструктор
  *
  */
-awh::http::Request::Request() noexcept : provider_t(traffic_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method_t::NONE) {}
+awh::http::Request::Request() noexcept : provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method_t::NONE) {}
 /**
  * @brief Конструктор
  *
  * @param uri параметры URI-запроса
  */
-awh::http::Request::Request(const string & uri) noexcept : provider_t(traffic_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method_t::NONE) {}
+awh::http::Request::Request(const string & uri) noexcept : provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method_t::NONE) {}
 /**
  * @brief Конструктор
  *
  * @param method метод запроса клиента
  */
-awh::http::Request::Request(const method_t method) noexcept : provider_t(traffic_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method) {}
+awh::http::Request::Request(const method_t method) noexcept : provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{""}, method(method) {}
 /**
  * @brief Конструктор
  *
  * @param version версия протокола
  */
-awh::http::Request::Request(const version_t version) noexcept : provider_t(traffic_t::REQUEST, version), uri{""}, method(method_t::NONE) {}
+awh::http::Request::Request(const version_t version) noexcept : provider_t(direct_t::REQUEST, version), uri{""}, method(method_t::NONE) {}
 /**
  * @brief Конструктор
  *
  * @param method метод запроса клиента
  * @param uri    параметры URI-запроса
  */
-awh::http::Request::Request(const method_t method, const string & uri) noexcept : provider_t(traffic_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method) {}
+awh::http::Request::Request(const method_t method, const string & uri) noexcept : provider_t(direct_t::REQUEST, version_t::HTTP1_1), uri{uri}, method(method) {}
 /**
  * @brief Конструктор
  *
  * @param version версия протокола
  * @param uri     параметры URI-запроса
  */
-awh::http::Request::Request(const version_t version, const string & uri) noexcept : provider_t(traffic_t::REQUEST, version), uri{uri}, method(method_t::NONE) {}
+awh::http::Request::Request(const version_t version, const string & uri) noexcept : provider_t(direct_t::REQUEST, version), uri{uri}, method(method_t::NONE) {}
 /**
  * @brief Конструктор
  *
  * @param version версия протокола
  * @param method  метод запроса клиента
  */
-awh::http::Request::Request(const version_t version, const method_t method) noexcept : provider_t(traffic_t::REQUEST, version), uri{""}, method(method) {}
+awh::http::Request::Request(const version_t version, const method_t method) noexcept : provider_t(direct_t::REQUEST, version), uri{""}, method(method) {}
 /**
  * @brief Конструктор
  *
@@ -198,7 +198,7 @@ awh::http::Request::Request(const version_t version, const method_t method) noex
  * @param method  метод запроса клиента
  * @param uri     параметры URI-запроса
  */
-awh::http::Request::Request(const version_t version, const method_t method, const string & uri) noexcept : provider_t(traffic_t::REQUEST, version), uri{uri}, method(method) {}
+awh::http::Request::Request(const version_t version, const method_t method, const string & uri) noexcept : provider_t(direct_t::REQUEST, version), uri{uri}, method(method) {}
 
 /**
  * @brief Метод клонирования объекта ответа
@@ -284,7 +284,7 @@ bool awh::http::Response::operator != (const response_t & response) const noexce
  *
  * @param response объект параметров ответа сервера
  */
-awh::http::Response::Response(response_t && response) noexcept : provider_t(traffic_t::RESPONSE, version_t::HTTP1_1) {
+awh::http::Response::Response(response_t && response) noexcept : provider_t(direct_t::RESPONSE, version_t::HTTP1_1) {
 	// Перемещаем сообщение сервера
 	this->message = ::move(response.message);
 	// Копируем код ответа сервера
@@ -301,7 +301,7 @@ awh::http::Response::Response(response_t && response) noexcept : provider_t(traf
  *
  * @param response объект параметров ответа сервера
  */
-awh::http::Response::Response(const response_t & response) noexcept : provider_t(traffic_t::RESPONSE, version_t::HTTP1_1) {
+awh::http::Response::Response(const response_t & response) noexcept : provider_t(direct_t::RESPONSE, version_t::HTTP1_1) {
 	// Копируем сообщение сервера
 	this->message = response.message;
 	// Копируем код ответа сервера
@@ -313,46 +313,46 @@ awh::http::Response::Response(const response_t & response) noexcept : provider_t
  * @brief Конструктор
  *
  */
-awh::http::Response::Response() noexcept : provider_t(traffic_t::RESPONSE, version_t::HTTP1_1), code(0), message{""} {}
+awh::http::Response::Response() noexcept : provider_t(direct_t::RESPONSE, version_t::HTTP1_1), code(0), message{""} {}
 /**
  * @brief Конструктор
  *
  * @param code код ответа сервера
  */
-awh::http::Response::Response(const uint16_t code) noexcept : provider_t(traffic_t::RESPONSE, version_t::HTTP1_1), code(code), message{""} {}
+awh::http::Response::Response(const uint16_t code) noexcept : provider_t(direct_t::RESPONSE, version_t::HTTP1_1), code(code), message{""} {}
 /**
  * @brief Конструктор
  *
  * @param message сообщение сервера
  */
-awh::http::Response::Response(const string & message) noexcept : provider_t(traffic_t::RESPONSE, version_t::HTTP1_1), code(0), message{message} {}
+awh::http::Response::Response(const string & message) noexcept : provider_t(direct_t::RESPONSE, version_t::HTTP1_1), code(0), message{message} {}
 /**
  * @brief Конструктор
  *
  * @param version версия протокола
  */
-awh::http::Response::Response(const version_t version) noexcept : provider_t(traffic_t::RESPONSE, version), code(0), message{""} {}
+awh::http::Response::Response(const version_t version) noexcept : provider_t(direct_t::RESPONSE, version), code(0), message{""} {}
 /**
  * @brief Конструктор
  *
  * @param code    код ответа сервера
  * @param message сообщение сервера
  */
-awh::http::Response::Response(const uint16_t code, const string & message) noexcept : provider_t(traffic_t::RESPONSE, version_t::HTTP1_1), code(code), message{message} {}
+awh::http::Response::Response(const uint16_t code, const string & message) noexcept : provider_t(direct_t::RESPONSE, version_t::HTTP1_1), code(code), message{message} {}
 /**
  * @brief Конструктор
  *
  * @param version версия протокола
  * @param code    код ответа сервера
  */
-awh::http::Response::Response(const version_t version, const uint16_t code) noexcept : provider_t(traffic_t::RESPONSE, version), code(code), message{""} {}
+awh::http::Response::Response(const version_t version, const uint16_t code) noexcept : provider_t(direct_t::RESPONSE, version), code(code), message{""} {}
 /**
  * @brief Конструктор
  *
  * @param version версия протокола
  * @param message сообщение сервера
  */
-awh::http::Response::Response(const version_t version, const string & message) noexcept : provider_t(traffic_t::RESPONSE, version), code(0), message{message} {}
+awh::http::Response::Response(const version_t version, const string & message) noexcept : provider_t(direct_t::RESPONSE, version), code(0), message{message} {}
 /**
  * @brief Конструктор
  *
@@ -360,4 +360,4 @@ awh::http::Response::Response(const version_t version, const string & message) n
  * @param code    код ответа сервера
  * @param message сообщение сервера
  */
-awh::http::Response::Response(const version_t version, const uint16_t code, const string & message) noexcept : provider_t(traffic_t::RESPONSE, version), code(code), message{message} {}
+awh::http::Response::Response(const version_t version, const uint16_t code, const string & message) noexcept : provider_t(direct_t::RESPONSE, version), code(code), message{message} {}

@@ -571,6 +571,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/basic.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/digest.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/auth/bearer.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/http/parser/parser.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 

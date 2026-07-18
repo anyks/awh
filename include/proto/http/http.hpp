@@ -16,7 +16,7 @@
 #define __AWH_HTTP__
 
 /**
- * Стандартная библиотека
+ * Стандартный заголовочный файл
  */
 #include <cstdint>
 
@@ -39,7 +39,7 @@ namespace awh {
 		 * @brief Направление трафика (запрос/ответ)
 		 *
 		 */
-		enum class traffic_t : uint8_t {
+		enum class direct_t : uint8_t {
 			NONE     = 0x00, // Нет направления (не определено)
 			REQUEST  = 0x01, // Запрос клиента
 			RESPONSE = 0x02  // Ответ сервера
@@ -60,20 +60,60 @@ namespace awh {
 		};
 
 		/**
-		 * @brief Методы HTTP-запроса
+		 * @brief Распознанный HTTP-метод
 		 *
+		 * Помимо основных методов HTTP/1.1 распознаются методы WebDAV (RFC 4918)
+		 * и ряд расширений (RFC 5789, UPnP, ICAL и др.). Любой нераспознанный, но
+		 * синтаксически корректный метод даёт UNKNOWN, при этом Message::methodName
+		 * всегда содержит оригинальную строку.
 		 */
 		enum class method_t : uint8_t {
-			NONE    = 0x00, // Метод не установлен
-			GET     = 0x01, // Метод GET
-			PUT     = 0x02, // Метод PUT
-			DEL     = 0x03, // Метод DELETE
-			POST    = 0x04, // Метод POST
-			HEAD    = 0x05, // Метод HEAD
-			PATCH   = 0x06, // Метод PATCH
-			TRACE   = 0x07, // Метод TRACE
-			OPTIONS = 0x08, // Метод OPTIONS
-			CONNECT = 0x09  // Метод CONNECT
+			// Метод не установлен
+			NONE = 0x00,
+			/**
+			 * Основные (RFC 7231) + PATCH (RFC 5789)
+			 */
+			GET     = 0x01, // Метод GET (RFC 7231)
+			PUT     = 0x02, // Метод PUT (RFC 7231)
+			DEL     = 0x03, // Метод DELETE (RFC 7231)
+			POST    = 0x04, // Метод POST (RFC 7231)
+			HEAD    = 0x05, // Метод HEAD (RFC 7231)
+			PATCH   = 0x06, // Метод PATCH (RFC 5789)
+			TRACE   = 0x07, // Метод TRACE (RFC 7231)
+			OPTIONS = 0x08, // Метод OPTIONS (RFC 7231)
+			CONNECT = 0x09, // Метод CONNECT (RFC 7231)
+			/**
+			 * WebDAV (RFC 4918) и расширения версионирования (RFC 3253)
+			 */
+			ACL        = 0x0A, // Метод ACL (WebDAV)
+			COPY       = 0x0B, // Метод COPY (WebDAV)
+			LOCK       = 0x0C, // Метод LOCK (WebDAV)
+			MOVE       = 0x0D, // Метод MOVE (WebDAV)
+			BIND       = 0x0E, // Метод BIND (WebDAV)
+			MKCOL      = 0x0F, // Метод MKCOL (WebDAV)
+			MERGE      = 0x10, // Метод MERGE (WebDAV)
+			REPORT     = 0x11, // Метод REPORT (WebDAV)
+			SEARCH     = 0x12, // Метод SEARCH (WebDAV)
+			UNLOCK     = 0x13, // Метод UNLOCK (WebDAV)
+			REBIND     = 0x14, // Метод REBIND (WebDAV)
+			UNBIND     = 0x15, // Метод UNBIND (WebDAV)
+			CHECKOUT   = 0x16, // Метод CHECKOUT (WebDAV)
+			PROPFIND   = 0x17, // Метод PROPFIND (WebDAV)
+			PROPPATCH  = 0x18, // Метод PROPPATCH (WebDAV)
+			MKACTIVITY = 0x19, // Метод MKACTIVITY (WebDAV)
+			/**
+			 * Прочие распространённые расширения
+			 */
+			PRI         = 0x1A, // Метод PRI (HTTP/2)
+			LINK        = 0x1B, // Метод LINK (RFC 2068)
+			PURGE       = 0x1C, // Метод PURGE (Varnish)
+			NOTIFY      = 0x1D, // Метод NOTIFY (UPnP)
+			UNLINK      = 0x1E, // Метод UNLINK (RFC 2068)
+			SOURCE      = 0x1F, // Метод SOURCE (RFC 2068)
+			MSEARCH     = 0x20, // Метод MSEARCH (UPnP)
+			SUBSCRIBE   = 0x21, // Метод SUBSCRIBE (UPnP)
+			UNSUBSCRIBE = 0x22, // Метод UNSUBSCRIBE (UPnP)
+			MKCALENDAR  = 0x23  // Метод MKCALENDAR (RFC 4791)
 		};
 
 		/**

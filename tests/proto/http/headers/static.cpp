@@ -602,7 +602,7 @@ TEST_F(HeadersFixture, ProviderSetGetTest){
 	// Проверяем что провайдер установлен
 	ASSERT_TRUE(provider != nullptr);
 	// Проверяем что направление трафика соответствует запросу
-	ASSERT_EQ(provider->traffic, traffic_t::REQUEST);
+	ASSERT_EQ(provider->direct, direct_t::REQUEST);
 	// Проверяем что производная часть скопирована без срезки через стартовую строку
 	ASSERT_EQ(this->_headers->startline(), "POST /submit HTTP/1.1");
 	// Изменяем исходный объект запроса после установки провайдера
@@ -635,8 +635,8 @@ TEST_F(HeadersFixture, ProviderUniquePtrTest){
 	// Проверяем что копия провайдера получена
 	ASSERT_TRUE(extracted != nullptr);
 	// Проверяем что направление трафика копии соответствует ответу
-	ASSERT_EQ(extracted->traffic, traffic_t::RESPONSE);
-	// Безопасно приводим копию провайдера к типу ответа (тип подтверждён флагом traffic)
+	ASSERT_EQ(extracted->direct, direct_t::RESPONSE);
+	// Безопасно приводим копию провайдера к типу ответа (тип подтверждён флагом direct)
 	const response_t * response = static_cast <const response_t *> (extracted.get());
 	// Проверяем что производная часть скопирована без срезки
 	ASSERT_EQ(response->code, 200u);
@@ -686,8 +686,8 @@ TEST_F(HeadersFixture, StartlineParseRequestTest){
 	// Проверяем что провайдер сформирован
 	ASSERT_TRUE(provider != nullptr);
 	// Проверяем что направление трафика соответствует запросу
-	ASSERT_EQ(provider->traffic, traffic_t::REQUEST);
-	// Безопасно приводим провайдер к типу запроса (тип подтверждён флагом traffic)
+	ASSERT_EQ(provider->direct, direct_t::REQUEST);
+	// Безопасно приводим провайдер к типу запроса (тип подтверждён флагом direct)
 	const request_t * request = static_cast <const request_t *> (provider);
 	// Проверяем что метод запроса разобран корректно
 	ASSERT_EQ(request->method, method_t::GET);
@@ -709,8 +709,8 @@ TEST_F(HeadersFixture, StartlineParseResponseTest){
 	// Проверяем что провайдер сформирован
 	ASSERT_TRUE(provider != nullptr);
 	// Проверяем что направление трафика соответствует ответу
-	ASSERT_EQ(provider->traffic, traffic_t::RESPONSE);
-	// Безопасно приводим провайдер к типу ответа (тип подтверждён флагом traffic)
+	ASSERT_EQ(provider->direct, direct_t::RESPONSE);
+	// Безопасно приводим провайдер к типу ответа (тип подтверждён флагом direct)
 	const response_t * response = static_cast <const response_t *> (provider);
 	// Проверяем что код ответа разобран корректно
 	ASSERT_EQ(response->code, 404u);
@@ -1040,12 +1040,12 @@ TEST_F(HeadersFixture, ConversionProviderTest){
 	// Проверяем что провайдер получен
 	ASSERT_TRUE(provider != nullptr);
 	// Проверяем что направление трафика соответствует запросу
-	ASSERT_EQ(provider->traffic, traffic_t::REQUEST);
+	ASSERT_EQ(provider->direct, direct_t::REQUEST);
 	// Проверяем оператор преобразования в умный указатель провайдера
 	std::unique_ptr <provider_t> cloned = static_cast <std::unique_ptr <provider_t>> (* this->_headers);
 	// Проверяем что копия провайдера получена
 	ASSERT_TRUE(cloned != nullptr);
-	// Безопасно приводим копию провайдера к типу запроса (тип подтверждён флагом traffic)
+	// Безопасно приводим копию провайдера к типу запроса (тип подтверждён флагом direct)
 	const request_t * clonedPtr = static_cast <const request_t *> (cloned.get());
 	// Проверяем что производная часть склонирована без срезки
 	ASSERT_EQ(clonedPtr->uri, "/data");

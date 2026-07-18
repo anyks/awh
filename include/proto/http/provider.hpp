@@ -16,7 +16,7 @@
 #define __AWH_HTTP_PROVIDER__
 
 /**
- * Стандартная библиотека
+ * Стандартные заголовочные файлы
  */
 #include <memory>
 #include <string>
@@ -135,7 +135,7 @@ namespace awh {
 				// Версия протокола
 				version_t version;
 				// Направление трафика (запрос/ответ)
-				const traffic_t traffic;
+				const direct_t direct;
 			public:
 				/**
 				 * @brief Метод клонирования объекта провайдера
@@ -150,16 +150,16 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param traffic направление трафика (запрос/ответ)
+				 * @param direct направление трафика (запрос/ответ)
 				 */
-				explicit Provider(const traffic_t traffic) noexcept;
+				explicit Provider(const direct_t direct) noexcept;
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param traffic направление трафика (запрос/ответ)
+				 * @param direct  направление трафика (запрос/ответ)
 				 * @param version версия протокола
 				 */
-				explicit Provider(const traffic_t traffic, const version_t version) noexcept;
+				explicit Provider(const direct_t direct, const version_t version) noexcept;
 			public:
 				/**
 				 * @brief Деструктор

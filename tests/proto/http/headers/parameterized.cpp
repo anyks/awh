@@ -38,7 +38,7 @@ struct StartlineTestParameter {
 	// Исходная стартовая строка HTTP-запроса/ответа
 	std::string input;
 	// Ожидаемое направление трафика (запрос/ответ)
-	traffic_t traffic;
+	direct_t direct;
 	// Ожидаемая каноническая стартовая строка после разбора
 	std::string expected;
 };
@@ -65,7 +65,7 @@ TEST_P(StartlineParameterizedFixture, StartlineRoundTripTest){
 	// Проверяем что провайдер сформирован по стартовой строке
 	ASSERT_TRUE(provider != nullptr);
 	// Проверяем что направление трафика определено корректно
-	ASSERT_EQ(provider->traffic, this->_parameter.traffic);
+	ASSERT_EQ(provider->direct, this->_parameter.direct);
 	// Проверяем что обратная сборка стартовой строки соответствует канонической форме
 	ASSERT_EQ(this->_headers->startline(), this->_parameter.expected);
 }
@@ -76,16 +76,16 @@ TEST_P(StartlineParameterizedFixture, StartlineRoundTripTest){
  */
 INSTANTIATE_TEST_SUITE_P(TestParameters, StartlineParameterizedFixture,
 	::testing::Values(
-		StartlineTestParameter({"GET /index.html HTTP/1.1", traffic_t::REQUEST, "GET /index.html HTTP/1.1"}),
-		StartlineTestParameter({"POST /submit HTTP/1.1", traffic_t::REQUEST, "POST /submit HTTP/1.1"}),
-		StartlineTestParameter({"PUT /upload HTTP/1.0", traffic_t::REQUEST, "PUT /upload HTTP/1.0"}),
-		StartlineTestParameter({"DELETE /item/42 HTTP/1.1", traffic_t::REQUEST, "DELETE /item/42 HTTP/1.1"}),
-		StartlineTestParameter({"OPTIONS * HTTP/1.1", traffic_t::REQUEST, "OPTIONS * HTTP/1.1"}),
-		StartlineTestParameter({"HEAD / HTTP/1.1", traffic_t::REQUEST, "HEAD / HTTP/1.1"}),
-		StartlineTestParameter({"HTTP/1.1 200 OK", traffic_t::RESPONSE, "HTTP/1.1 200 OK"}),
-		StartlineTestParameter({"HTTP/1.1 404 Not Found", traffic_t::RESPONSE, "HTTP/1.1 404 Not Found"}),
-		StartlineTestParameter({"HTTP/1.1 500 Internal Server Error", traffic_t::RESPONSE, "HTTP/1.1 500 Internal Server Error"}),
-		StartlineTestParameter({"HTTP/1.0 301 Moved Permanently", traffic_t::RESPONSE, "HTTP/1.0 301 Moved Permanently"})
+		StartlineTestParameter({"GET /index.html HTTP/1.1", direct_t::REQUEST, "GET /index.html HTTP/1.1"}),
+		StartlineTestParameter({"POST /submit HTTP/1.1", direct_t::REQUEST, "POST /submit HTTP/1.1"}),
+		StartlineTestParameter({"PUT /upload HTTP/1.0", direct_t::REQUEST, "PUT /upload HTTP/1.0"}),
+		StartlineTestParameter({"DELETE /item/42 HTTP/1.1", direct_t::REQUEST, "DELETE /item/42 HTTP/1.1"}),
+		StartlineTestParameter({"OPTIONS * HTTP/1.1", direct_t::REQUEST, "OPTIONS * HTTP/1.1"}),
+		StartlineTestParameter({"HEAD / HTTP/1.1", direct_t::REQUEST, "HEAD / HTTP/1.1"}),
+		StartlineTestParameter({"HTTP/1.1 200 OK", direct_t::RESPONSE, "HTTP/1.1 200 OK"}),
+		StartlineTestParameter({"HTTP/1.1 404 Not Found", direct_t::RESPONSE, "HTTP/1.1 404 Not Found"}),
+		StartlineTestParameter({"HTTP/1.1 500 Internal Server Error", direct_t::RESPONSE, "HTTP/1.1 500 Internal Server Error"}),
+		StartlineTestParameter({"HTTP/1.0 301 Moved Permanently", direct_t::RESPONSE, "HTTP/1.0 301 Moved Permanently"})
 	)
 );
 

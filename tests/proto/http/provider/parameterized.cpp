@@ -61,7 +61,7 @@ TEST_P(RequestParameterizedFixture, RequestLifecycleTest){
 	// Создаём объект запроса клиента с параметрами теста
 	request_t request(this->_parameter.version, this->_parameter.method, this->_parameter.uri);
 	// Проверяем что направление трафика соответствует запросу
-	ASSERT_EQ(request.traffic, traffic_t::REQUEST);
+	ASSERT_EQ(request.direct, direct_t::REQUEST);
 	// Проверяем что версия протокола установлена
 	ASSERT_EQ(request.version, this->_parameter.version);
 	// Проверяем что метод запроса установлен
@@ -77,8 +77,8 @@ TEST_P(RequestParameterizedFixture, RequestLifecycleTest){
 	// Проверяем что клон создан
 	ASSERT_TRUE(cloned != nullptr);
 	// Проверяем что направление трафика клона соответствует запросу
-	ASSERT_EQ(cloned->traffic, traffic_t::REQUEST);
-	// Безопасно приводим клон к типу запроса (тип подтверждён флагом traffic)
+	ASSERT_EQ(cloned->direct, direct_t::REQUEST);
+	// Безопасно приводим клон к типу запроса (тип подтверждён флагом direct)
 	const request_t * clonedPtr = static_cast <const request_t *> (cloned.get());
 	// Проверяем что клон равен исходному объекту без срезки производной части
 	ASSERT_TRUE((* clonedPtr) == request);
@@ -138,7 +138,7 @@ TEST_P(ResponseParameterizedFixture, ResponseLifecycleTest){
 	// Создаём объект ответа сервера с параметрами теста
 	response_t response(this->_parameter.version, this->_parameter.code, this->_parameter.message);
 	// Проверяем что направление трафика соответствует ответу
-	ASSERT_EQ(response.traffic, traffic_t::RESPONSE);
+	ASSERT_EQ(response.direct, direct_t::RESPONSE);
 	// Проверяем что версия протокола установлена
 	ASSERT_EQ(response.version, this->_parameter.version);
 	// Проверяем что код ответа установлен
@@ -154,8 +154,8 @@ TEST_P(ResponseParameterizedFixture, ResponseLifecycleTest){
 	// Проверяем что клон создан
 	ASSERT_TRUE(cloned != nullptr);
 	// Проверяем что направление трафика клона соответствует ответу
-	ASSERT_EQ(cloned->traffic, traffic_t::RESPONSE);
-	// Безопасно приводим клон к типу ответа (тип подтверждён флагом traffic)
+	ASSERT_EQ(cloned->direct, direct_t::RESPONSE);
+	// Безопасно приводим клон к типу ответа (тип подтверждён флагом direct)
 	const response_t * clonedPtr = static_cast <const response_t *> (cloned.get());
 	// Проверяем что клон равен исходному объекту без срезки производной части
 	ASSERT_TRUE((* clonedPtr) == response);
