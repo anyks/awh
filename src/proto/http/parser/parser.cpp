@@ -156,15 +156,6 @@ awh::http::Parser::error_t awh::http::Parser::error() const noexcept {
 	return this->_error;
 }
 /**
- * @brief Метод получения направления потока данных
- *
- * @return направление потока данных
- */
-awh::http::direct_t awh::http::Parser::direct() const noexcept {
-	// Выводим направление потока данных
-	return this->_direct;
-}
-/**
  * @brief Метод получения лимитов безопасности
  *
  * @return лимиты безопасности
@@ -199,7 +190,23 @@ const awh::http::Parser::message_t & awh::http::Parser::message() noexcept {
  * @param log    объект для работы с логами
  */
 awh::http::Parser::Parser(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
- _error(error_t::NONE), _direct(direct), _message(fmk, log), _fmk(fmk), _log(log) {}
+ _error(error_t::NONE), _message(fmk, log), _fmk(fmk), _log(log) {
+	/**
+	 * В зависимости от направления потока данных, формируем объект провайдера заголовков сообщения
+	 */
+	switch(static_cast <uint8_t> (direct)){
+		// Если передан запрос клиента
+		case static_cast <uint8_t> (http::direct_t::REQUEST):
+			// Формируем объект провайдера заголовков запроса клиента
+			this->_message.headers.provider(make_unique <request_t> ());
+		break;
+		// Если передан ответ сервера
+		case static_cast <uint8_t> (http::direct_t::RESPONSE):
+			// Формируем объект провайдера заголовков ответа сервера
+			this->_message.headers.provider(make_unique <response_t> ());
+		break;
+	}
+}
 /**
  * @brief Деструктор
  *

@@ -312,9 +312,6 @@ namespace awh {
 				// Код ошибки разбора
 				error_t _error;
 			protected:
-				// Направление потока данных
-				direct_t _direct;
-			protected:
 				// Настраиваемые лимиты
 				limits_t _limits;
 				// Результат разбора
@@ -337,13 +334,6 @@ namespace awh {
 				 * @return код ошибки
 				 */
 				error_t error() const noexcept;
-			public:
-				/**
-				 * @brief Метод получения направления потока данных
-				 *
-				 * @return направление потока данных
-				 */
-				direct_t direct() const noexcept;
 			public:
 				/**
 				 * @brief Метод получения лимитов безопасности
