@@ -550,6 +550,25 @@ namespace {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Limits::Limits() noexcept :
+ parser_t::limits_t(),
+ maxChunkLine(MAX_CHUNK_LINE),
+ maxRequestLine(MAX_REQUEST_LINE),
+ maxChunkSize(MAX_CHUNK_SIZE) {}
+
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Message::Flags::Flags() noexcept :
+ chunked(false), upgrade(false),
+ complete(false), keepAlive(true),
+ expectContinue(false) {}
+/**
  * @brief Оператор перемещающего присваивания параметров сообщения
  *
  * @param message объект сообщения для перемещения
@@ -691,6 +710,47 @@ awh::http::Parser_HTTP::Message::Message(const Message & message) noexcept :
  */
 awh::http::Parser_HTTP::Message::Message() noexcept :
  part(part_t::NONE), phase(phase_t::NONE), bodySize(-1), provider(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Header::Header() noexcept :
+ name{""}, value{""}, chunkExt{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Statistics_Body::Statistics_Body() noexcept :
+ bytes(0), digits(0), chunkSize(0),
+ contentLength(0), bytesRemaining(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Statistics_Headers::Statistics_Headers() noexcept :
+ count(0), bytes(0), lineBytes(0), chunkLineBytes(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Flags::Flags() noexcept :
+ inTrailers(false), upgradeSeen(false),
+ connectionClose(false), connectionUpgrade(false),
+ contentLengthSeen(false), connectionKeepAlive(false),
+ transferEncodingSeen(false), transferEncodingInvalid(false),
+ transferEncodingChunkedFinal(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Callbacks::Callbacks() noexcept :
+ body(nullptr), phase(nullptr), chunk(nullptr),
+ header(nullptr), provider(nullptr) {}
 
 /**
  * @brief Метод выбора способа кадрирования тела после завершения заголовков

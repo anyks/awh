@@ -23,6 +23,17 @@
 using namespace std;
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser::Limits::Limits() noexcept :
+ maxHeaderName(MAX_HEADER_NAME),
+ maxHeaderValue(MAX_HEADER_VALUE),
+ maxHeaderCount(MAX_HEADER_COUNT),
+ maxHeadersTotal(MAX_HEADERS_TOTAL),
+ maxBodySize(MAX_BODY_SIZE) {}
+
+/**
  * @brief Метод получения итогового статуса разбора
  *
  * @return итоговый статус разбора

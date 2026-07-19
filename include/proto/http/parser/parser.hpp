@@ -129,7 +129,7 @@ namespace awh {
 				 *          (HTTP/1.x — чанки и стартовая строка, HTTP/2 — блоки заголовков,
 				 *          CONTINUATION-фреймы, частотные лимиты и т.д.)
 				 */
-				typedef struct Limits {
+				typedef struct __AWH_SHARED_EXPORT__ Limits {
 					// Максимальная длина имени заголовка
 					size_t maxHeaderName;
 					// Максимальная длина значения заголовка
@@ -144,12 +144,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Limits() noexcept :
-					 maxHeaderName(MAX_HEADER_NAME),
-					 maxHeaderValue(MAX_HEADER_VALUE),
-					 maxHeaderCount(MAX_HEADER_COUNT),
-					 maxHeadersTotal(MAX_HEADERS_TOTAL),
-					 maxBodySize(MAX_BODY_SIZE) {}
+					explicit Limits() noexcept;
 					/**
 					 * @brief Деструктор
 					 *

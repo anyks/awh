@@ -134,7 +134,7 @@ static void sampleHandshake(const fmk_t * fmk, const log_t * log) noexcept {
 		// Выводим применённые параметры SETTINGS клиента
 		cout << "[server] Client SETTINGS applied: headerTableSize = " << server.remoteSettings().headerTableSize
 			<< ", maxConcurrentStreams = " << server.remoteSettings().maxConcurrentStreams
-			<< ", initialWindowSize = " << server.remoteSettings().initialWindowSize << endl;
+			<< ", initialWindowSize = " << server.remoteSettings().windowSize << endl;
 	}));
 	// Настраиваем собственные параметры SETTINGS клиента
 	parser_http2_t::settings_t settings;

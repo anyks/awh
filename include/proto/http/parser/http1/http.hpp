@@ -111,7 +111,7 @@ namespace awh {
 				 *          специфичными для HTTP/1.x: стартовая строка и кадрирование
 				 *          тела в кодировке chunked
 				 */
-				typedef struct Limits : parser_t::limits_t {
+				typedef struct __AWH_SHARED_EXPORT__ Limits : parser_t::limits_t {
 					// Максимальная длина строки заголовка чанка (size + chunk-ext)
 					size_t maxChunkLine;
 					// Максимальная длина request-line/status-line
@@ -122,11 +122,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Limits() noexcept :
-					 parser_t::limits_t(),
-					 maxChunkLine(MAX_CHUNK_LINE),
-					 maxRequestLine(MAX_REQUEST_LINE),
-					 maxChunkSize(MAX_CHUNK_SIZE) {}
+					explicit Limits() noexcept;
 				} limits_t;
 			public:
 				/**
@@ -142,7 +138,7 @@ namespace awh {
 						 * @brief Структура флагов состояния сообщения
 						 *
 						 */
-						typedef struct Flags {
+						typedef struct __AWH_SHARED_EXPORT__ Flags {
 							// Тело передаётся chunked
 							bool chunked;
 							// Запрошено переключение протокола (Upgrade + Connection: upgrade, ответ 101 или успешный CONNECT)
@@ -157,10 +153,7 @@ namespace awh {
 							 * @brief Конструктор
 							 *
 							 */
-							explicit Flags() noexcept :
-							 chunked(false), upgrade(false),
-							 complete(false), keepAlive(true),
-							 expectContinue(false) {}
+							explicit Flags() noexcept;
 						} flags_t;
 					public:
 						// Партиция текущего состояния парсера
@@ -300,7 +293,7 @@ namespace awh {
 				 * @brief Структура промежуточных параметров заголовка HTTP
 				 *
 				 */
-				typedef struct Header {
+				typedef struct __AWH_SHARED_EXPORT__ Header {
 					// Накопитель имени текущего заголовка (также используется для имени метода запроса)
 					string name;
 					// Накопитель значения текущего заголовка
@@ -311,14 +304,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Header() noexcept :
-					 name{""}, value{""}, chunkExt{""} {}
+					explicit Header() noexcept;
 				} header_t;
 				/**
 				 * @brief Структура для хранения статистики тела HTTP-сообщения
 				 *
 				 */
-				typedef struct Statistics_Body {
+				typedef struct __AWH_SHARED_EXPORT__ Statistics_Body {
 					// Общий размер принятого тела сообщения
 					uint64_t bytes;
 					// Счётчик цифр (hex-цифры размера чанка / цифры статус-кода)
@@ -333,15 +325,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Statistics_Body() noexcept :
-					 bytes(0), digits(0), chunkSize(0),
-					 contentLength(0), bytesRemaining(0) {}
+					explicit Statistics_Body() noexcept;
 				} statistics_body_t;
 				/**
 				 * @brief Структура для хранения статистики заголовков HTTP
 				 *
 				 */
-				typedef struct Statistics_Headers {
+				typedef struct __AWH_SHARED_EXPORT__ Statistics_Headers {
 					// Количество разобранных заголовков
 					size_t count;
 					// Суммарный размер разобранных заголовков
@@ -354,14 +344,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Statistics_Headers() noexcept :
-					 count(0), bytes(0), lineBytes(0), chunkLineBytes(0) {}
+					explicit Statistics_Headers() noexcept;
 				} statistics_headers_t;
 				/**
 				 * @brief Структура для хранения флагов состояния парсера
 				 *
 				 */
-				typedef struct Flags {
+				typedef struct __AWH_SHARED_EXPORT__ Flags {
 					// Выполняется разбор трейлеров
 					bool inTrailers;
 					// Заголовок Upgrade получен
@@ -384,18 +373,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Flags() noexcept :
-					 inTrailers(false), upgradeSeen(false),
-					 connectionClose(false), connectionUpgrade(false),
-					 contentLengthSeen(false), connectionKeepAlive(false),
-					 transferEncodingSeen(false), transferEncodingInvalid(false),
-					 transferEncodingChunkedFinal(false) {}
+					explicit Flags() noexcept;
 				} flags_t;
 				/**
 				 * @brief Структура для хранения функций обратного вызова
 				 *
 				 */
-				typedef struct Callbacks {
+				typedef struct __AWH_SHARED_EXPORT__ Callbacks {
 					/**
 					 * @brief Функция обратного вызова для обработки тела сообщения
 					 *
@@ -425,9 +409,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Callbacks() noexcept :
-					 body(nullptr), phase(nullptr), chunk(nullptr),
-					 header(nullptr), provider(nullptr) {}
+					explicit Callbacks() noexcept;
 				} callbacks_t;
 			private:
 				// Код ошибки разбора

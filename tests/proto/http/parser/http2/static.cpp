@@ -1638,7 +1638,7 @@ TEST_F(ParserHttp2Fixture, CloneTest){
 	// Устанавливаем нестандартный лимит одновременных потоков
 	settings.maxConcurrentStreams = 7;
 	// Устанавливаем нестандартное начальное окно потока
-	settings.initialWindowSize = 32768;
+	settings.windowSize = 32768;
 	// Применяем параметры SETTINGS
 	client->settings(settings);
 	// Выполняем клонирование объекта парсера
@@ -1652,7 +1652,7 @@ TEST_F(ParserHttp2Fixture, CloneTest){
 	// Проверяем что лимит одновременных потоков унаследован
 	ASSERT_EQ(copy->settings().maxConcurrentStreams, 7u);
 	// Проверяем что начальное окно потока унаследовано
-	ASSERT_EQ(copy->settings().initialWindowSize, 32768);
+	ASSERT_EQ(copy->settings().windowSize, 32768);
 	// Проверяем что клон получил чистое состояние соединения
 	ASSERT_EQ(copy->status(), parser_t::status_t::NONE);
 	// Проверяем что ошибок уровня соединения нет

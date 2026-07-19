@@ -71,6 +71,24 @@ namespace awh {
 				 */
 				static constexpr size_t FRAME_HEADER_SIZE = 9;
 				/**
+				 * @brief Флаг разрешения server push (SETTINGS_ENABLE_PUSH)
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr uint32_t DEFAULT_ENABLE_PUSH = 1;
+				/**
+				 * @brief Максимальный размер списка заголовков
+				 *
+				 * @note 0 - без лимита в SETTINGS, действует maxHeadersTotal
+				 */
+				static constexpr uint64_t MAX_HEADER_LIST_SIZE = 0;
+				/**
+				 * @brief Максимальное число одновременных потоков в соединении
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr uint32_t MAX_COUNT_STREAMS = 128;
+				/**
 				 * @brief Максимально допустимое значение поля Length (24 бита)
 				 *
 				 */
