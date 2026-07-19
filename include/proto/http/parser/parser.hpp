@@ -196,7 +196,7 @@ namespace awh {
 				 *
 				 * @return название текущей ошибки разбора
 				 */
-				virtual string errorName() const noexcept = 0;
+				virtual string_view errorName() const noexcept = 0;
 			public:
 				/**
 				 * @brief Метод клонирования объекта парсера

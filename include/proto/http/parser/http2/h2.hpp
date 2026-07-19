@@ -46,25 +46,49 @@ namespace awh {
 		 */
 		namespace h2 {
 			/**
+			 * @brief Пространство имён флагов фреймов (RFC 9113 §6)
+			 *
+			 * @details Один и тот же бит означает разное для разных типов фреймов,
+			 *          поэтому это набор констант, а не enum class.
+			 */
+			namespace flag {
+				/**
+				 * @brief Флаги не установлены
+				 *
+				 */
+				static constexpr uint8_t NONE = 0x00;
+				/**
+				 * @brief Подтверждение получения (SETTINGS, PING)
+				 *
+				 */
+				static constexpr uint8_t ACK = 0x01;
+				/**
+				 * @brief Наличие padding в нагрузке (DATA, HEADERS, PUSH_PROMISE)
+				 *
+				 */
+				static constexpr uint8_t PADDED = 0x08;
+				/**
+				 * @brief Наличие полей приоритета (HEADERS)
+				 *
+				 */
+				static constexpr uint8_t PRIORITY = 0x20;
+				/**
+				 * @brief Завершение потока (DATA, HEADERS)
+				 *
+				 */
+				static constexpr uint8_t END_STREAM = 0x01;
+				/**
+				 * @brief Завершение блока заголовков (HEADERS, PUSH_PROMISE, CONTINUATION)
+				 *
+				 */
+				static constexpr uint8_t END_HEADERS = 0x04;
+			};
+
+			/**
 			 * @brief Пространство имён констант протокола (RFC 9113)
 			 *
 			 */
 			namespace proto {
-				/**
-				 * @brief Клиентский connection preface (24 октета), отправляется до первого SETTINGS
-				 *
-				 */
-				static constexpr string_view PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
-				/**
-				 * @brief Идентификатор ALPN для HTTP/2 поверх TLS
-				 *
-				 */
-				static constexpr string_view ALPN = "h2";
-				/**
-				 * @brief Идентификатор ALPN для HTTP/2 поверх открытого TCP (h2c)
-				 *
-				 */
-				static constexpr string_view ALPN_CLEARTEXT = "h2c";
 				/**
 				 * @brief Размер заголовка любого фрейма в октетах (RFC 9113 §4.1)
 				 *
@@ -77,58 +101,106 @@ namespace awh {
 				 */
 				static constexpr uint32_t DEFAULT_ENABLE_PUSH = 1;
 				/**
-				 * @brief Максимальный размер списка заголовков
-				 *
-				 * @note 0 - без лимита в SETTINGS, действует maxHeadersTotal
-				 */
-				static constexpr uint64_t MAX_HEADER_LIST_SIZE = 0;
-				/**
 				 * @brief Максимальное число одновременных потоков в соединении
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
 				 */
 				static constexpr uint32_t MAX_COUNT_STREAMS = 128;
 				/**
-				 * @brief Максимально допустимое значение поля Length (24 бита)
+				 * @brief Максимальный размер списка заголовков
 				 *
+				 * @note 0 - без лимита в SETTINGS, действует maxHeadersTotal
 				 */
-				static constexpr uint32_t MAX_FRAME_LENGTH = 0xFFFFFF;
-				/**
-				 * @brief Значение SETTINGS_MAX_FRAME_SIZE по умолчанию (16 КиБ)
-				 *
-				 */
-				static constexpr uint32_t DEFAULT_MAX_FRAME_SIZE = 16384;
+				static constexpr uint64_t MAX_HEADER_LIST_SIZE = 0;
 				/**
 				 * @brief Нижняя граница для SETTINGS_MAX_FRAME_SIZE
 				 *
 				 */
 				static constexpr uint32_t MIN_MAX_FRAME_SIZE = 16384;
 				/**
-				 * @brief Верхняя граница для SETTINGS_MAX_FRAME_SIZE
-				 *
-				 */
-				static constexpr uint32_t MAX_MAX_FRAME_SIZE = 16777215;
-				/**
 				 * @brief Начальный размер окна управления потоком (RFC 9113 §6.9.2)
 				 *
 				 */
 				static constexpr int32_t DEFAULT_WINDOW_SIZE = 65535;
+				/**
+				 * @brief Максимально допустимое значение поля Length (24 бита)
+				 *
+				 */
+				static constexpr uint32_t MAX_FRAME_LENGTH = 0xFFFFFF;
 				/**
 				 * @brief Максимальное значение окна (2^31 - 1)
 				 *
 				 */
 				static constexpr int32_t MAX_WINDOW_SIZE = 0x7FFFFFFF;
 				/**
+				 * @brief Маска для извлечения 31-битного идентификатора потока (сброс reserved-бита)
+				 *
+				 */
+				static constexpr uint32_t STREAM_ID_MASK = 0x7FFFFFFF;
+				/**
+				 * @brief Верхняя граница для SETTINGS_MAX_FRAME_SIZE
+				 *
+				 */
+				static constexpr uint32_t MAX_MAX_FRAME_SIZE = 16777215;
+				/**
+				 * @brief Значение SETTINGS_MAX_FRAME_SIZE по умолчанию (16 КиБ)
+				 *
+				 */
+				static constexpr uint32_t DEFAULT_MAX_FRAME_SIZE = 16384;
+				/**
 				 * @brief Размер динамической таблицы HPACK по умолчанию (RFC 7541)
 				 *
 				 */
 				static constexpr uint32_t DEFAULT_HEADER_TABLE_SIZE = 4096;
 				/**
-				 * @brief Маска для извлечения 31-битного идентификатора потока (сброс reserved-бита)
+				 * @brief Идентификатор ALPN для HTTP/2 поверх TLS
 				 *
 				 */
-				static constexpr uint32_t STREAM_ID_MASK = 0x7FFFFFFF;
-			}
+				static constexpr string_view ALPN = "h2";
+				/**
+				 * @brief Идентификатор ALPN для HTTP/2 поверх открытого TCP (h2c)
+				 *
+				 */
+				static constexpr string_view ALPN_CLEARTEXT = "h2c";
+				/**
+				 * @brief Клиентский connection preface (24 октета), отправляется до первого SETTINGS
+				 *
+				 */
+				static constexpr string_view PREFACE = "PRI * HTTP/2.0\r\n\r\nSM\r\n\r\n";
+			};
+
+			/**
+			 * @brief Роль локального эндпоинта на соединении
+			 *
+			 */
+			enum class endpoint_t : uint8_t {
+				CLIENT = 0x00, // Нечётные stream id инициируем мы
+				SERVER = 0x01  // Чётные stream id (push) инициируем мы
+			};
+
+			/**
+			 * @brief Результат пошаговой обработки/разбора
+			 *
+			 */
+			enum class status_t : uint8_t {
+				OK         = 0x00, // Успешно, можно продолжать
+				INCOMPLETE = 0x01, // Данных недостаточно - нужен ещё ввод
+				ERROR      = 0x02  // Ошибка протокола - см. сопутствующий error_t
+			};
+
+			/**
+			 * @brief Состояния потока (RFC 9113 §5.1)
+			 *
+			 */
+			enum class stream_state_t : uint8_t {
+				IDLE               = 0x00, // Поток ещё не использован
+				RESERVED_LOCAL     = 0x01, // Зарезервирован нами через PUSH_PROMISE
+				RESERVED_REMOTE    = 0x02, // Зарезервирован пиром через PUSH_PROMISE
+				OPEN               = 0x03, // Оба конца могут слать данные
+				HALF_CLOSED_LOCAL  = 0x04, // Мы отправили END_STREAM
+				HALF_CLOSED_REMOTE = 0x05, // Пир отправил END_STREAM
+				CLOSED             = 0x06  // Поток завершён
+			};
 
 			/**
 			 * @brief Тип фрейма (RFC 9113 §6) — значение поля Type (8 бит)
@@ -146,45 +218,6 @@ namespace awh {
 				WINDOW_UPDATE = 0x08, // Обновление окна flow control (RFC 9113 §6.9)
 				CONTINUATION  = 0x09  // Продолжение блока заголовков (RFC 9113 §6.10)
 			};
-
-			/**
-			 * @brief Пространство имён флагов фреймов (RFC 9113 §6)
-			 *
-			 * @details Один и тот же бит означает разное для разных типов фреймов,
-			 *          поэтому это набор констант, а не enum class
-			 */
-			namespace flag {
-				/**
-				 * @brief Флаги не установлены
-				 *
-				 */
-				static constexpr uint8_t NONE = 0x00;
-				/**
-				 * @brief Завершение потока (DATA, HEADERS)
-				 *
-				 */
-				static constexpr uint8_t END_STREAM = 0x01;
-				/**
-				 * @brief Подтверждение получения (SETTINGS, PING)
-				 *
-				 */
-				static constexpr uint8_t ACK = 0x01;
-				/**
-				 * @brief Завершение блока заголовков (HEADERS, PUSH_PROMISE, CONTINUATION)
-				 *
-				 */
-				static constexpr uint8_t END_HEADERS = 0x04;
-				/**
-				 * @brief Наличие padding в нагрузке (DATA, HEADERS, PUSH_PROMISE)
-				 *
-				 */
-				static constexpr uint8_t PADDED = 0x08;
-				/**
-				 * @brief Наличие полей приоритета (HEADERS)
-				 *
-				 */
-				static constexpr uint8_t PRIORITY = 0x20;
-			}
 
 			/**
 			 * @brief Идентификаторы параметров SETTINGS (RFC 9113 §6.5.2)
@@ -221,45 +254,12 @@ namespace awh {
 			};
 
 			/**
-			 * @brief Состояния потока (RFC 9113 §5.1)
-			 *
-			 */
-			enum class stream_state_t : uint8_t {
-				IDLE               = 0x00, // Поток ещё не использован
-				RESERVED_LOCAL     = 0x01, // Зарезервирован нами через PUSH_PROMISE
-				RESERVED_REMOTE    = 0x02, // Зарезервирован пиром через PUSH_PROMISE
-				OPEN               = 0x03, // Оба конца могут слать данные
-				HALF_CLOSED_LOCAL  = 0x04, // Мы отправили END_STREAM
-				HALF_CLOSED_REMOTE = 0x05, // Пир отправил END_STREAM
-				CLOSED             = 0x06  // Поток завершён
-			};
-
-			/**
-			 * @brief Роль локального эндпоинта на соединении
-			 *
-			 */
-			enum class endpoint_t : uint8_t {
-				CLIENT = 0x00, // Нечётные stream id инициируем мы
-				SERVER = 0x01  // Чётные stream id (push) инициируем мы
-			};
-
-			/**
-			 * @brief Результат пошаговой обработки/разбора
-			 *
-			 */
-			enum class status_t : uint8_t {
-				OK         = 0x00, // Успешно, можно продолжать
-				INCOMPLETE = 0x01, // Данных недостаточно - нужен ещё ввод
-				ERROR      = 0x02  // Ошибка протокола - см. сопутствующий error_t
-			};
-
-			/**
 			 * @brief Функция получения человекочитаемого названия типа фрейма
 			 *
 			 * @param type тип фрейма
 			 * @return     название типа фрейма
 			 */
-			const char * frameName(const frame_t type) noexcept;
+			string_view frameName(const frame_t type) noexcept;
 
 			/**
 			 * @brief Функция получения человекочитаемого названия кода ошибки
@@ -267,7 +267,7 @@ namespace awh {
 			 * @param code код ошибки протокола
 			 * @return     название кода ошибки
 			 */
-			const char * errorName(const error_t code) noexcept;
+			string_view errorName(const error_t code) noexcept;
 		}
 	};
 };

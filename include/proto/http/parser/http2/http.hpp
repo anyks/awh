@@ -148,7 +148,7 @@ namespace awh {
 				 *          - maxHeadersTotal - суммарный размер распакованного списка (HPACK bomb);
 				 *          - maxBodySize - суммарный размер тела одного потока
 				 */
-				typedef struct Limits : parser_t::limits_t {
+				typedef struct __AWH_SHARED_EXPORT__ Limits : parser_t::limits_t {
 					// Пополнение лимита частоты входящих RST_STREAM (токенов в секунду)
 					uint64_t rstLimitRate;
 					// Стартовый запас лимита частоты входящих RST_STREAM
@@ -165,14 +165,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Limits() noexcept :
-					 parser_t::limits_t(),
-					 rstLimitRate(RST_LIMIT_RATE),
-					 rstLimitBurst(RST_LIMIT_BURST),
-					 ctrlLimitRate(CTRL_LIMIT_RATE),
-					 ctrlLimitBurst(CTRL_LIMIT_BURST),
-					 maxHeaderBlockSize(MAX_HEADER_BLOCK_SIZE),
-					 maxContinuationFrames(MAX_CONTINUATION_FRAMES) {}
+					explicit Limits() noexcept;
 				} limits_t;
 				/**
 				 * @brief Структура согласованных параметров SETTINGS (RFC 9113 §6.5.2)
@@ -180,7 +173,7 @@ namespace awh {
 				 * @details Значения по умолчанию из RFC 9113 (кроме maxConcurrentStreams -
 				 *          безопасный дефолт вместо "без лимита").
 				 */
-				typedef struct Settings {
+				typedef struct __AWH_SHARED_EXPORT__ Settings {
 					// Начальное окно потока
 					int32_t windowSize;
 					// Разрешён ли server push (0/1)
@@ -197,13 +190,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Settings() noexcept :
-					 windowSize(h2::proto::DEFAULT_WINDOW_SIZE),
-					 enablePush(h2::proto::DEFAULT_ENABLE_PUSH),
-					 maxFrameSize(h2::proto::DEFAULT_MAX_FRAME_SIZE),
-					 headerTableSize(h2::proto::DEFAULT_HEADER_TABLE_SIZE),
-					 maxHeaderListSize(h2::proto::MAX_HEADER_LIST_SIZE),
-					 maxConcurrentStreams(h2::proto::MAX_COUNT_STREAMS) {}
+					explicit Settings() noexcept;
 				} settings_t;
 			public:
 				/**
@@ -921,14 +908,14 @@ namespace awh {
 				 *
 				 * @return название текущей ошибки разбора
 				 */
-				string errorName() const noexcept override;
+				string_view errorName() const noexcept override;
 				/**
 				 * @brief Метод получения человекочитаемого названия кода ошибки
 				 *
 				 * @param error код ошибки протокола
 				 * @return      название кода ошибки
 				 */
-				static string errorName(const error_t error) noexcept;
+				static string_view errorName(const error_t error) noexcept;
 			public:
 				/**
 				 * @brief Метод получения лимитов безопасности

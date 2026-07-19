@@ -28,7 +28,7 @@ using namespace std;
  * @param type тип фрейма
  * @return     название типа фрейма
  */
-const char * awh::http::h2::frameName(const frame_t type) noexcept {
+string_view awh::http::h2::frameName(const frame_t type) noexcept {
 	/**
 	 * В зависимости от типа фрейма, выводим соответствующее название
 	 */
@@ -83,7 +83,7 @@ const char * awh::http::h2::frameName(const frame_t type) noexcept {
  * @param code код ошибки протокола
  * @return     название кода ошибки
  */
-const char * awh::http::h2::errorName(const error_t code) noexcept {
+string_view awh::http::h2::errorName(const error_t code) noexcept {
 	/**
 	 * В зависимости от кода ошибки протокола, выводим соответствующее название
 	 */

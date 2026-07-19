@@ -1,5 +1,5 @@
 /**
- * @file: parser.hpp
+ * @file: http1.hpp
  * @date: 2026-07-18
  * @license: GPL-3.0
  *
@@ -12,8 +12,8 @@
  * @copyright: Copyright © 2026
  */
 
-#ifndef __AWH_HTTP_PARSER_TESTS__
-#define __AWH_HTTP_PARSER_TESTS__
+#ifndef __AWH_HTTP_PARSER_HTTP1_TESTS__
+#define __AWH_HTTP_PARSER_HTTP1_TESTS__
 
 /**
  * Стандартные заголовочные файлы
@@ -27,8 +27,8 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "../../../main.hpp"
-#include "../../../../include/proto/http/parser/http1/http.hpp"
+#include "../../../../main.hpp"
+#include "../../../../../include/proto/http/parser/http1/http.hpp"
 
 /**
  * @brief Класс фикстуры для тестов подмодуля парсера HTTP/1.0 и HTTP/1.1
@@ -87,4 +87,4 @@ class ParserFixture : public testing::Test {
 		void attach(awh::http::parser_http_t & parser, events_t & events) const noexcept;
 };
 
-#endif // __AWH_HTTP_PARSER_TESTS__
+#endif // __AWH_HTTP_PARSER_HTTP1_TESTS__

@@ -1172,7 +1172,7 @@ void awh::http::Parser_HTTP::fail(const error_t error) noexcept {
 		"HTTP/1.x %s parsing failed: %s",
 		log_t::flag_t::WARNING,
 		(this->_direct == direct_t::REQUEST ? "request" : "response"),
-		this->errorName(error).c_str()
+		string(this->errorName(error)).c_str()
 	);
 }
 /**
@@ -3013,7 +3013,7 @@ awh::http::Parser_HTTP::error_t awh::http::Parser_HTTP::error() const noexcept {
  *
  * @return название текущей ошибки разбора
  */
-string awh::http::Parser_HTTP::errorName() const noexcept {
+string_view awh::http::Parser_HTTP::errorName() const noexcept {
 	// Выводим название текущего кода ошибки разбора
 	return errorName(this->_error);
 }
@@ -3023,7 +3023,7 @@ string awh::http::Parser_HTTP::errorName() const noexcept {
  * @param error код ошибки разбора
  * @return      название кода ошибки
  */
-string awh::http::Parser_HTTP::errorName(const error_t error) noexcept {
+string_view awh::http::Parser_HTTP::errorName(const error_t error) noexcept {
 	/**
 	 * В зависимости от кода ошибки разбора, выводим соответствующее название
 	 */

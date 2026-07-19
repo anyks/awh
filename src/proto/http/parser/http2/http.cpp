@@ -505,6 +505,31 @@ namespace {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP2::Limits::Limits() noexcept :
+ parser_t::limits_t(),
+ rstLimitRate(RST_LIMIT_RATE),
+ rstLimitBurst(RST_LIMIT_BURST),
+ ctrlLimitRate(CTRL_LIMIT_RATE),
+ ctrlLimitBurst(CTRL_LIMIT_BURST),
+ maxHeaderBlockSize(MAX_HEADER_BLOCK_SIZE),
+ maxContinuationFrames(MAX_CONTINUATION_FRAMES) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP2::Settings::Settings() noexcept :
+ windowSize(h2::proto::DEFAULT_WINDOW_SIZE),
+ enablePush(h2::proto::DEFAULT_ENABLE_PUSH),
+ maxFrameSize(h2::proto::DEFAULT_MAX_FRAME_SIZE),
+ headerTableSize(h2::proto::DEFAULT_HEADER_TABLE_SIZE),
+ maxHeaderListSize(h2::proto::MAX_HEADER_LIST_SIZE),
+ maxConcurrentStreams(h2::proto::MAX_COUNT_STREAMS) {}
+
+/**
  * @brief Метод списания токенов
  *
  * @param value число списываемых токенов
@@ -2510,7 +2535,7 @@ awh::http::Parser_HTTP2::error_t awh::http::Parser_HTTP2::error() const noexcept
  *
  * @return название текущей ошибки разбора
  */
-string awh::http::Parser_HTTP2::errorName() const noexcept {
+string_view awh::http::Parser_HTTP2::errorName() const noexcept {
 	// Выводим название текущей ошибки разбора
 	return errorName(this->_error);
 }
@@ -2520,7 +2545,7 @@ string awh::http::Parser_HTTP2::errorName() const noexcept {
  * @param error код ошибки протокола
  * @return      название кода ошибки
  */
-string awh::http::Parser_HTTP2::errorName(const error_t error) noexcept {
+string_view awh::http::Parser_HTTP2::errorName(const error_t error) noexcept {
 	// Выводим название кода ошибки
 	return h2::errorName(error);
 }

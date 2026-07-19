@@ -129,9 +129,9 @@ if (${GTest_FOUND})
             message(STATUS "Build tests HTTP parser submodule: Yes\n")
             # Дополняем список источников тестами для подмодуля парсера HTTP/1.0 и HTTP/1.1
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
-                http/parser/parser.cpp
-                http/parser/static.cpp
-                http/parser/parameterized.cpp
+                http/parser/http1/http1.cpp
+                http/parser/http1/static.cpp
+                http/parser/http1/parameterized.cpp
             )
         # Если не нужно собрать тесты для подмодуля парсера HTTP/1.0 и HTTP/1.1
         else()

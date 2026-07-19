@@ -609,14 +609,14 @@ namespace awh {
 				 *
 				 * @return название текущей ошибки разбора
 				 */
-				string errorName() const noexcept override;
+				string_view errorName() const noexcept override;
 				/**
 				 * @brief Метод получения человекочитаемого названия кода ошибки
 				 *
 				 * @param error код ошибки разбора
 				 * @return      название кода ошибки
 				 */
-				static string errorName(const error_t error) noexcept;
+				static string_view errorName(const error_t error) noexcept;
 			public:
 				/**
 				 * @brief Метод получения лимитов безопасности

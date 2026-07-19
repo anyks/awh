@@ -1,5 +1,5 @@
 /**
- * @file: parser.cpp
+ * @file: http1.cpp
  * @date: 2026-07-18
  * @license: GPL-3.0
  *
@@ -15,7 +15,7 @@
 /**
  * Подключаем заголовочный файлы проекта
  */
-#include "parser.hpp"
+#include "http1.hpp"
 
 /**
  * @brief Метод настройки тестового окружения
