@@ -51,7 +51,9 @@ namespace awh {
 	typedef class Threadpool {
 		private:
 			/**
-			 * Тип очереди задач
+			 * @brief Тип очереди задач
+			 *
+			 * @details Очередь задач хранит объекты типа std::function<void()>, представляющие задачи для выполнения в пуле потоков.
 			 */
 			typedef std::queue <function <void()>> task_t;
 		private:

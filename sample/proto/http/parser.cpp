@@ -284,7 +284,7 @@ static void sampleErrors(const fmk_t * fmk, const log_t * log) noexcept {
 	// Выводим итоговый статус разбора
 	cout << "Status: " << (parser.status() == parser_t::status_t::ERROR ? "ERROR" : "?") << endl;
 	// Выводим человекочитаемое название кода ошибки
-	cout << "Error: " << parser_t::errorName(parser.error()) << endl << endl;
+	cout << "Error: " << parser_http_t::errorName(parser.error()) << endl << endl;
 }
 /**
  * @brief Главная функция приложения

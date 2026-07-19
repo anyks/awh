@@ -18,6 +18,8 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <string>
+#include <memory>
 #include <cstddef>
 #include <cstdint>
 
@@ -25,7 +27,6 @@
  * Подключаем наши заголовочные файлы
  */
 #include "../http.hpp"
-#include "../provider.hpp"
 #include "../../../sys/fmk.hpp"
 #include "../../../sys/log.hpp"
 #include "../../../sys/global.hpp"
@@ -46,17 +47,23 @@ namespace awh {
 	 */
 	namespace http {
 		/**
-		 * @brief Класс HTTP-парсера
+		 * @brief Базовый класс HTTP-парсера
 		 *
+		 * @details Содержит только контракт, общий для парсеров всех версий протокола
+		 *          (HTTP/1.x, HTTP/2, HTTP/3): жизненный цикл разбора, семантику частей
+		 *          сообщения (заголовки/тело/трейлеры), общее ядро лимитов безопасности
+		 *          и единую точку подачи байтов из сети. Всё специфичное для конкретной
+		 *          версии протокола (коды ошибок, флаги, структура сообщения, расширенные
+		 *          лимиты) определяется в классах-наследниках.
 		 */
 		typedef class __AWH_SHARED_EXPORT__ Parser {
 			public:
 				/**
-				 * @brief Максимальная длина строки заголовка чанка (size + chunk-ext)
+				 * @brief Максимальное число заголовков
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
 				 */
-				static constexpr size_t MAX_CHUNK_LINE = (16 * 1024);
+				static constexpr size_t MAX_HEADER_COUNT = (128);
 				/**
 				 * @brief Максимальная длина имени заголовка
 				 *
@@ -64,23 +71,11 @@ namespace awh {
 				 */
 				static constexpr size_t MAX_HEADER_NAME = (1 * 1024);
 				/**
-				 * @brief Максимальная длина request-line/status-line
-				 *
-				 * @note Значения по умолчанию подобраны консервативно
-				 */
-				static constexpr size_t MAX_REQUEST_LINE = (8 * 1024);
-				/**
 				 * @brief Максимальная длина значения заголовка
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
 				 */
 				static constexpr size_t MAX_HEADER_VALUE = (16 * 1024);
-				/**
-				 * @brief Максимальное число заголовков
-				 *
-				 * @note Значения по умолчанию подобраны консервативно
-				 */
-				static constexpr size_t MAX_HEADER_COUNT = (128);
 				/**
 				 * @brief Суммарный размер всех заголовков
 				 *
@@ -93,30 +88,14 @@ namespace awh {
 				 * @note Значения по умолчанию подобраны консервативно
 				 */
 				static constexpr uint64_t MAX_BODY_SIZE = (64ull * 1024 * 1024);
-				/**
-				 * @brief Максимальный размер одного чанка
-				 *
-				 * @note Значения по умолчанию подобраны консервативно
-				 */
-				static constexpr uint64_t MAX_CHUNK_SIZE = (1ull * 1024 * 1024 * 1024);
 			public:
-				/**
-				 * @brief Итоговый статус разбора HTTP-сообщения
-				 *
-				 */
-				enum class status_t : uint8_t {
-					NONE     = 0x00, // Статус не определён (разбор ещё не начинался)
-					ERROR    = 0x01, // Ошибка разбора/безопасности
-					PARTIAL  = 0x02, // Данные приняты, но сообщение ещё не завершено — нужно ещё байтов
-					COMPLETE = 0x03  // Одно сообщение полностью разобрано (в буфере могут идти следующие)
-				};
 				/**
 				 * @brief Фаза разбора HTTP-сообщения
 				 *
 				 */
 				enum class phase_t : uint8_t {
 					NONE  = 0x00, // Фаза не определена
-					BEGIN = 0x01, // Начало сообщения (request-line/status-line)
+					BEGIN = 0x01, // Начало сообщения (стартовая строка/блок заголовков)
 					END   = 0x02  // Конец сообщения
 				};
 				/**
@@ -130,69 +109,29 @@ namespace awh {
 					TRAILER = 0x03  // Заголовки трейлера
 				};
 				/**
-				 * @brief Код ошибки разбора HTTP-парсера
+				 * @brief Итоговый статус разбора HTTP-сообщения
 				 *
+				 * @details Для мультиплексируемых протоколов (HTTP/2, HTTP/3) статус
+				 *          относится к соединению в целом, а не к отдельному сообщению
 				 */
-				enum class error_t : uint8_t {
-					NONE                      = 0x00, // Ошибок нет
-					INTERNAL                  = 0x01, // Внутренняя ошибка состояния
-					INVALID_EOL               = 0x02, // Ожидался LF после CR
-					INVALID_METHOD            = 0x03, // Недопустимый символ в методе
-					INVALID_TARGET            = 0x04, // Недопустимый символ в request-target
-					INVALID_STATUS            = 0x05, // Неверный статус-код ответа
-					INVALID_VERSION           = 0x06, // Неверная строка версии (HTTP/x.y)
-					INVALID_CHUNK_SIZE        = 0x07, // Неверный размер чанка
-					INVALID_HEADER_TOKEN      = 0x08, // Недопустимый символ в имени заголовка / obs-fold
-					INVALID_HEADER_VALUE      = 0x09, // Недопустимый символ в значении заголовка
-					INVALID_CONTENT_LENGTH    = 0x0A, // Content-Length не число / Некорректен
-					INVALID_CHUNK_TERMINATOR  = 0x0B, // Нет CRLF после данных чанка
-					INVALID_TRANSFER_ENCODING = 0x0C, // Некорректный Transfer-Encoding (chunked не последний и т.п.)
-					ABORTED                   = 0x0D, // Разбор прерван пользовательским callback'ом
-					URL_OVERFLOW              = 0x0E, // Превышен лимит длины request-line
-					BODY_OVERFLOW             = 0x0F, // Превышен лимит размера тела
-					CHUNK_OVERFLOW            = 0x10, // Превышен лимит размера чанка
-					HEADER_OVERFLOW           = 0x11, // Превышен лимит размера заголовков
-					TOO_MANY_HEADERS          = 0x12, // Превышено число заголовков
-					CONTENT_LENGTH_CONFLICT   = 0x13, // CL+TE или несколько разных Content-Length (request smuggling)
-					PREMATURE_EOF             = 0x14  // Соединение закрыто посреди незавершённого сообщения
+				enum class status_t : uint8_t {
+					NONE     = 0x00, // Статус не определён (разбор ещё не начинался)
+					ERROR    = 0x01, // Ошибка разбора/безопасности
+					PARTIAL  = 0x02, // Данные приняты, но разбор ещё не завершён — нужно ещё байтов
+					COMPLETE = 0x03  // Разбор полностью завершён (в буфере могут идти следующие данные)
 				};
 			public:
 				/**
-				 * @brief Структура флагов состояния парсера
+				 * @brief Структура общего ядра ограничений безопасности
 				 *
-				 */
-				typedef struct Flags {
-					// Тело передаётся chunked
-					bool chunked;
-					// Запрошено переключение протокола (Upgrade + Connection: upgrade, ответ 101 или успешный CONNECT)
-					bool upgrade;
-					// Сообщение полностью разобрано
-					bool complete;
-					// Соединение переиспользуемое
-					bool keepAlive;
-					// Клиент прислал заголовок [Expect: 100-continue] и ожидает промежуточный ответ до отправки тела
-					bool expectContinue;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Flags() noexcept :
-					 chunked(false), upgrade(false),
-					 complete(false), keepAlive(true),
-					 expectContinue(false) {}
-				} flags_t;
-			public:
-				/**
-				 * @brief Структура ограничений безопасности
-				 *
+				 * @details Содержит только лимиты, осмысленные для любой версии протокола.
+				 *          Парсеры конкретных версий расширяют структуру своими лимитами
+				 *          (HTTP/1.x — чанки и стартовая строка, HTTP/2 — блоки заголовков,
+				 *          CONTINUATION-фреймы, частотные лимиты и т.д.)
 				 */
 				typedef struct Limits {
-					// Максимальная длина строки заголовка чанка (size + chunk-ext)
-					size_t maxChunkLine;
 					// Максимальная длина имени заголовка
 					size_t maxHeaderName;
-					// Максимальная длина request-line/status-line
-					size_t maxRequestLine;
 					// Максимальная длина значения заголовка
 					size_t maxHeaderValue;
 					// Максимальное число заголовков
@@ -201,138 +140,33 @@ namespace awh {
 					size_t maxHeadersTotal;
 					// Максимальный размер тела
 					uint64_t maxBodySize;
-					// Максимальный размер одного чанка
-					uint64_t maxChunkSize;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
 					explicit Limits() noexcept :
-					 maxChunkLine(MAX_CHUNK_LINE),
 					 maxHeaderName(MAX_HEADER_NAME),
-					 maxRequestLine(MAX_REQUEST_LINE),
 					 maxHeaderValue(MAX_HEADER_VALUE),
 					 maxHeaderCount(MAX_HEADER_COUNT),
 					 maxHeadersTotal(MAX_HEADERS_TOTAL),
-					 maxBodySize(MAX_BODY_SIZE),
-					 maxChunkSize(MAX_CHUNK_SIZE) {}
+					 maxBodySize(MAX_BODY_SIZE) {}
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~Limits() noexcept = default;
 				} limits_t;
-			public:
-				/**
-				 * @brief Класс разобранного сообщения
-				 *
-				 * @details Если Content-Length не установлен, то значение bodySize == -1.
-				 *          Если Content-Length установлен, то значение поля bodySize >= 0.
-				 *          Если указан Transfer-Encoding: chunked, то значение поля bodySize == -1.
-				 */
-				typedef class __AWH_SHARED_EXPORT__ Message {
-					public:
-						// Партиция текущего состояния парсера
-						part_t part;
-						// Фаза разбора HTTP-сообщения
-						phase_t phase;
-						// Флаги состояния парсера
-						flags_t flags;
-						// Ожидаемый размер тела сообщения (Content-Length)
-						int64_t bodySize;
-						// Объект провайдера заголовков сообщения
-						unique_ptr <provider_t> provider;
-					public:
-						/**
-						 * @brief Оператор перемещающего присваивания параметров сообщения
-						 *
-						 * @param message объект сообщения для перемещения
-						 * @return        текущее сообщение
-						 */
-						Message & operator = (Message && message) noexcept;
-						/**
-						 * @brief Оператор присваивания параметров сообщения
-						 *
-						 * @param message объект сообщения для копирования
-						 * @return        текущее сообщение
-						 */
-						Message & operator = (const Message & message) noexcept;
-					public:
-						/**
-						 * @brief Оператор сравнения
-						 *
-						 * @param message объект сообщения для сравнения
-						 * @return        результат сравнения
-						 */
-						bool operator == (const Message & message) noexcept;
-						/**
-						 * @brief Оператор сравнения
-						 *
-						 * @param message объект сообщения для сравнения
-						 * @return        результат сравнения
-						 */
-						bool operator != (const Message & message) noexcept;
-					public:
-						/**
-						 * @brief Конструктор перемещения
-						 *
-						 * @param message объект сообщения для перемещения
-						 */
-						Message(Message && message) noexcept;
-						/**
-						 * @brief Конструктор копирования
-						 *
-						 * @param message объект сообщения для копирования
-						 */
-						Message(const Message & message) noexcept;
-					public:
-						/**
-						 * @brief Конструктор
-						 *
-						 */
-						explicit Message() noexcept;
-				} message_t;
 			protected:
-				// Код ошибки разбора
-				error_t _error;
 				// Итоговый статус разбора
 				status_t _status;
 				// Направление потока данных (запрос/ответ)
 				direct_t _direct;
-			protected:
-				// Настраиваемые лимиты
-				limits_t _limits;
-				// Результат разбора
-				message_t _message;
 			protected:
 				// Объект фреймворка
 				const fmk_t * _fmk;
 				// Объект работы с логами
 				const log_t * _log;
 			public:
-				/**
-				 * @brief Метод полной очистки всех данных парсера
-				 *
-				 * @details Помимо сброса состояния разбора возвращает лимиты безопасности к значениям по умолчанию
-				 */
-				virtual void clear() noexcept;
-				/**
-				 * @brief Метод сброса парсера для разбора следующего сообщения в том же соединении
-				 *
-				 * @details Дешёвый сброс между сообщениями (keep-alive/pipelining): сохраняет лимиты
-				 *          безопасности и установленные функции обратного вызова, провайдер заголовков
-				 *          не пересоздаётся, а очищается (переиспользуется выделенная память).
-				 */
-				virtual void reset() noexcept;
-			public:
-				/**
-				 * @brief Метод клонирования объекта парсера
-				 *
-				 * @return копия объекта парсера
-				 */
-				virtual unique_ptr <Parser> clone() const noexcept = 0;
-			public:
-				/**
-				 * @brief Метод получения кода ошибки разбора
-				 *
-				 * @return код ошибки
-				 */
-				error_t error() const noexcept;
 				/**
 				 * @brief Метод получения итогового статуса разбора
 				 *
@@ -341,32 +175,68 @@ namespace awh {
 				status_t status() const noexcept;
 			public:
 				/**
-				 * @brief Метод получения человекочитаемого названия кода ошибки
+				 * @brief Метод полной очистки всех данных парсера
 				 *
-				 * @param error код ошибки разбора
-				 * @return      название кода ошибки
+				 * @details Помимо сброса состояния разбора возвращает настройки парсера
+				 *          (лимиты безопасности, функции обратного вызова) к значениям
+				 *          по умолчанию — детали определяются классом-наследником
 				 */
-				static string errorName(const error_t error) noexcept;
+				virtual void clear() noexcept;
+				/**
+				 * @brief Метод сброса состояния парсера
+				 *
+				 * @details Дешёвый сброс с сохранением настроек (лимиты безопасности,
+				 *          функции обратного вызова): для HTTP/1.x — подготовка к разбору
+				 *          следующего сообщения в том же соединении (keep-alive/pipelining),
+				 *          для мультиплексируемых протоколов — полный сброс соединения
+				 */
+				virtual void reset() noexcept;
 			public:
 				/**
-				 * @brief Метод получения лимитов безопасности
+				 * @brief Метод получения человекочитаемого названия текущей ошибки разбора
 				 *
-				 * @return лимиты безопасности
-				 */
-				const limits_t & limits() const noexcept;
-				/**
-				 * @brief Метод установки лимитов безопасности
+				 * @details Каждый парсер определяет собственную систему кодов ошибок —
+				 *          типизированный доступ к коду предоставляется наследником,
+				 *          база гарантирует только текстовое представление для логов
 				 *
-				 * @param limits лимиты безопасности
+				 * @return название текущей ошибки разбора
 				 */
-				void limits(const limits_t & limits) noexcept;
+				virtual string errorName() const noexcept = 0;
 			public:
 				/**
-				 * @brief Метод получения разобранного сообщения
+				 * @brief Метод клонирования объекта парсера
 				 *
-				 * @return разобранное сообщение
+				 * @details Клон получает те же направление трафика, лимиты безопасности
+				 *          и функции обратного вызова, но чистое состояние разбора
+				 *          ("фабрика с теми же настройками")
+				 *
+				 * @return копия объекта парсера
 				 */
-				const message_t & message() const noexcept;
+				virtual unique_ptr <Parser> clone() const noexcept = 0;
+			public:
+				/**
+				 * @brief Метод уведомления парсера о завершении потока данных (закрытии соединения)
+				 *
+				 * @details Сетевой слой обязан вызвать этот метод, когда соединение закрыто
+				 *          удалённой стороной (получен FIN/EOF сокета). Реакция определяется
+				 *          протоколом: HTTP/1.x завершает тело "до закрытия соединения" либо
+				 *          фиксирует обрыв, HTTP/2 проверяет корректность завершения сессии
+				 */
+				virtual void eof() noexcept = 0;
+				/**
+				 * @brief Метод разбора данных
+				 *
+				 * @details Потребляет столько байтов, сколько смог, и возвращает их число.
+				 *          Итоговый статус необходимо контролировать методом status().
+				 *          Точная семантика границ потребления определяется протоколом:
+				 *          HTTP/1.x останавливается на границе завершённого сообщения,
+				 *          мультиплексируемые протоколы буферизуют неполные кадры внутри
+				 *
+				 * @param buffer буфер данных для разбора
+				 * @param size   размер данных для разбора
+				 * @return       количество обработанных байт данных
+				 */
+				virtual size_t parse(const void * buffer, const size_t size) noexcept = 0;
 			public:
 				/**
 				 * @brief Конструктор

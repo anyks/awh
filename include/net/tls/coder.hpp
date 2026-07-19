@@ -170,31 +170,46 @@ namespace awh {
 				/**
 				 * @brief Функция обратного вызова срабатывающая при изменении состояния
 				 *
+				 * @param id    идентификатор события
+				 * @param state новое состояние TLS
 				 */
-				using state_callback_t = std::function <void (const id_t, const state_t)>;
+				using state_callback_t = function <void (const id_t, const state_t)>;
 				/**
 				 * @brief Функция обратного вызова срабатывающая при записи
 				 *
+				 * @param id    идентификатор события
+				 * @param event тип события TLS
+				 * @param size  размер данных
 				 */
-				using write_callback_t = std::function <void (const id_t, const event_t, const size_t)>;
+				using write_callback_t = function <void (const id_t, const event_t, const size_t)>;
 				/**
 				 * @brief Функция обратного вызова срабатывающая при ошибке события
 				 *
+				 * @param id    идентификатор события
+				 * @param error тип ошибки TLS
+				 * @param info  дополнительная информация об ошибке
 				 */
-				using error_callback_t = std::function <void (const id_t, const error_t, const string &)>;
+				using error_callback_t = function <void (const id_t, const error_t, const string &)>;
 				/**
 				 * @brief Функция обратного вызова срабатывающая при получении снимка браузера приславшего ClientHello
 				 *
+				 * @param id      идентификатор события
+				 * @param browser объект отпечатка браузера
 				 */
-				using fingerprint_callback_t = std::function <void (const id_t, const fgp_t::browser_t &)>;
+				using fingerprint_callback_t = function <void (const id_t, const fgp_t::browser_t &)>;
 				/**
 				 * @brief Функция обратного вызова срабатывающая при чтении
 				 *
 				 * @note Указатель buffer действителен только до возврата из callback.
 				 *       Callback обязан синхронно скопировать данные; при реентрантном
 				 *       вызове внутренний thread_local буфер может быть перезаписан.
+				 *
+				 * @param id     идентификатор события
+				 * @param event  тип события TLS
+				 * @param buffer буфер данных
+				 * @param size   размер данных
 				 */
-				using read_callback_t = std::function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
+				using read_callback_t = function <void (const id_t, const event_t, const uint8_t *, const size_t)>;
 			private:
 				// Объект работы с IP-адресами
 				net_addr_t _addr;

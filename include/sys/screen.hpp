@@ -131,11 +131,14 @@ namespace awh {
 			/**
 			 * @brief Функция обратного вызова которая срабатывает при передачи данных в дочерний поток
 			 *
+			 * @param data данные передаваемые в дочерний поток
 			 */
 			std::function <void (const T &)> _callback;
 			/**
 			 * @brief Функция обратного вызова при заполнении или освобождении очереди
 			 *
+			 * @param state состояние очереди (увеличение/уменьшение)
+			 * @param size  размер очереди после изменения
 			 */
 			std::function <void (const state_t, const size_t)> _state;
 		private:

@@ -166,7 +166,9 @@ namespace awh {
 			const log_t * _log;
 		private:
 			/**
-			 * Функция обратного вызова при получении сигнала
+			 * @brief Функция обратного вызова при получении сигнала
+			 *
+			 * @param sig номер полученного сигнала
 			 */
 			function <void (const int32_t)> _callback;
 		private:

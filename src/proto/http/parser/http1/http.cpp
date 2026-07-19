@@ -550,6 +550,149 @@ namespace {
 };
 
 /**
+ * @brief Оператор перемещающего присваивания параметров сообщения
+ *
+ * @param message объект сообщения для перемещения
+ * @return        текущее сообщение
+ */
+awh::http::Parser_HTTP::Message & awh::http::Parser_HTTP::Message::operator = (Message && message) noexcept {
+	// Если перемещаемое сообщение не является текущим объектом
+	if(this != &message){
+		// Выполняем копирование партиции текущего состояния парсера
+		this->part = message.part;
+		// Выполняем копирование фазы разбора HTTP-сообщения
+		this->phase = message.phase;
+		// Выполняем копирование флагов состояния сообщения
+		this->flags = message.flags;
+		// Выполняем перемещение провайдера заголовков сообщения
+		this->provider = ::move(message.provider);
+		// Выполняем копирование размера тела сообщения
+		this->bodySize = message.bodySize;
+		// Сбрасываем размер тела сообщения
+		message.bodySize = -1;
+		// Сбрасываем партицию текущего состояния парсера
+		message.part = part_t::NONE;
+		// Сбрасываем фазу разбора HTTP-сообщения
+		message.phase = phase_t::NONE;
+		// Сбрасываем флаги состояния сообщения
+		message.flags = flags_t();
+	}
+	// Выводим текущий объект
+	return * this;
+}
+/**
+ * @brief Оператор присваивания параметров сообщения
+ *
+ * @param message объект сообщения для копирования
+ * @return        текущее сообщение
+ */
+awh::http::Parser_HTTP::Message & awh::http::Parser_HTTP::Message::operator = (const Message & message) noexcept {
+	// Если копируемое сообщение не является текущим объектом
+	if(this != &message){
+		// Выполняем копирование партиции текущего состояния парсера
+		this->part = message.part;
+		// Выполняем копирование фазы разбора HTTP-сообщения
+		this->phase = message.phase;
+		// Выполняем копирование флагов состояния сообщения
+		this->flags = message.flags;
+		// Выполняем копирование провайдера заголовков сообщения (если он установлен)
+		this->provider = (message.provider != nullptr ? message.provider->clone() : nullptr);
+		// Выполняем копирование размера тела сообщения
+		this->bodySize = message.bodySize;
+	}
+	// Выводим текущий объект
+	return * this;
+}
+/**
+ * @brief Оператор сравнения
+ *
+ * @param message объект сообщения для сравнения
+ * @return        результат сравнения
+ */
+bool awh::http::Parser_HTTP::Message::operator == (const Message & message) noexcept {
+	// Выполняем сравнение всех параметров сообщения кроме провайдера
+	const bool result = (
+		(this->part == message.part) &&
+		(this->phase == message.phase) &&
+		(this->flags.chunked == message.flags.chunked) &&
+		(this->flags.complete == message.flags.complete) &&
+		(this->flags.keepAlive == message.flags.keepAlive) &&
+		(this->flags.upgrade == message.flags.upgrade) &&
+		(this->flags.expectContinue == message.flags.expectContinue) &&
+		(this->bodySize == message.bodySize)
+	);
+	// Если базовые параметры сообщения не совпадают - дальше сравнивать нет смысла
+	if(!result)
+		// Сообщения не эквивалентны
+		return false;
+	// Если оба провайдера отсутствуют - сообщения эквивалентны
+	if((this->provider == nullptr) && (message.provider == nullptr))
+		// Сообщения эквивалентны
+		return true;
+	// Если провайдер присутствует только у одного из сообщений
+	if((this->provider == nullptr) || (message.provider == nullptr))
+		// Сообщения не эквивалентны
+		return false;
+	// Если направления трафика провайдеров не совпадают
+	if(this->provider->direct != message.provider->direct)
+		// Сообщения не эквивалентны
+		return false;
+	/**
+	 * В зависимости от направления трафика провайдера, сравниваем содержимое провайдеров
+	 */
+	switch(static_cast <uint8_t> (this->provider->direct)){
+		// Если провайдер содержит запрос клиента
+		case static_cast <uint8_t> (direct_t::REQUEST):
+			// Сравниваем содержимое запросов клиента
+			return ((* static_cast <const request_t *> (this->provider.get())) == (* static_cast <const request_t *> (message.provider.get())));
+		// Если провайдер содержит ответ сервера
+		case static_cast <uint8_t> (direct_t::RESPONSE):
+			// Сравниваем содержимое ответов сервера
+			return ((* static_cast <const response_t *> (this->provider.get())) == (* static_cast <const response_t *> (message.provider.get())));
+	}
+	// Сообщения эквивалентны
+	return true;
+}
+/**
+ * @brief Оператор сравнения
+ *
+ * @param message объект сообщения для сравнения
+ * @return        результат сравнения
+ */
+bool awh::http::Parser_HTTP::Message::operator != (const Message & message) noexcept {
+	// Выполняем сравнение всех параметров сообщения
+	return !((* this) == message);
+}
+/**
+ * @brief Конструктор перемещения
+ *
+ * @param message объект сообщения для перемещения
+ */
+awh::http::Parser_HTTP::Message::Message(Message && message) noexcept :
+ part(message.part),
+ phase(message.phase),
+ flags(message.flags),
+ bodySize(message.bodySize),
+ provider(::move(message.provider)) {}
+/**
+ * @brief Конструктор копирования
+ *
+ * @param message объект сообщения для копирования
+ */
+awh::http::Parser_HTTP::Message::Message(const Message & message) noexcept :
+ part(message.part),
+ phase(message.phase),
+ flags(message.flags),
+ bodySize(message.bodySize),
+ provider(message.provider != nullptr ? message.provider->clone() : nullptr) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Parser_HTTP::Message::Message() noexcept :
+ part(part_t::NONE), phase(phase_t::NONE), bodySize(-1), provider(nullptr) {}
+
+/**
  * @brief Метод выбора способа кадрирования тела после завершения заголовков
  *
  */
@@ -1254,8 +1397,10 @@ void awh::http::Parser_HTTP::applyTransferEncoding(const char * begin, const cha
  *          к значениям по умолчанию и удаляет установленные функции обратного вызова.
  */
 void awh::http::Parser_HTTP::clear() noexcept {
-	// Выполняем полную очистку данных базового парсера (сброс состояния + лимиты по умолчанию)
-	parser_t::clear();
+	// Выполняем сброс состояния разбора
+	this->reset();
+	// Возвращаем лимиты безопасности к значениям по умолчанию
+	this->_limits = limits_t();
 	// Удаляем все установленные функции обратного вызова
 	this->_callbacks = callbacks_t();
 }
@@ -1267,8 +1412,50 @@ void awh::http::Parser_HTTP::clear() noexcept {
  *          не пересоздаётся, а очищается (переиспользуется выделенная память).
  */
 void awh::http::Parser_HTTP::reset() noexcept {
-	// Выполняем сброс состояния базового парсера
+	// Выполняем сброс состояния базового парсера (итоговый статус разбора)
 	parser_t::reset();
+	// Сбрасываем размер тела сообщения
+	this->_message.bodySize = -1;
+	// Сбрасываем код ошибки разбора
+	this->_error = error_t::NONE;
+	// Сбрасываем партицию текущего состояния парсера
+	this->_message.part = part_t::NONE;
+	// Сбрасываем фазу разбора HTTP-сообщения
+	this->_message.phase = phase_t::NONE;
+	// Сбрасываем флаги состояния сообщения
+	this->_message.flags = message_t::flags_t();
+	// Если провайдер заголовков сообщения существует
+	if(this->_message.provider != nullptr){
+		/**
+		 * В зависимости от направления потока данных, очищаем содержимое провайдера
+		 */
+		switch(static_cast <uint8_t> (this->_direct)){
+			// Если выполняется разбор запроса клиента
+			case static_cast <uint8_t> (direct_t::REQUEST): {
+				// Получаем объект провайдера заголовков запроса клиента
+				request_t * provider = static_cast <request_t *> (this->_message.provider.get());
+				// Очищаем параметры URI-запроса (выделенная память строки сохраняется)
+				provider->uri.clear();
+				// Очищаем оригинальное написание метода запроса (выделенная память строки сохраняется)
+				provider->methodName.clear();
+				// Сбрасываем метод запроса клиента
+				provider->method = method_t::NONE;
+				// Сбрасываем версию протокола
+				provider->version = version_t::NONE;
+			} break;
+			// Если выполняется разбор ответа сервера
+			case static_cast <uint8_t> (direct_t::RESPONSE): {
+				// Получаем объект провайдера заголовков ответа сервера
+				response_t * provider = static_cast <response_t *> (this->_message.provider.get());
+				// Сбрасываем код ответа сервера
+				provider->code = 0;
+				// Очищаем сообщение сервера (выделенная память строки сохраняется)
+				provider->message.clear();
+				// Сбрасываем версию протокола
+				provider->version = version_t::NONE;
+			} break;
+		}
+	}
 	// Сбрасываем состояние конечного автомата
 	this->_state = static_cast <uint8_t> (state_t::S_START);
 	// Сбрасываем метод запроса, которому соответствует ожидаемый ответ
@@ -2753,6 +2940,150 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 	}
 }
 /**
+ * @brief Метод получения кода ошибки разбора
+ *
+ * @return код ошибки
+ */
+awh::http::Parser_HTTP::error_t awh::http::Parser_HTTP::error() const noexcept {
+	// Выводим код ошибки разбора
+	return this->_error;
+}
+/**
+ * @brief Метод получения человекочитаемого названия текущей ошибки разбора
+ *
+ * @return название текущей ошибки разбора
+ */
+string awh::http::Parser_HTTP::errorName() const noexcept {
+	// Выводим название текущего кода ошибки разбора
+	return errorName(this->_error);
+}
+/**
+ * @brief Метод получения человекочитаемого названия кода ошибки
+ *
+ * @param error код ошибки разбора
+ * @return      название кода ошибки
+ */
+string awh::http::Parser_HTTP::errorName(const error_t error) noexcept {
+	/**
+	 * В зависимости от кода ошибки разбора, выводим соответствующее название
+	 */
+	switch(static_cast <uint8_t> (error)){
+		// Ошибок нет
+		case static_cast <uint8_t> (error_t::NONE):
+			// Выводим название кода ошибки
+			return "NONE";
+		// Внутренняя ошибка состояния
+		case static_cast <uint8_t> (error_t::INTERNAL):
+			// Выводим название кода ошибки
+			return "INTERNAL";
+		// Ожидался LF после CR
+		case static_cast <uint8_t> (error_t::INVALID_EOL):
+			// Выводим название кода ошибки
+			return "INVALID_EOL";
+		// Недопустимый символ в методе
+		case static_cast <uint8_t> (error_t::INVALID_METHOD):
+			// Выводим название кода ошибки
+			return "INVALID_METHOD";
+		// Недопустимый символ в request-target
+		case static_cast <uint8_t> (error_t::INVALID_TARGET):
+			// Выводим название кода ошибки
+			return "INVALID_TARGET";
+		// Неверный статус-код ответа
+		case static_cast <uint8_t> (error_t::INVALID_STATUS):
+			// Выводим название кода ошибки
+			return "INVALID_STATUS";
+		// Неверная строка версии (HTTP/x.y)
+		case static_cast <uint8_t> (error_t::INVALID_VERSION):
+			// Выводим название кода ошибки
+			return "INVALID_VERSION";
+		// Неверный размер чанка
+		case static_cast <uint8_t> (error_t::INVALID_CHUNK_SIZE):
+			// Выводим название кода ошибки
+			return "INVALID_CHUNK_SIZE";
+		// Недопустимый символ в имени заголовка / obs-fold
+		case static_cast <uint8_t> (error_t::INVALID_HEADER_TOKEN):
+			// Выводим название кода ошибки
+			return "INVALID_HEADER_TOKEN";
+		// Недопустимый символ в значении заголовка
+		case static_cast <uint8_t> (error_t::INVALID_HEADER_VALUE):
+			// Выводим название кода ошибки
+			return "INVALID_HEADER_VALUE";
+		// Content-Length не число / некорректен
+		case static_cast <uint8_t> (error_t::INVALID_CONTENT_LENGTH):
+			// Выводим название кода ошибки
+			return "INVALID_CONTENT_LENGTH";
+		// Нет CRLF после данных чанка
+		case static_cast <uint8_t> (error_t::INVALID_CHUNK_TERMINATOR):
+			// Выводим название кода ошибки
+			return "INVALID_CHUNK_TERMINATOR";
+		// Некорректный Transfer-Encoding (chunked не последний и т.п.)
+		case static_cast <uint8_t> (error_t::INVALID_TRANSFER_ENCODING):
+			// Выводим название кода ошибки
+			return "INVALID_TRANSFER_ENCODING";
+		// Разбор прерван пользовательским callback'ом
+		case static_cast <uint8_t> (error_t::ABORTED):
+			// Выводим название кода ошибки
+			return "ABORTED";
+		// Превышен лимит длины request-line
+		case static_cast <uint8_t> (error_t::URL_OVERFLOW):
+			// Выводим название кода ошибки
+			return "URL_OVERFLOW";
+		// Превышен лимит размера тела
+		case static_cast <uint8_t> (error_t::BODY_OVERFLOW):
+			// Выводим название кода ошибки
+			return "BODY_OVERFLOW";
+		// Соединение закрыто посреди незавершённого сообщения
+		case static_cast <uint8_t> (error_t::PREMATURE_EOF):
+			// Выводим название кода ошибки
+			return "PREMATURE_EOF";
+		// Превышен лимит размера чанка
+		case static_cast <uint8_t> (error_t::CHUNK_OVERFLOW):
+			// Выводим название кода ошибки
+			return "CHUNK_OVERFLOW";
+		// Превышен лимит размера заголовков
+		case static_cast <uint8_t> (error_t::HEADER_OVERFLOW):
+			// Выводим название кода ошибки
+			return "HEADER_OVERFLOW";
+		// Превышено число заголовков
+		case static_cast <uint8_t> (error_t::TOO_MANY_HEADERS):
+			// Выводим название кода ошибки
+			return "TOO_MANY_HEADERS";
+		// CL+TE или несколько разных Content-Length (request smuggling)
+		case static_cast <uint8_t> (error_t::CONTENT_LENGTH_CONFLICT):
+			// Выводим название кода ошибки
+			return "CONTENT_LENGTH_CONFLICT";
+	}
+	// Код ошибки неизвестен
+	return "UNKNOWN_ERROR";
+}
+/**
+ * @brief Метод получения лимитов безопасности
+ *
+ * @return лимиты безопасности
+ */
+const awh::http::Parser_HTTP::limits_t & awh::http::Parser_HTTP::limits() const noexcept {
+	// Выводим настроенные лимиты безопасности
+	return this->_limits;
+}
+/**
+ * @brief Метод установки лимитов безопасности
+ *
+ * @param limits лимиты безопасности
+ */
+void awh::http::Parser_HTTP::limits(const limits_t & limits) noexcept {
+	// Устанавливаем новые лимиты безопасности
+	this->_limits = limits;
+}
+/**
+ * @brief Метод получения разобранного сообщения
+ *
+ * @return разобранное сообщение
+ */
+const awh::http::Parser_HTTP::message_t & awh::http::Parser_HTTP::message() const noexcept {
+	// Выводим результат разбора сообщения
+	return this->_message;
+}
+/**
  * @brief Метод установки функции обратного вызова для обработки тела сообщения
  *
  * @param callback функция обратного вызова для обработки тела сообщения
@@ -2805,7 +3136,24 @@ void awh::http::Parser_HTTP::on(provider_callback_t callback) noexcept {
  * @param log    объект для работы с логами
  */
 awh::http::Parser_HTTP::Parser_HTTP(const direct_t direct, const fmk_t * fmk, const log_t * log) noexcept :
- parser_t(direct, fmk, log), _state(static_cast <uint8_t> (S_START)), _method(method_t::NONE) {}
+ parser_t(direct, fmk, log), _error(error_t::NONE),
+ _state(static_cast <uint8_t> (S_START)), _method(method_t::NONE) {
+	/**
+	 * В зависимости от направления потока данных, формируем объект провайдера заголовков сообщения
+	 */
+	switch(static_cast <uint8_t> (direct)){
+		// Если передан запрос клиента
+		case static_cast <uint8_t> (http::direct_t::REQUEST):
+			// Формируем объект провайдера заголовков запроса клиента
+			this->_message.provider = make_unique <request_t> ();
+		break;
+		// Если передан ответ сервера
+		case static_cast <uint8_t> (http::direct_t::RESPONSE):
+			// Формируем объект провайдера заголовков ответа сервера
+			this->_message.provider = make_unique <response_t> ();
+		break;
+	}
+}
 /**
  * @brief Деструктор
  *

@@ -51,7 +51,7 @@ TEST_F(ParserFixture, SimpleRequestTest){
 	// Проверяем что сообщение полностью разобрано
 	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
 	// Проверяем что ошибок разбора нет
-	ASSERT_EQ(parser->error(), parser_t::error_t::NONE);
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::NONE);
 	// Получаем объект провайдера заголовков запроса клиента
 	const request_t * request = static_cast <const request_t *> (parser->message().provider.get());
 	// Проверяем что метод запроса разобран корректно
@@ -272,7 +272,7 @@ TEST_F(ParserFixture, EofHandlingTest){
 	// Уведомляем парсер о закрытии соединения между сообщениями
 	parser->eof();
 	// Проверяем что ошибки нет (нормальное закрытие keep-alive соединения)
-	ASSERT_EQ(parser->error(), parser_t::error_t::NONE);
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::NONE);
 	// Формируем данные частично принятого HTTP-запроса
 	const std::string message = "GET / HTTP/1.1\r\nHo";
 	// Выполняем разбор частично принятых данных
@@ -282,7 +282,7 @@ TEST_F(ParserFixture, EofHandlingTest){
 	// Проверяем что зафиксирована ошибка разбора
 	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
 	// Проверяем что ошибка соответствует обрыву соединения
-	ASSERT_EQ(parser->error(), parser_t::error_t::PREMATURE_EOF);
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::PREMATURE_EOF);
 }
 
 /**
@@ -299,7 +299,7 @@ TEST_F(ParserFixture, SmugglingProtectionTest){
 	// Проверяем что зафиксирована ошибка разбора
 	ASSERT_EQ(parser1->status(), parser_t::status_t::ERROR);
 	// Проверяем что ошибка соответствует конфликту кадрирования
-	ASSERT_EQ(parser1->error(), parser_t::error_t::CONTENT_LENGTH_CONFLICT);
+	ASSERT_EQ(parser1->error(), parser_http_t::error_t::CONTENT_LENGTH_CONFLICT);
 	// Создаём объект парсера запросов клиента для проверки различающихся Content-Length
 	auto parser2 = this->make(direct_t::REQUEST);
 	// Формируем данные HTTP-запроса с двумя различающимися заголовками Content-Length
@@ -307,7 +307,7 @@ TEST_F(ParserFixture, SmugglingProtectionTest){
 	// Выполняем разбор данных HTTP-запроса
 	parser2->parse(message2.data(), message2.size());
 	// Проверяем что ошибка соответствует конфликту кадрирования
-	ASSERT_EQ(parser2->error(), parser_t::error_t::CONTENT_LENGTH_CONFLICT);
+	ASSERT_EQ(parser2->error(), parser_http_t::error_t::CONTENT_LENGTH_CONFLICT);
 }
 
 /**
@@ -334,7 +334,7 @@ TEST_F(ParserFixture, TransferEncodingValidationTest){
 	// Выполняем разбор данных HTTP-запроса
 	parser2->parse(message2.data(), message2.size());
 	// Проверяем что ошибка соответствует некорректному Transfer-Encoding
-	ASSERT_EQ(parser2->error(), parser_t::error_t::INVALID_TRANSFER_ENCODING);
+	ASSERT_EQ(parser2->error(), parser_http_t::error_t::INVALID_TRANSFER_ENCODING);
 }
 
 /**
@@ -445,7 +445,7 @@ TEST_F(ParserFixture, VersionContractTest){
 	// Выполняем разбор данных HTTP-запроса
 	parser1->parse(message1.data(), message1.size());
 	// Проверяем что ошибка соответствует некорректной версии протокола
-	ASSERT_EQ(parser1->error(), parser_t::error_t::INVALID_VERSION);
+	ASSERT_EQ(parser1->error(), parser_http_t::error_t::INVALID_VERSION);
 	// Создаём объект парсера ответов сервера
 	auto parser2 = this->make(direct_t::RESPONSE);
 	// Формируем данные HTTP-ответа с неподдерживаемой мажорной версией
@@ -453,7 +453,7 @@ TEST_F(ParserFixture, VersionContractTest){
 	// Выполняем разбор данных HTTP-ответа
 	parser2->parse(message2.data(), message2.size());
 	// Проверяем что ошибка соответствует некорректной версии протокола
-	ASSERT_EQ(parser2->error(), parser_t::error_t::INVALID_VERSION);
+	ASSERT_EQ(parser2->error(), parser_http_t::error_t::INVALID_VERSION);
 }
 
 /**
@@ -502,7 +502,7 @@ TEST_F(ParserFixture, AbortByCallbackTest){
 	// Проверяем что зафиксирована ошибка разбора
 	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
 	// Проверяем что ошибка соответствует прерыванию пользовательским callback'ом
-	ASSERT_EQ(parser->error(), parser_t::error_t::ABORTED);
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::ABORTED);
 }
 
 /**
@@ -536,7 +536,7 @@ TEST_F(ParserFixture, SecurityLimitsTest){
 	// Создаём объект парсера запросов клиента
 	auto parser = this->make(direct_t::REQUEST);
 	// Получаем текущие лимиты безопасности
-	parser_t::limits_t limits = parser->limits();
+	parser_http_t::limits_t limits = parser->limits();
 	// Устанавливаем максимальное число заголовков
 	limits.maxHeaderCount = 2;
 	// Применяем изменённые лимиты безопасности
@@ -546,7 +546,7 @@ TEST_F(ParserFixture, SecurityLimitsTest){
 	// Выполняем разбор данных HTTP-запроса
 	parser->parse(message.data(), message.size());
 	// Проверяем что ошибка соответствует превышению числа заголовков
-	ASSERT_EQ(parser->error(), parser_t::error_t::TOO_MANY_HEADERS);
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::TOO_MANY_HEADERS);
 }
 
 /**
@@ -580,7 +580,7 @@ TEST_F(ParserFixture, RequestLineSpaceFloodTest){
 	// Создаём объект парсера запросов клиента
 	auto parser = this->make(direct_t::REQUEST);
 	// Получаем текущие лимиты безопасности
-	parser_t::limits_t limits = parser->limits();
+	parser_http_t::limits_t limits = parser->limits();
 	// Устанавливаем максимальную длину request-line
 	limits.maxRequestLine = 32;
 	// Применяем изменённые лимиты безопасности
@@ -592,7 +592,7 @@ TEST_F(ParserFixture, RequestLineSpaceFloodTest){
 	// Проверяем что зафиксирована ошибка разбора
 	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
 	// Проверяем что ошибка соответствует превышению длины request-line
-	ASSERT_EQ(parser->error(), parser_t::error_t::URL_OVERFLOW);
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::URL_OVERFLOW);
 }
 
 /**
@@ -649,11 +649,11 @@ TEST_F(ParserFixture, PhaseOrderTest){
  */
 TEST_F(ParserFixture, ErrorNameTest){
 	// Проверяем название кода ошибки обрыва соединения
-	ASSERT_EQ(parser_t::errorName(parser_t::error_t::PREMATURE_EOF), "PREMATURE_EOF");
+	ASSERT_EQ(parser_http_t::errorName(parser_http_t::error_t::PREMATURE_EOF), "PREMATURE_EOF");
 	// Проверяем название кода ошибки конфликта кадрирования
-	ASSERT_EQ(parser_t::errorName(parser_t::error_t::CONTENT_LENGTH_CONFLICT), "CONTENT_LENGTH_CONFLICT");
+	ASSERT_EQ(parser_http_t::errorName(parser_http_t::error_t::CONTENT_LENGTH_CONFLICT), "CONTENT_LENGTH_CONFLICT");
 	// Проверяем название кода отсутствия ошибки
-	ASSERT_EQ(parser_t::errorName(parser_t::error_t::NONE), "NONE");
+	ASSERT_EQ(parser_http_t::errorName(parser_http_t::error_t::NONE), "NONE");
 }
 
 /**
@@ -664,7 +664,7 @@ TEST_F(ParserFixture, CloneTest){
 	// Создаём объект парсера запросов клиента
 	auto parser = this->make(direct_t::REQUEST);
 	// Получаем текущие лимиты безопасности
-	parser_t::limits_t limits = parser->limits();
+	parser_http_t::limits_t limits = parser->limits();
 	// Устанавливаем максимальное число заголовков
 	limits.maxHeaderCount = 3;
 	// Применяем изменённые лимиты безопасности
@@ -673,10 +673,10 @@ TEST_F(ParserFixture, CloneTest){
 	std::unique_ptr <parser_t> clone = parser->clone();
 	// Проверяем что клон создан
 	ASSERT_TRUE(clone != nullptr);
-	// Проверяем что лимиты безопасности клонированы корректно
-	ASSERT_EQ(clone->limits().maxHeaderCount, 3u);
 	// Безопасно приводим клон к типу парсера HTTP/1.1
 	parser_http_t * clonePtr = static_cast <parser_http_t *> (clone.get());
+	// Проверяем что лимиты безопасности клонированы корректно
+	ASSERT_EQ(clonePtr->limits().maxHeaderCount, 3u);
 	// Формируем данные HTTP-запроса
 	const std::string message = "GET /clone HTTP/1.1\r\n\r\n";
 	// Выполняем разбор данных HTTP-запроса клонированным парсером

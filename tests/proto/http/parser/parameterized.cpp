@@ -75,7 +75,7 @@ TEST_P(FragmentParameterizedFixture, FragmentedParsingTest){
 	// Проверяем что сообщение полностью разобрано
 	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
 	// Проверяем что ошибок разбора нет
-	ASSERT_EQ(parser->error(), parser_t::error_t::NONE);
+	ASSERT_EQ(parser->error(), parser_http_t::error_t::NONE);
 	// Проверяем что тело сообщения собрано корректно вне зависимости от фрагментации
 	ASSERT_EQ(events.body, "AWH is awesome!");
 	// Проверяем что разобраны оба заголовка
@@ -199,7 +199,7 @@ struct ErrorTestParameter {
 	// Направление трафика (запрос/ответ)
 	direct_t direct;
 	// Ожидаемый код ошибки разбора
-	awh::http::parser_t::error_t error;
+	awh::http::parser_http_t::error_t error;
 };
 
 /**
@@ -234,36 +234,36 @@ TEST_P(ErrorParameterizedFixture, ErrorDetectionTest){
 INSTANTIATE_TEST_SUITE_P(TestParameters, ErrorParameterizedFixture,
 	::testing::Values(
 		// Недопустимый символ в методе запроса
-		ErrorTestParameter({"GE[T / HTTP/1.1\r\n\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_METHOD}),
+		ErrorTestParameter({"GE[T / HTTP/1.1\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_METHOD}),
 		// Одиночный CR без последующего LF в конце строки
-		ErrorTestParameter({"GET / HTTP/1.1\rX", direct_t::REQUEST, parser_t::error_t::INVALID_EOL}),
+		ErrorTestParameter({"GET / HTTP/1.1\rX", direct_t::REQUEST, parser_http_t::error_t::INVALID_EOL}),
 		// Неподдерживаемая версия протокола в запросе
-		ErrorTestParameter({"GET / HTTP/3.0\r\n\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_VERSION}),
+		ErrorTestParameter({"GET / HTTP/3.0\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_VERSION}),
 		// Некорректный литерал префикса версии протокола
-		ErrorTestParameter({"GET / HTTX/1.1\r\n\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_VERSION}),
+		ErrorTestParameter({"GET / HTTX/1.1\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_VERSION}),
 		// Недопустимый управляющий символ в request-target
-		ErrorTestParameter({std::string("GET /pa\x01th HTTP/1.1\r\n\r\n"), direct_t::REQUEST, parser_t::error_t::INVALID_TARGET}),
+		ErrorTestParameter({std::string("GET /pa\x01th HTTP/1.1\r\n\r\n"), direct_t::REQUEST, parser_http_t::error_t::INVALID_TARGET}),
 		// Пробел перед двоеточием в имени заголовка
-		ErrorTestParameter({"GET / HTTP/1.1\r\nHost : x\r\n\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_HEADER_TOKEN}),
+		ErrorTestParameter({"GET / HTTP/1.1\r\nHost : x\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_HEADER_TOKEN}),
 		// Устаревший перенос строки заголовка (obs-fold)
-		ErrorTestParameter({"GET / HTTP/1.1\r\nHost: x\r\n y\r\n\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_HEADER_TOKEN}),
+		ErrorTestParameter({"GET / HTTP/1.1\r\nHost: x\r\n y\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_HEADER_TOKEN}),
 		// Нечисловое значение заголовка Content-Length
-		ErrorTestParameter({"POST / HTTP/1.1\r\nContent-Length: abc\r\n\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_CONTENT_LENGTH}),
+		ErrorTestParameter({"POST / HTTP/1.1\r\nContent-Length: abc\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_CONTENT_LENGTH}),
 		// Одновременные заголовки Content-Length и Transfer-Encoding (request smuggling)
-		ErrorTestParameter({"POST / HTTP/1.1\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n", direct_t::REQUEST, parser_t::error_t::CONTENT_LENGTH_CONFLICT}),
+		ErrorTestParameter({"POST / HTTP/1.1\r\nContent-Length: 5\r\nTransfer-Encoding: chunked\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::CONTENT_LENGTH_CONFLICT}),
 		// Различающиеся значения двух заголовков Content-Length (request smuggling)
-		ErrorTestParameter({"POST / HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 6\r\n\r\n", direct_t::REQUEST, parser_t::error_t::CONTENT_LENGTH_CONFLICT}),
+		ErrorTestParameter({"POST / HTTP/1.1\r\nContent-Length: 5\r\nContent-Length: 6\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::CONTENT_LENGTH_CONFLICT}),
 		// Кодирование chunked не последнее в списке Transfer-Encoding
-		ErrorTestParameter({"POST / HTTP/1.1\r\nTransfer-Encoding: chunked, gzip\r\n\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_TRANSFER_ENCODING}),
+		ErrorTestParameter({"POST / HTTP/1.1\r\nTransfer-Encoding: chunked, gzip\r\n\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_TRANSFER_ENCODING}),
 		// Недопустимый символ в размере чанка
-		ErrorTestParameter({"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\nXYZ\r\n", direct_t::REQUEST, parser_t::error_t::INVALID_CHUNK_SIZE}),
+		ErrorTestParameter({"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\nXYZ\r\n", direct_t::REQUEST, parser_http_t::error_t::INVALID_CHUNK_SIZE}),
 		// Отсутствие CRLF после данных чанка
-		ErrorTestParameter({"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nabcXX", direct_t::REQUEST, parser_t::error_t::INVALID_CHUNK_TERMINATOR}),
+		ErrorTestParameter({"POST / HTTP/1.1\r\nTransfer-Encoding: chunked\r\n\r\n3\r\nabcXX", direct_t::REQUEST, parser_http_t::error_t::INVALID_CHUNK_TERMINATOR}),
 		// Статус-код ответа из четырёх цифр
-		ErrorTestParameter({"HTTP/1.1 2000 OK\r\n\r\n", direct_t::RESPONSE, parser_t::error_t::INVALID_STATUS}),
+		ErrorTestParameter({"HTTP/1.1 2000 OK\r\n\r\n", direct_t::RESPONSE, parser_http_t::error_t::INVALID_STATUS}),
 		// Статус-код ответа содержащий буквы
-		ErrorTestParameter({"HTTP/1.1 2A0 OK\r\n\r\n", direct_t::RESPONSE, parser_t::error_t::INVALID_STATUS}),
+		ErrorTestParameter({"HTTP/1.1 2A0 OK\r\n\r\n", direct_t::RESPONSE, parser_http_t::error_t::INVALID_STATUS}),
 		// Неподдерживаемая версия протокола в ответе
-		ErrorTestParameter({"HTTP/2.0 200 OK\r\n\r\n", direct_t::RESPONSE, parser_t::error_t::INVALID_VERSION})
+		ErrorTestParameter({"HTTP/2.0 200 OK\r\n\r\n", direct_t::RESPONSE, parser_http_t::error_t::INVALID_VERSION})
 	)
 );

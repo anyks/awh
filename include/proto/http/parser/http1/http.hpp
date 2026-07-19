@@ -26,6 +26,7 @@
  * Подключаем наши заголовочные файлы
  */
 #include "../parser.hpp"
+#include "../../provider.hpp"
 #include "../../../../sys/global.hpp"
 
 /**
@@ -57,6 +58,173 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ Parser_HTTP : public parser_t {
 			public:
 				/**
+				 * @brief Максимальная длина строки заголовка чанка (size + chunk-ext)
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr size_t MAX_CHUNK_LINE = (16 * 1024);
+				/**
+				 * @brief Максимальная длина request-line/status-line
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr size_t MAX_REQUEST_LINE = (8 * 1024);
+				/**
+				 * @brief Максимальный размер одного чанка
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr uint64_t MAX_CHUNK_SIZE = (1ull * 1024 * 1024 * 1024);
+			public:
+				/**
+				 * @brief Код ошибки разбора HTTP-парсера
+				 *
+				 */
+				enum class error_t : uint8_t {
+					NONE                      = 0x00, // Ошибок нет
+					INTERNAL                  = 0x01, // Внутренняя ошибка состояния
+					INVALID_EOL               = 0x02, // Ожидался LF после CR
+					INVALID_METHOD            = 0x03, // Недопустимый символ в методе
+					INVALID_TARGET            = 0x04, // Недопустимый символ в request-target
+					INVALID_STATUS            = 0x05, // Неверный статус-код ответа
+					INVALID_VERSION           = 0x06, // Неверная строка версии (HTTP/x.y)
+					INVALID_CHUNK_SIZE        = 0x07, // Неверный размер чанка
+					INVALID_HEADER_TOKEN      = 0x08, // Недопустимый символ в имени заголовка / obs-fold
+					INVALID_HEADER_VALUE      = 0x09, // Недопустимый символ в значении заголовка
+					INVALID_CONTENT_LENGTH    = 0x0A, // Content-Length не число / Некорректен
+					INVALID_CHUNK_TERMINATOR  = 0x0B, // Нет CRLF после данных чанка
+					INVALID_TRANSFER_ENCODING = 0x0C, // Некорректный Transfer-Encoding (chunked не последний и т.п.)
+					ABORTED                   = 0x0D, // Разбор прерван пользовательским callback'ом
+					URL_OVERFLOW              = 0x0E, // Превышен лимит длины request-line
+					BODY_OVERFLOW             = 0x0F, // Превышен лимит размера тела
+					CHUNK_OVERFLOW            = 0x10, // Превышен лимит размера чанка
+					HEADER_OVERFLOW           = 0x11, // Превышен лимит размера заголовков
+					TOO_MANY_HEADERS          = 0x12, // Превышено число заголовков
+					CONTENT_LENGTH_CONFLICT   = 0x13, // CL+TE или несколько разных Content-Length (request smuggling)
+					PREMATURE_EOF             = 0x14  // Соединение закрыто посреди незавершённого сообщения
+				};
+			public:
+				/**
+				 * @brief Структура ограничений безопасности парсера HTTP/1.x
+				 *
+				 * @details Расширяет общее ядро лимитов базового парсера лимитами,
+				 *          специфичными для HTTP/1.x: стартовая строка и кадрирование
+				 *          тела в кодировке chunked
+				 */
+				typedef struct Limits : parser_t::limits_t {
+					// Максимальная длина строки заголовка чанка (size + chunk-ext)
+					size_t maxChunkLine;
+					// Максимальная длина request-line/status-line
+					size_t maxRequestLine;
+					// Максимальный размер одного чанка
+					uint64_t maxChunkSize;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Limits() noexcept :
+					 parser_t::limits_t(),
+					 maxChunkLine(MAX_CHUNK_LINE),
+					 maxRequestLine(MAX_REQUEST_LINE),
+					 maxChunkSize(MAX_CHUNK_SIZE) {}
+				} limits_t;
+			public:
+				/**
+				 * @brief Класс разобранного сообщения
+				 *
+				 * @details Если Content-Length не установлен, то значение bodySize == -1.
+				 *          Если Content-Length установлен, то значение поля bodySize >= 0.
+				 *          Если указан Transfer-Encoding: chunked, то значение поля bodySize == -1.
+				 */
+				typedef class __AWH_SHARED_EXPORT__ Message {
+					public:
+						/**
+						 * @brief Структура флагов состояния сообщения
+						 *
+						 */
+						typedef struct Flags {
+							// Тело передаётся chunked
+							bool chunked;
+							// Запрошено переключение протокола (Upgrade + Connection: upgrade, ответ 101 или успешный CONNECT)
+							bool upgrade;
+							// Сообщение полностью разобрано
+							bool complete;
+							// Соединение переиспользуемое
+							bool keepAlive;
+							// Клиент прислал заголовок [Expect: 100-continue] и ожидает промежуточный ответ до отправки тела
+							bool expectContinue;
+							/**
+							 * @brief Конструктор
+							 *
+							 */
+							explicit Flags() noexcept :
+							 chunked(false), upgrade(false),
+							 complete(false), keepAlive(true),
+							 expectContinue(false) {}
+						} flags_t;
+					public:
+						// Партиция текущего состояния парсера
+						part_t part;
+						// Фаза разбора HTTP-сообщения
+						phase_t phase;
+						// Флаги состояния сообщения
+						flags_t flags;
+						// Ожидаемый размер тела сообщения (Content-Length)
+						int64_t bodySize;
+						// Объект провайдера заголовков сообщения
+						unique_ptr <provider_t> provider;
+					public:
+						/**
+						 * @brief Оператор перемещающего присваивания параметров сообщения
+						 *
+						 * @param message объект сообщения для перемещения
+						 * @return        текущее сообщение
+						 */
+						Message & operator = (Message && message) noexcept;
+						/**
+						 * @brief Оператор присваивания параметров сообщения
+						 *
+						 * @param message объект сообщения для копирования
+						 * @return        текущее сообщение
+						 */
+						Message & operator = (const Message & message) noexcept;
+					public:
+						/**
+						 * @brief Оператор сравнения
+						 *
+						 * @param message объект сообщения для сравнения
+						 * @return        результат сравнения
+						 */
+						bool operator == (const Message & message) noexcept;
+						/**
+						 * @brief Оператор сравнения
+						 *
+						 * @param message объект сообщения для сравнения
+						 * @return        результат сравнения
+						 */
+						bool operator != (const Message & message) noexcept;
+					public:
+						/**
+						 * @brief Конструктор перемещения
+						 *
+						 * @param message объект сообщения для перемещения
+						 */
+						Message(Message && message) noexcept;
+						/**
+						 * @brief Конструктор копирования
+						 *
+						 * @param message объект сообщения для копирования
+						 */
+						Message(const Message & message) noexcept;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit Message() noexcept;
+				} message_t;
+			public:
+				/**
 				 * @brief Тип функции обратного вызова для обработки провайдера заголовков сообщения
 				 *
 				 * @note Вызывается один раз, сразу после разбора стартовой строки (request-line/status-line),
@@ -65,7 +233,7 @@ namespace awh {
 				 * @param provider объект провайдера заголовков сообщения
 				 * @return         результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
 				 */
-				using provider_callback_t = function <bool (const provider_t * provider)>;
+				using provider_callback_t = function <bool (const provider_t *)>;
 				/**
 				 * @brief Тип функции обратного вызова для обработки тела сообщения
 				 *
@@ -76,7 +244,7 @@ namespace awh {
 				 * @param size   размер данных тела сообщения
 				 * @return       результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
 				 */
-				using body_callback_t = function <bool (const void * buffer, const size_t size)>;
+				using body_callback_t = function <bool (const void *, const size_t)>;
 				/**
 				 * @brief Тип функции обратного вызова для обработки фазы разбора HTTP-сообщения
 				 *
@@ -93,7 +261,7 @@ namespace awh {
 				 * @param part  часть сообщения (заголовки, трейлеры, тело), NONE - сообщение целиком
 				 * @return      результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
 				 */
-				using phase_callback_t = function <bool (const phase_t phase, const part_t part)>;
+				using phase_callback_t = function <bool (const phase_t, const part_t)>;
 				/**
 				 * @brief Тип функции обратного вызова для обработки границ чанков (Transfer-Encoding: chunked)
 				 *
@@ -113,7 +281,7 @@ namespace awh {
 				 * @param extension сырые расширения чанка (содержимое после ';' без CRLF), действительны ТОЛЬКО на время вызова
 				 * @return          результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
 				 */
-				using chunk_callback_t = function <bool (const phase_t phase, const uint64_t size, const string_view extension)>;
+				using chunk_callback_t = function <bool (const phase_t, const uint64_t, const string_view)>;
 				/**
 				 * @brief Тип функции обратного вызова для обработки заголовков или трейлеров сообщения
 				 *
@@ -126,7 +294,7 @@ namespace awh {
 				 * @param part  часть сообщения (заголовки или трейлеры)
 				 * @return      результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
 				 */
-				using header_callback_t = function <bool (const string_view name, const string_view value, const part_t part)>;
+				using header_callback_t = function <bool (const string_view, const string_view, const part_t)>;
 			private:
 				/**
 				 * @brief Структура промежуточных параметров заголовка HTTP
@@ -261,6 +429,14 @@ namespace awh {
 					 body(nullptr), phase(nullptr), chunk(nullptr),
 					 header(nullptr), provider(nullptr) {}
 				} callbacks_t;
+			private:
+				// Код ошибки разбора
+				error_t _error;
+			private:
+				// Настраиваемые лимиты безопасности
+				limits_t _limits;
+				// Результат разбора сообщения
+				message_t _message;
 			private:
 				// Флаги состояния парсера
 				flags_t _flags;
@@ -422,7 +598,7 @@ namespace awh {
 				 *          - если сообщение разобрано частично (заголовки или недочитанное тело
 				 *            с Content-Length) - фиксируется ошибка PREMATURE_EOF (обрыв соединения).
 				 */
-				void eof() noexcept;
+				void eof() noexcept override;
 				/**
 				 * @brief Метод разбора данных
 				 *
@@ -438,7 +614,47 @@ namespace awh {
 				 * @param size   размер данных для разбора
 				 * @return       количество обработанных байт данных
 				 */
-				size_t parse(const void * buffer, const size_t size) noexcept;
+				size_t parse(const void * buffer, const size_t size) noexcept override;
+			public:
+				/**
+				 * @brief Метод получения кода ошибки разбора
+				 *
+				 * @return код ошибки
+				 */
+				error_t error() const noexcept;
+				/**
+				 * @brief Метод получения человекочитаемого названия текущей ошибки разбора
+				 *
+				 * @return название текущей ошибки разбора
+				 */
+				string errorName() const noexcept override;
+				/**
+				 * @brief Метод получения человекочитаемого названия кода ошибки
+				 *
+				 * @param error код ошибки разбора
+				 * @return      название кода ошибки
+				 */
+				static string errorName(const error_t error) noexcept;
+			public:
+				/**
+				 * @brief Метод получения лимитов безопасности
+				 *
+				 * @return лимиты безопасности
+				 */
+				const limits_t & limits() const noexcept;
+				/**
+				 * @brief Метод установки лимитов безопасности
+				 *
+				 * @param limits лимиты безопасности
+				 */
+				void limits(const limits_t & limits) noexcept;
+			public:
+				/**
+				 * @brief Метод получения разобранного сообщения
+				 *
+				 * @return разобранное сообщение
+				 */
+				const message_t & message() const noexcept;
 			public:
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки тела сообщения
