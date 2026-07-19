@@ -68,8 +68,8 @@ awh::http::Parser::Message & awh::http::Parser::Message::operator = (const Messa
 		this->phase = message.phase;
 		// Выполняем копирование флагов состояния парсера
 		this->flags = message.flags;
-		// Выполняем копирование провайдера заголовков сообщения
-		this->provider = message.provider->clone();
+		// Выполняем копирование провайдера заголовков сообщения (если он установлен)
+		this->provider = (message.provider != nullptr ? message.provider->clone() : nullptr);
 		// Выполняем копирование размера тела сообщения
 		this->bodySize = message.bodySize;
 	}
@@ -157,7 +157,7 @@ awh::http::Parser::Message::Message(const Message & message) noexcept :
  phase(message.phase),
  flags(message.flags),
  bodySize(message.bodySize),
- provider(message.provider->clone()) {}
+ provider(message.provider != nullptr ? message.provider->clone() : nullptr) {}
 /**
  * @brief Конструктор
  *
@@ -286,10 +286,6 @@ string awh::http::Parser::errorName(const error_t error) noexcept {
 		case static_cast <uint8_t> (error_t::INVALID_VERSION):
 			// Выводим название кода ошибки
 			return "INVALID_VERSION";
-		// Ожидался литеральный символ (например, в "HTTP/")
-		case static_cast <uint8_t> (error_t::INVALID_CONSTANT):
-			// Выводим название кода ошибки
-			return "INVALID_CONSTANT";
 		// Неверный размер чанка
 		case static_cast <uint8_t> (error_t::INVALID_CHUNK_SIZE):
 			// Выводим название кода ошибки

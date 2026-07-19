@@ -1757,9 +1757,14 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				// Пропуск пробелов перед request-target
 				case static_cast <uint8_t> (state_t::S_REQ_TARGET_START): {
 					// Толерантно пропускаем лишние пробелы
-					if(ch == ' ')
+					if(ch == ' '){
+						// Если длина стартовой строки превышает лимит (пробелы тоже учитываются)
+						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine)
+							// Фиксируем ошибку превышения длины request-line
+							this->_error = error_t::URL_OVERFLOW;
 						// Выходим из состояния
 						break;
+					}
 					// Если символ недопустим в request-target
 					if(!::isTargetCh(ch)){
 						// Фиксируем ошибку некорректного request-target
@@ -1808,9 +1813,14 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				// Пропуск пробелов перед "HTTP/"
 				case static_cast <uint8_t> (state_t::S_REQ_HTTP_START): {
 					// Толерантно пропускаем лишние пробелы
-					if(ch == ' ')
+					if(ch == ' '){
+						// Если длина стартовой строки превышает лимит (пробелы тоже учитываются)
+						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine)
+							// Фиксируем ошибку превышения длины request-line
+							this->_error = error_t::URL_OVERFLOW;
 						// Выходим из состояния
 						break;
+					}
 					// Если получен не литерал "H"
 					if(ch != 'H'){
 						// Фиксируем ошибку некорректной версии протокола
@@ -2054,9 +2064,14 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				// Пропуск пробелов перед статус-кодом
 				case static_cast <uint8_t> (state_t::S_RES_STATUS_START): {
 					// Толерантно пропускаем дополнительные пробелы перед кодом
-					if(ch == ' ')
+					if(ch == ' '){
+						// Если длина стартовой строки превышает лимит (пробелы тоже учитываются)
+						if(++this->_statsHeaders.lineBytes > this->_limits.maxRequestLine)
+							// Фиксируем ошибку превышения длины стартовой строки
+							this->_error = error_t::URL_OVERFLOW;
 						// Выходим из состояния
 						break;
+					}
 					// Если символ не является десятичной цифрой
 					if(!::isDigit(ch)){
 						// Фиксируем ошибку некорректного статус-кода
@@ -2065,7 +2080,7 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						break;
 					}
 					// Устанавливаем первую цифру статус-кода
-					res->code = static_cast <uint8_t> (ch - '0');
+					res->code = static_cast <uint16_t> (ch - '0');
 					// Начинаем отсчёт цифр статус-кода
 					this->_statsBody.digits = 1;
 					// Переходим к разбору статус-кода
@@ -2083,7 +2098,7 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 							break;
 						}
 						// Добавляем цифру к статус-коду
-						res->code = static_cast <uint8_t> ((res->code * 10) + (ch - '0'));
+						res->code = static_cast <uint16_t> ((res->code * 10) + (ch - '0'));
 						// Наращиваем счётчик цифр статус-кода
 						++this->_statsBody.digits;
 						// Выходим из состояния

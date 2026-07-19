@@ -550,6 +550,52 @@ TEST_F(ParserFixture, SecurityLimitsTest){
 }
 
 /**
+ * @brief Метод проверки разбора статус-кодов превышающих 255 (проверка отсутствия усечения)
+ *
+ */
+TEST_F(ParserFixture, LargeStatusCodeTest){
+	// Создаём объект парсера ответов сервера
+	auto parser = this->make(direct_t::RESPONSE);
+	// Формируем данные HTTP-ответа со статус-кодом больше 255
+	const std::string message = "HTTP/1.1 404 Not Found\r\nContent-Length: 0\r\n\r\n";
+	// Выполняем разбор данных HTTP-ответа
+	const size_t bytes = parser->parse(message.data(), message.size());
+	// Проверяем что все данные обработаны
+	ASSERT_EQ(bytes, message.size());
+	// Проверяем что сообщение полностью разобрано
+	ASSERT_EQ(parser->status(), parser_t::status_t::COMPLETE);
+	// Получаем объект провайдера заголовков ответа сервера
+	const response_t * response = static_cast <const response_t *> (parser->message().provider.get());
+	// Проверяем что статус-код разобран без усечения
+	ASSERT_EQ(response->code, 404u);
+	// Проверяем что сообщение сервера разобрано корректно
+	ASSERT_EQ(response->message, "Not Found");
+}
+
+/**
+ * @brief Метод проверки учёта пробелов стартовой строки в лимите длины (защита от space-flood DoS)
+ *
+ */
+TEST_F(ParserFixture, RequestLineSpaceFloodTest){
+	// Создаём объект парсера запросов клиента
+	auto parser = this->make(direct_t::REQUEST);
+	// Получаем текущие лимиты безопасности
+	parser_t::limits_t limits = parser->limits();
+	// Устанавливаем максимальную длину request-line
+	limits.maxRequestLine = 32;
+	// Применяем изменённые лимиты безопасности
+	parser->limits(limits);
+	// Формируем данные HTTP-запроса с потоком пробелов перед request-target
+	const std::string message = ("GET " + std::string(100, ' ') + "/ HTTP/1.1\r\n\r\n");
+	// Выполняем разбор данных HTTP-запроса
+	parser->parse(message.data(), message.size());
+	// Проверяем что зафиксирована ошибка разбора
+	ASSERT_EQ(parser->status(), parser_t::status_t::ERROR);
+	// Проверяем что ошибка соответствует превышению длины request-line
+	ASSERT_EQ(parser->error(), parser_t::error_t::URL_OVERFLOW);
+}
+
+/**
  * @brief Метод проверки разбора значения Content-Length переданного списком
  *
  */

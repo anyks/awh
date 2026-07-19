@@ -88,12 +88,6 @@ namespace awh {
 				 */
 				static constexpr size_t MAX_HEADERS_TOTAL = (64 * 1024);
 				/**
-				 * @brief Верхняя граница предвыделения body по Content-Length
-				 *
-				 * @note Значения по умолчанию подобраны консервативно
-				 */
-				static constexpr size_t MAX_BODY_PREALLOC = (256 * 1024);
-				/**
 				 * @brief Максимальный размер тела
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
@@ -147,21 +141,20 @@ namespace awh {
 					INVALID_TARGET            = 0x04, // Недопустимый символ в request-target
 					INVALID_STATUS            = 0x05, // Неверный статус-код ответа
 					INVALID_VERSION           = 0x06, // Неверная строка версии (HTTP/x.y)
-					INVALID_CONSTANT          = 0x07, // Ожидался литеральный символ (например, в "HTTP/")
-					INVALID_CHUNK_SIZE        = 0x08, // Неверный размер чанка
-					INVALID_HEADER_TOKEN      = 0x09, // Недопустимый символ в имени заголовка / obs-fold
-					INVALID_HEADER_VALUE      = 0x0A, // Недопустимый символ в значении заголовка
-					INVALID_CONTENT_LENGTH    = 0x0B, // Content-Length не число / Некорректен
-					INVALID_CHUNK_TERMINATOR  = 0x0C, // Нет CRLF после данных чанка
-					INVALID_TRANSFER_ENCODING = 0x0D, // Некорректный Transfer-Encoding (chunked не последний и т.п.)
-					ABORTED                   = 0x0E, // Разбор прерван пользовательским callback'ом
-					URL_OVERFLOW              = 0x0F, // Превышен лимит длины request-line
-					BODY_OVERFLOW             = 0x10, // Превышен лимит размера тела
-					CHUNK_OVERFLOW            = 0x11, // Превышен лимит размера чанка
-					HEADER_OVERFLOW           = 0x12, // Превышен лимит размера заголовков
-					TOO_MANY_HEADERS          = 0x13, // Превышено число заголовков
-					CONTENT_LENGTH_CONFLICT   = 0x14, // CL+TE или несколько разных Content-Length (request smuggling)
-					PREMATURE_EOF             = 0x15  // Соединение закрыто посреди незавершённого сообщения
+					INVALID_CHUNK_SIZE        = 0x07, // Неверный размер чанка
+					INVALID_HEADER_TOKEN      = 0x08, // Недопустимый символ в имени заголовка / obs-fold
+					INVALID_HEADER_VALUE      = 0x09, // Недопустимый символ в значении заголовка
+					INVALID_CONTENT_LENGTH    = 0x0A, // Content-Length не число / Некорректен
+					INVALID_CHUNK_TERMINATOR  = 0x0B, // Нет CRLF после данных чанка
+					INVALID_TRANSFER_ENCODING = 0x0C, // Некорректный Transfer-Encoding (chunked не последний и т.п.)
+					ABORTED                   = 0x0D, // Разбор прерван пользовательским callback'ом
+					URL_OVERFLOW              = 0x0E, // Превышен лимит длины request-line
+					BODY_OVERFLOW             = 0x0F, // Превышен лимит размера тела
+					CHUNK_OVERFLOW            = 0x10, // Превышен лимит размера чанка
+					HEADER_OVERFLOW           = 0x11, // Превышен лимит размера заголовков
+					TOO_MANY_HEADERS          = 0x12, // Превышено число заголовков
+					CONTENT_LENGTH_CONFLICT   = 0x13, // CL+TE или несколько разных Content-Length (request smuggling)
+					PREMATURE_EOF             = 0x14  // Соединение закрыто посреди незавершённого сообщения
 				};
 			public:
 				/**
@@ -206,8 +199,6 @@ namespace awh {
 					size_t maxHeaderCount;
 					// Суммарный размер всех заголовков
 					size_t maxHeadersTotal;
-					// Верхняя граница предвыделения body по Content-Length
-					size_t maxBodyPrealloc;
 					// Максимальный размер тела
 					uint64_t maxBodySize;
 					// Максимальный размер одного чанка
@@ -223,7 +214,6 @@ namespace awh {
 					 maxHeaderValue(MAX_HEADER_VALUE),
 					 maxHeaderCount(MAX_HEADER_COUNT),
 					 maxHeadersTotal(MAX_HEADERS_TOTAL),
-					 maxBodyPrealloc(MAX_BODY_PREALLOC),
 					 maxBodySize(MAX_BODY_SIZE),
 					 maxChunkSize(MAX_CHUNK_SIZE) {}
 				} limits_t;
