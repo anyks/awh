@@ -44,7 +44,7 @@ namespace awh {
 			REQUEST  = 0x01, // Запрос клиента
 			RESPONSE = 0x02  // Ответ сервера
 		};
-		
+
 		/**
 		 * @brief Версии HTTP-протоколов
 		 *

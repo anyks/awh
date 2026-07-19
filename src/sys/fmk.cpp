@@ -2094,8 +2094,8 @@ bool awh::Framework::compare(string_view first, string_view second) const noexce
 	if(!first.empty() && !second.empty()){
 		// Выполняем перебор обоих строк
 		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](const char first, const char second) noexcept -> bool {
-			// Выполняем сравнение каждого символа
-			return (::tolower(static_cast <uint8_t> (first)) == ::tolower(static_cast <uint8_t> (second)));
+			// Выполняем сравнение каждого символа (при полном совпадении символов приведение регистра не требуется)
+			return ((first == second) || (::tolower(static_cast <uint8_t> (first)) == ::tolower(static_cast <uint8_t> (second))));
 		}) : false);
 	}
 	// Возвращаем значение по умолчанию
@@ -2111,8 +2111,8 @@ bool awh::Framework::compare(string_view first, string_view second) const noexce
 bool awh::Framework::compare(const char * first, const char * second) const noexcept {
 	// Если данные для сравшнения не пришли пустыми
 	if((first != nullptr) && ((* first) != '\0') && (second != nullptr) && ((* second) != '\0'))
-		// Выполняем перебор обоих строк
-		return this->compare(string{first}, string{second});
+		// Выполняем перебор обоих строк (через string_view - без выделения памяти под копии строк)
+		return this->compare(string_view{first}, string_view{second});
 	// Возвращаем значение по умолчанию
 	return (first == second);
 }
@@ -2128,8 +2128,8 @@ bool awh::Framework::compare(wstring_view first, wstring_view second) const noex
 	if(!first.empty() && !second.empty()){
 		// Выполняем перебор обоих строк
 		return ((first.size() == second.size()) ? std::equal(first.begin(), first.end(), second.begin(), second.end(), [](const wchar_t first, const wchar_t second) noexcept -> bool {
-			// Выполняем сравнение каждого символа
-			return (::towlower(static_cast <wint_t> (first)) == ::towlower(static_cast <wint_t> (second)));
+			// Выполняем сравнение каждого символа (при полном совпадении символов приведение регистра не требуется)
+			return ((first == second) || (::towlower(static_cast <wint_t> (first)) == ::towlower(static_cast <wint_t> (second))));
 		}) : false);
 	}
 	// Возвращаем значение по умолчанию
@@ -2145,8 +2145,8 @@ bool awh::Framework::compare(wstring_view first, wstring_view second) const noex
 bool awh::Framework::compare(const wchar_t * first, const wchar_t * second) const noexcept {
 	// Если данные для сравшнения не пришли пустыми
 	if((first != nullptr) && ((* first) != L'\0') && (second != nullptr) && ((* second) != L'\0'))
-		// Выполняем перебор обоих строк
-		return this->compare(wstring{first}, wstring{second});
+		// Выполняем перебор обоих строк (через wstring_view - без выделения памяти под копии строк)
+		return this->compare(wstring_view{first}, wstring_view{second});
 	// Возвращаем значение по умолчанию
 	return (first == second);
 }
@@ -4139,8 +4139,8 @@ T awh::Framework::atoi(string_view value) const noexcept {
 		if(!value.empty()){
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
-			// Если мы получили ошибку
-			if (answer.ec != std::errc())
+			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
+			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
 				result = static_cast <T> (0);
 		}
@@ -4191,8 +4191,8 @@ T awh::Framework::atoi(const string & value) const noexcept {
 		if(!value.empty()){
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
-			// Если мы получили ошибку
-			if (answer.ec != std::errc())
+			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
+			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
 				result = static_cast <T> (0);
 		}
@@ -4248,8 +4248,8 @@ T awh::Framework::atoi(const char * value, const size_t length) const noexcept {
 			result = static_cast <T> (0);
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value, value + length, result);
-			// Если мы получили ошибку
-			if (answer.ec != std::errc())
+			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
+			if((answer.ec != std::errc()) || (answer.ptr != (value + length)))
 				// Возвращаем значение по умолчанию
 				result = static_cast <T> (0);
 		}
@@ -4709,8 +4709,8 @@ T awh::Framework::atoi(wstring_view value) const noexcept {
 		if(!value.empty()){
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
-			// Если мы получили ошибку
-			if (answer.ec != std::errc())
+			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
+			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
 				result = static_cast <T> (0);
 		}
@@ -4761,8 +4761,8 @@ T awh::Framework::atoi(const wstring & value) const noexcept {
 		if(!value.empty()){
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
-			// Если мы получили ошибку
-			if (answer.ec != std::errc())
+			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
+			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
 				result = static_cast <T> (0);
 		}
@@ -4818,8 +4818,8 @@ T awh::Framework::atoi(const wchar_t * value, const size_t length) const noexcep
 			result = static_cast <T> (0);
 			// Вызываем метод конвертации
 			auto answer = fast_float::from_chars(value, value + length, result);
-			// Если мы получили ошибку
-			if (answer.ec != std::errc())
+			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
+			if((answer.ec != std::errc()) || (answer.ptr != (value + length)))
 				// Возвращаем значение по умолчанию
 				result = static_cast <T> (0);
 		}

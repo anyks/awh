@@ -43,7 +43,7 @@ namespace awh {
 	 *
 	 */
 	namespace http {
-        /**
+		/**
 		 * @brief Класс парсера HTTP/1.0 и HTTP/1.1
 		 *
 		 * @details Инкрементальный (streaming) парсер на базе байтового конечного автомата:
@@ -283,27 +283,11 @@ namespace awh {
 				statistics_headers_t _statsHeaders;
 			private:
 				/**
-				 * @brief Метод вызова функции обратного вызова обработки фазы разбора
+				 * @brief Метод выбора способа кадрирования тела после завершения заголовков
 				 *
-				 * @param phase фаза разбора HTTP-сообщения
-				 * @param part  часть сообщения
-				 * @return      результат обработки (false - разбор прерван с ошибкой ABORTED)
 				 */
-				bool firePhase(const phase_t phase, const part_t part) noexcept;
-				/**
-				 * @brief Метод вызова функции обратного вызова обработки границ чанков
-				 *
-				 * @param phase фаза разбора чанка
-				 * @param size  размер данных чанка
-				 * @return      результат обработки (false - разбор прерван с ошибкой ABORTED)
-				 */
-				bool fireChunk(const phase_t phase, const uint64_t size) noexcept;
-				/**
-				 * @brief Метод завершения разбора стартовой строки (request-line/status-line)
-				 *
-				 * @return результат обработки (false - разбор прерван)
-				 */
-				bool commitStartLine() noexcept;
+				void beginBody() noexcept;
+			private:
 				/**
 				 * @brief Метод завершения разбора текущего заголовка/трейлера
 				 *
@@ -311,10 +295,12 @@ namespace awh {
 				 */
 				bool commitHeader() noexcept;
 				/**
-				 * @brief Метод выбора способа кадрирования тела после завершения заголовков
+				 * @brief Метод завершения разбора стартовой строки (request-line/status-line)
 				 *
+				 * @return результат обработки (false - разбор прерван)
 				 */
-				void beginBody() noexcept;
+				bool commitStartLine() noexcept;
+			private:
 				/**
 				 * @brief Метод завершения разбора всего сообщения
 				 *
@@ -331,6 +317,38 @@ namespace awh {
 				 * @return результат проверки
 				 */
 				bool responseHasNoBody() const noexcept;
+			private:
+				/**
+				 * @brief Метод фиксации ошибки разбора (код ошибки, итоговый статус и запись в лог)
+				 *
+				 * @param error код ошибки разбора
+				 */
+				void fail(const error_t error) noexcept;
+			private:
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки фазы разбора
+				 *
+				 * @param phase фаза разбора HTTP-сообщения
+				 * @param part  часть сообщения
+				 * @return      результат обработки (false - разбор прерван с ошибкой ABORTED)
+				 */
+				bool firePhase(const phase_t phase, const part_t part) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки границ чанков
+				 *
+				 * @param phase фаза разбора чанка
+				 * @param size  размер данных чанка
+				 * @return      результат обработки (false - разбор прерван с ошибкой ABORTED)
+				 */
+				bool fireChunk(const phase_t phase, const uint64_t size) noexcept;
+			private:
+				/**
+				 * @brief Метод интерпретации заголовка Connection
+				 *
+				 * @param begin начало значения заголовка
+				 * @param end   конец значения заголовка
+				 */
+				void applyConnection(const char * begin, const char * end) noexcept;
 				/**
 				 * @brief Метод интерпретации заголовка Content-Length
 				 *
@@ -346,13 +364,6 @@ namespace awh {
 				 * @param end   конец значения заголовка
 				 */
 				void applyTransferEncoding(const char * begin, const char * end) noexcept;
-				/**
-				 * @brief Метод интерпретации заголовка Connection
-				 *
-				 * @param begin начало значения заголовка
-				 * @param end   конец значения заголовка
-				 */
-				void applyConnection(const char * begin, const char * end) noexcept;
 			public:
 				/**
 				 * @brief Метод полной очистки всех данных парсера
@@ -373,28 +384,29 @@ namespace awh {
 				void reset() noexcept override;
 			public:
 				/**
+				 * @brief Метод установки метода запроса, которому соответствует ожидаемый ответ
+				 *
+				 * @details Используется ТОЛЬКО для направления RESPONSE: парсер ответа сам не может
+				 *          узнать, на какой запрос пришёл ответ, а метод запроса влияет на кадрирование
+				 *          тела (ответ на HEAD содержит Content-Length, но тела не имеет; успешный 2xx
+				 *          ответ на CONNECT открывает туннель и тела не имеет).
+				 *          Сбрасывается в NONE при reset() - выставляйте заново перед каждым ответом
+				 *          в keep-alive/конвейере
+				 *
+				 * @param method метод запроса клиента
+				 */
+				void method(const method_t method) noexcept;
+			public:
+				/**
 				 * @brief Метод клонирования объекта парсера
+				 *
+				 * @details Клон получает те же направление трафика, лимиты безопасности и функции
+				 *          обратного вызова, но чистое состояние разбора ("фабрика с теми же настройками")
 				 *
 				 * @return копия объекта парсера
 				 */
 				unique_ptr <parser_t> clone() const noexcept override;
 			public:
-				/**
-				 * @brief Метод разбора данных
-				 *
-				 * @details Потребляет столько байтов, сколько смог, и возвращает их число.
-				 *          Итоговый статус необходимо контролировать методом status():
-				 *          - PARTIAL:  данные приняты, сообщение не завершено - нужно ещё байтов;
-				 *          - COMPLETE: сообщение полностью разобрано, разбор остановлен ровно на границе
-				 *                      сообщения - для конвейерных (pipelined) сообщений вызовите reset()
-				 *                      и затем parse() на оставшемся хвосте буфера;
-				 *          - ERROR:    ошибка разбора/безопасности - причина в методе error().
-				 *
-				 * @param buffer буфер данных для разбора
-				 * @param size   размер данных для разбора
-				 * @return       количество обработанных байт данных
-				 */
-				size_t parse(const void * buffer, const size_t size) noexcept;
 				/**
 				 * @brief Метод уведомления парсера о завершении потока данных (закрытии соединения)
 				 *
@@ -411,20 +423,22 @@ namespace awh {
 				 *            с Content-Length) - фиксируется ошибка PREMATURE_EOF (обрыв соединения).
 				 */
 				void eof() noexcept;
-			public:
 				/**
-				 * @brief Метод установки метода запроса, которому соответствует ожидаемый ответ
+				 * @brief Метод разбора данных
 				 *
-				 * @details Используется ТОЛЬКО для направления RESPONSE: парсер ответа сам не может
-				 *          узнать, на какой запрос пришёл ответ, а метод запроса влияет на кадрирование
-				 *          тела (ответ на HEAD содержит Content-Length, но тела не имеет; успешный 2xx
-				 *          ответ на CONNECT открывает туннель и тела не имеет).
-				 *          Сбрасывается в NONE при reset() - выставляйте заново перед каждым ответом
-				 *          в keep-alive/конвейере
+				 * @details Потребляет столько байтов, сколько смог, и возвращает их число.
+				 *          Итоговый статус необходимо контролировать методом status():
+				 *          - PARTIAL:  данные приняты, сообщение не завершено - нужно ещё байтов;
+				 *          - COMPLETE: сообщение полностью разобрано, разбор остановлен ровно на границе
+				 *                      сообщения - для конвейерных (pipelined) сообщений вызовите reset()
+				 *                      и затем parse() на оставшемся хвосте буфера;
+				 *          - ERROR:    ошибка разбора/безопасности - причина в методе error().
 				 *
-				 * @param method метод запроса клиента
+				 * @param buffer буфер данных для разбора
+				 * @param size   размер данных для разбора
+				 * @return       количество обработанных байт данных
 				 */
-				void method(const method_t method) noexcept;
+				size_t parse(const void * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки тела сообщения

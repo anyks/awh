@@ -45,7 +45,7 @@ namespace awh {
 	 *
 	 */
 	namespace http {
-        /**
+		/**
 		 * @brief Класс HTTP-парсера
 		 *
 		 */
@@ -183,7 +183,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Flags() noexcept : 
+					explicit Flags() noexcept :
 					 chunked(false), upgrade(false),
 					 complete(false), keepAlive(true),
 					 expectContinue(false) {}
