@@ -45,7 +45,7 @@ TEST(Http2Hpack, IntegerCodecTest){
 	// Буфер закодированного целого
 	std::string out;
 	// Кодируем значение 10 с префиксом 5 бит (RFC 7541 C.1.1 - помещается в префикс)
-	h2::hpack::integer::encode(out, 10, 5, 0x00);
+	h2::hpack::prefixed::encode(out, 10, 5, 0x00);
 	// Проверяем что значение закодировано одним байтом
 	ASSERT_EQ(out.size(), 1u);
 	// Проверяем байт закодированного значения
@@ -53,7 +53,7 @@ TEST(Http2Hpack, IntegerCodecTest){
 	// Очищаем буфер закодированного целого
 	out.clear();
 	// Кодируем значение 1337 с префиксом 5 бит (RFC 7541 C.1.2 - многобайтовое продолжение)
-	h2::hpack::integer::encode(out, 1337, 5, 0x00);
+	h2::hpack::prefixed::encode(out, 1337, 5, 0x00);
 	// Проверяем что значение закодировано тремя байтами
 	ASSERT_EQ(out.size(), 3u);
 	// Проверяем первый байт (префикс заполнен целиком)
@@ -67,17 +67,17 @@ TEST(Http2Hpack, IntegerCodecTest){
 	// Количество прочитанных байт
 	size_t consumed = 0;
 	// Декодируем закодированное значение обратно
-	ASSERT_EQ(h2::hpack::integer::decode(reinterpret_cast <const uint8_t *> (out.data()), out.size(), 5, value, consumed), h2::status_t::OK);
+	ASSERT_EQ(h2::hpack::prefixed::decode(reinterpret_cast <const uint8_t *> (out.data()), out.size(), 5, value, consumed), h2::status_t::OK);
 	// Проверяем декодированное значение
 	ASSERT_EQ(value, 1337u);
 	// Проверяем количество прочитанных байт
 	ASSERT_EQ(consumed, 3u);
 	// Декодируем неполный буфер (без последнего байта продолжения)
-	ASSERT_EQ(h2::hpack::integer::decode(reinterpret_cast <const uint8_t *> (out.data()), out.size() - 1, 5, value, consumed), h2::status_t::INCOMPLETE);
+	ASSERT_EQ(h2::hpack::prefixed::decode(reinterpret_cast <const uint8_t *> (out.data()), out.size() - 1, 5, value, consumed), h2::status_t::INCOMPLETE);
 	// Формируем заведомо переполняющую последовательность продолжений
 	const std::string overflow = "\x1F\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x7F";
 	// Декодируем переполняющую последовательность - ожидаем ошибку
-	ASSERT_EQ(h2::hpack::integer::decode(reinterpret_cast <const uint8_t *> (overflow.data()), overflow.size(), 5, value, consumed), h2::status_t::ERROR);
+	ASSERT_EQ(h2::hpack::prefixed::decode(reinterpret_cast <const uint8_t *> (overflow.data()), overflow.size(), 5, value, consumed), h2::status_t::ERROR);
 }
 
 /**
@@ -127,25 +127,25 @@ TEST(Http2Hpack, HuffmanCodecTest){
  */
 TEST(Http2Hpack, StaticTableTest){
 	// Получаем первую запись статической таблицы
-	const h2::hpack::static_entry_t * first = h2::hpack::integer::staticTable(1);
+	const h2::hpack::static_entry_t * first = h2::hpack::staticTable(1);
 	// Проверяем что запись существует
 	ASSERT_TRUE(first != nullptr);
 	// Проверяем название заголовка первой записи
 	ASSERT_EQ(first->name, ":authority");
 	// Получаем вторую запись статической таблицы
-	const h2::hpack::static_entry_t * second = h2::hpack::integer::staticTable(2);
+	const h2::hpack::static_entry_t * second = h2::hpack::staticTable(2);
 	// Проверяем название заголовка второй записи
 	ASSERT_EQ(second->name, ":method");
 	// Проверяем значение заголовка второй записи
 	ASSERT_EQ(second->value, "GET");
 	// Получаем последнюю запись статической таблицы
-	const h2::hpack::static_entry_t * last = h2::hpack::integer::staticTable(h2::hpack::STATIC_TABLE_SIZE);
+	const h2::hpack::static_entry_t * last = h2::hpack::staticTable(h2::hpack::STATIC_TABLE_SIZE);
 	// Проверяем название заголовка последней записи
 	ASSERT_EQ(last->name, "www-authenticate");
 	// Проверяем что нулевой индекс невалиден
-	ASSERT_TRUE(h2::hpack::integer::staticTable(0) == nullptr);
+	ASSERT_TRUE(h2::hpack::staticTable(0) == nullptr);
 	// Проверяем что индекс за пределами таблицы невалиден
-	ASSERT_TRUE(h2::hpack::integer::staticTable(h2::hpack::STATIC_TABLE_SIZE + 1) == nullptr);
+	ASSERT_TRUE(h2::hpack::staticTable(h2::hpack::STATIC_TABLE_SIZE + 1) == nullptr);
 }
 
 /**

@@ -274,7 +274,7 @@ namespace {
 		// Длина строки
 		uint64_t length = 0;
 		// Выполняем декодирование длины строки (префикс 7 бит)
-		const status_t status = hpack::integer::decode(data + pos, size - pos, 7, length, used);
+		const status_t status = hpack::prefixed::decode(data + pos, size - pos, 7, length, used);
 		// Если декодирование длины не удалось
 		if(status != status_t::OK){
 			// Если зафиксирована ошибка декодирования
@@ -341,18 +341,33 @@ namespace {
 			// Выполняем Huffman-кодирование строки
 			hpack::huffman::encode(str, encode);
 			// Дописываем длину строки с флагом Huffman (H = 1)
-			hpack::integer::encode(output, encode.size(), 7, 0x80);
+			hpack::prefixed::encode(output, encode.size(), 7, 0x80);
 			// Дописываем закодированную строку
 			output.append(::move(encode));
 		// Кодируем строку литералом
 		} else {
 			// Дописываем длину строки без флага Huffman (H = 0)
-			hpack::integer::encode(output, str.size(), 7, 0x00);
+			hpack::prefixed::encode(output, str.size(), 7, 0x00);
 			// Дописываем строку как есть
 			output.append(str.data(), str.size());
 		}
 	}
 };
+
+/**
+ * @brief Функция получения записи статической таблицы по индексу 1..61 (RFC 7541 Appendix A)
+ *
+ * @param index индекс записи (1-based); 0 или > 61 - невалиден
+ * @return      указатель на запись либо nullptr
+ */
+const awh::http::h2::hpack::static_entry_t * awh::http::h2::hpack::staticTable(const size_t index) noexcept {
+	// Если индекс за пределами статической таблицы
+	if((index == 0) || (index > STATIC_TABLE_SIZE))
+		// Запись не найдена
+		return nullptr;
+	// Выводим запись статической таблицы
+	return &::STATIC[index];
+}
 
 /**
  * @brief Конструктор
@@ -506,20 +521,6 @@ bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t si
 }
 
 /**
- * @brief Функция получения записи статической таблицы по индексу 1..61 (RFC 7541 Appendix A)
- *
- * @param index индекс записи (1-based); 0 или > 61 - невалиден
- * @return      указатель на запись либо nullptr
- */
-const awh::http::h2::hpack::static_entry_t * awh::http::h2::hpack::integer::staticTable(const size_t index) noexcept {
-	// Если индекс за пределами статической таблицы
-	if((index == 0) || (index > STATIC_TABLE_SIZE))
-		// Запись не найдена
-		return nullptr;
-	// Выводим запись статической таблицы
-	return &::STATIC[index];
-}
-/**
  * @brief Функция кодирования целого с префиксом переменной длины (RFC 7541 §5.1)
  *
  * @param output      выходной буфер
@@ -527,7 +528,7 @@ const awh::http::h2::hpack::static_entry_t * awh::http::h2::hpack::integer::stat
  * @param prefixBits  размер префикса в битах (1..8)
  * @param prefixValue значение старших бит первого байта
  */
-void awh::http::h2::hpack::integer::encode(string & output, uint64_t value, const uint8_t prefixBits, const uint8_t prefixValue) noexcept {
+void awh::http::h2::hpack::prefixed::encode(string & output, uint64_t value, const uint8_t prefixBits, const uint8_t prefixValue) noexcept {
 	// Максимальное значение, помещающееся в префикс
 	const uint8_t prefixMax = static_cast <uint8_t> ((1u << prefixBits) - 1);
 	// Старшие биты первого байта (за пределами префикса)
@@ -565,7 +566,7 @@ void awh::http::h2::hpack::integer::encode(string & output, uint64_t value, cons
  * @param consumed   количество прочитанных байт
  * @return           результат декодирования (OK / INCOMPLETE - мало данных / ERROR - переполнение)
  */
-awh::http::h2::status_t awh::http::h2::hpack::integer::decode(const uint8_t * data, const size_t size, const uint8_t prefixBits, uint64_t & value, size_t & consumed) noexcept {
+awh::http::h2::status_t awh::http::h2::hpack::prefixed::decode(const uint8_t * data, const size_t size, const uint8_t prefixBits, uint64_t & value, size_t & consumed) noexcept {
 	// Если данных для разбора нет
 	if(size < 1)
 		// Данных недостаточно
@@ -782,7 +783,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 		// Если индекс принадлежит статической таблице
 		if(index <= STATIC_TABLE_SIZE){
 			// Получаем запись статической таблицы
-			const static_entry_t * entry = integer::staticTable(static_cast <size_t> (index));
+			const static_entry_t * entry = staticTable(static_cast <size_t> (index));
 			// Если запись не найдена
 			if(entry == nullptr)
 				// Запись не найдена
@@ -836,7 +837,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			// Объединённый индекс записи
 			uint64_t index = 0;
 			// Выполняем декодирование индекса
-			const status_t status = integer::decode(data + pos, size - pos, 7, index, used);
+			const status_t status = prefixed::decode(data + pos, size - pos, 7, index, used);
 			// Если декодирование индекса не удалось
 			if(status != status_t::OK){
 				// Если зафиксирована ошибка декодирования
@@ -873,7 +874,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			// Объединённый индекс записи
 			uint64_t index = 0;
 			// Если декодирование индекса не удалось
-			if(integer::decode(data + pos, size - pos, 6, index, used) != status_t::OK){
+			if(prefixed::decode(data + pos, size - pos, 6, index, used) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -918,7 +919,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			// Объединённый индекс записи
 			uint64_t index = 0;
 			// Если декодирование индекса не удалось
-			if(integer::decode(data + pos, size - pos, 4, index, used) != status_t::OK){
+			if(prefixed::decode(data + pos, size - pos, 4, index, used) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -961,7 +962,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			// Новый размер динамической таблицы
 			uint64_t newSize = 0;
 			// Если декодирование нового размера не удалось
-			if(integer::decode(data + pos, size - pos, 5, newSize, used) != status_t::OK){
+			if(prefixed::decode(data + pos, size - pos, 5, newSize, used) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK
 				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
@@ -1059,7 +1060,7 @@ void awh::http::h2::hpack::Encoder::begin(string & output) noexcept {
 	// Если требуется отправить Dynamic Table Size Update (RFC 7541 §4.2: обязан идти в самом начале блока)
 	if(this->_sizeUpdatePending){
 		// Дописываем Dynamic Table Size Update (паттерн 001xxxxx)
-		integer::encode(output, this->_pendingSize, 5, 0x20);
+		prefixed::encode(output, this->_pendingSize, 5, 0x20);
 		// Сбрасываем признак ожидающего update
 		this->_sizeUpdatePending = false;
 	}
@@ -1131,7 +1132,7 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 		 */
 		this->lookup(name, value, nameIndex);
 		// Дописываем индекс имени (или 0)
-		integer::encode(output, nameIndex, 4, 0x10);
+		prefixed::encode(output, nameIndex, 4, 0x10);
 		// Если совпадение по имени не найдено
 		if(nameIndex == 0)
 			// Дописываем название заголовка строкой
@@ -1146,7 +1147,7 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 	// Если найдено полное совпадение (имя и значение уже в таблице)
 	if(fullIndex != 0){
 		// Дописываем Indexed Header Field (RFC 7541 §6.1)
-		integer::encode(output, fullIndex, 7, 0x80);
+		prefixed::encode(output, fullIndex, 7, 0x80);
 		// Кодирование заголовка завершено
 		return;
 	}
@@ -1154,7 +1155,7 @@ void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, 
 	 * Literal с инкрементальной индексацией (RFC 7541 §6.2.1, префикс 6 бит, старший бит 0x40).
 	 * nameIndex == 0 - имя кодируется строкой; иначе ссылаемся на существующее имя
 	 */
-	integer::encode(output, nameIndex, 6, 0x40);
+	prefixed::encode(output, nameIndex, 6, 0x40);
 	// Если совпадение по имени не найдено
 	if(nameIndex == 0)
 		// Дописываем название заголовка строкой

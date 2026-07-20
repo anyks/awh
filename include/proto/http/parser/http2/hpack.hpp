@@ -79,6 +79,15 @@ namespace awh {
 					// Значение заголовка
 					string_view value;
 				} static_entry_t;
+
+				/**
+				 * @brief Функция получения записи статической таблицы по индексу 1..61 (RFC 7541 Appendix A)
+				 *
+				 * @param index индекс записи (1-based); 0 или > 61 - невалиден
+				 * @return      указатель на запись либо nullptr
+				 */
+				__AWH_SHARED_EXPORT__ const static_entry_t * staticTable(const size_t index) noexcept;
+
 				/**
 				 * @brief Класс пары заголовка
 				 *
@@ -156,14 +165,7 @@ namespace awh {
 				 * @brief Пространство имён функций кодирования/декодирования целых с префиксом переменной длины (RFC 7541 §5.1)
 				 *
 				 */
-				namespace integer {
-					/**
-					 * @brief Функция получения записи статической таблицы по индексу 1..61 (RFC 7541 Appendix A)
-					 *
-					 * @param index индекс записи (1-based); 0 или > 61 - невалиден
-					 * @return      указатель на запись либо nullptr
-					 */
-					__AWH_SHARED_EXPORT__ const static_entry_t * staticTable(const size_t index) noexcept;
+				namespace prefixed {
 					/**
 					 * @brief Функция кодирования целого с префиксом переменной длины (RFC 7541 §5.1)
 					 *
