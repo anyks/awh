@@ -13,6 +13,11 @@
  */
 
 /**
+ * Стандартный заголовочный файл
+ */
+#include <utility>
+
+/**
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/parser/http2/hpack.hpp>
@@ -191,7 +196,7 @@ namespace {
 	/**
 	 * @brief Структура узла дерева декодирования Huffman
 	 *
-	 * @details У листа sym >= 0, у внутреннего узла sym == -1
+	 * @details У листа sym >= 0, у внутреннего узла sym == -1.
 	 */
 	struct huff_node_t {
 		// Декодированный символ (или -1 для внутреннего узла)
@@ -209,9 +214,9 @@ namespace {
 		// Строим дерево декодирования лениво при первом обращении
 		static const vector <huff_node_t> tree = [](){
 			// Результат работы функции
-			vector <huff_node_t> t;
+			vector <huff_node_t> nodes;
 			// Создаём корень дерева
-			t.push_back(huff_node_t{ -1, { -1, -1 } });
+			nodes.push_back(huff_node_t{ -1, { -1, -1 } });
 			/**
 			 * Выполняем перебор всех символов таблицы кодов
 			 */
@@ -221,7 +226,7 @@ namespace {
 				// Получаем длину кода текущего символа в битах
 				const uint8_t nbits = HUFF[sym].nbits;
 				// Начинаем спуск от корня дерева
-				int32_t cur = 0;
+				int32_t curent = 0;
 				/**
 				 * Выполняем перебор всех бит кода
 				 */
@@ -229,64 +234,63 @@ namespace {
 					// Извлекаем очередной бит кода (от старшего к младшему)
 					const int32_t bit = ((code >> (31 - i)) & 1u);
 					// Если дочерний узел для этого бита ещё не создан
-					if(t[cur].child[bit] < 0){
+					if(nodes[curent].child[bit] < 0){
 						// Создаём новый внутренний узел
-						t.push_back(huff_node_t{ -1, { -1, -1 } });
+						nodes.push_back(huff_node_t{ -1, { -1, -1 } });
 						// Привязываем созданный узел к текущему
-						t[cur].child[bit] = static_cast <int32_t> (t.size() - 1);
+						nodes[curent].child[bit] = static_cast <int32_t> (nodes.size() - 1);
 					}
 					// Спускаемся в дочерний узел
-					cur = t[cur].child[bit];
+					curent = nodes[curent].child[bit];
 				}
 				// Помечаем достигнутый узел как лист с декодированным символом
-				t[cur].sym = static_cast <int16_t> (sym);
+				nodes[curent].sym = static_cast <int16_t> (sym);
 			}
 			// Выводим построенное дерево
-			return t;
+			return nodes;
 		}();
 		// Выводим дерево декодирования
 		return tree;
 	}
-
 	/**
 	 * @brief Функция декодирования HPACK-строки (литерал или Huffman) начиная с позиции pos
 	 *
-	 * @param data входной буфер
-	 * @param size доступно байт
-	 * @param pos  текущая позиция разбора (сдвигается)
-	 * @param out  выходной буфер декодированной строки
-	 * @param err  код ошибки протокола
-	 * @return     результат декодирования (OK/INCOMPLETE/ERROR)
+	 * @param data   входной буфер
+	 * @param size   доступно байт
+	 * @param pos    текущая позиция разбора (сдвигается)
+	 * @param output выходной буфер декодированной строки
+	 * @param error  код ошибки протокола
+	 * @return       результат декодирования (OK/INCOMPLETE/ERROR)
 	 */
-	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & out, error_t & err) noexcept {
+	status_t decodeString(const uint8_t * data, const size_t size, size_t & pos, string & output, error_t & error) noexcept {
 		// Если данных для разбора не осталось
 		if(pos >= size)
 			// Данных недостаточно
 			return status_t::INCOMPLETE;
 		// Извлекаем признак Huffman-кодирования строки (старший бит)
 		const bool huffman = ((data[pos] & 0x80) != 0);
-		// Длина строки
-		uint64_t len = 0;
 		// Количество прочитанных байт
 		size_t used = 0;
+		// Длина строки
+		uint64_t length = 0;
 		// Выполняем декодирование длины строки (префикс 7 бит)
-		const status_t st = hpack::decodeInteger(data + pos, size - pos, 7, len, used);
+		const status_t status = hpack::integer::decode(data + pos, size - pos, 7, length, used);
 		// Если декодирование длины не удалось
-		if(st != status_t::OK){
+		if(status != status_t::OK){
 			// Если зафиксирована ошибка декодирования
-			if(st == status_t::ERROR)
+			if(status == status_t::ERROR)
 				// Фиксируем ошибку состояния HPACK
-				err = error_t::COMPRESSION_ERROR;
+				error = error_t::COMPRESSION_ERROR;
 			// Выводим статус декодирования
-			return st;
+			return status;
 		}
 		// Сдвигаем позицию за длину строки
 		pos += used;
 		/**
-		 * Без сложения pos + len: оно переполняет size_t при враждебно большом len
+		 * Без сложения pos + length: оно переполняет size_t при враждебно большом length
 		 * (длина строки приходит из недоверенных данных) и обходит проверку границ
 		 */
-		if(len > static_cast <uint64_t> (size - pos))
+		if(length > static_cast <uint64_t> (size - pos))
 			// Данных недостаточно
 			return status_t::INCOMPLETE;
 		// Указатель на данные строки
@@ -294,61 +298,211 @@ namespace {
 		// Если строка закодирована Huffman'ом
 		if(huffman){
 			// Если декодирование Huffman-строки не удалось
-			if(!hpack::huffmanDecode(str, static_cast <size_t> (len), out)){
+			if(!hpack::huffman::decode(str, static_cast <size_t> (length), output)){
 				// Фиксируем ошибку состояния HPACK
-				err = error_t::COMPRESSION_ERROR;
+				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 		// Строка передана литералом - копируем как есть
-		} else out.assign(reinterpret_cast <const char *> (str), static_cast <size_t> (len));
+		} else output.assign(reinterpret_cast <const char *> (str), static_cast <size_t> (length));
 		// Сдвигаем позицию за данные строки
-		pos += static_cast <size_t> (len);
+		pos += static_cast <size_t> (length);
 		// Строка декодирована
 		return status_t::OK;
 	}
-
 	/**
 	 * @brief Функция проверки названия заголовка на чувствительность (RFC 7541 §7.1.3)
 	 *
-	 * @details Такие заголовки кодер всегда трактует как чувствительные
+	 * @details Такие заголовки кодер всегда трактует как чувствительные.
 	 *
-	 * @param n название заголовка
-	 * @return  результат проверки
+	 * @param name название заголовка
+	 * @return     результат проверки
 	 */
-	bool isSensitiveName(string_view n) noexcept {
+	bool isSensitiveName(string_view name) noexcept {
 		// Чувствительными считаются заголовки авторизации и cookie
 		return (
-			(n == "authorization") || (n == "proxy-authorization") ||
-			(n == "cookie") || (n == "set-cookie")
+			(name == "cookie") || (name == "set-cookie") ||
+			(name == "authorization") || (name == "proxy-authorization")
 		);
 	}
 	/**
 	 * @brief Функция кодирования HPACK-строки (литерал или Huffman)
 	 *
-	 * @param out        выходной буфер
-	 * @param s          кодируемая строка
+	 * @param output     выходной буфер
+	 * @param str          кодируемая строка
 	 * @param useHuffman применять Huffman-кодирование, если оно короче литерала
 	 */
-	void encodeStringLiteral(string & out, string_view s, const bool useHuffman) noexcept {
+	void encodeStringLiteral(string & output, string_view str, const bool useHuffman) noexcept {
 		// Если Huffman-кодирование разрешено и даёт выигрыш по размеру
-		if(useHuffman && (hpack::huffmanLength(s) < s.size())){
+		if(useHuffman && (hpack::huffman::length(str) < str.size())){
 			// Буфер закодированной строки
-			string enc;
+			string encode = "";
 			// Выполняем Huffman-кодирование строки
-			hpack::huffmanEncode(s, enc);
+			hpack::huffman::encode(str, encode);
 			// Дописываем длину строки с флагом Huffman (H = 1)
-			hpack::encodeInteger(out, enc.size(), 7, 0x80);
+			hpack::integer::encode(output, encode.size(), 7, 0x80);
 			// Дописываем закодированную строку
-			out.append(enc);
+			output.append(::move(encode));
 		// Кодируем строку литералом
 		} else {
 			// Дописываем длину строки без флага Huffman (H = 0)
-			hpack::encodeInteger(out, s.size(), 7, 0x00);
+			hpack::integer::encode(output, str.size(), 7, 0x00);
 			// Дописываем строку как есть
-			out.append(s.data(), s.size());
+			output.append(str.data(), str.size());
 		}
 	}
+};
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::hpack::Field::Field() noexcept :
+ name{""}, value{""}, sensitive(false) {}
+/**
+ * @brief Конструктор
+ *
+ * @param name  название заголовка
+ * @param value значение заголовка
+ */
+awh::http::h2::hpack::Field::Field(string name, string value) noexcept :
+ name(::move(name)), value(::move(value)), sensitive(false) {}
+/**
+ * @brief Конструктор
+ *
+ * @param name      название заголовка
+ * @param value     значение заголовка
+ * @param sensitive флаг чувствительного значения
+ */
+awh::http::h2::hpack::Field::Field(string name, string value, const bool sensitive) noexcept :
+ name(::move(name)), value(::move(value)), sensitive(sensitive) {}
+
+/**
+ * @brief Функция вычисления длины строки в байтах после Huffman-кодирования
+ *
+ * @param input строка для вычисления
+ * @return      длина строки после кодирования
+ */
+size_t awh::http::h2::hpack::huffman::length(string_view input) noexcept {
+	// Суммарная длина кодов в битах
+	size_t bits = 0;
+	/**
+	 * Выполняем перебор всех символов строки
+	 */
+	for(uint8_t letter : input)
+		// Наращиваем суммарную длину кодов
+		bits += ::HUFF[letter].nbits;
+	// Выводим длину строки в байтах (с округлением вверх)
+	return ((bits + 7) / 8);
+}
+/**
+ * @brief Функция кодирования строки Huffman'ом (RFC 7541 Appendix B)
+ *
+ * @param input  кодируемая строка
+ * @param output выходной буфер закодированной строки
+ */
+void awh::http::h2::hpack::huffman::encode(string_view input, string & output) noexcept {
+	// Число накопленных бит
+	int32_t count = 0;
+	// Битовый аккумулятор
+	uint64_t bytes = 0;
+	/**
+	 * Выполняем перебор всех символов строки
+	 */
+	for(uint8_t letter : input){
+		// Получаем длину кода текущего символа в битах
+		const uint8_t nbits = ::HUFF[letter].nbits;
+		// Получаем код текущего символа с правым выравниванием
+		const uint32_t code = (::HUFF[letter].code >> (32 - nbits));
+		// Накапливаем код в битовом аккумуляторе
+		bytes = ((bytes << nbits) | code);
+		// Наращиваем число накопленных бит
+		count += nbits;
+		/**
+		 * Выполняем выгрузку целых байтов из аккумулятора
+		 */
+		while(count >= 8){
+			// Уменьшаем число накопленных бит на байт
+			count -= 8;
+			// Дописываем очередной байт закодированной строки
+			output.push_back(static_cast <char> ((bytes >> count) & 0xFF));
+		}
+	}
+	// Если в аккумуляторе остались биты
+	if(count > 0){
+		// Число недостающих до байта бит
+		const int32_t rem = (8 - count);
+		// Добиваем хвост единичными битами (префикс EOS)
+		bytes = ((bytes << rem) | ((1u << rem) - 1));
+		// Дописываем последний байт закодированной строки
+		output.push_back(static_cast <char> (bytes & 0xFF));
+	}
+}
+/**
+ * @brief Функция декодирования Huffman-строки (RFC 7541 Appendix B)
+ *
+ * @param data   входной буфер
+ * @param size   доступно байт
+ * @param output выходной буфер декодированной строки
+ * @return       результат декодирования (false - некорректная последовательность, COMPRESSION_ERROR)
+ */
+bool awh::http::h2::hpack::huffman::decode(const uint8_t * data, const size_t size, string & output) noexcept {
+	// Получаем дерево декодирования Huffman
+	const vector <::huff_node_t> & tree = ::huffTree();
+	// Длина текущего незавершённого пути в битах
+	int32_t padLen = 0;
+	// Текущий узел дерева
+	int32_t current = 0;
+	// Признак того, что незавершённый путь состоит из единичных бит
+	bool padOnes = true;
+	/**
+	 * Выполняем перебор всех байтов входного буфера
+	 */
+	for(size_t i = 0; i < size; ++i){
+		// Извлекаем очередной байт
+		const uint8_t byte = data[i];
+		/**
+		 * Выполняем перебор всех бит байта (от старшего к младшему)
+		 */
+		for(int32_t j = 7; j >= 0; --j){
+			// Извлекаем очередной бит
+			const int32_t bit = ((byte >> j) & 1);
+			// Спускаемся в дочерний узел по значению бита
+			current = tree[current].child[bit];
+			// Если дочерний узел отсутствует - недопустимая кодовая последовательность
+			if(current < 0)
+				// Фиксируем ошибку декодирования
+				return false;
+			// Наращиваем длину незавершённого пути
+			++padLen;
+			// Обновляем признак единичных бит пути
+			padOnes = (padOnes && (bit == 1));
+			// Если достигнут лист - символ декодирован
+			if(tree[current].sym >= 0){
+				// Дописываем декодированный символ
+				output.push_back(static_cast <char> (tree[current].sym));
+				// Сбрасываем длину незавершённого пути
+				padLen = 0;
+				// Возвращаемся к корню дерева
+				current = 0;
+				// Сбрасываем признак единичных бит пути
+				padOnes = true;
+			}
+		}
+	}
+	/**
+	 * Корректный конец: либо точно на границе символа, либо хвост из <= 7
+	 * единичных бит (префикс EOS). Иначе - COMPRESSION_ERROR
+	 */
+	if(current != 0){
+		// Если хвост длиннее 7 бит или содержит нулевые биты
+		if((padLen > 7) || !padOnes)
+			// Фиксируем ошибку декодирования
+			return false;
+	}
+	// Строка декодирована
+	return true;
 }
 
 /**
@@ -357,13 +511,49 @@ namespace {
  * @param index индекс записи (1-based); 0 или > 61 - невалиден
  * @return      указатель на запись либо nullptr
  */
-const awh::http::h2::hpack::static_entry_t * awh::http::h2::hpack::staticTable(const size_t index) noexcept {
+const awh::http::h2::hpack::static_entry_t * awh::http::h2::hpack::integer::staticTable(const size_t index) noexcept {
 	// Если индекс за пределами статической таблицы
 	if((index == 0) || (index > STATIC_TABLE_SIZE))
 		// Запись не найдена
 		return nullptr;
 	// Выводим запись статической таблицы
 	return &::STATIC[index];
+}
+/**
+ * @brief Функция кодирования целого с префиксом переменной длины (RFC 7541 §5.1)
+ *
+ * @param output      выходной буфер
+ * @param value       кодируемое значение
+ * @param prefixBits  размер префикса в битах (1..8)
+ * @param prefixValue значение старших бит первого байта
+ */
+void awh::http::h2::hpack::integer::encode(string & output, uint64_t value, const uint8_t prefixBits, const uint8_t prefixValue) noexcept {
+	// Максимальное значение, помещающееся в префикс
+	const uint8_t prefixMax = static_cast <uint8_t> ((1u << prefixBits) - 1);
+	// Старшие биты первого байта (за пределами префикса)
+	const uint8_t high = (prefixValue & static_cast <uint8_t> (~prefixMax));
+	// Если значение помещается в префикс целиком
+	if(value < prefixMax){
+		// Дописываем единственный байт со значением в префиксе
+		output.push_back(static_cast <char> (high | static_cast <uint8_t> (value)));
+		// Выходим из функции
+		return;
+	}
+	// Дописываем первый байт с заполненным префиксом
+	output.push_back(static_cast <char> (high | prefixMax));
+	// Вычитаем часть значения, ушедшую в префикс
+	value -= prefixMax;
+	/**
+	 * Выполняем запись байтов продолжения (7 бит на байт)
+	 */
+	while(value >= 0x80){
+		// Дописываем очередные 7 бит с признаком продолжения
+		output.push_back(static_cast <char> ((value & 0x7F) | 0x80));
+		// Сдвигаем значение на записанные биты
+		value >>= 7;
+	}
+	// Дописываем последний байт без признака продолжения
+	output.push_back(static_cast <char> (value));
 }
 /**
  * @brief Функция декодирования целого с префиксом переменной длины (RFC 7541 §5.1)
@@ -375,7 +565,7 @@ const awh::http::h2::hpack::static_entry_t * awh::http::h2::hpack::staticTable(c
  * @param consumed   количество прочитанных байт
  * @return           результат декодирования (OK / INCOMPLETE - мало данных / ERROR - переполнение)
  */
-awh::http::h2::status_t awh::http::h2::hpack::decodeInteger(const uint8_t * data, const size_t size, const uint8_t prefixBits, uint64_t & value, size_t & consumed) noexcept {
+awh::http::h2::status_t awh::http::h2::hpack::integer::decode(const uint8_t * data, const size_t size, const uint8_t prefixBits, uint64_t & value, size_t & consumed) noexcept {
 	// Если данных для разбора нет
 	if(size < 1)
 		// Данных недостаточно
@@ -400,19 +590,19 @@ awh::http::h2::status_t awh::http::h2::hpack::decodeInteger(const uint8_t * data
 	/**
 	 * Выполняем чтение байтов продолжения
 	 */
-	while(true){
+	for(;;){
 		// Если данные закончились посреди продолжения
 		if(pos >= size)
 			// Данных недостаточно
 			return status_t::INCOMPLETE;
 		// Извлекаем очередной байт продолжения
-		const uint8_t b = data[pos++];
+		const uint8_t byte = data[pos++];
 		// Если сдвиг превысил разрядность (защита от переполнения uint64_t, RFC 7541 §5.1)
 		if(shift >= 64)
 			// Фиксируем переполнение
 			return status_t::ERROR;
 		// Вычисляем добавку из 7 бит очередного байта
-		const uint64_t add = (static_cast <uint64_t> (b & 0x7F) << shift);
+		const uint64_t add = (static_cast <uint64_t> (byte & 0x7F) << shift);
 		// Если добавка переполняет результат
 		if(add > (UINT64_MAX - result))
 			// Фиксируем переполнение
@@ -420,7 +610,7 @@ awh::http::h2::status_t awh::http::h2::hpack::decodeInteger(const uint8_t * data
 		// Накапливаем результат
 		result += add;
 		// Если признак продолжения сброшен - значение прочитано
-		if((b & 0x80) == 0)
+		if((byte & 0x80) == 0)
 			// Выходим из цикла чтения
 			break;
 		// Сдвигаемся на следующие 7 бит
@@ -433,168 +623,7 @@ awh::http::h2::status_t awh::http::h2::hpack::decodeInteger(const uint8_t * data
 	// Значение декодировано
 	return status_t::OK;
 }
-/**
- * @brief Функция кодирования целого с префиксом переменной длины (RFC 7541 §5.1)
- *
- * @param out         выходной буфер
- * @param value       кодируемое значение
- * @param prefixBits  размер префикса в битах (1..8)
- * @param prefixValue значение старших бит первого байта
- */
-void awh::http::h2::hpack::encodeInteger(string & out, uint64_t value, const uint8_t prefixBits, const uint8_t prefixValue) noexcept {
-	// Максимальное значение, помещающееся в префикс
-	const uint8_t prefixMax = static_cast <uint8_t> ((1u << prefixBits) - 1);
-	// Старшие биты первого байта (за пределами префикса)
-	const uint8_t high = (prefixValue & static_cast <uint8_t> (~prefixMax));
-	// Если значение помещается в префикс целиком
-	if(value < prefixMax){
-		// Дописываем единственный байт со значением в префиксе
-		out.push_back(static_cast <char> (high | static_cast <uint8_t> (value)));
-		// Выходим из функции
-		return;
-	}
-	// Дописываем первый байт с заполненным префиксом
-	out.push_back(static_cast <char> (high | prefixMax));
-	// Вычитаем часть значения, ушедшую в префикс
-	value -= prefixMax;
-	/**
-	 * Выполняем запись байтов продолжения (7 бит на байт)
-	 */
-	while(value >= 0x80){
-		// Дописываем очередные 7 бит с признаком продолжения
-		out.push_back(static_cast <char> ((value & 0x7F) | 0x80));
-		// Сдвигаем значение на записанные биты
-		value >>= 7;
-	}
-	// Дописываем последний байт без признака продолжения
-	out.push_back(static_cast <char> (value));
-}
-/**
- * @brief Функция декодирования Huffman-строки (RFC 7541 Appendix B)
- *
- * @param data входной буфер
- * @param size доступно байт
- * @param out  выходной буфер декодированной строки
- * @return     результат декодирования (false - некорректная последовательность, COMPRESSION_ERROR)
- */
-bool awh::http::h2::hpack::huffmanDecode(const uint8_t * data, const size_t size, string & out) noexcept {
-	// Получаем дерево декодирования Huffman
-	const vector <::huff_node_t> & tree = ::huffTree();
-	// Текущий узел дерева
-	int32_t cur = 0;
-	// Длина текущего незавершённого пути в битах
-	int32_t padLen = 0;
-	// Признак того, что незавершённый путь состоит из единичных бит
-	bool padOnes = true;
-	/**
-	 * Выполняем перебор всех байтов входного буфера
-	 */
-	for(size_t i = 0; i < size; ++i){
-		// Извлекаем очередной байт
-		const uint8_t byte = data[i];
-		/**
-		 * Выполняем перебор всех бит байта (от старшего к младшему)
-		 */
-		for(int32_t b = 7; b >= 0; --b){
-			// Извлекаем очередной бит
-			const int32_t bit = ((byte >> b) & 1);
-			// Спускаемся в дочерний узел по значению бита
-			cur = tree[cur].child[bit];
-			// Если дочерний узел отсутствует - недопустимая кодовая последовательность
-			if(cur < 0)
-				// Фиксируем ошибку декодирования
-				return false;
-			// Наращиваем длину незавершённого пути
-			++padLen;
-			// Обновляем признак единичных бит пути
-			padOnes = (padOnes && (bit == 1));
-			// Если достигнут лист - символ декодирован
-			if(tree[cur].sym >= 0){
-				// Дописываем декодированный символ
-				out.push_back(static_cast <char> (tree[cur].sym));
-				// Возвращаемся к корню дерева
-				cur = 0;
-				// Сбрасываем длину незавершённого пути
-				padLen = 0;
-				// Сбрасываем признак единичных бит пути
-				padOnes = true;
-			}
-		}
-	}
-	/**
-	 * Корректный конец: либо точно на границе символа, либо хвост из <= 7
-	 * единичных бит (префикс EOS). Иначе - COMPRESSION_ERROR
-	 */
-	if(cur != 0){
-		// Если хвост длиннее 7 бит или содержит нулевые биты
-		if((padLen > 7) || !padOnes)
-			// Фиксируем ошибку декодирования
-			return false;
-	}
-	// Строка декодирована
-	return true;
-}
-/**
- * @brief Функция кодирования строки Huffman'ом (RFC 7541 Appendix B)
- *
- * @param in  кодируемая строка
- * @param out выходной буфер закодированной строки
- */
-void awh::http::h2::hpack::huffmanEncode(string_view in, string & out) noexcept {
-	// Битовый аккумулятор
-	uint64_t buf = 0;
-	// Число накопленных бит
-	int32_t cnt = 0;
-	/**
-	 * Выполняем перебор всех символов строки
-	 */
-	for(uint8_t c : in){
-		// Получаем длину кода текущего символа в битах
-		const uint8_t nbits = ::HUFF[c].nbits;
-		// Получаем код текущего символа с правым выравниванием
-		const uint32_t code = (::HUFF[c].code >> (32 - nbits));
-		// Накапливаем код в битовом аккумуляторе
-		buf = ((buf << nbits) | code);
-		// Наращиваем число накопленных бит
-		cnt += nbits;
-		/**
-		 * Выполняем выгрузку целых байтов из аккумулятора
-		 */
-		while(cnt >= 8){
-			// Уменьшаем число накопленных бит на байт
-			cnt -= 8;
-			// Дописываем очередной байт закодированной строки
-			out.push_back(static_cast <char> ((buf >> cnt) & 0xFF));
-		}
-	}
-	// Если в аккумуляторе остались биты
-	if(cnt > 0){
-		// Число недостающих до байта бит
-		const int32_t rem = (8 - cnt);
-		// Добиваем хвост единичными битами (префикс EOS)
-		buf = ((buf << rem) | ((1u << rem) - 1));
-		// Дописываем последний байт закодированной строки
-		out.push_back(static_cast <char> (buf & 0xFF));
-	}
-}
-/**
- * @brief Функция вычисления длины строки в байтах после Huffman-кодирования
- *
- * @param in строка для вычисления
- * @return   длина строки после кодирования
- */
-size_t awh::http::h2::hpack::huffmanLength(string_view in) noexcept {
-	// Суммарная длина кодов в битах
-	size_t bits = 0;
-	/**
-	 * Выполняем перебор всех символов строки
-	 */
-	for(uint8_t c : in)
-		// Наращиваем суммарную длину кодов
-		bits += ::HUFF[c].nbits;
-	// Выводим длину строки в байтах (с округлением вверх)
-	return ((bits + 7) / 8);
-}
+
 /**
  * @brief Метод вытеснения записей с конца, пока размер не уложится в лимит
  *
@@ -611,56 +640,6 @@ void awh::http::h2::hpack::DynamicTable::evict() noexcept {
 		// Удаляем самую старую запись таблицы
 		this->_entries.pop_back();
 	}
-}
-/**
- * @brief Метод добавления записи в начало таблицы (с вытеснением старых при нехватке места)
- *
- * @param name  название заголовка
- * @param value значение заголовка
- */
-void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value) noexcept {
-	// Вычисляем размер добавляемой записи (RFC 7541 §4.1)
-	const uint32_t entrySize = static_cast <uint32_t> (name.size() + value.size() + 32);
-	// Если запись больше всей таблицы - таблица очищается, запись не добавляется (RFC 7541 §4.4)
-	if(entrySize > this->_maxSize){
-		// Очищаем все записи таблицы
-		this->_entries.clear();
-		// Сбрасываем суммарный размер таблицы
-		this->_size = 0;
-		// Выходим из метода
-		return;
-	}
-	// Добавляем запись в начало таблицы
-	this->_entries.emplace_front(string(name), string(value));
-	// Наращиваем суммарный размер таблицы
-	this->_size += entrySize;
-	// Вытесняем старые записи при нехватке места
-	this->evict();
-}
-/**
- * @brief Метод доступа к записи по индексу (1-based внутри динамической части)
- *
- * @param index индекс записи
- * @return      указатель на запись либо nullptr
- */
-const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::at(const size_t index) const noexcept {
-	// Если индекс за пределами таблицы
-	if((index < 1) || (index > this->_entries.size()))
-		// Запись не найдена
-		return nullptr;
-	// Выводим запись таблицы
-	return &this->_entries[index - 1];
-}
-/**
- * @brief Метод изменения максимального размера таблицы (Dynamic Table Size Update)
- *
- * @param maxSize новый максимальный размер таблицы
- */
-void awh::http::h2::hpack::DynamicTable::setMaxSize(const uint32_t maxSize) noexcept {
-	// Устанавливаем новый лимит размера таблицы
-	this->_maxSize = maxSize;
-	// Вытесняем лишние записи
-	this->evict();
 }
 /**
  * @brief Метод получения количества записей таблицы
@@ -690,30 +669,102 @@ uint32_t awh::http::h2::hpack::DynamicTable::maxSize() const noexcept {
 	return this->_maxSize;
 }
 /**
+ * @brief Метод изменения максимального размера таблицы (Dynamic Table Size Update)
+ *
+ * @param maxSize новый максимальный размер таблицы
+ */
+void awh::http::h2::hpack::DynamicTable::setMaxSize(const uint32_t maxSize) noexcept {
+	// Устанавливаем новый лимит размера таблицы
+	this->_maxSize = maxSize;
+	// Вытесняем лишние записи
+	this->evict();
+}
+/**
+ * @brief Метод доступа к записи по индексу (1-based внутри динамической части)
+ *
+ * @param index индекс записи
+ * @return      указатель на запись либо nullptr
+ */
+const awh::http::h2::hpack::field_t * awh::http::h2::hpack::DynamicTable::at(const size_t index) const noexcept {
+	// Если индекс за пределами таблицы
+	if((index < 1) || (index > this->_entries.size()))
+		// Запись не найдена
+		return nullptr;
+	// Выводим запись таблицы
+	return &this->_entries[index - 1];
+}
+/**
+ * @brief Метод добавления записи в начало таблицы (с вытеснением старых при нехватке места)
+ *
+ * @param name  название заголовка
+ * @param value значение заголовка
+ */
+void awh::http::h2::hpack::DynamicTable::add(string_view name, string_view value) noexcept {
+	// Вычисляем размер добавляемой записи (RFC 7541 §4.1)
+	const uint32_t entrySize = static_cast <uint32_t> (name.size() + value.size() + 32);
+	// Если запись больше всей таблицы - таблица очищается, запись не добавляется (RFC 7541 §4.4)
+	if(entrySize > this->_maxSize){
+		// Сбрасываем суммарный размер таблицы
+		this->_size = 0;
+		// Очищаем все записи таблицы
+		this->_entries.clear();
+		// Выходим из метода
+		return;
+	}
+	// Добавляем запись в начало таблицы
+	this->_entries.emplace_front(string(name), string(value));
+	// Наращиваем суммарный размер таблицы
+	this->_size += entrySize;
+	// Вытесняем старые записи при нехватке места
+	this->evict();
+}
+/**
  * @brief Конструктор
  *
  * @param maxSize максимальный размер таблицы
  */
 awh::http::h2::hpack::DynamicTable::DynamicTable(const uint32_t maxSize) noexcept :
  _size(0), _maxSize(maxSize) {}
+
+/**
+ * @brief Метод получения динамической таблицы пира
+ *
+ * @return динамическая таблица пира
+ */
+awh::http::h2::hpack::dynamic_table_t & awh::http::h2::hpack::Decoder::table() noexcept {
+	// Выводим динамическую таблицу пира
+	return this->_table;
+}
+/**
+ * @brief Метод установки верхней границы для Dynamic Table Size Update (RFC 7541 §6.3)
+ *
+ * @note Должна равняться объявленному нами SETTINGS_HEADER_TABLE_SIZE.
+ *       Превышение пиром трактуется как COMPRESSION_ERROR.
+ *
+ * @param size верхняя граница размера таблицы
+ */
+void awh::http::h2::hpack::Decoder::setProtocolMaxSize(const uint32_t size) noexcept {
+	// Устанавливаем верхнюю границу размера таблицы
+	this->_protocolMaxSize = size;
+}
 /**
  * @brief Метод декодирования одного блока заголовков целиком
  *
  * @param block       блок заголовков (уже собранный из HEADERS + CONTINUATION)
- * @param out         декодированные заголовки
+ * @param output      декодированные заголовки
  * @param maxListSize лимит суммарного размера списка (защита от decompression bomb); 0 - без лимита
- * @param err         код ошибки протокола (COMPRESSION_ERROR / ENHANCE_YOUR_CALM)
+ * @param error       код ошибки протокола (COMPRESSION_ERROR / ENHANCE_YOUR_CALM)
  * @return            результат декодирования (OK/ERROR)
  */
-awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block, vector <field_t> & out, const uint64_t maxListSize, error_t & err) noexcept {
-	// Указатель на данные блока заголовков
-	const uint8_t * data = reinterpret_cast <const uint8_t *> (block.data());
-	// Размер блока заголовков
-	const size_t size = block.size();
+awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block, vector <field_t> & output, const uint64_t maxListSize, error_t & error) noexcept {
 	// Текущая позиция разбора
 	size_t pos = 0;
 	// Суммарный размер распакованного списка заголовков
 	uint64_t listSize = 0;
+	// Размер блока заголовков
+	const size_t size = block.size();
+	// Указатель на данные блока заголовков
+	const uint8_t * data = reinterpret_cast <const uint8_t *> (block.data());
 	/**
 	 * @brief Функция получения пары (name, value) по объединённому индексу (статическая + динамическая таблицы)
 	 *
@@ -731,44 +782,44 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 		// Если индекс принадлежит статической таблице
 		if(index <= STATIC_TABLE_SIZE){
 			// Получаем запись статической таблицы
-			const static_entry_t * e = staticTable(static_cast <size_t> (index));
+			const static_entry_t * entry = integer::staticTable(static_cast <size_t> (index));
 			// Если запись не найдена
-			if(e == nullptr)
+			if(entry == nullptr)
 				// Запись не найдена
 				return false;
 			// Извлекаем название заголовка
-			name.assign(e->name);
+			name.assign(entry->name);
 			// Если требуется значение заголовка
 			if(needValue)
 				// Извлекаем значение заголовка
-				value.assign(e->value);
+				value.assign(entry->value);
 			// Запись получена
 			return true;
 		}
 		// Получаем запись динамической таблицы
-		const field_t * e = this->_table.at(static_cast <size_t> (index - STATIC_TABLE_SIZE));
+		const field_t * field = this->_table.at(static_cast <size_t> (index - STATIC_TABLE_SIZE));
 		// Если запись не найдена
-		if(e == nullptr)
+		if(field == nullptr)
 			// Запись не найдена
 			return false;
 		// Извлекаем название заголовка
-		name = e->name;
+		name = field->name;
 		// Если требуется значение заголовка
 		if(needValue)
 			// Извлекаем значение заголовка
-			value = e->value;
+			value = field->value;
 		// Запись получена
 		return true;
 	};
 	/**
 	 * @brief Функция учёта размера декодированного заголовка (защита от decompression bomb)
 	 *
-	 * @param f декодированный заголовок
-	 * @return  результат учёта (false - лимит превышен)
+	 * @param field декодированный заголовок
+	 * @return      результат учёта (false - лимит превышен)
 	 */
-	auto account = [&listSize, maxListSize](const field_t & f) noexcept -> bool {
+	auto account = [&listSize, maxListSize](const field_t & field) noexcept -> bool {
 		// Наращиваем суммарный размер списка заголовков (RFC 7541 §4.1)
-		listSize += (f.name.size() + f.value.size() + 32);
+		listSize += (field.name.size() + field.value.size() + 32);
 		// Проверяем что лимит размера списка не превышен
 		return ((maxListSize == 0) || (listSize <= maxListSize));
 	};
@@ -777,142 +828,142 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	 */
 	while(pos < size){
 		// Извлекаем первый байт представления
-		const uint8_t b = data[pos];
+		const uint8_t byte = data[pos];
 		// Если это Indexed Header Field (RFC 7541 §6.1, префикс 7 бит)
-		if(b & 0x80){
-			// Объединённый индекс записи
-			uint64_t index = 0;
+		if(byte & 0x80){
 			// Количество прочитанных байт
 			size_t used = 0;
+			// Объединённый индекс записи
+			uint64_t index = 0;
 			// Выполняем декодирование индекса
-			const status_t st = decodeInteger(data + pos, size - pos, 7, index, used);
+			const status_t status = integer::decode(data + pos, size - pos, 7, index, used);
 			// Если декодирование индекса не удалось
-			if(st != status_t::OK){
+			if(status != status_t::OK){
 				// Если зафиксирована ошибка декодирования
-				if(st == status_t::ERROR)
+				if(status == status_t::ERROR)
 					// Фиксируем ошибку состояния HPACK
-					err = error_t::COMPRESSION_ERROR;
+					error = error_t::COMPRESSION_ERROR;
 				// Выводим статус декодирования
-				return st;
+				return status;
 			}
 			// Сдвигаем позицию за индекс
 			pos += used;
 			// Создаём объект заголовка
-			field_t f;
+			field_t field{};
 			// Если получение записи по индексу не удалось
-			if(!resolve(index, f.name, f.value, true)){
+			if(!resolve(index, field.name, field.value, true)){
 				// Фиксируем ошибку состояния HPACK
-				err = error_t::COMPRESSION_ERROR;
+				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Если лимит размера списка превышен
-			if(!account(f)){
+			if(!account(field)){
 				// Фиксируем превышение лимита (decompression bomb)
-				err = error_t::ENHANCE_YOUR_CALM;
+				error = error_t::ENHANCE_YOUR_CALM;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Дописываем декодированный заголовок
-			out.push_back(::move(f));
+			output.push_back(::move(field));
 		// Если это Literal с инкрементальной индексацией (RFC 7541 §6.2.1, префикс 6 бит)
-		} else if(b & 0x40) {
-			// Объединённый индекс записи
-			uint64_t index = 0;
+		} else if(byte & 0x40) {
 			// Количество прочитанных байт
 			size_t used = 0;
+			// Объединённый индекс записи
+			uint64_t index = 0;
 			// Если декодирование индекса не удалось
-			if(decodeInteger(data + pos, size - pos, 6, index, used) != status_t::OK){
+			if(integer::decode(data + pos, size - pos, 6, index, used) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK
-				err = error_t::COMPRESSION_ERROR;
+				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Сдвигаем позицию за индекс
 			pos += used;
 			// Создаём объект заголовка
-			field_t f;
+			field_t field{};
 			// Если название заголовка передано индексом
 			if(index != 0){
 				// Если получение записи по индексу не удалось
-				if(!resolve(index, f.name, f.value, false)){
+				if(!resolve(index, field.name, field.value, false)){
 					// Фиксируем ошибку состояния HPACK
-					err = error_t::COMPRESSION_ERROR;
+					error = error_t::COMPRESSION_ERROR;
 					// Выводим ошибку декодирования
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, f.name, err) != status_t::OK)
+			} else if(::decodeString(data, size, pos, field.name, error) != status_t::OK)
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, f.value, err) != status_t::OK)
+			if(::decodeString(data, size, pos, field.value, error) != status_t::OK)
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			// Добавляем заголовок в динамическую таблицу
-			this->_table.add(f.name, f.value);
+			this->_table.add(field.name, field.value);
 			// Если лимит размера списка превышен
-			if(!account(f)){
+			if(!account(field)){
 				// Фиксируем превышение лимита (decompression bomb)
-				err = error_t::ENHANCE_YOUR_CALM;
+				error = error_t::ENHANCE_YOUR_CALM;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Дописываем декодированный заголовок
-			out.push_back(::move(f));
+			output.push_back(::move(field));
 		// Если это Literal без индексации / never indexed (RFC 7541 §6.2.2/§6.2.3, префикс 4 бита)
-		} else if((b & 0x20) == 0) {
-			// Объединённый индекс записи
-			uint64_t index = 0;
+		} else if((byte & 0x20) == 0) {
 			// Количество прочитанных байт
 			size_t used = 0;
+			// Объединённый индекс записи
+			uint64_t index = 0;
 			// Если декодирование индекса не удалось
-			if(decodeInteger(data + pos, size - pos, 4, index, used) != status_t::OK){
+			if(integer::decode(data + pos, size - pos, 4, index, used) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK
-				err = error_t::COMPRESSION_ERROR;
+				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Сдвигаем позицию за индекс
 			pos += used;
 			// Создаём объект заголовка
-			field_t f;
+			field_t field{};
 			// Если название заголовка передано индексом
 			if(index != 0){
 				// Если получение записи по индексу не удалось
-				if(!resolve(index, f.name, f.value, false)){
+				if(!resolve(index, field.name, field.value, false)){
 					// Фиксируем ошибку состояния HPACK
-					err = error_t::COMPRESSION_ERROR;
+					error = error_t::COMPRESSION_ERROR;
 					// Выводим ошибку декодирования
 					return status_t::ERROR;
 				}
 			// Если декодирование названия заголовка не удалось
-			} else if(::decodeString(data, size, pos, f.name, err) != status_t::OK)
+			} else if(::decodeString(data, size, pos, field.name, error) != status_t::OK)
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			// Если декодирование значения заголовка не удалось
-			if(::decodeString(data, size, pos, f.value, err) != status_t::OK)
+			if(::decodeString(data, size, pos, field.value, error) != status_t::OK)
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			// Если лимит размера списка превышен
-			if(!account(f)){
+			if(!account(field)){
 				// Фиксируем превышение лимита (decompression bomb)
-				err = error_t::ENHANCE_YOUR_CALM;
+				error = error_t::ENHANCE_YOUR_CALM;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
 			// Дописываем декодированный заголовок
-			out.push_back(::move(f));
+			output.push_back(::move(field));
 		// Если это Dynamic Table Size Update (RFC 7541 §6.3, префикс 5 бит)
 		} else {
-			// Новый размер динамической таблицы
-			uint64_t newSize = 0;
 			// Количество прочитанных байт
 			size_t used = 0;
+			// Новый размер динамической таблицы
+			uint64_t newSize = 0;
 			// Если декодирование нового размера не удалось
-			if(decodeInteger(data + pos, size - pos, 5, newSize, used) != status_t::OK){
+			if(integer::decode(data + pos, size - pos, 5, newSize, used) != status_t::OK){
 				// Фиксируем ошибку состояния HPACK
-				err = error_t::COMPRESSION_ERROR;
+				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
@@ -921,7 +972,7 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 			// Если новый размер превышает наш SETTINGS_HEADER_TABLE_SIZE (RFC 7541 §6.3)
 			if(newSize > this->_protocolMaxSize){
 				// Фиксируем ошибку состояния HPACK
-				err = error_t::COMPRESSION_ERROR;
+				error = error_t::COMPRESSION_ERROR;
 				// Выводим ошибку декодирования
 				return status_t::ERROR;
 			}
@@ -933,32 +984,18 @@ awh::http::h2::status_t awh::http::h2::hpack::Decoder::decode(string_view block,
 	return status_t::OK;
 }
 /**
- * @brief Метод получения динамической таблицы пира
- *
- * @return динамическая таблица пира
- */
-awh::http::h2::hpack::dynamic_table_t & awh::http::h2::hpack::Decoder::table() noexcept {
-	// Выводим динамическую таблицу пира
-	return this->_table;
-}
-/**
- * @brief Метод установки верхней границы для Dynamic Table Size Update (RFC 7541 §6.3)
- *
- * @param size верхняя граница размера таблицы
- */
-void awh::http::h2::hpack::Decoder::setProtocolMaxSize(const uint32_t size) noexcept {
-	// Устанавливаем верхнюю границу размера таблицы
-	this->_protocolMaxSize = size;
-}
-/**
  * @brief Конструктор
  *
  * @param maxTableSize максимальный размер динамической таблицы
  */
 awh::http::h2::hpack::Decoder::Decoder(const uint32_t maxTableSize) noexcept :
  _table(maxTableSize), _protocolMaxSize(maxTableSize) {}
+
 /**
  * @brief Метод поиска заголовка в статической + динамической таблицах
+ *
+ * @details Возвращает индекс полного совпадения (имя+значение) или, если его нет,
+ *          заполняет индекс совпадения только по имени. 0 - совпадения нет.
  *
  * @param name      название искомого заголовка
  * @param value     значение искомого заголовка
@@ -1012,90 +1049,20 @@ uint64_t awh::http::h2::hpack::Encoder::lookup(string_view name, string_view val
 /**
  * @brief Метод начала кодирования блока заголовков
  *
- * @param out выходной буфер блока заголовков
+ * @details Дописывает отложенный Dynamic Table Size Update (RFC 7541 §4.2),
+ *          который обязан идти в самом начале блока. Вызывается один раз
+ *          перед пофиледным кодированием блока.
+ *
+ * @param output выходной буфер блока заголовков
  */
-void awh::http::h2::hpack::Encoder::begin(string & out) noexcept {
+void awh::http::h2::hpack::Encoder::begin(string & output) noexcept {
 	// Если требуется отправить Dynamic Table Size Update (RFC 7541 §4.2: обязан идти в самом начале блока)
 	if(this->_sizeUpdatePending){
 		// Дописываем Dynamic Table Size Update (паттерн 001xxxxx)
-		encodeInteger(out, this->_pendingSize, 5, 0x20);
+		integer::encode(output, this->_pendingSize, 5, 0x20);
 		// Сбрасываем признак ожидающего update
 		this->_sizeUpdatePending = false;
 	}
-}
-/**
- * @brief Метод кодирования одного заголовка (zero-copy, без владения строками)
- *
- * @param name       название заголовка
- * @param value      значение заголовка
- * @param out        выходной буфер блока заголовков
- * @param sensitive  чувствительное значение (Literal Never Indexed, RFC 7541 §7.1.3)
- * @param useHuffman применять Huffman-кодирование к строкам
- */
-void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, string & out, const bool sensitive, const bool useHuffman) noexcept {
-	// Индекс совпадения только по имени
-	uint64_t nameIndex = 0;
-	// Если значение заголовка чувствительное (явно или по названию заголовка)
-	if(sensitive || ::isSensitiveName(name)){
-		/**
-		 * Literal Never Indexed (RFC 7541 §6.2.3, префикс 4 бита, паттерн 0001xxxx).
-		 * Значение не индексируется и не попадает в динамическую таблицу;
-		 * для имени допускается ссылка на индекс (только имя)
-		 */
-		this->lookup(name, value, nameIndex);
-		// Дописываем индекс имени (или 0)
-		encodeInteger(out, nameIndex, 4, 0x10);
-		// Если совпадение по имени не найдено
-		if(nameIndex == 0)
-			// Дописываем название заголовка строкой
-			::encodeStringLiteral(out, name, useHuffman);
-		// Дописываем значение заголовка строкой
-		::encodeStringLiteral(out, value, useHuffman);
-		// В таблицу заголовок НЕ добавляем
-		return;
-	}
-	// Выполняем поиск заголовка в таблицах
-	const uint64_t fullIndex = this->lookup(name, value, nameIndex);
-	// Если найдено полное совпадение (имя и значение уже в таблице)
-	if(fullIndex != 0){
-		// Дописываем Indexed Header Field (RFC 7541 §6.1)
-		encodeInteger(out, fullIndex, 7, 0x80);
-		// Кодирование заголовка завершено
-		return;
-	}
-	/**
-	 * Literal с инкрементальной индексацией (RFC 7541 §6.2.1, префикс 6 бит, старший бит 0x40).
-	 * nameIndex == 0 - имя кодируется строкой; иначе ссылаемся на существующее имя
-	 */
-	encodeInteger(out, nameIndex, 6, 0x40);
-	// Если совпадение по имени не найдено
-	if(nameIndex == 0)
-		// Дописываем название заголовка строкой
-		::encodeStringLiteral(out, name, useHuffman);
-	// Дописываем значение заголовка строкой
-	::encodeStringLiteral(out, value, useHuffman);
-	/**
-	 * Добавляем в свою динамическую таблицу - декодер пира сделает то же,
-	 * поэтому индексы остаются синхронными
-	 */
-	this->_table.add(name, value);
-}
-/**
- * @brief Метод кодирования списка заголовков
- *
- * @param fields     заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
- * @param out        выходной буфер блока заголовков
- * @param useHuffman применять Huffman-кодирование к строкам
- */
-void awh::http::h2::hpack::Encoder::encode(const vector <field_t> & fields, string & out, const bool useHuffman) noexcept {
-	// Дописываем отложенный Dynamic Table Size Update (если требуется)
-	this->begin(out);
-	/**
-	 * Выполняем перебор всех кодируемых заголовков
-	 */
-	for(const field_t & f : fields)
-		// Кодируем очередной заголовок
-		this->encode(f.name, f.value, out, f.sensitive, useHuffman);
 }
 /**
  * @brief Метод получения собственной динамической таблицы
@@ -1118,10 +1085,87 @@ void awh::http::h2::hpack::Encoder::setMaxTableSize(const uint32_t size) noexcep
 		return;
 	// Применяем новый размер сразу (с вытеснением)
 	this->_table.setMaxSize(size);
-	// Отмечаем что в начале следующего блока нужен Dynamic Table Size Update
-	this->_sizeUpdatePending = true;
 	// Запоминаем значение размера для отправляемого update
 	this->_pendingSize = size;
+	// Отмечаем что в начале следующего блока нужен Dynamic Table Size Update
+	this->_sizeUpdatePending = true;
+}
+/**
+ * @brief Метод кодирования списка заголовков
+ *
+ * @param fields     заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
+ * @param output     выходной буфер блока заголовков
+ * @param useHuffman применять Huffman-кодирование к строкам
+ */
+void awh::http::h2::hpack::Encoder::encode(const vector <field_t> & fields, string & output, const bool useHuffman) noexcept {
+	// Дописываем отложенный Dynamic Table Size Update (если требуется)
+	this->begin(output);
+	/**
+	 * Выполняем перебор всех кодируемых заголовков
+	 */
+	for(const field_t & field : fields)
+		// Кодируем очередной заголовок
+		this->encode(field.name, field.value, output, field.sensitive, useHuffman);
+}
+/**
+ * @brief Метод кодирования одного заголовка (zero-copy, без владения строками)
+ *
+ * @note Псевдо-заголовки :method/:path/... должны кодироваться первыми,
+ *       названия заголовков - строго в нижнем регистре (RFC 9113 §8.2.1).
+ *
+ * @param name       название заголовка
+ * @param value      значение заголовка
+ * @param output     выходной буфер блока заголовков
+ * @param sensitive  чувствительное значение (Literal Never Indexed, RFC 7541 §7.1.3)
+ * @param useHuffman применять Huffman-кодирование к строкам
+ */
+void awh::http::h2::hpack::Encoder::encode(string_view name, string_view value, string & output, const bool sensitive, const bool useHuffman) noexcept {
+	// Индекс совпадения только по имени
+	uint64_t nameIndex = 0;
+	// Если значение заголовка чувствительное (явно или по названию заголовка)
+	if(sensitive || ::isSensitiveName(name)){
+		/**
+		 * Literal Never Indexed (RFC 7541 §6.2.3, префикс 4 бита, паттерн 0001xxxx).
+		 * Значение не индексируется и не попадает в динамическую таблицу;
+		 * для имени допускается ссылка на индекс (только имя)
+		 */
+		this->lookup(name, value, nameIndex);
+		// Дописываем индекс имени (или 0)
+		integer::encode(output, nameIndex, 4, 0x10);
+		// Если совпадение по имени не найдено
+		if(nameIndex == 0)
+			// Дописываем название заголовка строкой
+			::encodeStringLiteral(output, name, useHuffman);
+		// Дописываем значение заголовка строкой
+		::encodeStringLiteral(output, value, useHuffman);
+		// В таблицу заголовок НЕ добавляем
+		return;
+	}
+	// Выполняем поиск заголовка в таблицах
+	const uint64_t fullIndex = this->lookup(name, value, nameIndex);
+	// Если найдено полное совпадение (имя и значение уже в таблице)
+	if(fullIndex != 0){
+		// Дописываем Indexed Header Field (RFC 7541 §6.1)
+		integer::encode(output, fullIndex, 7, 0x80);
+		// Кодирование заголовка завершено
+		return;
+	}
+	/**
+	 * Literal с инкрементальной индексацией (RFC 7541 §6.2.1, префикс 6 бит, старший бит 0x40).
+	 * nameIndex == 0 - имя кодируется строкой; иначе ссылаемся на существующее имя
+	 */
+	integer::encode(output, nameIndex, 6, 0x40);
+	// Если совпадение по имени не найдено
+	if(nameIndex == 0)
+		// Дописываем название заголовка строкой
+		::encodeStringLiteral(output, name, useHuffman);
+	// Дописываем значение заголовка строкой
+	::encodeStringLiteral(output, value, useHuffman);
+	/**
+	 * Добавляем в свою динамическую таблицу - декодер пира сделает то же,
+	 * поэтому индексы остаются синхронными
+	 */
+	this->_table.add(name, value);
 }
 /**
  * @brief Конструктор
@@ -1129,4 +1173,4 @@ void awh::http::h2::hpack::Encoder::setMaxTableSize(const uint32_t size) noexcep
  * @param maxTableSize максимальный размер динамической таблицы
  */
 awh::http::h2::hpack::Encoder::Encoder(const uint32_t maxTableSize) noexcept :
- _table(maxTableSize), _sizeUpdatePending(false), _pendingSize(0) {}
+ _table(maxTableSize), _pendingSize(0), _sizeUpdatePending(false) {}

@@ -797,7 +797,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::parseInput() noexcept {
 		// Заголовок текущего фрейма
 		h2::frame::header_t header{};
 		// Выполняем разбор заголовка фрейма
-		h2::frame::parseHeader(buffer + pos, total - pos, header);
+		h2::frame::parser::header(buffer + pos, total - pos, header);
 		// Если размер фрейма превышает согласованный лимит (RFC 9113 §4.2)
 		if(header.length > this->_local.maxFrameSize){
 			// Очищаем входной буфер
@@ -905,7 +905,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный запрос/ответ - потоковая ошибка (RFC 9113 §8.1.1), соединение живёт
-		h2::frame::serializeRstStream(this->_buffer.output, streamId, vErr);
+		h2::frame::serialize::rstStream(this->_buffer.output, streamId, vErr);
 		// Закрываем поток с вызовом функции обратного вызова закрытия
 		this->closeStream(streamId, vErr);
 		// Обработка блока завершена
@@ -914,7 +914,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 	// Если декодированные заголовки превышают лимиты безопасности
 	if(!this->checkHeaderLimits(fields)){
 		// Превышение лимитов - потоковая ошибка, соединение живёт
-		h2::frame::serializeRstStream(this->_buffer.output, streamId, error_t::ENHANCE_YOUR_CALM);
+		h2::frame::serialize::rstStream(this->_buffer.output, streamId, error_t::ENHANCE_YOUR_CALM);
 		// Закрываем поток с вызовом функции обратного вызова закрытия
 		this->closeStream(streamId, error_t::ENHANCE_YOUR_CALM);
 		// Обработка блока завершена
@@ -952,7 +952,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 				// Если поток ещё существует (функция обратного вызова могла его закрыть)
 				if(this->findStream(streamId) != nullptr){
 					// Сбрасываем поток с кодом CANCEL
-					h2::frame::serializeRstStream(this->_buffer.output, streamId, error_t::CANCEL);
+					h2::frame::serialize::rstStream(this->_buffer.output, streamId, error_t::CANCEL);
 					// Закрываем поток с вызовом функции обратного вызова закрытия
 					this->closeStream(streamId, error_t::CANCEL);
 				}
@@ -979,7 +979,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 			// Если поток ещё существует (функция обратного вызова могла его закрыть)
 			if(this->findStream(streamId) != nullptr){
 				// Сбрасываем поток с кодом CANCEL
-				h2::frame::serializeRstStream(this->_buffer.output, streamId, error_t::CANCEL);
+				h2::frame::serialize::rstStream(this->_buffer.output, streamId, error_t::CANCEL);
 				// Закрываем поток с вызовом функции обратного вызова закрытия
 				this->closeStream(streamId, error_t::CANCEL);
 			}
@@ -1144,7 +1144,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Список разобранных параметров SETTINGS
 			vector <h2::frame::setting_entry_t> items;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parseSettings(header, payload, items, err) != h2::status_t::OK)
+			if(h2::frame::parser::settings(header, payload, items, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad SETTINGS");
 			// Если получен ACK на наш SETTINGS, помечаем что наш SETTINGS подтверждён
@@ -1235,7 +1235,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				}
 			}
 			// Подтверждаем получение SETTINGS пира (ACK)
-			h2::frame::serializeSettings(this->_buffer.output, nullptr, 0, true);
+			h2::frame::serialize::settings(this->_buffer.output, nullptr, 0, true);
 			// Если функция обратного вызова установлена - уведомляем о применённом SETTINGS пира
 			if(this->_callbacks.settings != nullptr)
 				// Уведомляем о применённом SETTINGS пира
@@ -1250,7 +1250,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Opaque-данные фрейма PING
 			uint8_t opaque[8];
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parsePing(header, payload, opaque, err) != h2::status_t::OK)
+			if(h2::frame::parser::ping(header, payload, opaque, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad PING");
 			// Если получен PING без флага ACK - требуется ответ
@@ -1262,7 +1262,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					// Фиксируем ошибку уровня соединения
 					return this->fail(error_t::ENHANCE_YOUR_CALM, "PING flood");
 				// Отвечаем фреймом PING с флагом ACK
-				h2::frame::serializePing(this->_buffer.output, opaque, true);
+				h2::frame::serialize::ping(this->_buffer.output, opaque, true);
 			}
 			// Обработка фрейма завершена
 			return h2::status_t::OK;
@@ -1272,7 +1272,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Инкремент окна flow control
 			uint32_t increment = 0;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parseWindowUpdate(header, payload, increment, err) != h2::status_t::OK)
+			if(h2::frame::parser::windowUpdate(header, payload, increment, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad WINDOW_UPDATE");
 			// Если обновляется окно всего соединения
@@ -1311,7 +1311,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Разобранная полезная нагрузка GOAWAY
 			h2::frame::goaway_t goaway;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parseGoaway(header, payload, goaway, err) != h2::status_t::OK)
+			if(h2::frame::parser::goaway(header, payload, goaway, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad GOAWAY");
 			// Помечаем что GOAWAY получен
@@ -1328,7 +1328,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Код ошибки, с которым сброшен поток
 			error_t code = error_t::NO_ERROR;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parseRstStream(header, payload, code, err) != h2::status_t::OK)
+			if(h2::frame::parser::rstStream(header, payload, code, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad RST_STREAM");
 			// RST_STREAM на ещё не открытом (idle) потоке - ошибка соединения (RFC 9113 §5.1)
@@ -1351,7 +1351,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Разобранная полезная нагрузка HEADERS
 			h2::frame::headers_t headers;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parseHeaders(header, payload, headers, err) != h2::status_t::OK)
+			if(h2::frame::parser::headers(header, payload, headers, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad HEADERS");
 			// Флаг отклонённого потока (блок декодируем только для синхронизации HPACK)
@@ -1374,7 +1374,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				 */
 				if(this->_flags.goawaySent || (this->_transfer.peerStreamCount >= this->_local.maxConcurrentStreams)){
 					// Отклоняем поток с кодом REFUSED_STREAM
-					h2::frame::serializeRstStream(this->_buffer.output, header.streamId, error_t::REFUSED_STREAM);
+					h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::REFUSED_STREAM);
 					// Помечаем что поток отклонён
 					refused = true;
 				// Если поток может быть открыт
@@ -1388,7 +1388,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					// Если функция обратного вызова потребовала отклонить поток
 					if((this->_callbacks.begin != nullptr) && !this->_callbacks.begin(header.streamId)){
 						// Сбрасываем поток с кодом CANCEL
-						h2::frame::serializeRstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
+						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
 						// Закрываем поток с вызовом функции обратного вызова закрытия
 						this->closeStream(header.streamId, error_t::CANCEL);
 						// Помечаем что поток отклонён
@@ -1457,7 +1457,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Фиксируем ошибку уровня соединения
 				return this->fail(error_t::PROTOCOL_ERROR, "unexpected CONTINUATION");
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parseContinuation(header, payload, block, endHeaders, err) != h2::status_t::OK)
+			if(h2::frame::parser::continuation(header, payload, block, endHeaders, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad CONTINUATION");
 			// Защита от CONTINUATION flood (2024): лимит числа фреймов в блоке заголовков
@@ -1482,7 +1482,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Разобранная полезная нагрузка DATA
 			h2::frame::data_t data{};
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parseData(header, payload, data, err) != h2::status_t::OK)
+			if(h2::frame::parser::data(header, payload, data, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad DATA");
 			// Выполняем поиск потока
@@ -1531,7 +1531,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 				// Пополняем окно приёма соединения (поток закрывается)
 				this->replenishReceiveWindow(nullptr, header.length);
 				// Сбрасываем поток с кодом ENHANCE_YOUR_CALM
-				h2::frame::serializeRstStream(this->_buffer.output, header.streamId, error_t::ENHANCE_YOUR_CALM);
+				h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::ENHANCE_YOUR_CALM);
 				// Закрываем поток с вызовом функции обратного вызова закрытия
 				this->closeStream(header.streamId, error_t::ENHANCE_YOUR_CALM);
 				// Обработка фрейма завершена (соединение живёт)
@@ -1548,7 +1548,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 					// Если поток ещё существует (функция обратного вызова могла его закрыть)
 					if(this->findStream(header.streamId) != nullptr){
 						// Сбрасываем поток с кодом CANCEL
-						h2::frame::serializeRstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
+						h2::frame::serialize::rstStream(this->_buffer.output, header.streamId, error_t::CANCEL);
 						// Закрываем поток с вызовом функции обратного вызова закрытия
 						this->closeStream(header.streamId, error_t::CANCEL);
 					}
@@ -1585,7 +1585,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Разобранная полезная нагрузка PRIORITY
 			h2::frame::priority_t priority;
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parsePriority(header, payload, priority, err) != h2::status_t::OK)
+			if(h2::frame::parser::priority(header, payload, priority, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad PRIORITY");
 			// Приоритеты RFC 7540 deprecated - игнорируем
@@ -1604,7 +1604,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Разобранная полезная нагрузка PUSH_PROMISE
 			h2::frame::push_promise_t promise{};
 			// Если разбор полезной нагрузки завершился ошибкой
-			if(h2::frame::parsePushPromise(header, payload, promise, err) != h2::status_t::OK)
+			if(h2::frame::parser::pushPromise(header, payload, promise, err) != h2::status_t::OK)
 				// Фиксируем ошибку уровня соединения
 				return this->fail(err, "bad PUSH_PROMISE");
 			// Ассоциированный поток (на котором пришёл промис) должен существовать и быть живым
@@ -1629,7 +1629,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Если обещанный поток отклоняется
 			if(refusePush)
 				// Отклоняем обещанный поток с кодом REFUSED_STREAM
-				h2::frame::serializeRstStream(this->_buffer.output, promise.promisedStreamId, error_t::REFUSED_STREAM);
+				h2::frame::serialize::rstStream(this->_buffer.output, promise.promisedStreamId, error_t::REFUSED_STREAM);
 			// Если обещанный поток принимается
 			else {
 				/**
@@ -1692,7 +1692,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 	// Если блок заголовков малформирован
 	if(vErr != error_t::NO_ERROR){
 		// Малформированный обещанный запрос - потоковая ошибка, соединение живёт
-		h2::frame::serializeRstStream(this->_buffer.output, promisedSid, vErr);
+		h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, vErr);
 		// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
 		this->closeStream(promisedSid, vErr);
 		// Обработка блока завершена
@@ -1701,7 +1701,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 	// Если декодированные заголовки превышают лимиты безопасности
 	if(!this->checkHeaderLimits(fields)){
 		// Превышение лимитов - потоковая ошибка, соединение живёт
-		h2::frame::serializeRstStream(this->_buffer.output, promisedSid, error_t::ENHANCE_YOUR_CALM);
+		h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::ENHANCE_YOUR_CALM);
 		// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
 		this->closeStream(promisedSid, error_t::ENHANCE_YOUR_CALM);
 		// Обработка блока завершена
@@ -1714,7 +1714,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 			// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
 			if(this->findStream(promisedSid) != nullptr){
 				// Отклоняем push с кодом CANCEL
-				h2::frame::serializeRstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
+				h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
 				// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
 				this->closeStream(promisedSid, error_t::CANCEL);
 			}
@@ -1741,7 +1741,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 				// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
 				if(this->findStream(promisedSid) != nullptr){
 					// Сбрасываем поток с кодом CANCEL
-					h2::frame::serializeRstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
+					h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
 					// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
 					this->closeStream(promisedSid, error_t::CANCEL);
 				}
@@ -1769,7 +1769,7 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverPushPromise(const uint32
 			// Если обещанный поток ещё существует (функция обратного вызова могла его закрыть)
 			if(this->findStream(promisedSid) != nullptr){
 				// Сбрасываем поток с кодом CANCEL
-				h2::frame::serializeRstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
+				h2::frame::serialize::rstStream(this->_buffer.output, promisedSid, error_t::CANCEL);
 				// Закрываем обещанный поток с вызовом функции обратного вызова закрытия
 				this->closeStream(promisedSid, error_t::CANCEL);
 			}
@@ -1961,7 +1961,7 @@ bool awh::http::Parser_HTTP2::firePhase(const uint32_t id, const phase_t phase, 
 			// Если поток ещё существует (функция обратного вызова могла его закрыть)
 			if(this->findStream(id) != nullptr){
 				// Сбрасываем поток с кодом CANCEL
-				h2::frame::serializeRstStream(this->_buffer.output, id, error_t::CANCEL);
+				h2::frame::serialize::rstStream(this->_buffer.output, id, error_t::CANCEL);
 				// Закрываем поток с вызовом функции обратного вызова закрытия
 				this->closeStream(id, error_t::CANCEL);
 			}
@@ -2062,7 +2062,7 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 		 */
 		if((remaining == 0) && st.endStreamPending && this->sourceDone(st) && !st.endStreamSent){
 			// Отправляем пустой DATA-фрейм с флагом END_STREAM
-			h2::frame::serializeData(this->_buffer.output, st.id, string_view{}, true);
+			h2::frame::serialize::data(this->_buffer.output, st.id, string_view{}, true);
 			// Помечаем что END_STREAM отправлен
 			st.endStreamSent = true;
 			// Применяем отправленный END_STREAM (ссылка на поток может стать недействительной)
@@ -2076,7 +2076,7 @@ bool awh::http::Parser_HTTP2::pumpStream(stream_t & stream) noexcept {
 	// Определяем является ли фрагмент последним (END_STREAM)
 	const bool last = (st.endStreamPending && (size == remaining) && this->sourceDone(st));
 	// Отправляем DATA-фрейм с фрагментом данных тела
-	h2::frame::serializeData(this->_buffer.output, st.id, string_view(st.sendBuffer.data() + st.sendOffset, size), last);
+	h2::frame::serialize::data(this->_buffer.output, st.id, string_view(st.sendBuffer.data() + st.sendOffset, size), last);
 	// Отмечаем отправленный префикс без сдвига всего буфера
 	st.sendOffset += size;
 	// Выполняем амортизированную очистку/компактификацию буфера отправки
@@ -2152,7 +2152,7 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 			// Запоминаем идентификатор потока
 			const uint32_t id = stream.id;
 			// Сбрасываем поток с кодом INTERNAL_ERROR
-			h2::frame::serializeRstStream(this->_buffer.output, id, error_t::INTERNAL_ERROR);
+			h2::frame::serialize::rstStream(this->_buffer.output, id, error_t::INTERNAL_ERROR);
 			// Закрываем поток с вызовом функции обратного вызова закрытия (ссылка на поток недействительна)
 			this->closeStream(id, error_t::INTERNAL_ERROR);
 			// Выходим из метода
@@ -2213,7 +2213,7 @@ void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const ui
 		// Вычисляем инкремент для восстановления окна до целевого размера
 		const uint32_t delta = static_cast <uint32_t> (this->_window.localMax - this->_window.local);
 		// Отправляем WINDOW_UPDATE для окна соединения
-		h2::frame::serializeWindowUpdate(this->_buffer.output, 0, delta);
+		h2::frame::serialize::windowUpdate(this->_buffer.output, 0, delta);
 		// Восстанавливаем окно приёма соединения
 		this->_window.local += static_cast <int32_t> (delta);
 	}
@@ -2226,7 +2226,7 @@ void awh::http::Parser_HTTP2::replenishReceiveWindow(stream_t * stream, const ui
 			// Вычисляем инкремент для восстановления окна до начального размера
 			const uint32_t delta = static_cast <uint32_t> (this->_local.windowSize - stream->localWindow);
 			// Отправляем WINDOW_UPDATE для окна потока
-			h2::frame::serializeWindowUpdate(this->_buffer.output, stream->id, delta);
+			h2::frame::serialize::windowUpdate(this->_buffer.output, stream->id, delta);
 			// Восстанавливаем окно приёма потока
 			stream->localWindow += static_cast <int32_t> (delta);
 		}
@@ -2271,7 +2271,7 @@ bool awh::http::Parser_HTTP2::checkHeaderLimits(const vector <h2::hpack::field_t
  */
 void awh::http::Parser_HTTP2::commitHeaders(const uint32_t sid, const string & block, const bool endStream) {
 	// Отправляем блок заголовков (с автоматической нарезкой на HEADERS + CONTINUATION)
-	h2::frame::serializeHeaderBlock(this->_buffer.output, sid, block, endStream, this->_remote.maxFrameSize);
+	h2::frame::serialize::headerBlock(this->_buffer.output, sid, block, endStream, this->_remote.maxFrameSize);
 	// Получаем существующий либо создаём новый объект потока
 	stream_t & stream = this->stream(sid);
 	// Если поток ещё не использован - мы инициируем поток
@@ -2778,7 +2778,7 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
 		items[count++].value = this->_local.maxHeaderListSize;
 	}
 	// Отправляем SETTINGS-фрейм с собранными параметрами
-	h2::frame::serializeSettings(this->_buffer.output, items, count, false);
+	h2::frame::serialize::settings(this->_buffer.output, items, count, false);
 	// Передаём исходящие байты сетевому слою
 	this->flush();
 }
@@ -2790,7 +2790,7 @@ void awh::http::Parser_HTTP2::sendSettings() noexcept {
  */
 void awh::http::Parser_HTTP2::sendRstStream(const uint32_t sid, const error_t code) noexcept {
 	// Отправляем фрейм RST_STREAM
-	h2::frame::serializeRstStream(this->_buffer.output, sid, code);
+	h2::frame::serialize::rstStream(this->_buffer.output, sid, code);
 	// Удаляем поток из карты активных потоков
 	this->eraseStream(sid);
 	// Передаём исходящие байты сетевому слою
@@ -2804,7 +2804,7 @@ void awh::http::Parser_HTTP2::sendRstStream(const uint32_t sid, const error_t co
  */
 void awh::http::Parser_HTTP2::sendGoaway(const error_t code, string_view debug) noexcept {
 	// Отправляем фрейм GOAWAY с наибольшим принятым идентификатором потока
-	h2::frame::serializeGoaway(this->_buffer.output, this->_transfer.lastStreamId, code, debug);
+	h2::frame::serialize::goaway(this->_buffer.output, this->_transfer.lastStreamId, code, debug);
 	// Помечаем что GOAWAY отправлен
 	this->_flags.goawaySent = true;
 	// Передаём исходящие байты сетевому слою
@@ -2818,7 +2818,7 @@ void awh::http::Parser_HTTP2::sendGoaway(const error_t code, string_view debug) 
  */
 void awh::http::Parser_HTTP2::sendWindowUpdate(const uint32_t sid, const uint32_t increment) noexcept {
 	// Отправляем фрейм WINDOW_UPDATE
-	h2::frame::serializeWindowUpdate(this->_buffer.output, sid, increment);
+	h2::frame::serialize::windowUpdate(this->_buffer.output, sid, increment);
 	// Передаём исходящие байты сетевому слою
 	this->flush();
 }
@@ -2947,7 +2947,7 @@ uint32_t awh::http::Parser_HTTP2::sendPushPromise(const uint32_t sid, const vect
 		// Выполняем кодирование заголовков в HPACK-блок
 		this->_encoder.encode(fields, block, true);
 		// Отправляем PUSH_PROMISE (с автоматической нарезкой на PUSH_PROMISE + CONTINUATION)
-		h2::frame::serializePushPromiseBlock(this->_buffer.output, sid, result, block, this->_remote.maxFrameSize);
+		h2::frame::serialize::pushPromiseBlock(this->_buffer.output, sid, result, block, this->_remote.maxFrameSize);
 		// Получаем объект зарезервированного push-потока
 		stream_t & stream = this->stream(result);
 		// Переводим push-поток в состояние RESERVED_LOCAL
@@ -3220,7 +3220,7 @@ void awh::http::Parser_HTTP2::connectionReceiveWindow(const int32_t size) noexce
 	// Устанавливаем новый целевой размер окна приёма соединения
 	this->_window.localMax = size;
 	// Отправляем WINDOW_UPDATE для окна соединения
-	h2::frame::serializeWindowUpdate(this->_buffer.output, 0, static_cast <uint32_t> (delta));
+	h2::frame::serialize::windowUpdate(this->_buffer.output, 0, static_cast <uint32_t> (delta));
 	// Увеличиваем текущее окно приёма соединения
 	this->_window.local += delta;
 	// Передаём исходящие байты сетевому слою

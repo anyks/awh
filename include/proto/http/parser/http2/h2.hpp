@@ -23,6 +23,11 @@
 #include <string_view>
 
 /**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../../../../sys/global.hpp"
+
+/**
  * @brief основное пространство имён
  *
  */
@@ -259,7 +264,7 @@ namespace awh {
 			 * @param type тип фрейма
 			 * @return     название типа фрейма
 			 */
-			string_view frameName(const frame_t type) noexcept;
+			__AWH_SHARED_EXPORT__ string_view frameName(const frame_t type) noexcept;
 
 			/**
 			 * @brief Функция получения человекочитаемого названия кода ошибки
@@ -267,7 +272,7 @@ namespace awh {
 			 * @param code код ошибки протокола
 			 * @return     название кода ошибки
 			 */
-			string_view errorName(const error_t code) noexcept;
+			__AWH_SHARED_EXPORT__ string_view errorName(const error_t code) noexcept;
 		}
 	};
 };

@@ -23,7 +23,7 @@
 #include <string_view>
 
 /**
- * Подключаем наши заголовочные файлы
+ * Подключаем заголовочные файлы проекта
  */
 #include "http.hpp"
 #include "../../sys/global.hpp"

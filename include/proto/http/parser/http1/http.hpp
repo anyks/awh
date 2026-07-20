@@ -23,7 +23,7 @@
 #include <string_view>
 
 /**
- * Подключаем наши заголовочные файлы
+ * Подключаем заголовочные файлы проекта
  */
 #include "../parser.hpp"
 #include "../../headers.hpp"

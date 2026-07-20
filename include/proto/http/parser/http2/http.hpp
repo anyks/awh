@@ -26,7 +26,7 @@
 #include <unordered_map>
 
 /**
- * Подключаем наши заголовочные файлы
+ * Подключаем заголовочные файлы проекта
  */
 #include "h2.hpp"
 #include "frame.hpp"

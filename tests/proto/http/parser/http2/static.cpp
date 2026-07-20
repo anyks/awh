@@ -45,7 +45,7 @@ TEST(Http2Hpack, IntegerCodecTest){
 	// Буфер закодированного целого
 	std::string out;
 	// Кодируем значение 10 с префиксом 5 бит (RFC 7541 C.1.1 - помещается в префикс)
-	h2::hpack::encodeInteger(out, 10, 5, 0x00);
+	h2::hpack::integer::encode(out, 10, 5, 0x00);
 	// Проверяем что значение закодировано одним байтом
 	ASSERT_EQ(out.size(), 1u);
 	// Проверяем байт закодированного значения
@@ -53,7 +53,7 @@ TEST(Http2Hpack, IntegerCodecTest){
 	// Очищаем буфер закодированного целого
 	out.clear();
 	// Кодируем значение 1337 с префиксом 5 бит (RFC 7541 C.1.2 - многобайтовое продолжение)
-	h2::hpack::encodeInteger(out, 1337, 5, 0x00);
+	h2::hpack::integer::encode(out, 1337, 5, 0x00);
 	// Проверяем что значение закодировано тремя байтами
 	ASSERT_EQ(out.size(), 3u);
 	// Проверяем первый байт (префикс заполнен целиком)
@@ -67,17 +67,17 @@ TEST(Http2Hpack, IntegerCodecTest){
 	// Количество прочитанных байт
 	size_t consumed = 0;
 	// Декодируем закодированное значение обратно
-	ASSERT_EQ(h2::hpack::decodeInteger(reinterpret_cast <const uint8_t *> (out.data()), out.size(), 5, value, consumed), h2::status_t::OK);
+	ASSERT_EQ(h2::hpack::integer::decode(reinterpret_cast <const uint8_t *> (out.data()), out.size(), 5, value, consumed), h2::status_t::OK);
 	// Проверяем декодированное значение
 	ASSERT_EQ(value, 1337u);
 	// Проверяем количество прочитанных байт
 	ASSERT_EQ(consumed, 3u);
 	// Декодируем неполный буфер (без последнего байта продолжения)
-	ASSERT_EQ(h2::hpack::decodeInteger(reinterpret_cast <const uint8_t *> (out.data()), out.size() - 1, 5, value, consumed), h2::status_t::INCOMPLETE);
+	ASSERT_EQ(h2::hpack::integer::decode(reinterpret_cast <const uint8_t *> (out.data()), out.size() - 1, 5, value, consumed), h2::status_t::INCOMPLETE);
 	// Формируем заведомо переполняющую последовательность продолжений
 	const std::string overflow = "\x1F\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\xFF\x7F";
 	// Декодируем переполняющую последовательность - ожидаем ошибку
-	ASSERT_EQ(h2::hpack::decodeInteger(reinterpret_cast <const uint8_t *> (overflow.data()), overflow.size(), 5, value, consumed), h2::status_t::ERROR);
+	ASSERT_EQ(h2::hpack::integer::decode(reinterpret_cast <const uint8_t *> (overflow.data()), overflow.size(), 5, value, consumed), h2::status_t::ERROR);
 }
 
 /**
@@ -88,17 +88,17 @@ TEST(Http2Hpack, HuffmanCodecTest){
 	// Буфер закодированной строки
 	std::string encoded;
 	// Кодируем строку из примера RFC 7541 C.4.1
-	h2::hpack::huffmanEncode("www.example.com", encoded);
+	h2::hpack::huffman::encode("www.example.com", encoded);
 	// Формируем эталон закодированной строки из RFC 7541 C.4.1
 	const std::string expected = "\xF1\xE3\xC2\xE5\xF2\x3A\x6B\xA0\xAB\x90\xF4\xFF";
 	// Проверяем что строка закодирована как в эталоне
 	ASSERT_EQ(encoded, expected);
 	// Проверяем что предвычисленная длина совпадает с фактической
-	ASSERT_EQ(h2::hpack::huffmanLength("www.example.com"), encoded.size());
+	ASSERT_EQ(h2::hpack::huffman::length("www.example.com"), encoded.size());
 	// Буфер декодированной строки
 	std::string decoded;
 	// Декодируем закодированную строку обратно
-	ASSERT_TRUE(h2::hpack::huffmanDecode(reinterpret_cast <const uint8_t *> (encoded.data()), encoded.size(), decoded));
+	ASSERT_TRUE(h2::hpack::huffman::decode(reinterpret_cast <const uint8_t *> (encoded.data()), encoded.size(), decoded));
 	// Проверяем что строка декодирована без искажений
 	ASSERT_EQ(decoded, "www.example.com");
 	// Формируем строку со всеми значениями октетов
@@ -114,9 +114,9 @@ TEST(Http2Hpack, HuffmanCodecTest){
 	// Очищаем буфер декодированной строки
 	decoded.clear();
 	// Кодируем бинарную строку
-	h2::hpack::huffmanEncode(binary, encoded);
+	h2::hpack::huffman::encode(binary, encoded);
 	// Декодируем бинарную строку обратно
-	ASSERT_TRUE(h2::hpack::huffmanDecode(reinterpret_cast <const uint8_t *> (encoded.data()), encoded.size(), decoded));
+	ASSERT_TRUE(h2::hpack::huffman::decode(reinterpret_cast <const uint8_t *> (encoded.data()), encoded.size(), decoded));
 	// Проверяем что бинарная строка пережила кодирование без искажений
 	ASSERT_EQ(decoded, binary);
 }
@@ -127,25 +127,25 @@ TEST(Http2Hpack, HuffmanCodecTest){
  */
 TEST(Http2Hpack, StaticTableTest){
 	// Получаем первую запись статической таблицы
-	const h2::hpack::static_entry_t * first = h2::hpack::staticTable(1);
+	const h2::hpack::static_entry_t * first = h2::hpack::integer::staticTable(1);
 	// Проверяем что запись существует
 	ASSERT_TRUE(first != nullptr);
 	// Проверяем название заголовка первой записи
 	ASSERT_EQ(first->name, ":authority");
 	// Получаем вторую запись статической таблицы
-	const h2::hpack::static_entry_t * second = h2::hpack::staticTable(2);
+	const h2::hpack::static_entry_t * second = h2::hpack::integer::staticTable(2);
 	// Проверяем название заголовка второй записи
 	ASSERT_EQ(second->name, ":method");
 	// Проверяем значение заголовка второй записи
 	ASSERT_EQ(second->value, "GET");
 	// Получаем последнюю запись статической таблицы
-	const h2::hpack::static_entry_t * last = h2::hpack::staticTable(h2::hpack::STATIC_TABLE_SIZE);
+	const h2::hpack::static_entry_t * last = h2::hpack::integer::staticTable(h2::hpack::STATIC_TABLE_SIZE);
 	// Проверяем название заголовка последней записи
 	ASSERT_EQ(last->name, "www-authenticate");
 	// Проверяем что нулевой индекс невалиден
-	ASSERT_TRUE(h2::hpack::staticTable(0) == nullptr);
+	ASSERT_TRUE(h2::hpack::integer::staticTable(0) == nullptr);
 	// Проверяем что индекс за пределами таблицы невалиден
-	ASSERT_TRUE(h2::hpack::staticTable(h2::hpack::STATIC_TABLE_SIZE + 1) == nullptr);
+	ASSERT_TRUE(h2::hpack::integer::staticTable(h2::hpack::STATIC_TABLE_SIZE + 1) == nullptr);
 }
 
 /**
@@ -336,11 +336,11 @@ TEST(Http2Frame, SettingsRoundtripTest){
 	// Буфер собранного фрейма
 	std::string out;
 	// Собираем фрейм SETTINGS
-	h2::frame::serializeSettings(out, items, 2, false);
+	h2::frame::serialize::settings(out, items, 2, false);
 	// Разобранный заголовок фрейма
 	h2::frame::header_t header;
 	// Разбираем заголовок фрейма
-	ASSERT_TRUE(h2::frame::parseHeader(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
+	ASSERT_TRUE(h2::frame::parser::header(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
 	// Проверяем тип фрейма
 	ASSERT_EQ(header.type, h2::frame_t::SETTINGS);
 	// Проверяем длину полезной нагрузки (2 параметра по 6 байт)
@@ -352,7 +352,7 @@ TEST(Http2Frame, SettingsRoundtripTest){
 	// Код ошибки протокола
 	h2::error_t err = h2::error_t::NO_ERROR;
 	// Разбираем полезную нагрузку SETTINGS
-	ASSERT_EQ(h2::frame::parseSettings(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, parsed, err), h2::status_t::OK);
+	ASSERT_EQ(h2::frame::parser::settings(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, parsed, err), h2::status_t::OK);
 	// Проверяем количество разобранных параметров
 	ASSERT_EQ(parsed.size(), 2u);
 	// Проверяем идентификатор первого параметра
@@ -371,11 +371,11 @@ TEST(Http2Frame, DataRoundtripTest){
 	// Буфер собранного фрейма
 	std::string out;
 	// Собираем фрейм DATA с флагом END_STREAM
-	h2::frame::serializeData(out, 1, "Hello, HTTP/2!", true);
+	h2::frame::serialize::data(out, 1, "Hello, HTTP/2!", true);
 	// Разобранный заголовок фрейма
 	h2::frame::header_t header;
 	// Разбираем заголовок фрейма
-	ASSERT_TRUE(h2::frame::parseHeader(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
+	ASSERT_TRUE(h2::frame::parser::header(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
 	// Проверяем тип фрейма
 	ASSERT_EQ(header.type, h2::frame_t::DATA);
 	// Проверяем идентификатор потока
@@ -385,7 +385,7 @@ TEST(Http2Frame, DataRoundtripTest){
 	// Код ошибки протокола
 	h2::error_t err = h2::error_t::NO_ERROR;
 	// Разбираем полезную нагрузку DATA
-	ASSERT_EQ(h2::frame::parseData(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, data, err), h2::status_t::OK);
+	ASSERT_EQ(h2::frame::parser::data(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, data, err), h2::status_t::OK);
 	// Проверяем данные тела
 	ASSERT_EQ(data.data, "Hello, HTTP/2!");
 	// Проверяем флаг завершения потока
@@ -403,7 +403,7 @@ TEST(Http2Frame, DataRoundtripTest){
 	// Формируем полезную нагрузку padded-фрейма
 	const uint8_t payload[5] = {0x02, 'h', 'i', 0x00, 0x00};
 	// Разбираем полезную нагрузку padded-фрейма
-	ASSERT_EQ(h2::frame::parseData(padded, payload, data, err), h2::status_t::OK);
+	ASSERT_EQ(h2::frame::parser::data(padded, payload, data, err), h2::status_t::OK);
 	// Проверяем что padding снят и данные извлечены корректно
 	ASSERT_EQ(data.data, "hi");
 	// Формируем некорректный padding (Pad Length >= длины нагрузки)
@@ -411,7 +411,7 @@ TEST(Http2Frame, DataRoundtripTest){
 	// Корректируем длину полезной нагрузки
 	padded.length = 2;
 	// Разбираем некорректную полезную нагрузку - ожидаем ошибку
-	ASSERT_EQ(h2::frame::parseData(padded, broken, data, err), h2::status_t::ERROR);
+	ASSERT_EQ(h2::frame::parser::data(padded, broken, data, err), h2::status_t::ERROR);
 	// Проверяем код ошибки протокола
 	ASSERT_EQ(err, h2::error_t::PROTOCOL_ERROR);
 }
@@ -426,7 +426,7 @@ TEST(Http2Frame, HeaderBlockSplitTest){
 	// Буфер собранных фреймов
 	std::string out;
 	// Собираем блок заголовков с нарезкой на HEADERS + CONTINUATION
-	h2::frame::serializeHeaderBlock(out, 1, block, true, h2::proto::DEFAULT_MAX_FRAME_SIZE);
+	h2::frame::serialize::headerBlock(out, 1, block, true, h2::proto::DEFAULT_MAX_FRAME_SIZE);
 	// Буфер собранного обратно блока заголовков
 	std::string reassembled;
 	// Позиция разбора в буфере фреймов
@@ -442,7 +442,7 @@ TEST(Http2Frame, HeaderBlockSplitTest){
 		// Разобранный заголовок фрейма
 		h2::frame::header_t header;
 		// Разбираем заголовок очередного фрейма
-		ASSERT_TRUE(h2::frame::parseHeader(reinterpret_cast <const uint8_t *> (out.data()) + pos, out.size() - pos, header));
+		ASSERT_TRUE(h2::frame::parser::header(reinterpret_cast <const uint8_t *> (out.data()) + pos, out.size() - pos, header));
 		// Смещаемся на полезную нагрузку фрейма
 		pos += h2::proto::FRAME_HEADER_SIZE;
 		// Проверяем что размер полезной нагрузки не превышает лимит фрейма
@@ -454,7 +454,7 @@ TEST(Http2Frame, HeaderBlockSplitTest){
 			// Разобранная полезная нагрузка HEADERS
 			h2::frame::headers_t headers;
 			// Разбираем полезную нагрузку HEADERS
-			ASSERT_EQ(h2::frame::parseHeaders(header, reinterpret_cast <const uint8_t *> (out.data()) + pos, headers, err), h2::status_t::OK);
+			ASSERT_EQ(h2::frame::parser::headers(header, reinterpret_cast <const uint8_t *> (out.data()) + pos, headers, err), h2::status_t::OK);
 			// Проверяем что END_STREAM установлен на первом фрейме
 			ASSERT_TRUE(headers.endStream);
 			// Проверяем что блок продолжается в CONTINUATION
@@ -470,7 +470,7 @@ TEST(Http2Frame, HeaderBlockSplitTest){
 			// Флаг завершения блока заголовков
 			bool endHeaders = false;
 			// Разбираем полезную нагрузку CONTINUATION
-			ASSERT_EQ(h2::frame::parseContinuation(header, reinterpret_cast <const uint8_t *> (out.data()) + pos, fragment, endHeaders, err), h2::status_t::OK);
+			ASSERT_EQ(h2::frame::parser::continuation(header, reinterpret_cast <const uint8_t *> (out.data()) + pos, fragment, endHeaders, err), h2::status_t::OK);
 			// Собираем фрагмент блока заголовков
 			reassembled.append(fragment);
 			// Если это последний фрейм буфера - на нём обязан стоять END_HEADERS
@@ -504,15 +504,15 @@ TEST(Http2Frame, ControlFramesRoundtripTest){
 		// Буфер собранного фрейма
 		std::string out;
 		// Собираем фрейм PING
-		h2::frame::serializePing(out, opaque, false);
+		h2::frame::serialize::ping(out, opaque, false);
 		// Разбираем заголовок фрейма
-		ASSERT_TRUE(h2::frame::parseHeader(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
+		ASSERT_TRUE(h2::frame::parser::header(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
 		// Проверяем тип фрейма
 		ASSERT_EQ(header.type, h2::frame_t::PING);
 		// Извлечённые opaque-данные
 		uint8_t parsed[8] = {0};
 		// Разбираем полезную нагрузку PING
-		ASSERT_EQ(h2::frame::parsePing(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, parsed, err), h2::status_t::OK);
+		ASSERT_EQ(h2::frame::parser::ping(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, parsed, err), h2::status_t::OK);
 		// Проверяем что opaque-данные извлечены без искажений
 		ASSERT_EQ(::memcmp(parsed, opaque, 8), 0);
 	}
@@ -520,13 +520,13 @@ TEST(Http2Frame, ControlFramesRoundtripTest){
 		// Буфер собранного фрейма
 		std::string out;
 		// Собираем фрейм GOAWAY с отладочными данными
-		h2::frame::serializeGoaway(out, 5, h2::error_t::ENHANCE_YOUR_CALM, "too fast");
+		h2::frame::serialize::goaway(out, 5, h2::error_t::ENHANCE_YOUR_CALM, "too fast");
 		// Разбираем заголовок фрейма
-		ASSERT_TRUE(h2::frame::parseHeader(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
+		ASSERT_TRUE(h2::frame::parser::header(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
 		// Разобранная полезная нагрузка GOAWAY
 		h2::frame::goaway_t goaway;
 		// Разбираем полезную нагрузку GOAWAY
-		ASSERT_EQ(h2::frame::parseGoaway(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, goaway, err), h2::status_t::OK);
+		ASSERT_EQ(h2::frame::parser::goaway(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, goaway, err), h2::status_t::OK);
 		// Проверяем наибольший идентификатор обработанного потока
 		ASSERT_EQ(goaway.lastStreamId, 5u);
 		// Проверяем код ошибки завершения соединения
@@ -538,13 +538,13 @@ TEST(Http2Frame, ControlFramesRoundtripTest){
 		// Буфер собранного фрейма
 		std::string out;
 		// Собираем фрейм WINDOW_UPDATE
-		h2::frame::serializeWindowUpdate(out, 3, 65535);
+		h2::frame::serialize::windowUpdate(out, 3, 65535);
 		// Разбираем заголовок фрейма
-		ASSERT_TRUE(h2::frame::parseHeader(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
+		ASSERT_TRUE(h2::frame::parser::header(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
 		// Извлечённый инкремент окна
 		uint32_t increment = 0;
 		// Разбираем полезную нагрузку WINDOW_UPDATE
-		ASSERT_EQ(h2::frame::parseWindowUpdate(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, increment, err), h2::status_t::OK);
+		ASSERT_EQ(h2::frame::parser::windowUpdate(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, increment, err), h2::status_t::OK);
 		// Проверяем инкремент окна
 		ASSERT_EQ(increment, 65535u);
 	}
@@ -552,13 +552,13 @@ TEST(Http2Frame, ControlFramesRoundtripTest){
 		// Буфер собранного фрейма
 		std::string out;
 		// Собираем фрейм RST_STREAM
-		h2::frame::serializeRstStream(out, 7, h2::error_t::CANCEL);
+		h2::frame::serialize::rstStream(out, 7, h2::error_t::CANCEL);
 		// Разбираем заголовок фрейма
-		ASSERT_TRUE(h2::frame::parseHeader(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
+		ASSERT_TRUE(h2::frame::parser::header(reinterpret_cast <const uint8_t *> (out.data()), out.size(), header));
 		// Извлечённый код ошибки сброса потока
 		h2::error_t code = h2::error_t::NO_ERROR;
 		// Разбираем полезную нагрузку RST_STREAM
-		ASSERT_EQ(h2::frame::parseRstStream(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, code, err), h2::status_t::OK);
+		ASSERT_EQ(h2::frame::parser::rstStream(header, reinterpret_cast <const uint8_t *> (out.data()) + h2::proto::FRAME_HEADER_SIZE, code, err), h2::status_t::OK);
 		// Проверяем код ошибки сброса потока
 		ASSERT_EQ(code, h2::error_t::CANCEL);
 	}
@@ -1501,7 +1501,7 @@ TEST_F(ParserHttp2Fixture, MalformedHeadersTest){
 	// Формируем сырые байты соединения: connection preface клиента
 	std::string raw(h2::proto::PREFACE);
 	// Дописываем пустой SETTINGS клиента
-	h2::frame::serializeSettings(raw, nullptr, 0, false);
+	h2::frame::serialize::settings(raw, nullptr, 0, false);
 	// Создаём кодер HPACK для формирования малформированного блока
 	h2::hpack::encoder_t encoder;
 	// Формируем заголовки с названием в верхнем регистре (запрещено RFC 9113 §8.2.1)
@@ -1519,7 +1519,7 @@ TEST_F(ParserHttp2Fixture, MalformedHeadersTest){
 	// Кодируем малформированный блок заголовков
 	encoder.encode(fields, block, true);
 	// Дописываем блок заголовков с завершением потока
-	h2::frame::serializeHeaderBlock(raw, 1, block, true, h2::proto::DEFAULT_MAX_FRAME_SIZE);
+	h2::frame::serialize::headerBlock(raw, 1, block, true, h2::proto::DEFAULT_MAX_FRAME_SIZE);
 	// Выполняем разбор сырых байтов соединения
 	server->parse(raw.data(), raw.size());
 	// Проверяем что поток открывался

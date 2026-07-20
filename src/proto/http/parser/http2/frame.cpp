@@ -39,94 +39,75 @@ namespace {
 	/**
 	 * @brief Функция чтения 16-битного числа в сетевом порядке байт
 	 *
-	 * @param p указатель на данные
-	 * @return  прочитанное число
+	 * @param buffer буфер с данными числа
+	 * @return       прочитанное число
 	 */
-	inline uint16_t rd16(const uint8_t * p) noexcept {
+	inline uint16_t rd16(const uint8_t * buffer) noexcept {
 		// Собираем число из двух байт в сетевом порядке
-		return static_cast <uint16_t> ((static_cast <uint16_t> (p[0]) << 8) | p[1]);
+		return static_cast <uint16_t> ((static_cast <uint16_t> (buffer[0]) << 8) | buffer[1]);
 	}
 	/**
 	 * @brief Функция чтения 24-битного числа в сетевом порядке байт
 	 *
-	 * @param p указатель на данные
-	 * @return  прочитанное число
+	 * @param buffer буфер с данными числа
+	 * @return       прочитанное число
 	 */
-	inline uint32_t rd24(const uint8_t * p) noexcept {
+	inline uint32_t rd24(const uint8_t * buffer) noexcept {
 		// Собираем число из трёх байт в сетевом порядке
-		return (static_cast <uint32_t> (p[0]) << 16) | (static_cast <uint32_t> (p[1]) << 8) | p[2];
+		return (static_cast <uint32_t> (buffer[0]) << 16) | (static_cast <uint32_t> (buffer[1]) << 8) | buffer[2];
 	}
 	/**
 	 * @brief Функция чтения 32-битного числа в сетевом порядке байт
 	 *
-	 * @param p указатель на данные
-	 * @return  прочитанное число
+	 * @param buffer буфер с данными числа
+	 * @return       прочитанное число
 	 */
-	inline uint32_t rd32(const uint8_t * p) noexcept {
+	inline uint32_t rd32(const uint8_t * buffer) noexcept {
 		// Собираем число из четырёх байт в сетевом порядке
-		return (static_cast <uint32_t> (p[0]) << 24) | (static_cast <uint32_t> (p[1]) << 16) |
-		       (static_cast <uint32_t> (p[2]) << 8)  |  static_cast <uint32_t> (p[3]);
+		return (static_cast <uint32_t> (buffer[0]) << 24) | (static_cast <uint32_t> (buffer[1]) << 16) |
+		       (static_cast <uint32_t> (buffer[2]) << 8)  |  static_cast <uint32_t> (buffer[3]);
 	}
 	/**
 	 * @brief Функция записи 16-битного числа в сетевом порядке байт
 	 *
-	 * @param out выходной буфер
-	 * @param v   записываемое число
+	 * @param output выходной буфер
+	 * @param num записываемое число
 	 */
-	inline void wr16(string & out, const uint16_t v) noexcept {
+	inline void wr16(string & output, const uint16_t num) noexcept {
 		// Дописываем старший байт числа
-		out.push_back(static_cast <char> ((v >> 8) & 0xFF));
+		output.push_back(static_cast <char> ((num >> 8) & 0xFF));
 		// Дописываем младший байт числа
-		out.push_back(static_cast <char> (v & 0xFF));
+		output.push_back(static_cast <char> (num & 0xFF));
 	}
 	/**
 	 * @brief Функция записи 24-битного числа в сетевом порядке байт
 	 *
-	 * @param out выходной буфер
-	 * @param v   записываемое число
+	 * @param output выходной буфер
+	 * @param num записываемое число
 	 */
-	inline void wr24(string & out, const uint32_t v) noexcept {
+	inline void wr24(string & output, const uint32_t num) noexcept {
 		// Дописываем старший байт числа
-		out.push_back(static_cast <char> ((v >> 16) & 0xFF));
+		output.push_back(static_cast <char> ((num >> 16) & 0xFF));
 		// Дописываем средний байт числа
-		out.push_back(static_cast <char> ((v >> 8) & 0xFF));
+		output.push_back(static_cast <char> ((num >> 8) & 0xFF));
 		// Дописываем младший байт числа
-		out.push_back(static_cast <char> (v & 0xFF));
+		output.push_back(static_cast <char> (num & 0xFF));
 	}
 	/**
 	 * @brief Функция записи 32-битного числа в сетевом порядке байт
 	 *
-	 * @param out выходной буфер
-	 * @param v   записываемое число
+	 * @param output выходной буфер
+	 * @param num записываемое число
 	 */
-	inline void wr32(string & out, const uint32_t v) noexcept {
+	inline void wr32(string & output, const uint32_t num) noexcept {
 		// Дописываем старший байт числа
-		out.push_back(static_cast <char> ((v >> 24) & 0xFF));
+		output.push_back(static_cast <char> ((num >> 24) & 0xFF));
 		// Дописываем второй байт числа
-		out.push_back(static_cast <char> ((v >> 16) & 0xFF));
+		output.push_back(static_cast <char> ((num >> 16) & 0xFF));
 		// Дописываем третий байт числа
-		out.push_back(static_cast <char> ((v >> 8) & 0xFF));
+		output.push_back(static_cast <char> ((num >> 8) & 0xFF));
 		// Дописываем младший байт числа
-		out.push_back(static_cast <char> (v & 0xFF));
-	}
-	/**
-	 * @brief Функция записи 9-байтового заголовка фрейма (RFC 9113 §4.1)
-	 *
-	 * @param out      выходной буфер
-	 * @param length   длина полезной нагрузки
-	 * @param type     тип фрейма
-	 * @param flags    флаги фрейма
-	 * @param streamId идентификатор потока
-	 */
-	inline void wrHeader(string & out, const uint32_t length, const frame_t type, const uint8_t flags, const uint32_t streamId) noexcept {
-		// Дописываем 24-битную длину полезной нагрузки
-		wr24(out, length);
-		// Дописываем тип фрейма
-		out.push_back(static_cast <char> (type));
-		// Дописываем флаги фрейма
-		out.push_back(static_cast <char> (flags));
-		// Дописываем 31-битный идентификатор потока (сбрасывая reserved-бит)
-		wr32(out, streamId & proto::STREAM_ID_MASK);
+		output.push_back(static_cast <char> (num & 0xFF));
 	}
 	/**
 	 * @brief Функция снятия padding с нагрузки фреймов DATA/HEADERS/PUSH_PROMISE
@@ -134,346 +115,189 @@ namespace {
 	 * @details При наличии флага PADDED первый байт нагрузки - Pad Length,
 	 *          в хвосте нагрузки идёт сам padding
 	 *
-	 * @param padded признак наличия флага PADDED
-	 * @param p      указатель на полезную нагрузку (сдвигается)
-	 * @param len    длина полезной нагрузки (уменьшается)
-	 * @return       результат снятия (false - Pad Length некорректен, PROTOCOL_ERROR)
+	 * @param padded  признак наличия флага PADDED
+	 * @param payload полезная нагрузка (сдвигается)
+	 * @param length  длина полезной нагрузки (уменьшается)
+	 * @return        результат снятия (false - Pad Length некорректен, PROTOCOL_ERROR)
 	 */
-	inline bool stripPadding(const bool padded, const uint8_t *& p, size_t & len) noexcept {
+	inline bool stripPadding(const bool padded, const uint8_t *& payload, size_t & length) noexcept {
 		// Если флаг PADDED не установлен - снимать нечего
 		if(!padded)
 			// Продолжаем разбор
 			return true;
 		// Если нагрузка не содержит даже байта Pad Length
-		if(len < 1)
+		if(length < 1)
 			// Нагрузка некорректна
 			return false;
 		// Извлекаем длину padding
-		const uint8_t padLen = p[0];
+		const uint8_t padLen = payload[0];
 		// Сдвигаем указатель за байт Pad Length
-		p += 1;
+		payload += 1;
 		// Уменьшаем длину нагрузки на байт Pad Length
-		len -= 1;
+		length -= 1;
 		// Если padding не помещается в оставшуюся нагрузку
-		if(padLen > len)
+		if(padLen > length)
 			// Нагрузка некорректна
 			return false;
 		// Отбрасываем padding из хвоста нагрузки
-		len -= padLen;
+		length -= padLen;
 		// Продолжаем разбор
 		return true;
 	}
-}
+	/**
+	 * @brief Функция записи 9-байтового заголовка фрейма (RFC 9113 §4.1)
+	 *
+	 * @param output      выходной буфер
+	 * @param length   длина полезной нагрузки
+	 * @param type     тип фрейма
+	 * @param flags    флаги фрейма
+	 * @param streamId идентификатор потока
+	 */
+	inline void wrHeader(string & output, const uint32_t length, const frame_t type, const uint8_t flags, const uint32_t streamId) noexcept {
+		// Дописываем 24-битную длину полезной нагрузки
+		wr24(output, length);
+		// Дописываем тип фрейма
+		output.push_back(static_cast <char> (type));
+		// Дописываем флаги фрейма
+		output.push_back(static_cast <char> (flags));
+		// Дописываем 31-битный идентификатор потока (сбрасывая reserved-бит)
+		wr32(output, streamId & proto::STREAM_ID_MASK);
+	}
+};
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::frame::Setting::Setting() noexcept :
+ id(setting_t::HEADER_TABLE_SIZE), value(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::frame::Data::Data() noexcept : endStream(false), data{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::frame::Priority::Priority() noexcept :
+ exclusive(false), weight(0), streamDep(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::frame::Goaway::Goaway() noexcept :
+ code(error_t::NO_ERROR), lastStreamId(0), debugData{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::frame::Header::Header() noexcept :
+ type(frame_t::DATA), flags(flag::NONE), length(0), streamId(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::frame::Headers::Headers() noexcept :
+ exclusive(false),
+ endStream(false),
+ endHeaders(false),
+ hasPriority(false),
+ weight(0), streamDep(0),
+ block{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::h2::frame::Push_Promise::Push_Promise() noexcept :
+ endHeaders(false), promisedStreamId(0), block{""} {}
 
 /**
  * @brief Функция разбора 9-байтового заголовка фрейма
  *
- * @param data входной буфер
- * @param size доступно байт
- * @param out  разобранный заголовок фрейма
- * @return     результат разбора (true - в буфере было достаточно байт и заголовок разобран)
+ * @param data   входной буфер
+ * @param size   доступно байт
+ * @param output разобранный заголовок фрейма
+ * @return       результат разбора (true - в буфере было достаточно байт и заголовок разобран)
  */
-bool awh::http::h2::frame::parseHeader(const uint8_t * data, const size_t size, header_t & out) noexcept {
+bool awh::http::h2::frame::parser::header(const uint8_t * data, const size_t size, header_t & output) noexcept {
 	// Если в буфере недостаточно байт для заголовка фрейма
 	if(size < proto::FRAME_HEADER_SIZE)
 		// Заголовок разобрать невозможно
 		return false;
 	// Извлекаем 24-битную длину полезной нагрузки
-	out.length = ::rd24(data);
+	output.length = ::rd24(data);
 	// Извлекаем тип фрейма
-	out.type = static_cast <frame_t> (data[3]);
+	output.type = static_cast <frame_t> (data[3]);
 	// Извлекаем флаги фрейма
-	out.flags = data[4];
+	output.flags = data[4];
 	// Извлекаем 31-битный идентификатор потока (сбрасывая reserved-бит)
-	out.streamId = (::rd32(data + 5) & proto::STREAM_ID_MASK);
+	output.streamId = (::rd32(data + 5) & proto::STREAM_ID_MASK);
 	// Заголовок фрейма разобран
 	return true;
 }
 /**
  * @brief Функция разбора полезной нагрузки DATA
  *
- * @param h       заголовок фрейма
+ * @param header  заголовок фрейма
  * @param payload полезная нагрузка фрейма
- * @param out     разобранная полезная нагрузка
- * @param err     код ошибки протокола (PROTOCOL_ERROR на некорректном padding)
+ * @param output  разобранная полезная нагрузка
+ * @param error   код ошибки протокола (PROTOCOL_ERROR на некорректном padding)
  * @return        результат разбора (OK/ERROR)
  */
-awh::http::h2::status_t awh::http::h2::frame::parseData(const header_t & h, const uint8_t * payload, data_t & out, error_t & err) noexcept {
+awh::http::h2::status_t awh::http::h2::frame::parser::data(const header_t & header, const uint8_t * payload, data_t & output, error_t & error) noexcept {
 	// Если фрейм не принадлежит потоку (DATA обязан иметь stream id != 0)
-	if(h.streamId == 0){
+	if(header.streamId == 0){
 		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
+		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
-	// Указатель на текущую позицию полезной нагрузки
-	const uint8_t * p = payload;
 	// Оставшаяся длина полезной нагрузки
-	size_t len = h.length;
+	size_t length = header.length;
+	// Буфер текущей позиции полезной нагрузки
+	const uint8_t * buffer = payload;
 	// Если снятие padding не удалось
-	if(!::stripPadding(h.flags & flag::PADDED, p, len)){
+	if(!::stripPadding(header.flags & flag::PADDED, buffer, length)){
 		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
+		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
 	// Извлекаем данные тела (zero-copy во входной буфер)
-	out.data = string_view(reinterpret_cast <const char *> (p), len);
+	output.data = string_view(reinterpret_cast <const char *> (buffer), length);
 	// Извлекаем флаг завершения потока
-	out.endStream = ((h.flags & flag::END_STREAM) != 0);
-	// Полезная нагрузка разобрана
-	return status_t::OK;
-}
-/**
- * @brief Функция разбора полезной нагрузки HEADERS (с учётом padding и приоритета)
- *
- * @param h       заголовок фрейма
- * @param payload полезная нагрузка фрейма
- * @param out     разобранная полезная нагрузка
- * @param err     код ошибки протокола
- * @return        результат разбора (OK/ERROR)
- */
-awh::http::h2::status_t awh::http::h2::frame::parseHeaders(const header_t & h, const uint8_t * payload, headers_t & out, error_t & err) noexcept {
-	// Если фрейм не принадлежит потоку (HEADERS обязан иметь stream id != 0)
-	if(h.streamId == 0){
-		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Указатель на текущую позицию полезной нагрузки
-	const uint8_t * p = payload;
-	// Оставшаяся длина полезной нагрузки
-	size_t len = h.length;
-	// Если снятие padding не удалось
-	if(!::stripPadding(h.flags & flag::PADDED, p, len)){
-		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Извлекаем флаг завершения потока
-	out.endStream = ((h.flags & flag::END_STREAM) != 0);
-	// Извлекаем флаг завершения блока заголовков
-	out.endHeaders = ((h.flags & flag::END_HEADERS) != 0);
-	// Извлекаем флаг наличия полей приоритета
-	out.hasPriority = ((h.flags & flag::PRIORITY) != 0);
-	// Если поля приоритета присутствуют (RFC 7540, deprecated)
-	if(out.hasPriority){
-		// Если нагрузка не содержит 5 байт полей приоритета
-		if(len < 5){
-			// Фиксируем некорректный размер фрейма
-			err = error_t::FRAME_SIZE_ERROR;
-			// Выводим ошибку разбора
-			return status_t::ERROR;
-		}
-		// Извлекаем зависимость потока (32 бита)
-		const uint32_t dep = ::rd32(p);
-		// Извлекаем флаг эксклюзивной зависимости (старший бит)
-		out.exclusive = ((dep & 0x80000000u) != 0);
-		// Извлекаем идентификатор потока, от которого зависит текущий
-		out.streamDep = (dep & proto::STREAM_ID_MASK);
-		// Извлекаем вес потока
-		out.weight = p[4];
-		// Сдвигаем указатель за поля приоритета
-		p += 5;
-		// Уменьшаем длину нагрузки на поля приоритета
-		len -= 5;
-	}
-	// Извлекаем фрагмент блока заголовков (zero-copy во входной буфер)
-	out.block = string_view(reinterpret_cast <const char *> (p), len);
-	// Полезная нагрузка разобрана
-	return status_t::OK;
-}
-/**
- * @brief Функция разбора полезной нагрузки PRIORITY (требует ровно 5 байт)
- *
- * @param h       заголовок фрейма
- * @param payload полезная нагрузка фрейма
- * @param out     разобранная полезная нагрузка
- * @param err     код ошибки протокола
- * @return        результат разбора (OK/ERROR)
- */
-awh::http::h2::status_t awh::http::h2::frame::parsePriority(const header_t & h, const uint8_t * payload, priority_t & out, error_t & err) noexcept {
-	// Если фрейм не принадлежит потоку (PRIORITY обязан иметь stream id != 0)
-	if(h.streamId == 0){
-		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Если размер нагрузки не равен ровно 5 байтам
-	if(h.length != 5){
-		// Фиксируем некорректный размер фрейма
-		err = error_t::FRAME_SIZE_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Извлекаем зависимость потока (32 бита)
-	const uint32_t dep = ::rd32(payload);
-	// Извлекаем флаг эксклюзивной зависимости (старший бит)
-	out.exclusive = ((dep & 0x80000000u) != 0);
-	// Извлекаем идентификатор потока, от которого зависит текущий
-	out.streamDep = (dep & proto::STREAM_ID_MASK);
-	// Извлекаем вес потока
-	out.weight = payload[4];
-	// Полезная нагрузка разобрана
-	return status_t::OK;
-}
-/**
- * @brief Функция разбора полезной нагрузки RST_STREAM (требует ровно 4 байта)
- *
- * @param h       заголовок фрейма
- * @param payload полезная нагрузка фрейма
- * @param code    код ошибки, с которым сброшен поток
- * @param err     код ошибки протокола
- * @return        результат разбора (OK/ERROR)
- */
-awh::http::h2::status_t awh::http::h2::frame::parseRstStream(const header_t & h, const uint8_t * payload, error_t & code, error_t & err) noexcept {
-	// Если фрейм не принадлежит потоку (RST_STREAM обязан иметь stream id != 0)
-	if(h.streamId == 0){
-		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Если размер нагрузки не равен ровно 4 байтам
-	if(h.length != 4){
-		// Фиксируем некорректный размер фрейма
-		err = error_t::FRAME_SIZE_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Извлекаем код ошибки, с которым сброшен поток
-	code = static_cast <error_t> (::rd32(payload));
-	// Полезная нагрузка разобрана
-	return status_t::OK;
-}
-/**
- * @brief Функция разбора полезной нагрузки SETTINGS (длина кратна 6)
- *
- * @param h       заголовок фрейма
- * @param payload полезная нагрузка фрейма
- * @param out     список разобранных параметров
- * @param err     код ошибки протокола
- * @return        результат разбора (OK/ERROR)
- */
-awh::http::h2::status_t awh::http::h2::frame::parseSettings(const header_t & h, const uint8_t * payload, vector <setting_entry_t> & out, error_t & err) noexcept {
-	// Если фрейм принадлежит потоку (SETTINGS относится к соединению, stream id == 0)
-	if(h.streamId != 0){
-		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Если получен фрейм подтверждения (ACK)
-	if(h.flags & flag::ACK){
-		// Если нагрузка подтверждения не пустая (ACK обязан быть пустым)
-		if(h.length != 0){
-			// Фиксируем некорректный размер фрейма
-			err = error_t::FRAME_SIZE_ERROR;
-			// Выводим ошибку разбора
-			return status_t::ERROR;
-		}
-		// Полезная нагрузка разобрана
-		return status_t::OK;
-	}
-	// Если размер нагрузки не кратен 6 байтам (размер одного параметра)
-	if((h.length % 6) != 0){
-		// Фиксируем некорректный размер фрейма
-		err = error_t::FRAME_SIZE_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Определяем количество параметров в нагрузке
-	const size_t count = (h.length / 6);
-	// Резервируем память под все параметры
-	out.reserve(out.size() + count);
-	// Указатель на текущую позицию полезной нагрузки
-	const uint8_t * p = payload;
-	/**
-	 * Выполняем перебор всех параметров нагрузки
-	 */
-	for(size_t i = 0; i < count; ++i){
-		// Создаём объект параметра
-		setting_entry_t entry;
-		// Извлекаем идентификатор параметра
-		entry.id = static_cast <setting_t> (::rd16(p));
-		// Извлекаем значение параметра
-		entry.value = ::rd32(p + 2);
-		// Дописываем параметр в список
-		out.push_back(entry);
-		// Сдвигаем указатель на следующий параметр
-		p += 6;
-	}
-	// Полезная нагрузка разобрана
-	return status_t::OK;
-}
-/**
- * @brief Функция разбора полезной нагрузки PUSH_PROMISE (с учётом padding)
- *
- * @param h       заголовок фрейма
- * @param payload полезная нагрузка фрейма
- * @param out     разобранная полезная нагрузка
- * @param err     код ошибки протокола
- * @return        результат разбора (OK/ERROR)
- */
-awh::http::h2::status_t awh::http::h2::frame::parsePushPromise(const header_t & h, const uint8_t * payload, push_promise_t & out, error_t & err) noexcept {
-	// Если фрейм не принадлежит потоку (PUSH_PROMISE обязан иметь stream id != 0)
-	if(h.streamId == 0){
-		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Указатель на текущую позицию полезной нагрузки
-	const uint8_t * p = payload;
-	// Оставшаяся длина полезной нагрузки
-	size_t len = h.length;
-	// Если снятие padding не удалось
-	if(!::stripPadding(h.flags & flag::PADDED, p, len)){
-		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Если нагрузка не содержит 4 байта Promised Stream ID
-	if(len < 4){
-		// Фиксируем некорректный размер фрейма
-		err = error_t::FRAME_SIZE_ERROR;
-		// Выводим ошибку разбора
-		return status_t::ERROR;
-	}
-	// Извлекаем идентификатор обещанного потока (сбрасывая reserved-бит)
-	out.promisedStreamId = (::rd32(p) & proto::STREAM_ID_MASK);
-	// Извлекаем флаг завершения блока заголовков
-	out.endHeaders = ((h.flags & flag::END_HEADERS) != 0);
-	// Извлекаем фрагмент блока заголовков (zero-copy во входной буфер)
-	out.block = string_view(reinterpret_cast <const char *> (p + 4), len - 4);
+	output.endStream = ((header.flags & flag::END_STREAM) != 0);
 	// Полезная нагрузка разобрана
 	return status_t::OK;
 }
 /**
  * @brief Функция разбора полезной нагрузки PING (требует ровно 8 байт opaque-данных)
  *
- * @param h       заголовок фрейма
+ * @param header  заголовок фрейма
  * @param payload полезная нагрузка фрейма
  * @param opaque  извлечённые opaque-данные
- * @param err     код ошибки протокола
+ * @param error   код ошибки протокола
  * @return        результат разбора (OK/ERROR)
  */
-awh::http::h2::status_t awh::http::h2::frame::parsePing(const header_t & h, const uint8_t * payload, uint8_t opaque[8], error_t & err) noexcept {
+awh::http::h2::status_t awh::http::h2::frame::parser::ping(const header_t & header, const uint8_t * payload, uint8_t opaque[8], error_t & error) noexcept {
 	// Если фрейм принадлежит потоку (PING относится к соединению, stream id == 0)
-	if(h.streamId != 0){
+	if(header.streamId != 0){
 		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
+		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
 	// Если размер нагрузки не равен ровно 8 байтам
-	if(h.length != 8){
+	if(header.length != 8){
 		// Фиксируем некорректный размер фрейма
-		err = error_t::FRAME_SIZE_ERROR;
+		error = error_t::FRAME_SIZE_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
@@ -487,52 +311,177 @@ awh::http::h2::status_t awh::http::h2::frame::parsePing(const header_t & h, cons
 	return status_t::OK;
 }
 /**
- * @brief Функция разбора полезной нагрузки GOAWAY (минимум 8 байт)
+ * @brief Функция разбора полезной нагрузки RST_STREAM (требует ровно 4 байта)
  *
- * @param h       заголовок фрейма
+ * @param header  заголовок фрейма
  * @param payload полезная нагрузка фрейма
- * @param out     разобранная полезная нагрузка
- * @param err     код ошибки протокола
+ * @param code    код ошибки, с которым сброшен поток
+ * @param error   код ошибки протокола
  * @return        результат разбора (OK/ERROR)
  */
-awh::http::h2::status_t awh::http::h2::frame::parseGoaway(const header_t & h, const uint8_t * payload, goaway_t & out, error_t & err) noexcept {
-	// Если фрейм принадлежит потоку (GOAWAY относится к соединению, stream id == 0)
-	if(h.streamId != 0){
+awh::http::h2::status_t awh::http::h2::frame::parser::rstStream(const header_t & header, const uint8_t * payload, error_t & code, error_t & error) noexcept {
+	// Если фрейм не принадлежит потоку (RST_STREAM обязан иметь stream id != 0)
+	if(header.streamId == 0){
 		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Если размер нагрузки не равен ровно 4 байтам
+	if(header.length != 4){
+		// Фиксируем некорректный размер фрейма
+		error = error_t::FRAME_SIZE_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Извлекаем код ошибки, с которым сброшен поток
+	code = static_cast <error_t> (::rd32(payload));
+	// Полезная нагрузка разобрана
+	return status_t::OK;
+}
+/**
+ * @brief Функция разбора полезной нагрузки GOAWAY (минимум 8 байт)
+ *
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @param output  разобранная полезная нагрузка
+ * @param error   код ошибки протокола
+ * @return        результат разбора (OK/ERROR)
+ */
+awh::http::h2::status_t awh::http::h2::frame::parser::goaway(const header_t & header, const uint8_t * payload, goaway_t & output, error_t & error) noexcept {
+	// Если фрейм принадлежит потоку (GOAWAY относится к соединению, stream id == 0)
+	if(header.streamId != 0){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
 	// Если нагрузка не содержит обязательные 8 байт
-	if(h.length < 8){
+	if(header.length < 8){
 		// Фиксируем некорректный размер фрейма
-		err = error_t::FRAME_SIZE_ERROR;
+		error = error_t::FRAME_SIZE_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
 	// Извлекаем наибольший идентификатор обработанного потока (сбрасывая reserved-бит)
-	out.lastStreamId = (::rd32(payload) & proto::STREAM_ID_MASK);
+	output.lastStreamId = (::rd32(payload) & proto::STREAM_ID_MASK);
 	// Извлекаем код ошибки завершения соединения
-	out.code = static_cast <error_t> (::rd32(payload + 4));
+	output.code = static_cast <error_t> (::rd32(payload + 4));
 	// Извлекаем отладочные данные (zero-copy во входной буфер)
-	out.debugData = string_view(reinterpret_cast <const char *> (payload + 8), h.length - 8);
+	output.debugData = string_view(reinterpret_cast <const char *> (payload + 8), header.length - 8);
+	// Полезная нагрузка разобрана
+	return status_t::OK;
+}
+/**
+ * @brief Функция разбора полезной нагрузки HEADERS (с учётом padding и приоритета)
+ *
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @param output  разобранная полезная нагрузка
+ * @param error   код ошибки протокола
+ * @return        результат разбора (OK/ERROR)
+ */
+awh::http::h2::status_t awh::http::h2::frame::parser::headers(const header_t & header, const uint8_t * payload, headers_t & output, error_t & error) noexcept {
+	// Если фрейм не принадлежит потоку (HEADERS обязан иметь stream id != 0)
+	if(header.streamId == 0){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Оставшаяся длина полезной нагрузки
+	size_t length = header.length;
+	// Буфер текущей позиции полезной нагрузки
+	const uint8_t * buffer = payload;
+	// Если снятие padding не удалось
+	if(!::stripPadding(header.flags & flag::PADDED, buffer, length)){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Извлекаем флаг завершения потока
+	output.endStream = ((header.flags & flag::END_STREAM) != 0);
+	// Извлекаем флаг наличия полей приоритета
+	output.hasPriority = ((header.flags & flag::PRIORITY) != 0);
+	// Извлекаем флаг завершения блока заголовков
+	output.endHeaders = ((header.flags & flag::END_HEADERS) != 0);
+	// Если поля приоритета присутствуют (RFC 7540, deprecated)
+	if(output.hasPriority){
+		// Если нагрузка не содержит 5 байт полей приоритета
+		if(length < 5){
+			// Фиксируем некорректный размер фрейма
+			error = error_t::FRAME_SIZE_ERROR;
+			// Выводим ошибку разбора
+			return status_t::ERROR;
+		}
+		// Извлекаем зависимость потока (32 бита)
+		const uint32_t dep = ::rd32(buffer);
+		// Извлекаем флаг эксклюзивной зависимости (старший бит)
+		output.exclusive = ((dep & 0x80000000u) != 0);
+		// Извлекаем идентификатор потока, от которого зависит текущий
+		output.streamDep = (dep & proto::STREAM_ID_MASK);
+		// Извлекаем вес потока
+		output.weight = buffer[4];
+		// Сдвигаем указатель за поля приоритета
+		buffer += 5;
+		// Уменьшаем длину нагрузки на поля приоритета
+		length -= 5;
+	}
+	// Извлекаем фрагмент блока заголовков (zero-copy во входной буфер)
+	output.block = string_view(reinterpret_cast <const char *> (buffer), length);
+	// Полезная нагрузка разобрана
+	return status_t::OK;
+}
+/**
+ * @brief Функция разбора полезной нагрузки PRIORITY (требует ровно 5 байт)
+ *
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @param output  разобранная полезная нагрузка
+ * @param error   код ошибки протокола
+ * @return        результат разбора (OK/ERROR)
+ */
+awh::http::h2::status_t awh::http::h2::frame::parser::priority(const header_t & header, const uint8_t * payload, priority_t & output, error_t & error) noexcept {
+	// Если фрейм не принадлежит потоку (PRIORITY обязан иметь stream id != 0)
+	if(header.streamId == 0){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Если размер нагрузки не равен ровно 5 байтам
+	if(header.length != 5){
+		// Фиксируем некорректный размер фрейма
+		error = error_t::FRAME_SIZE_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Извлекаем зависимость потока (32 бита)
+	const uint32_t dep = ::rd32(payload);
+	// Извлекаем флаг эксклюзивной зависимости (старший бит)
+	output.exclusive = ((dep & 0x80000000u) != 0);
+	// Извлекаем идентификатор потока, от которого зависит текущий
+	output.streamDep = (dep & proto::STREAM_ID_MASK);
+	// Извлекаем вес потока
+	output.weight = payload[4];
 	// Полезная нагрузка разобрана
 	return status_t::OK;
 }
 /**
  * @brief Функция разбора полезной нагрузки WINDOW_UPDATE (требует ровно 4 байта)
  *
- * @param h         заголовок фрейма
+ * @param header    заголовок фрейма
  * @param payload   полезная нагрузка фрейма
  * @param increment извлечённый инкремент окна
- * @param err       код ошибки протокола
+ * @param error     код ошибки протокола
  * @return          результат разбора (OK/ERROR)
  */
-awh::http::h2::status_t awh::http::h2::frame::parseWindowUpdate(const header_t & h, const uint8_t * payload, uint32_t & increment, error_t & err) noexcept {
+awh::http::h2::status_t awh::http::h2::frame::parser::windowUpdate(const header_t & header, const uint8_t * payload, uint32_t & increment, error_t & error) noexcept {
 	// Если размер нагрузки не равен ровно 4 байтам
-	if(h.length != 4){
+	if(header.length != 4){
 		// Фиксируем некорректный размер фрейма
-		err = error_t::FRAME_SIZE_ERROR;
+		error = error_t::FRAME_SIZE_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
@@ -541,9 +490,113 @@ awh::http::h2::status_t awh::http::h2::frame::parseWindowUpdate(const header_t &
 	// Если получен нулевой инкремент (PROTOCOL_ERROR по RFC 9113 §6.9)
 	if(increment == 0){
 		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
+		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
+	}
+	// Полезная нагрузка разобрана
+	return status_t::OK;
+}
+/**
+ * @brief Функция разбора полезной нагрузки PUSH_PROMISE (с учётом padding)
+ *
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @param output  разобранная полезная нагрузка
+ * @param error   код ошибки протокола
+ * @return        результат разбора (OK/ERROR)
+ */
+awh::http::h2::status_t awh::http::h2::frame::parser::pushPromise(const header_t & header, const uint8_t * payload, push_promise_t & output, error_t & error) noexcept {
+	// Если фрейм не принадлежит потоку (PUSH_PROMISE обязан иметь stream id != 0)
+	if(header.streamId == 0){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Оставшаяся длина полезной нагрузки
+	size_t length = header.length;
+	// Буфер текущей позиции полезной нагрузки
+	const uint8_t * buffer = payload;
+	// Если снятие padding не удалось
+	if(!::stripPadding(header.flags & flag::PADDED, buffer, length)){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Если нагрузка не содержит 4 байта Promised Stream ID
+	if(length < 4){
+		// Фиксируем некорректный размер фрейма
+		error = error_t::FRAME_SIZE_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Извлекаем флаг завершения блока заголовков
+	output.endHeaders = ((header.flags & flag::END_HEADERS) != 0);
+	// Извлекаем идентификатор обещанного потока (сбрасывая reserved-бит)
+	output.promisedStreamId = (::rd32(buffer) & proto::STREAM_ID_MASK);
+	// Извлекаем фрагмент блока заголовков (zero-copy во входной буфер)
+	output.block = string_view(reinterpret_cast <const char *> (buffer + 4), length - 4);
+	// Полезная нагрузка разобрана
+	return status_t::OK;
+}
+/**
+ * @brief Функция разбора полезной нагрузки SETTINGS (длина кратна 6)
+ *
+ * @param header  заголовок фрейма
+ * @param payload полезная нагрузка фрейма
+ * @param output  список разобранных параметров
+ * @param error   код ошибки протокола
+ * @return        результат разбора (OK/ERROR)
+ */
+awh::http::h2::status_t awh::http::h2::frame::parser::settings(const header_t & header, const uint8_t * payload, vector <setting_entry_t> & output, error_t & error) noexcept {
+	// Если фрейм принадлежит потоку (SETTINGS относится к соединению, stream id == 0)
+	if(header.streamId != 0){
+		// Фиксируем нарушение протокола
+		error = error_t::PROTOCOL_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Если получен фрейм подтверждения (ACK)
+	if(header.flags & flag::ACK){
+		// Если нагрузка подтверждения не пустая (ACK обязан быть пустым)
+		if(header.length != 0){
+			// Фиксируем некорректный размер фрейма
+			error = error_t::FRAME_SIZE_ERROR;
+			// Выводим ошибку разбора
+			return status_t::ERROR;
+		}
+		// Полезная нагрузка разобрана
+		return status_t::OK;
+	}
+	// Если размер нагрузки не кратен 6 байтам (размер одного параметра)
+	if((header.length % 6) != 0){
+		// Фиксируем некорректный размер фрейма
+		error = error_t::FRAME_SIZE_ERROR;
+		// Выводим ошибку разбора
+		return status_t::ERROR;
+	}
+	// Определяем количество параметров в нагрузке
+	const size_t count = (header.length / 6);
+	// Резервируем память под все параметры
+	output.reserve(output.size() + count);
+	// Буфер текущей позиции полезной нагрузки
+	const uint8_t * buffer = payload;
+	/**
+	 * Выполняем перебор всех параметров нагрузки
+	 */
+	for(size_t i = 0; i < count; ++i){
+		// Создаём объект параметра
+		setting_entry_t entry;
+		// Извлекаем идентификатор параметра
+		entry.id = static_cast <setting_t> (::rd16(buffer));
+		// Извлекаем значение параметра
+		entry.value = ::rd32(buffer + 2);
+		// Дописываем параметр в список
+		output.push_back(entry);
+		// Сдвигаем указатель на следующий параметр
+		buffer += 6;
 	}
 	// Полезная нагрузка разобрана
 	return status_t::OK;
@@ -551,52 +604,152 @@ awh::http::h2::status_t awh::http::h2::frame::parseWindowUpdate(const header_t &
 /**
  * @brief Функция разбора полезной нагрузки CONTINUATION (фрагмент блока заголовков)
  *
- * @param h          заголовок фрейма
+ * @param header     заголовок фрейма
  * @param payload    полезная нагрузка фрейма
  * @param block      фрагмент блока заголовков (zero-copy во входной буфер)
  * @param endHeaders флаг завершения блока заголовков
- * @param err        код ошибки протокола
+ * @param error      код ошибки протокола
  * @return           результат разбора (OK/ERROR)
  */
-awh::http::h2::status_t awh::http::h2::frame::parseContinuation(const header_t & h, const uint8_t * payload, string_view & block, bool & endHeaders, error_t & err) noexcept {
+awh::http::h2::status_t awh::http::h2::frame::parser::continuation(const header_t & header, const uint8_t * payload, string_view & block, bool & endHeaders, error_t & error) noexcept {
 	// Если фрейм не принадлежит потоку (CONTINUATION обязан иметь stream id != 0)
-	if(h.streamId == 0){
+	if(header.streamId == 0){
 		// Фиксируем нарушение протокола
-		err = error_t::PROTOCOL_ERROR;
+		error = error_t::PROTOCOL_ERROR;
 		// Выводим ошибку разбора
 		return status_t::ERROR;
 	}
 	// Извлекаем фрагмент блока заголовков (zero-copy во входной буфер)
-	block = string_view(reinterpret_cast <const char *> (payload), h.length);
+	block = string_view(reinterpret_cast <const char *> (payload), header.length);
 	// Извлекаем флаг завершения блока заголовков
-	endHeaders = ((h.flags & flag::END_HEADERS) != 0);
+	endHeaders = ((header.flags & flag::END_HEADERS) != 0);
 	// Полезная нагрузка разобрана
 	return status_t::OK;
 }
+
 /**
- * @brief Функция сборки фрейма DATA (заголовок + нагрузка дописываются в out)
+ * @brief Функция сборки фрейма PING (заголовок + нагрузка дописываются в output)
  *
- * @param out       выходной буфер соединения
+ * @param output выходной буфер соединения
+ * @param opaque произвольные opaque-данные (8 байт)
+ * @param ack    флаг подтверждения получения PING пира
+ */
+void awh::http::h2::frame::serialize::ping(string & output, const uint8_t opaque[8], const bool ack) noexcept {
+	// Дописываем заголовок фрейма PING
+	::wrHeader(output, 8, frame_t::PING, (ack ? flag::ACK : flag::NONE), 0);
+	// Дописываем opaque-данные
+	output.append(reinterpret_cast <const char *> (opaque), 8);
+}
+/**
+ * @brief Функция сборки фрейма RST_STREAM (заголовок + нагрузка дописываются в output)
+ *
+ * @param output   выходной буфер соединения
+ * @param streamId идентификатор потока
+ * @param error    код ошибки, с которым сбрасывается поток
+ */
+void awh::http::h2::frame::serialize::rstStream(string & output, const uint32_t streamId, const error_t error) noexcept {
+	// Дописываем заголовок фрейма RST_STREAM
+	::wrHeader(output, 4, frame_t::RST_STREAM, flag::NONE, streamId);
+	// Дописываем код ошибки сброса потока
+	::wr32(output, static_cast <uint32_t> (error));
+}
+/**
+ * @brief Функция сборки фрейма WINDOW_UPDATE (заголовок + нагрузка дописываются в output)
+ *
+ * @param output    выходной буфер соединения
+ * @param streamId  идентификатор потока (0 - окно всего соединения)
+ * @param increment инкремент окна flow control
+ */
+void awh::http::h2::frame::serialize::windowUpdate(string & output, const uint32_t streamId, const uint32_t increment) noexcept {
+	// Дописываем заголовок фрейма WINDOW_UPDATE
+	::wrHeader(output, 4, frame_t::WINDOW_UPDATE, flag::NONE, streamId);
+	// Дописываем инкремент окна (сбрасывая reserved-бит)
+	::wr32(output, increment & proto::STREAM_ID_MASK);
+}
+/**
+ * @brief Функция сборки фрейма DATA (заголовок + нагрузка дописываются в output)
+ *
+ * @param output    выходной буфер соединения
  * @param streamId  идентификатор потока
  * @param data      данные тела
  * @param endStream флаг завершения потока
  */
-void awh::http::h2::frame::serializeData(string & out, const uint32_t streamId, string_view data, const bool endStream) noexcept {
+void awh::http::h2::frame::serialize::data(string & output, const uint32_t streamId, string_view data, const bool endStream) noexcept {
 	// Дописываем заголовок фрейма DATA
-	::wrHeader(out, static_cast <uint32_t> (data.size()), frame_t::DATA, (endStream ? flag::END_STREAM : flag::NONE), streamId);
+	::wrHeader(output, static_cast <uint32_t> (data.size()), frame_t::DATA, (endStream ? flag::END_STREAM : flag::NONE), streamId);
 	// Дописываем данные тела
-	out.append(data.data(), data.size());
+	output.append(data.data(), data.size());
 }
 /**
- * @brief Функция сборки фрейма HEADERS (заголовок + нагрузка дописываются в out)
+ * @brief Функция сборки фрейма SETTINGS (заголовок + нагрузка дописываются в output)
  *
- * @param out        выходной буфер соединения
+ * @param output выходной буфер соединения
+ * @param items  список параметров (для ACK игнорируется)
+ * @param count  количество параметров
+ * @param ack    флаг подтверждения получения SETTINGS пира
+ */
+void awh::http::h2::frame::serialize::settings(string & output, const setting_entry_t * items, const size_t count, const bool ack) noexcept {
+	// Если требуется подтверждение получения SETTINGS пира
+	if(ack){
+		// Дописываем пустой фрейм SETTINGS с флагом ACK
+		::wrHeader(output, 0, frame_t::SETTINGS, flag::ACK, 0);
+		// Выходим из функции
+		return;
+	}
+	// Дописываем заголовок фрейма SETTINGS
+	::wrHeader(output, static_cast <uint32_t> (count * 6), frame_t::SETTINGS, flag::NONE, 0);
+	/**
+	 * Выполняем перебор всех параметров
+	 */
+	for(size_t i = 0; i < count; ++i){
+		// Дописываем идентификатор параметра
+		::wr16(output, static_cast <uint16_t> (items[i].id));
+		// Дописываем значение параметра
+		::wr32(output, items[i].value);
+	}
+}
+/**
+ * @brief Функция сборки фрейма GOAWAY (заголовок + нагрузка дописываются в output)
+ *
+ * @param output       выходной буфер соединения
+ * @param lastStreamId наибольший идентификатор обработанного потока
+ * @param error        код ошибки завершения соединения
+ * @param debugData    необязательные отладочные данные
+ */
+void awh::http::h2::frame::serialize::goaway(string & output, const uint32_t lastStreamId, const error_t error, string_view debugData) noexcept {
+	// Дописываем заголовок фрейма GOAWAY
+	::wrHeader(output, static_cast <uint32_t> (debugData.size() + 8), frame_t::GOAWAY, flag::NONE, 0);
+	// Дописываем наибольший идентификатор обработанного потока (сбрасывая reserved-бит)
+	::wr32(output, lastStreamId & proto::STREAM_ID_MASK);
+	// Дописываем код ошибки завершения соединения
+	::wr32(output, static_cast <uint32_t> (error));
+	// Дописываем отладочные данные
+	output.append(debugData.data(), debugData.size());
+}
+/**
+ * @brief Функция сборки фрейма CONTINUATION (заголовок + нагрузка дописываются в output)
+ *
+ * @param output     выходной буфер соединения
+ * @param streamId   идентификатор потока
+ * @param block      фрагмент блока заголовков HPACK
+ * @param endHeaders флаг завершения блока заголовков
+ */
+void awh::http::h2::frame::serialize::continuation(string & output, const uint32_t streamId, string_view block, const bool endHeaders) noexcept {
+	// Дописываем заголовок фрейма CONTINUATION
+	::wrHeader(output, static_cast <uint32_t> (block.size()), frame_t::CONTINUATION, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
+	// Дописываем фрагмент блока заголовков
+	output.append(block.data(), block.size());
+}
+/**
+ * @brief Функция сборки фрейма HEADERS (заголовок + нагрузка дописываются в output)
+ *
+ * @param output     выходной буфер соединения
  * @param streamId   идентификатор потока
  * @param block      фрагмент блока заголовков HPACK
  * @param endStream  флаг завершения потока
  * @param endHeaders флаг завершения блока заголовков
  */
-void awh::http::h2::frame::serializeHeaders(string & out, const uint32_t streamId, string_view block, const bool endStream, const bool endHeaders) noexcept {
+void awh::http::h2::frame::serialize::headers(string & output, const uint32_t streamId, string_view block, const bool endStream, const bool endHeaders) noexcept {
 	// Собираем флаги фрейма
 	uint8_t flags = flag::NONE;
 	// Если требуется завершение потока
@@ -608,34 +761,37 @@ void awh::http::h2::frame::serializeHeaders(string & out, const uint32_t streamI
 		// Устанавливаем флаг завершения блока заголовков
 		flags |= flag::END_HEADERS;
 	// Дописываем заголовок фрейма HEADERS
-	::wrHeader(out, static_cast <uint32_t> (block.size()), frame_t::HEADERS, flags, streamId);
+	::wrHeader(output, static_cast <uint32_t> (block.size()), frame_t::HEADERS, flags, streamId);
 	// Дописываем фрагмент блока заголовков
-	out.append(block.data(), block.size());
+	output.append(block.data(), block.size());
 }
 /**
- * @brief Функция сборки фрейма CONTINUATION (заголовок + нагрузка дописываются в out)
+ * @brief Функция сборки фрейма PRIORITY (заголовок + нагрузка дописываются в output)
  *
- * @param out        выходной буфер соединения
- * @param streamId   идентификатор потока
- * @param block      фрагмент блока заголовков HPACK
- * @param endHeaders флаг завершения блока заголовков
+ * @param output    выходной буфер соединения
+ * @param streamId  идентификатор потока
+ * @param exclusive флаг эксклюзивной зависимости потока
+ * @param streamDep идентификатор потока, от которого зависит текущий
+ * @param weight    вес потока
  */
-void awh::http::h2::frame::serializeContinuation(string & out, const uint32_t streamId, string_view block, const bool endHeaders) noexcept {
-	// Дописываем заголовок фрейма CONTINUATION
-	::wrHeader(out, static_cast <uint32_t> (block.size()), frame_t::CONTINUATION, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
-	// Дописываем фрагмент блока заголовков
-	out.append(block.data(), block.size());
+void awh::http::h2::frame::serialize::priority(string & output, const uint32_t streamId, const bool exclusive, const uint32_t streamDep, const uint8_t weight) noexcept {
+	// Дописываем заголовок фрейма PRIORITY
+	::wrHeader(output, 5, frame_t::PRIORITY, flag::NONE, streamId);
+	// Дописываем зависимость потока с флагом эксклюзивности в старшем бите
+	::wr32(output, (streamDep & proto::STREAM_ID_MASK) | (exclusive ? 0x80000000u : 0));
+	// Дописываем вес потока
+	output.push_back(static_cast <char> (weight));
 }
 /**
  * @brief Функция сборки HPACK-блока в HEADERS + CONTINUATION (RFC 9113 §6.2/§6.10)
  *
- * @param out             выходной буфер соединения
+ * @param output          выходной буфер соединения
  * @param streamId        идентификатор потока
  * @param block           блок заголовков HPACK целиком
  * @param endStream       флаг завершения потока
  * @param maxFramePayload максимальный размер полезной нагрузки одного фрейма (SETTINGS_MAX_FRAME_SIZE пира)
  */
-void awh::http::h2::frame::serializeHeaderBlock(string & out, const uint32_t streamId, string_view block, const bool endStream, uint32_t maxFramePayload) noexcept {
+void awh::http::h2::frame::serialize::headerBlock(string & output, const uint32_t streamId, string_view block, const bool endStream, uint32_t maxFramePayload) noexcept {
 	// Если максимальный размер нагрузки не задан или превышает допустимый протоколом
 	if((maxFramePayload == 0) || (maxFramePayload > proto::MAX_FRAME_LENGTH))
 		// Используем размер нагрузки по умолчанию
@@ -645,46 +801,63 @@ void awh::http::h2::frame::serializeHeaderBlock(string & out, const uint32_t str
 	// Если блок помещается в один фрейм HEADERS
 	if(block.size() <= maxChunk){
 		// Дописываем единственный фрейм HEADERS с завершением блока
-		serializeHeaders(out, streamId, block, endStream, true);
+		headers(output, streamId, block, endStream, true);
 		// Выходим из функции
 		return;
 	}
-	// Текущее смещение в блоке заголовков
-	size_t off = 0;
 	// Признак первого фрейма последовательности
 	bool first = true;
+	// Текущее смещение в блоке заголовков
+	size_t offset = 0;
 	/**
 	 * Выполняем нарезку блока на фреймы HEADERS + CONTINUATION
 	 */
-	while(off < block.size()){
+	while(offset < block.size()){
 		// Определяем размер очередного фрагмента блока
-		const size_t chunk = ::min(block.size() - off, maxChunk);
+		const size_t chunk = ::min(block.size() - offset, maxChunk);
 		// Определяем признак последнего фрагмента блока
-		const bool last = ((off + chunk) >= block.size());
+		const bool last = ((offset + chunk) >= block.size());
 		// Формируем очередной фрагмент блока
-		const string_view frag(block.data() + off, chunk);
+		const string_view frag(block.data() + offset, chunk);
 		// Если это первый фрейм последовательности
 		if(first){
 			// Дописываем фрейм HEADERS (END_STREAM ставится только на него)
-			serializeHeaders(out, streamId, frag, endStream, last);
+			headers(output, streamId, frag, endStream, last);
 			// Сбрасываем признак первого фрейма
 			first = false;
 		// Дописываем очередной фрейм CONTINUATION
-		} else serializeContinuation(out, streamId, frag, last);
+		} else continuation(output, streamId, frag, last);
 		// Сдвигаем смещение на размер фрагмента
-		off += chunk;
+		offset += chunk;
 	}
+}
+/**
+ * @brief Функция сборки фрейма PUSH_PROMISE (заголовок + нагрузка дописываются в output)
+ *
+ * @param output           выходной буфер соединения
+ * @param streamId         идентификатор ассоциированного потока клиента
+ * @param promisedStreamId идентификатор обещанного потока
+ * @param block            фрагмент блока заголовков HPACK
+ * @param endHeaders       флаг завершения блока заголовков
+ */
+void awh::http::h2::frame::serialize::pushPromise(string & output, const uint32_t streamId, const uint32_t promisedStreamId, string_view block, const bool endHeaders) noexcept {
+	// Дописываем заголовок фрейма PUSH_PROMISE (нагрузка включает 4 октета Promised Stream ID)
+	::wrHeader(output, static_cast <uint32_t> (block.size() + 4), frame_t::PUSH_PROMISE, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
+	// Дописываем идентификатор обещанного потока (сбрасывая reserved-бит)
+	::wr32(output, promisedStreamId & proto::STREAM_ID_MASK);
+	// Дописываем фрагмент блока заголовков
+	output.append(block.data(), block.size());
 }
 /**
  * @brief Функция сборки HPACK-блока обещанного запроса в PUSH_PROMISE + CONTINUATION
  *
- * @param out              выходной буфер соединения
+ * @param output           выходной буфер соединения
  * @param streamId         идентификатор ассоциированного потока клиента
  * @param promisedStreamId идентификатор обещанного потока
  * @param block            блок заголовков HPACK целиком
  * @param maxFramePayload  максимальный размер полезной нагрузки одного фрейма
  */
-void awh::http::h2::frame::serializePushPromiseBlock(string & out, const uint32_t streamId, const uint32_t promisedStreamId, string_view block, uint32_t maxFramePayload) noexcept {
+void awh::http::h2::frame::serialize::pushPromiseBlock(string & output, const uint32_t streamId, const uint32_t promisedStreamId, string_view block, uint32_t maxFramePayload) noexcept {
 	// Если максимальный размер нагрузки не задан или превышает допустимый протоколом
 	if((maxFramePayload == 0) || (maxFramePayload > proto::MAX_FRAME_LENGTH))
 		// Используем размер нагрузки по умолчанию
@@ -698,148 +871,29 @@ void awh::http::h2::frame::serializePushPromiseBlock(string & out, const uint32_
 	// Если блок помещается в один фрейм PUSH_PROMISE
 	if(block.size() <= firstMax){
 		// Дописываем единственный фрейм PUSH_PROMISE с завершением блока
-		serializePushPromise(out, streamId, promisedStreamId, block, true);
+		pushPromise(output, streamId, promisedStreamId, block, true);
 		// Выходим из функции
 		return;
 	}
 	// Размер первого фрагмента блока
 	const size_t firstChunk = firstMax;
 	// Дописываем первый фрейм PUSH_PROMISE без завершения блока
-	serializePushPromise(out, streamId, promisedStreamId, block.substr(0, firstChunk), false);
+	pushPromise(output, streamId, promisedStreamId, block.substr(0, firstChunk), false);
 	// Текущее смещение в блоке заголовков
-	size_t off = firstChunk;
+	size_t offset = firstChunk;
 	// Максимальный размер одного фрагмента блока
 	const size_t maxChunk = static_cast <size_t> (maxFramePayload);
 	/**
 	 * Выполняем нарезку остатка блока на фреймы CONTINUATION
 	 */
-	while(off < block.size()){
+	while(offset < block.size()){
 		// Определяем размер очередного фрагмента блока
-		const size_t chunk = ::min(block.size() - off, maxChunk);
+		const size_t chunk = ::min(block.size() - offset, maxChunk);
 		// Определяем признак последнего фрагмента блока
-		const bool last = ((off + chunk) >= block.size());
+		const bool last = ((offset + chunk) >= block.size());
 		// Дописываем очередной фрейм CONTINUATION
-		serializeContinuation(out, streamId, string_view(block.data() + off, chunk), last);
+		continuation(output, streamId, string_view(block.data() + offset, chunk), last);
 		// Сдвигаем смещение на размер фрагмента
-		off += chunk;
+		offset += chunk;
 	}
-}
-/**
- * @brief Функция сборки фрейма PRIORITY (заголовок + нагрузка дописываются в out)
- *
- * @param out       выходной буфер соединения
- * @param streamId  идентификатор потока
- * @param exclusive флаг эксклюзивной зависимости потока
- * @param streamDep идентификатор потока, от которого зависит текущий
- * @param weight    вес потока
- */
-void awh::http::h2::frame::serializePriority(string & out, const uint32_t streamId, const bool exclusive, const uint32_t streamDep, const uint8_t weight) noexcept {
-	// Дописываем заголовок фрейма PRIORITY
-	::wrHeader(out, 5, frame_t::PRIORITY, flag::NONE, streamId);
-	// Дописываем зависимость потока с флагом эксклюзивности в старшем бите
-	::wr32(out, (streamDep & proto::STREAM_ID_MASK) | (exclusive ? 0x80000000u : 0));
-	// Дописываем вес потока
-	out.push_back(static_cast <char> (weight));
-}
-/**
- * @brief Функция сборки фрейма RST_STREAM (заголовок + нагрузка дописываются в out)
- *
- * @param out      выходной буфер соединения
- * @param streamId идентификатор потока
- * @param code     код ошибки, с которым сбрасывается поток
- */
-void awh::http::h2::frame::serializeRstStream(string & out, const uint32_t streamId, const error_t code) noexcept {
-	// Дописываем заголовок фрейма RST_STREAM
-	::wrHeader(out, 4, frame_t::RST_STREAM, flag::NONE, streamId);
-	// Дописываем код ошибки сброса потока
-	::wr32(out, static_cast <uint32_t> (code));
-}
-/**
- * @brief Функция сборки фрейма SETTINGS (заголовок + нагрузка дописываются в out)
- *
- * @param out   выходной буфер соединения
- * @param items список параметров (для ACK игнорируется)
- * @param count количество параметров
- * @param ack   флаг подтверждения получения SETTINGS пира
- */
-void awh::http::h2::frame::serializeSettings(string & out, const setting_entry_t * items, const size_t count, const bool ack) noexcept {
-	// Если требуется подтверждение получения SETTINGS пира
-	if(ack){
-		// Дописываем пустой фрейм SETTINGS с флагом ACK
-		::wrHeader(out, 0, frame_t::SETTINGS, flag::ACK, 0);
-		// Выходим из функции
-		return;
-	}
-	// Дописываем заголовок фрейма SETTINGS
-	::wrHeader(out, static_cast <uint32_t> (count * 6), frame_t::SETTINGS, flag::NONE, 0);
-	/**
-	 * Выполняем перебор всех параметров
-	 */
-	for(size_t i = 0; i < count; ++i){
-		// Дописываем идентификатор параметра
-		::wr16(out, static_cast <uint16_t> (items[i].id));
-		// Дописываем значение параметра
-		::wr32(out, items[i].value);
-	}
-}
-/**
- * @brief Функция сборки фрейма PUSH_PROMISE (заголовок + нагрузка дописываются в out)
- *
- * @param out              выходной буфер соединения
- * @param streamId         идентификатор ассоциированного потока клиента
- * @param promisedStreamId идентификатор обещанного потока
- * @param block            фрагмент блока заголовков HPACK
- * @param endHeaders       флаг завершения блока заголовков
- */
-void awh::http::h2::frame::serializePushPromise(string & out, const uint32_t streamId, const uint32_t promisedStreamId, string_view block, const bool endHeaders) noexcept {
-	// Дописываем заголовок фрейма PUSH_PROMISE (нагрузка включает 4 октета Promised Stream ID)
-	::wrHeader(out, static_cast <uint32_t> (block.size() + 4), frame_t::PUSH_PROMISE, (endHeaders ? flag::END_HEADERS : flag::NONE), streamId);
-	// Дописываем идентификатор обещанного потока (сбрасывая reserved-бит)
-	::wr32(out, promisedStreamId & proto::STREAM_ID_MASK);
-	// Дописываем фрагмент блока заголовков
-	out.append(block.data(), block.size());
-}
-/**
- * @brief Функция сборки фрейма PING (заголовок + нагрузка дописываются в out)
- *
- * @param out    выходной буфер соединения
- * @param opaque произвольные opaque-данные (8 байт)
- * @param ack    флаг подтверждения получения PING пира
- */
-void awh::http::h2::frame::serializePing(string & out, const uint8_t opaque[8], const bool ack) noexcept {
-	// Дописываем заголовок фрейма PING
-	::wrHeader(out, 8, frame_t::PING, (ack ? flag::ACK : flag::NONE), 0);
-	// Дописываем opaque-данные
-	out.append(reinterpret_cast <const char *> (opaque), 8);
-}
-/**
- * @brief Функция сборки фрейма GOAWAY (заголовок + нагрузка дописываются в out)
- *
- * @param out          выходной буфер соединения
- * @param lastStreamId наибольший идентификатор обработанного потока
- * @param code         код ошибки завершения соединения
- * @param debugData    необязательные отладочные данные
- */
-void awh::http::h2::frame::serializeGoaway(string & out, const uint32_t lastStreamId, const error_t code, string_view debugData) noexcept {
-	// Дописываем заголовок фрейма GOAWAY
-	::wrHeader(out, static_cast <uint32_t> (debugData.size() + 8), frame_t::GOAWAY, flag::NONE, 0);
-	// Дописываем наибольший идентификатор обработанного потока (сбрасывая reserved-бит)
-	::wr32(out, lastStreamId & proto::STREAM_ID_MASK);
-	// Дописываем код ошибки завершения соединения
-	::wr32(out, static_cast <uint32_t> (code));
-	// Дописываем отладочные данные
-	out.append(debugData.data(), debugData.size());
-}
-/**
- * @brief Функция сборки фрейма WINDOW_UPDATE (заголовок + нагрузка дописываются в out)
- *
- * @param out       выходной буфер соединения
- * @param streamId  идентификатор потока (0 - окно всего соединения)
- * @param increment инкремент окна flow control
- */
-void awh::http::h2::frame::serializeWindowUpdate(string & out, const uint32_t streamId, const uint32_t increment) noexcept {
-	// Дописываем заголовок фрейма WINDOW_UPDATE
-	::wrHeader(out, 4, frame_t::WINDOW_UPDATE, flag::NONE, streamId);
-	// Дописываем инкремент окна (сбрасывая reserved-бит)
-	::wr32(out, increment & proto::STREAM_ID_MASK);
 }

@@ -22,11 +22,10 @@
 #include <string>
 #include <vector>
 #include <cstdint>
-#include <utility>
 #include <string_view>
 
 /**
- * Подключаем наши заголовочные файлы
+ * Подключаем заголовочные файлы проекта
  */
 #include "h2.hpp"
 #include "../../../../sys/global.hpp"
@@ -71,45 +70,6 @@ namespace awh {
 				static constexpr size_t STATIC_TABLE_SIZE = 61;
 
 				/**
-				 * @brief Структура пары заголовка
-				 *
-				 * @details Название и значение - владеющие копии: после декодирования они могут
-				 *          ссылаться на динамическую таблицу, поэтому хранятся как string
-				 */
-				typedef struct Field {
-					// Название заголовка
-					string name;
-					// Значение заголовка
-					string value;
-					// Чувствительное значение (RFC 7541 §7.1.3): кодировать как Literal Never Indexed
-					// и не заносить в динамическую таблицу (защита от CRIME-подобных атак). Кодер
-					// дополнительно автоматически считает чувствительными authorization/cookie
-					bool sensitive;
-					/**
-					 * @brief Конструктор
-					 *
-					 */
-					explicit Field() noexcept :
-					 name{""}, value{""}, sensitive(false) {}
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param name  название заголовка
-					 * @param value значение заголовка
-					 */
-					explicit Field(string name, string value) noexcept :
-					 name(std::move(name)), value(std::move(value)), sensitive(false) {}
-					/**
-					 * @brief Конструктор
-					 *
-					 * @param name      название заголовка
-					 * @param value     значение заголовка
-					 * @param sensitive флаг чувствительного значения
-					 */
-					explicit Field(string name, string value, const bool sensitive) noexcept :
-					 name(std::move(name)), value(std::move(value)), sensitive(sensitive) {}
-				} field_t;
-				/**
 				 * @brief Структура записи статической таблицы (zero-copy: ссылки на статические литералы)
 				 *
 				 */
@@ -120,59 +80,114 @@ namespace awh {
 					string_view value;
 				} static_entry_t;
 				/**
-				 * @brief Функция получения записи статической таблицы по индексу 1..61 (RFC 7541 Appendix A)
+				 * @brief Класс пары заголовка
 				 *
-				 * @param index индекс записи (1-based); 0 или > 61 - невалиден
-				 * @return      указатель на запись либо nullptr
+				 * @details Название и значение - владеющие копии: после декодирования они могут
+				 *          ссылаться на динамическую таблицу, поэтому хранятся как string.
 				 */
-				const static_entry_t * staticTable(const size_t index) noexcept;
+				typedef struct __AWH_SHARED_EXPORT__ Field {
+					public:
+						// Название заголовка
+						string name;
+						// Значение заголовка
+						string value;
+						/**
+						 * Чувствительное значение (RFC 7541 §7.1.3): кодировать как Literal Never Indexed
+						 * и не заносить в динамическую таблицу (защита от CRIME-подобных атак).
+						 * Кодер дополнительно автоматически считает чувствительными authorization/cookie.
+						 */
+						bool sensitive;
+					public:
+						/**
+						 * @brief Конструктор
+						 *
+						 */
+						explicit Field() noexcept;
+						/**
+						 * @brief Конструктор
+						 *
+						 * @param name  название заголовка
+						 * @param value значение заголовка
+						 */
+						explicit Field(string name, string value) noexcept;
+						/**
+						 * @brief Конструктор
+						 *
+						 * @param name      название заголовка
+						 * @param value     значение заголовка
+						 * @param sensitive флаг чувствительного значения
+						 */
+						explicit Field(string name, string value, const bool sensitive) noexcept;
+				} field_t;
+
 				/**
-				 * @brief Функция декодирования целого с префиксом переменной длины (RFC 7541 §5.1)
+				 * @brief Пространство имён функций Хаффман-кодирования (RFC 7541 Appendix B)
 				 *
-				 * @param data       входной буфер
-				 * @param size       доступно байт
-				 * @param prefixBits размер префикса в битах (1..8)
-				 * @param value      декодированное значение
-				 * @param consumed   количество прочитанных байт
-				 * @return           результат декодирования (OK / INCOMPLETE - мало данных / ERROR - переполнение)
 				 */
-				status_t decodeInteger(const uint8_t * data, const size_t size, const uint8_t prefixBits, uint64_t & value, size_t & consumed) noexcept;
+				namespace huffman {
+					/**
+					 * @brief Функция вычисления длины строки в байтах после Huffman-кодирования
+					 *
+					 * @note Используется для выбора способа кодирования (литерал/Huffman)
+					 *
+					 * @param input строка для вычисления
+					 * @return      длина строки после кодирования
+					 */
+					__AWH_SHARED_EXPORT__ size_t length(string_view input) noexcept;
+					/**
+					 * @brief Функция кодирования строки Huffman'ом (RFC 7541 Appendix B)
+					 *
+					 * @param input  кодируемая строка
+					 * @param output выходной буфер закодированной строки
+					 */
+					__AWH_SHARED_EXPORT__ void encode(string_view input, string & output) noexcept;
+					/**
+					 * @brief Функция декодирования Huffman-строки (RFC 7541 Appendix B)
+					 *
+					 * @param data   входной буфер
+					 * @param size   доступно байт
+					 * @param output выходной буфер декодированной строки
+					 * @return       результат декодирования (false - некорректная последовательность, COMPRESSION_ERROR)
+					 */
+					__AWH_SHARED_EXPORT__ bool decode(const uint8_t * data, const size_t size, string & output) noexcept;
+				};
+
 				/**
-				 * @brief Функция кодирования целого с префиксом переменной длины (RFC 7541 §5.1)
+				 * @brief Пространство имён функций кодирования/декодирования целых с префиксом переменной длины (RFC 7541 §5.1)
 				 *
-				 * @note Старшие (8 - prefixBits) бит первого байта берутся из prefixValue
-				 *
-				 * @param out         выходной буфер
-				 * @param value       кодируемое значение
-				 * @param prefixBits  размер префикса в битах (1..8)
-				 * @param prefixValue значение старших бит первого байта
 				 */
-				void encodeInteger(string & out, const uint64_t value, const uint8_t prefixBits, const uint8_t prefixValue) noexcept;
-				/**
-				 * @brief Функция декодирования Huffman-строки (RFC 7541 Appendix B)
-				 *
-				 * @param data входной буфер
-				 * @param size доступно байт
-				 * @param out  выходной буфер декодированной строки
-				 * @return     результат декодирования (false - некорректная последовательность, COMPRESSION_ERROR)
-				 */
-				bool huffmanDecode(const uint8_t * data, const size_t size, string & out) noexcept;
-				/**
-				 * @brief Функция кодирования строки Huffman'ом (RFC 7541 Appendix B)
-				 *
-				 * @param in  кодируемая строка
-				 * @param out выходной буфер закодированной строки
-				 */
-				void huffmanEncode(string_view in, string & out) noexcept;
-				/**
-				 * @brief Функция вычисления длины строки в байтах после Huffman-кодирования
-				 *
-				 * @note Используется для выбора способа кодирования (литерал/Huffman)
-				 *
-				 * @param in строка для вычисления
-				 * @return   длина строки после кодирования
-				 */
-				size_t huffmanLength(string_view in) noexcept;
+				namespace integer {
+					/**
+					 * @brief Функция получения записи статической таблицы по индексу 1..61 (RFC 7541 Appendix A)
+					 *
+					 * @param index индекс записи (1-based); 0 или > 61 - невалиден
+					 * @return      указатель на запись либо nullptr
+					 */
+					__AWH_SHARED_EXPORT__ const static_entry_t * staticTable(const size_t index) noexcept;
+					/**
+					 * @brief Функция кодирования целого с префиксом переменной длины (RFC 7541 §5.1)
+					 *
+					 * @note Старшие (8 - prefixBits) бит первого байта берутся из prefixValue
+					 *
+					 * @param output      выходной буфер
+					 * @param value       кодируемое значение
+					 * @param prefixBits  размер префикса в битах (1..8)
+					 * @param prefixValue значение старших бит первого байта
+					 */
+					__AWH_SHARED_EXPORT__ void encode(string & output, const uint64_t value, const uint8_t prefixBits, const uint8_t prefixValue) noexcept;
+					/**
+					 * @brief Функция декодирования целого с префиксом переменной длины (RFC 7541 §5.1)
+					 *
+					 * @param data       входной буфер
+					 * @param size       доступно байт
+					 * @param prefixBits размер префикса в битах (1..8)
+					 * @param value      декодированное значение
+					 * @param consumed   количество прочитанных байт
+					 * @return           результат декодирования (OK / INCOMPLETE - мало данных / ERROR - переполнение)
+					 */
+					__AWH_SHARED_EXPORT__ status_t decode(const uint8_t * data, const size_t size, const uint8_t prefixBits, uint64_t & value, size_t & consumed) noexcept;
+				};
+
 				/**
 				 * @brief Класс динамической таблицы HPACK с вытеснением по размеру FIFO (RFC 7541 §2.3.2)
 				 *
@@ -195,29 +210,6 @@ namespace awh {
 						void evict() noexcept;
 					public:
 						/**
-						 * @brief Метод добавления записи в начало таблицы (с вытеснением старых при нехватке места)
-						 *
-						 * @param name  название заголовка
-						 * @param value значение заголовка
-						 */
-						void add(string_view name, string_view value) noexcept;
-						/**
-						 * @brief Метод доступа к записи по индексу (1-based внутри динамической части)
-						 *
-						 * @param index индекс записи
-						 * @return      указатель на запись либо nullptr
-						 */
-						const field_t * at(const size_t index) const noexcept;
-						/**
-						 * @brief Метод изменения максимального размера таблицы (Dynamic Table Size Update)
-						 *
-						 * @note Лишние записи вытесняются сразу
-						 *
-						 * @param maxSize новый максимальный размер таблицы
-						 */
-						void setMaxSize(const uint32_t maxSize) noexcept;
-					public:
-						/**
 						 * @brief Метод получения количества записей таблицы
 						 *
 						 * @return количество записей таблицы
@@ -237,6 +229,29 @@ namespace awh {
 						uint32_t maxSize() const noexcept;
 					public:
 						/**
+						 * @brief Метод изменения максимального размера таблицы (Dynamic Table Size Update)
+						 *
+						 * @note Лишние записи вытесняются сразу
+						 *
+						 * @param maxSize новый максимальный размер таблицы
+						 */
+						void setMaxSize(const uint32_t maxSize) noexcept;
+						/**
+						 * @brief Метод доступа к записи по индексу (1-based внутри динамической части)
+						 *
+						 * @param index индекс записи
+						 * @return      указатель на запись либо nullptr
+						 */
+						const field_t * at(const size_t index) const noexcept;
+						/**
+						 * @brief Метод добавления записи в начало таблицы (с вытеснением старых при нехватке места)
+						 *
+						 * @param name  название заголовка
+						 * @param value значение заголовка
+						 */
+						void add(string_view name, string_view value) noexcept;
+					public:
+						/**
 						 * @brief Конструктор
 						 *
 						 * @param maxSize максимальный размер таблицы
@@ -248,6 +263,7 @@ namespace awh {
 						 */
 						~DynamicTable() noexcept = default;
 				} dynamic_table_t;
+
 				/**
 				 * @brief Класс декодера HPACK
 				 *
@@ -262,17 +278,6 @@ namespace awh {
 						uint32_t _protocolMaxSize;
 					public:
 						/**
-						 * @brief Метод декодирования одного блока заголовков целиком
-						 *
-						 * @param block       блок заголовков (уже собранный из HEADERS + CONTINUATION)
-						 * @param out         декодированные заголовки
-						 * @param maxListSize лимит суммарного размера списка (защита от decompression bomb); 0 - без лимита
-						 * @param err         код ошибки протокола (COMPRESSION_ERROR / ENHANCE_YOUR_CALM)
-						 * @return            результат декодирования (OK/ERROR)
-						 */
-						status_t decode(string_view block, vector <field_t> & out, const uint64_t maxListSize, error_t & err) noexcept;
-					public:
-						/**
 						 * @brief Метод получения динамической таблицы пира
 						 *
 						 * @return динамическая таблица пира
@@ -282,11 +287,22 @@ namespace awh {
 						 * @brief Метод установки верхней границы для Dynamic Table Size Update (RFC 7541 §6.3)
 						 *
 						 * @note Должна равняться объявленному нами SETTINGS_HEADER_TABLE_SIZE.
-						 *       Превышение пиром трактуется как COMPRESSION_ERROR
+						 *       Превышение пиром трактуется как COMPRESSION_ERROR.
 						 *
 						 * @param size верхняя граница размера таблицы
 						 */
 						void setProtocolMaxSize(const uint32_t size) noexcept;
+					public:
+						/**
+						 * @brief Метод декодирования одного блока заголовков целиком
+						 *
+						 * @param block       блок заголовков (уже собранный из HEADERS + CONTINUATION)
+						 * @param output      декодированные заголовки
+						 * @param maxListSize лимит суммарного размера списка (защита от decompression bomb); 0 - без лимита
+						 * @param error       код ошибки протокола (COMPRESSION_ERROR / ENHANCE_YOUR_CALM)
+						 * @return            результат декодирования (OK/ERROR)
+						 */
+						status_t decode(string_view block, vector <field_t> & output, const uint64_t maxListSize, error_t & error) noexcept;
 					public:
 						/**
 						 * @brief Конструктор
@@ -300,6 +316,7 @@ namespace awh {
 						 */
 						~Decoder() noexcept = default;
 				} decoder_t;
+
 				/**
 				 * @brief Класс кодера HPACK
 				 *
@@ -316,16 +333,17 @@ namespace awh {
 						// Собственная динамическая таблица
 						dynamic_table_t _table;
 					private:
-						// Требуется отправить Dynamic Table Size Update в начале следующего блока
-						bool _sizeUpdatePending;
 						// Значение размера таблицы для отправляемого update
 						uint32_t _pendingSize;
+					private:
+						// Требуется отправить Dynamic Table Size Update в начале следующего блока
+						bool _sizeUpdatePending;
 					private:
 						/**
 						 * @brief Метод поиска заголовка в статической + динамической таблицах
 						 *
 						 * @details Возвращает индекс полного совпадения (имя+значение) или, если его нет,
-						 *          заполняет индекс совпадения только по имени. 0 - совпадения нет
+						 *          заполняет индекс совпадения только по имени. 0 - совпадения нет.
 						 *
 						 * @param name      название искомого заголовка
 						 * @param value     значение искомого заголовка
@@ -339,32 +357,11 @@ namespace awh {
 						 *
 						 * @details Дописывает отложенный Dynamic Table Size Update (RFC 7541 §4.2),
 						 *          который обязан идти в самом начале блока. Вызывается один раз
-						 *          перед пофиледным кодированием блока
+						 *          перед пофиледным кодированием блока.
 						 *
-						 * @param out выходной буфер блока заголовков
+						 * @param output выходной буфер блока заголовков
 						 */
-						void begin(string & out) noexcept;
-						/**
-						 * @brief Метод кодирования одного заголовка (zero-copy, без владения строками)
-						 *
-						 * @note Псевдо-заголовки :method/:path/... должны кодироваться первыми,
-						 *       названия заголовков - строго в нижнем регистре (RFC 9113 §8.2.1)
-						 *
-						 * @param name       название заголовка
-						 * @param value      значение заголовка
-						 * @param out        выходной буфер блока заголовков
-						 * @param sensitive  чувствительное значение (Literal Never Indexed, RFC 7541 §7.1.3)
-						 * @param useHuffman применять Huffman-кодирование к строкам
-						 */
-						void encode(string_view name, string_view value, string & out, const bool sensitive = false, const bool useHuffman = true) noexcept;
-						/**
-						 * @brief Метод кодирования списка заголовков
-						 *
-						 * @param fields     заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
-						 * @param out        выходной буфер блока заголовков
-						 * @param useHuffman применять Huffman-кодирование к строкам
-						 */
-						void encode(const vector <field_t> & fields, string & out, const bool useHuffman = true) noexcept;
+						void begin(string & output) noexcept;
 					public:
 						/**
 						 * @brief Метод получения собственной динамической таблицы
@@ -378,11 +375,33 @@ namespace awh {
 						 * @note Вызывается при получении SETTINGS_HEADER_TABLE_SIZE пира: наш кодер обязан
 						 *       не превышать таблицу, которую готов держать декодер пира. Применяется сразу
 						 *       (с вытеснением), а в начало следующего блока ставится Dynamic Table Size Update,
-						 *       чтобы декодер пира остался синхронным
+						 *       чтобы декодер пира остался синхронным.
 						 *
 						 * @param size новый максимальный размер таблицы
 						 */
 						void setMaxTableSize(const uint32_t size) noexcept;
+					public:
+						/**
+						 * @brief Метод кодирования списка заголовков
+						 *
+						 * @param fields     заголовки (псевдо-заголовки :method/:path/... должны идти первыми)
+						 * @param output     выходной буфер блока заголовков
+						 * @param useHuffman применять Huffman-кодирование к строкам
+						 */
+						void encode(const vector <field_t> & fields, string & output, const bool useHuffman = true) noexcept;
+						/**
+						 * @brief Метод кодирования одного заголовка (zero-copy, без владения строками)
+						 *
+						 * @note Псевдо-заголовки :method/:path/... должны кодироваться первыми,
+						 *       названия заголовков - строго в нижнем регистре (RFC 9113 §8.2.1).
+						 *
+						 * @param name       название заголовка
+						 * @param value      значение заголовка
+						 * @param output     выходной буфер блока заголовков
+						 * @param sensitive  чувствительное значение (Literal Never Indexed, RFC 7541 §7.1.3)
+						 * @param useHuffman применять Huffman-кодирование к строкам
+						 */
+						void encode(string_view name, string_view value, string & output, const bool sensitive = false, const bool useHuffman = true) noexcept;
 					public:
 						/**
 						 * @brief Конструктор
@@ -396,8 +415,8 @@ namespace awh {
 						 */
 						~Encoder() noexcept = default;
 				} encoder_t;
-			}
-		}
+			};
+		};
 	};
 };
 

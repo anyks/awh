@@ -36,7 +36,7 @@
 #include <fast_float/fast_float.h>
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include <sys/fmk.hpp>
 #include <sys/log.hpp>
