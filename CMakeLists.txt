@@ -833,6 +833,11 @@ if (${CMAKE_BUILD_SAMPLES})
     # Указываем что нужно собрать приложение работы с парсером HTTP/2
     option(CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE "Build HTTP/2 Parser app sample" ON)
 
+    # Устанавливаем имя приложения работы с протоколом SOCKS5
+    SET(SOCKS5_APP_PROTO_NAME proto-socks5)
+    # Указываем что нужно собрать приложение работы с протоколом SOCKS5
+    option(CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE "Build SOCKS5 Protocol app sample" ON)
+
     # Устанавливаем имя приложения блочной компрессии данных
     SET(COMPRESSOR_APP_BLOCK_NAME compressor-block)
     # Устанавливаем имя приложения потоковой компрессии данных
@@ -1351,6 +1356,18 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample HTTP/2 Parser: No\n")
     endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с протоколом SOCKS5
+    if (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SOCKS5 Protocol: Yes\n")
+        # Выполняем создание приложения работы с протоколом SOCKS5
+        add_sample(${SOCKS5_APP_PROTO_NAME} sample/proto/socks5/socks5.cpp proto)
+    # Если не нужно собирать семплы для работы с протоколом SOCKS5
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample SOCKS5 Protocol: No\n")
+    endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -2161,6 +2178,17 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с протоколом SOCKS5
+        if (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с протоколом SOCKS5
+            target_link_libraries(
+                ${SOCKS5_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3120,6 +3148,18 @@ else (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
 
+        # Если нужно собрать семплы для работы с протоколом SOCKS5
+        if (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с протоколом SOCKS5
+            target_link_libraries(
+                ${SOCKS5_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
             # Выполняем сборку приложения компрессии данных
@@ -4032,6 +4072,16 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с протоколом SOCKS5
+            if (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с протоколом SOCKS5
+                add_custom_command(TARGET "${SOCKS5_APP_PROTO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SOCKS5_APP_PROTO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${SOCKS5_APP_PROTO_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с компрессией данных
             if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -5035,6 +5085,12 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с парсером HTTP/2
         install(TARGETS ${PARSER2_APP_PROTO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с протоколом SOCKS5
+    if (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+        # Устанавливаем приложение работы с протоколом SOCKS5
+        install(TARGETS ${SOCKS5_APP_PROTO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})

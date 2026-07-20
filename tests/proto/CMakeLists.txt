@@ -74,6 +74,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER_TEST "Build unit HTTP parser test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля парсера HTTP/2
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER2_TEST "Build unit HTTP/2 parser test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для подмодуля протокола SOCKS5
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST "Build unit SOCKS5 protocol test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для подмодуля провайдера HTTP-запроса/ответа
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROVIDER_TEST})
@@ -155,6 +157,22 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для подмодуля парсера HTTP/2
             message(STATUS "Build tests HTTP/2 parser submodule: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER2_TEST})
+
+        # Если нужно собрать тесты для подмодуля протокола SOCKS5
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST})
+            # Выводим сообщение о сборке тестов для подмодуля протокола SOCKS5
+            message(STATUS "Build tests SOCKS5 protocol submodule: Yes\n")
+            # Дополняем список источников тестами для подмодуля протокола SOCKS5
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                socks5/socks5.cpp
+                socks5/static.cpp
+                socks5/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для подмодуля протокола SOCKS5
+        else()
+            # Выводим сообщение о сборке тестов для подмодуля протокола SOCKS5
+            message(STATUS "Build tests SOCKS5 protocol submodule: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST})
 
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS
