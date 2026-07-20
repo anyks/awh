@@ -18,10 +18,10 @@
 /**
  * Стандартные заголовочные файлы
  */
-#include <string>
 #include <memory>
 #include <cstddef>
 #include <cstdint>
+#include <string_view>
 
 /**
  * Подключаем наши заголовочные файлы

@@ -4629,7 +4629,7 @@ template void awh::Chrono::set(const float, const unit_t) noexcept;
 template void awh::Chrono::set(const double, const unit_t) noexcept;
 template void awh::Chrono::set(const string, const unit_t) noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template void awh::Chrono::set(const size_t, const unit_t) noexcept;
@@ -5146,7 +5146,7 @@ template float awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template double awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 template string awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::Chrono::get(const uint64_t, const unit_t) const noexcept;
@@ -5196,7 +5196,7 @@ template float awh::Chrono::get(const unit_t) const noexcept;
 template double awh::Chrono::get(const unit_t) const noexcept;
 template string awh::Chrono::get(const unit_t) const noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::Chrono::get(const unit_t) const noexcept;
@@ -5247,7 +5247,7 @@ template float awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template double awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 template string awh::Chrono::get(const unit_t, const storage_t) const noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::Chrono::get(const unit_t, const storage_t) const noexcept;

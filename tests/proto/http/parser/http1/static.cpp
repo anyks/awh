@@ -491,7 +491,7 @@ TEST_F(ParserFixture, AbortByCallbackTest){
 	// Создаём объект парсера запросов клиента
 	auto parser = this->make(direct_t::REQUEST);
 	// Устанавливаем функцию обратного вызова прерывающую разбор на первом заголовке
-	parser->on(parser_http_t::header_callback_t([](const std::string_view, const std::string_view, const parser_t::part_t) noexcept -> bool {
+	parser->on(parser_http_t::header_callback_t([](const uint32_t, const std::string_view, const std::string_view, const parser_t::part_t) noexcept -> bool {
 		// Прерываем разбор
 		return false;
 	}));
@@ -718,8 +718,8 @@ TEST_F(ParserFixture, ChunkTransparentRelayTest){
 		// Продолжаем разбор
 		return true;
 	}));
-	// Устанавливаем функцию обратного вызова для обработки тела сообщения
-	parser->on(parser_http_t::body_callback_t([&relay](const void * buffer, const size_t size) noexcept -> bool {
+	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
+	parser->on(parser_http_t::data_callback_t([&relay](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 		// Дописываем фрагмент данных чанка в реконструированный поток
 		relay.append(static_cast <const char *> (buffer), size);
 		// Продолжаем разбор

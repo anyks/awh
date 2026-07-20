@@ -239,14 +239,14 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			log_t::flag_t::WARNING, desired, actual, desired, desired, desired, desired, desired, desired
 		);
 	/**
-	 * Для операционной системы MacOS X
+	 * Для операционной системы macOS
 	 */
 	#elif __APPLE__ || __MACH__
 		// Выполняем формирование лога
 		this->_log->print(
 			"\nMaximum sockets requested: %u, but current system limit is: %u.\n"
-			"MacOS X default limits are often too low for server applications.\n\n"
-			"🔧 How to increase the limit on MacOS X:\n\n"
+			"macOS default limits are often too low for server applications.\n\n"
+			"🔧 How to increase the limit on macOS:\n\n"
 			"1. Temporary increase (in current terminal):\n"
 			"   ulimit -n %u\n\n"
 			"2. Permanent increase:\n"
@@ -277,7 +277,7 @@ void awh::Files_Descriptors::help(const uint32_t actual, const uint32_t desired)
 			"   sudo chmod 644 /Library/LaunchDaemons/limit.maxfiles.plist\n"
 			"   sudo launchctl load -w /Library/LaunchDaemons/limit.maxfiles.plist\n\n"
 			"4. Reboot or restart your application.\n\n"
-			"💡 Note: On some MacOS X versions, disabling SIP (System Integrity Protection) may be required — proceed with caution.",
+			"💡 Note: On some macOS versions, disabling SIP (System Integrity Protection) may be required — proceed with caution.",
 			log_t::flag_t::WARNING, desired, actual, desired, desired, desired
 		);
 	#endif

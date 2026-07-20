@@ -50,7 +50,7 @@
 	#include <sys/sysctl.h>
 	#include <sys/socket.h>
 /**
- * Для операционной системы MacOS X
+ * Для операционной системы macOS
  */
 #elif __APPLE__ || __MACH__
 	/**
@@ -606,7 +606,7 @@ void awh::Process_Resolver::scanning() noexcept {
 				::closedir(dir);
 			}
 		/**
-		 * Для операционной системы MacOS X
+		 * Для операционной системы macOS
 		 */
 		#elif __APPLE__ || __MACH__
 			// Узнаём требуемый размер буфера под список идентификаторов процессов (функция возвращает размер данных в байтах)
@@ -1656,7 +1656,7 @@ string awh::Process_Resolver::name(const pid_t pid) const noexcept {
 				::free(proc);
 			}
 		/**
-		 * Для операционной системы MacOS X
+		 * Для операционной системы macOS
 		 */
 		#elif __APPLE__ || __MACH__
 			// Создаём буфер строки

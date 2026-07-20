@@ -112,7 +112,7 @@ namespace options {
 			 */
 			#if AWH_BOOSTING_NET
 				/**
-				 * Для операционной системы MacOS X
+				 * Для операционной системы macOS
 				 */
 				#if __APPLE__ || __MACH__
 					// Если эффективный идентификатор пользователя принадлежит ROOT
@@ -121,16 +121,16 @@ namespace options {
 						os.sysctl("kern.ipc.somaxconn", 49152);
 						/**
 						 * Для хостов 10G было бы неплохо увеличить это значение,
-						 * т.к. 4G, похоже, является пределом для некоторых установок MacOS X
+						 * т.к. 4G, похоже, является пределом для некоторых установок macOS
 						 */
 						os.sysctl("kern.ipc.maxsockbuf", 6291456);
 						// Увеличиваем максимальный размер буферов для отправки
 						os.sysctl("net.inet.tcp.sendspace", 1042560);
 						// Увеличиваем максимальный размер буферов для чтения
 						os.sysctl("net.inet.tcp.recvspace", 1042560);
-						// В MacOS X значение по умолчанию 3, что очень мало
+						// В macOS значение по умолчанию 3, что очень мало
 						os.sysctl("net.inet.tcp.r", 8);
-						// Увеличиваем максимумы автонастройки MacOS X TCP
+						// Увеличиваем максимумы автонастройки macOS TCP
 						os.sysctl("net.inet.tcp.autorcvbufmax", 33554432);
 						os.sysctl("net.inet.tcp.autosndbufmax", 33554432);
 						// Устанавливаем прочие настройки

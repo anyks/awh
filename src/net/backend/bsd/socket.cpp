@@ -13,7 +13,7 @@
  */
 
 /**
- * Для операционной системы MacOS X
+ * Для операционной системы macOS
  */
 #if __APPLE__ && !__APPLE_USE_RFC_3542
 	/**
@@ -968,7 +968,7 @@ bool awh::eth::Socket::setKeepalive(const net::socket_t sock, int32_t cnt, int32
 		return result;
 	}
 	/**
-	 * Если мы работаем в MacOS X
+	 * Если мы работаем в macOS
 	 */
 	#if __APPLE__
 		// Время через которое происходит проверка подключения
@@ -2429,7 +2429,7 @@ bool awh::eth::Socket::setMaximumTransmissionUnitDiscover(const net::socket_t so
 	/**
 	 * Определяем режим обнаружения максимального размера пакета (MTU)
 	 *
-	 * NOTE: В MacOS X и FreeBSD сетевой стек не поддерживает гранулярные режимы MTU Discover,
+	 * NOTE: В macOS и FreeBSD сетевой стек не поддерживает гранулярные режимы MTU Discover,
 	 * аналогичные Linux (IP_PMTUDISC_PROBE, ADAPT и т.д.).
 	 * Доступен только флаг запрета фрагментации (IP_DONTFRAG / IPV6_DONTFRAG).
 	 * Поэтому мы маппим все активные режимы на включение этого флага.
@@ -3133,7 +3133,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						/**
-						 * Для операционной системы MacOS X, NetBSD, OpenBSD
+						 * Для операционной системы macOS, NetBSD, OpenBSD
 						 */
 						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 							// Печатаем дескриптор созданного сокета
@@ -3445,7 +3445,7 @@ awh::net::socket_t awh::eth::Socket::issue(const event::family_t family, const e
 									// Если протокол определён как SCTP
 									case static_cast <uint8_t> (event::protocol_t::SCTP): {
 										/**
-										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Печатаем дескриптор созданного сокета
@@ -3693,7 +3693,7 @@ array <awh::net::socket_t, 2> awh::eth::Socket::ipc(const event::family_t family
 					// Если сокет принадлежит к типу SEQPACKET
 					case static_cast <uint8_t> (event::type_t::SEQPACKET): {
 						/**
-						 * Для операционной системы MacOS X, NetBSD, OpenBSD
+						 * Для операционной системы macOS, NetBSD, OpenBSD
 						 */
 						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 							// Выполняем инициализацию файловых дескрипторов

@@ -74,7 +74,7 @@ fi
 if [ $OS = "Darwin" ]; then
 	# Устанавливаем количество ядер системы
 	numproc=$(sysctl -n hw.logicalcpu)
-	# Если версия MacOS X не установлена
+	# Если версия macOS не установлена
 	if [ ! -n "$MACOSX_DEPLOYMENT_TARGET" ]; then
 		# Устанавливаем версию операционной системы
 		export MACOSX_DEPLOYMENT_TARGET=$(sw_vers -productVersion)

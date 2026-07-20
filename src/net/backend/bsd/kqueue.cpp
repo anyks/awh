@@ -1943,7 +1943,7 @@ namespace {
 							 */
 							switch(static_cast <uint8_t> (client->state.type)){
 								/**
-								 * Для операционной системы MacOS X, NetBSD, OpenBSD
+								 * Для операционной системы macOS, NetBSD, OpenBSD
 								 */
 								#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 									// Если событие принадлежит к типу SEQPACKET
@@ -2241,7 +2241,7 @@ namespace local {
 								cout << " EVFILT_TIMER " << endl;
 							break;
 							/**
-							 * Для операционных систем MacOS X
+							 * Для операционных систем macOS
 							 */
 							#if __APPLE__ || __MACH__
 								// Если фильтр установлен на событие виртуальной памяти
@@ -10080,7 +10080,7 @@ namespace io {
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
-				 * Для операционной системы MacOS X, NetBSD, OpenBSD
+				 * Для операционной системы macOS, NetBSD, OpenBSD
 				 */
 				#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 					// Если событие принадлежит к типу SEQPACKET
@@ -10595,7 +10595,7 @@ namespace io {
 						// Вызываем функцию обратного вызова об ошибке отказа
 						server->callbacks.status(server->id, event::status_t::FAILURE);
 					/**
-					 * Для операционной системы MacOS X, NetBSD, OpenBSD
+					 * Для операционной системы macOS, NetBSD, OpenBSD
 					 */
 					#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 						// Устанавливаем текст ошибки
@@ -11913,7 +11913,7 @@ namespace io {
 					// Если событие принадлежит к типу RAW
 					case static_cast <uint8_t> (event::type_t::RAW):
 					/**
-					 * Для операционной системы MacOS X, NetBSD, OpenBSD
+					 * Для операционной системы macOS, NetBSD, OpenBSD
 					 */
 					#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 						// Если событие принадлежит к типу SEQPACKET
@@ -13664,7 +13664,7 @@ namespace io {
 									// Если событие принадлежит к типу RAW
 									case static_cast <uint8_t> (event::type_t::RAW):
 									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
+									 * Для операционной системы macOS, NetBSD, OpenBSD
 									 */
 									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 										// Если событие принадлежит к типу SEQPACKET
@@ -16499,7 +16499,7 @@ namespace io {
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
-				 * Для операционной системы MacOS X, NetBSD, OpenBSD
+				 * Для операционной системы macOS, NetBSD, OpenBSD
 				 */
 				#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 					// Если событие принадлежит к типу SEQPACKET
@@ -22460,7 +22460,7 @@ namespace io {
 				// Если событие принадлежит к типу RAW
 				case static_cast <uint8_t> (event::type_t::RAW):
 				/**
-				 * Для операционной системы MacOS X, NetBSD, OpenBSD
+				 * Для операционной системы macOS, NetBSD, OpenBSD
 				 */
 				#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 					// Если событие принадлежит к типу SEQPACKET
@@ -24314,7 +24314,7 @@ namespace io {
 						// Если событие принадлежит к типу RAW
 						case static_cast <uint8_t> (event::type_t::RAW):
 						/**
-						 * Для операционной системы MacOS X, NetBSD, OpenBSD
+						 * Для операционной системы macOS, NetBSD, OpenBSD
 						 */
 						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 							// Если событие принадлежит к типу SEQPACKET
@@ -24655,7 +24655,7 @@ namespace io {
 					 */
 					switch(static_cast <uint8_t> (server->state.type)){
 						/**
-						 * Для операционной системы MacOS X, NetBSD, OpenBSD
+						 * Для операционной системы macOS, NetBSD, OpenBSD
 						 */
 						#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 							// Если событие принадлежит к типу SEQPACKET
@@ -26100,7 +26100,7 @@ namespace io {
 						// Если мы детектировали событие переименования директории
 						} else if(ev.fflags & NOTE_RENAME) {
 							/**
-							 * Для операционной системы MacOS X
+							 * Для операционной системы macOS
 							 */
 							#if __APPLE__ || __MACH__
 								// Получаем актуальный путь директории
@@ -26245,7 +26245,7 @@ namespace io {
 						// Если мы детектировали событие переименования файла
 						} else if(ev.fflags & NOTE_RENAME) {
 							/**
-							 * Для операционной системы MacOS X
+							 * Для операционной системы macOS
 							 */
 							#if __APPLE__ || __MACH__
 								// Получаем актуальный путь файла
@@ -31324,7 +31324,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						/**
-						 * Если мы работаем в MacOS X
+						 * Если мы работаем в macOS
 						 */
 						#if __APPLE__
 							// Устанавливаем событие таймаута на указанное количество миллисекунд
@@ -31350,7 +31350,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 						// Создаём объект события для Kqueue
 						struct kevent event{};
 						/**
-						 * Если мы работаем в MacOS X
+						 * Если мы работаем в macOS
 						 */
 						#if __APPLE__
 							// Устанавливаем событие интервального таймаута на указанное количество миллисекунд
@@ -32171,7 +32171,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																::strncpy(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path, unixsocket.c_str(), ::min(sizeof(::trust_cast <struct sockaddr_un> (client->endpoint.server).sun_path), unixsocket.length()));
 															} break;
 															/**
-															 * Для операционной системы MacOS X, NetBSD, OpenBSD
+															 * Для операционной системы macOS, NetBSD, OpenBSD
 															 */
 															#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 																// Если событие принадлежит к типу SEQPACKET
@@ -33925,7 +33925,7 @@ bool awh::engine::IO::commit(const event::id_t id) noexcept {
 																}
 															} break;
 															/**
-															 * Для операционной системы MacOS X, NetBSD, OpenBSD
+															 * Для операционной системы macOS, NetBSD, OpenBSD
 															 */
 															#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 																// Если событие принадлежит к типу SEQPACKET
@@ -35484,7 +35484,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Если событие принадлежит к типу SEQPACKET
@@ -35515,7 +35515,7 @@ uint16_t awh::engine::IO::getSourcePort(const event::id_t id) const noexcept {
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Если событие принадлежит к типу SEQPACKET
@@ -39084,7 +39084,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Если событие принадлежит к типу SEQPACKET
@@ -39220,7 +39220,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Если событие принадлежит к типу SEQPACKET
@@ -39529,7 +39529,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы MacOS X, NetBSD, OpenBSD
+											 * Для операционной системы macOS, NetBSD, OpenBSD
 											 */
 											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 												// Если событие принадлежит к типу SEQPACKET
@@ -39648,7 +39648,7 @@ string awh::engine::IO::getAddress(const event::id_t id, const event::address_t 
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы MacOS X, NetBSD, OpenBSD
+											 * Для операционной системы macOS, NetBSD, OpenBSD
 											 */
 											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 												// Если событие принадлежит к типу SEQPACKET
@@ -42666,7 +42666,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Если событие принадлежит к типу SEQPACKET
@@ -42798,7 +42798,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 									 */
 									switch(static_cast <uint8_t> (server->state.type)){
 										/**
-										 * Для операционной системы MacOS X, NetBSD, OpenBSD
+										 * Для операционной системы macOS, NetBSD, OpenBSD
 										 */
 										#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 											// Если событие принадлежит к типу SEQPACKET
@@ -43133,7 +43133,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы MacOS X, NetBSD, OpenBSD
+											 * Для операционной системы macOS, NetBSD, OpenBSD
 											 */
 											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 												// Если событие принадлежит к типу SEQPACKET
@@ -43264,7 +43264,7 @@ bool awh::engine::IO::getAddress(const event::id_t id, const event::address_t ad
 										 */
 										switch(static_cast <uint8_t> (server->state.type)){
 											/**
-											 * Для операционной системы MacOS X, NetBSD, OpenBSD
+											 * Для операционной системы macOS, NetBSD, OpenBSD
 											 */
 											#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 												// Если событие принадлежит к типу SEQPACKET
@@ -48386,7 +48386,7 @@ bool awh::engine::IO::setOptions(const event::id_t id, const uint16_t options) n
 								}
 							} break;
 							/**
-							 * Для операционной системы MacOS X, NetBSD, OpenBSD
+							 * Для операционной системы macOS, NetBSD, OpenBSD
 							 */
 							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 								// Если событие принадлежит к типу SEQPACKET
@@ -50471,7 +50471,7 @@ bool awh::engine::IO::launch(const event::id_t id) noexcept {
 							// Создаём объект события для Kqueue
 							struct kevent event{};
 							/**
-							 * Если мы работаем в MacOS X
+							 * Если мы работаем в macOS
 							 */
 							#if __APPLE__
 								// Устанавливаем событие таймаута на указанное количество миллисекунд
@@ -51111,7 +51111,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
 												// Если событие принадлежит к типу STREAM
 												case static_cast <uint8_t> (event::type_t::STREAM):
 												/**
-												 * Для операционной системы MacOS X, NetBSD, OpenBSD
+												 * Для операционной системы macOS, NetBSD, OpenBSD
 												 */
 												#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 													// Если событие принадлежит к типу SEQPACKET
@@ -58814,7 +58814,7 @@ void awh::engine::IO::clear() noexcept {
 								 */
 								switch(static_cast <uint8_t> (client->state.type)){
 									/**
-									 * Для операционной системы MacOS X, NetBSD, OpenBSD
+									 * Для операционной системы macOS, NetBSD, OpenBSD
 									 */
 									#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 										// Если событие принадлежит к типу SEQPACKET
@@ -59826,7 +59826,7 @@ bool awh::engine::IO::deinitialize() noexcept {
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
 							/**
-							 * Для операционной системы MacOS X, NetBSD, OpenBSD
+							 * Для операционной системы macOS, NetBSD, OpenBSD
 							 */
 							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 								// Если событие принадлежит к типу SEQPACKET
@@ -61804,7 +61804,7 @@ awh::engine::IO::~IO() noexcept {
 						 */
 						switch(static_cast <uint8_t> (client->state.type)){
 							/**
-							 * Для операционной системы MacOS X, NetBSD, OpenBSD
+							 * Для операционной системы macOS, NetBSD, OpenBSD
 							 */
 							#if __APPLE__ || __MACH__ || __NetBSD__ || __OpenBSD__
 								// Если событие принадлежит к типу SEQPACKET

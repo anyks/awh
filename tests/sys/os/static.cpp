@@ -91,10 +91,10 @@ TEST_F(OSFixture, OSTest){
 			// Записываем в лог информацию о текущей операционной системе
 			std::cout << "OS: Windows x64" << std::endl;
 		break;
-		// Если операционная система принадлежит к семейству MacOS X
+		// Если операционная система принадлежит к семейству macOS
 		case static_cast <uint8_t> (awh::os_t::family_t::MACOSX):
 			// Записываем в лог информацию о текущей операционной системе
-			std::cout << "OS: MacOS X" << std::endl;
+			std::cout << "OS: macOS" << std::endl;
 		break;
 		// Если операционная система принадлежит к семейству NetBSD
 		case static_cast <uint8_t> (awh::os_t::family_t::NETBSD):

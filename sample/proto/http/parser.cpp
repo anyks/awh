@@ -46,14 +46,18 @@ static void sampleRequest(const fmk_t * fmk, const log_t * log) noexcept {
 	// Создаём объект парсера запросов клиента
 	parser_http_t parser(direct_t::REQUEST, fmk, log);
 	// Устанавливаем функцию обратного вызова для обработки заголовков сообщения
-	parser.on(parser_http_t::header_callback_t([](const string_view name, const string_view value, const parser_t::part_t) noexcept -> bool {
+	parser.on(parser_http_t::header_callback_t([](const uint32_t, const string_view name, const string_view value, const parser_t::part_t) noexcept -> bool {
 		// Выводим название и значение очередного заголовка
 		cout << "Header: [" << name << "] = [" << value << "]" << endl;
 		// Продолжаем разбор
 		return true;
 	}));
 	// Устанавливаем функцию обратного вызова для обработки провайдера заголовков сообщения
-	parser.on(parser_http_t::provider_callback_t([](const provider_t * provider) noexcept -> bool {
+	parser.on(parser_http_t::provider_callback_t([](const uint32_t, const provider_t * provider, const bool) noexcept -> bool {
+		// Если получен провайдер трейлеров (nullptr) - пропускаем
+		if(provider == nullptr)
+			// Продолжаем разбор
+			return true;
 		// Получаем объект провайдера заголовков запроса клиента
 		const request_t * request = static_cast <const request_t *> (provider);
 		// Выводим разобранный URI-адрес запроса
@@ -85,8 +89,8 @@ static void sampleStreaming(const fmk_t * fmk, const log_t * log) noexcept {
 	cout << " ======== STREAMING ======== " << endl;
 	// Создаём объект парсера ответов сервера
 	parser_http_t parser(direct_t::RESPONSE, fmk, log);
-	// Устанавливаем функцию обратного вызова для обработки тела сообщения
-	parser.on(parser_http_t::body_callback_t([](const void * buffer, const size_t size) noexcept -> bool {
+	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
+	parser.on(parser_http_t::data_callback_t([](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 		// Выводим очередной принятый фрагмент тела сообщения (zero-copy)
 		cout << "Body fragment (" << size << " bytes): [" << string(static_cast <const char *> (buffer), size) << "]" << endl;
 		// Продолжаем разбор
@@ -120,8 +124,8 @@ static void sampleChunked(const fmk_t * fmk, const log_t * log) noexcept {
 	parser_http_t parser(direct_t::RESPONSE, fmk, log);
 	// Собранное тело сообщения
 	string body = "";
-	// Устанавливаем функцию обратного вызова для обработки тела сообщения
-	parser.on(parser_http_t::body_callback_t([&body](const void * buffer, const size_t size) noexcept -> bool {
+	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
+	parser.on(parser_http_t::data_callback_t([&body](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 		// Собираем фрагмент тела сообщения
 		body.append(static_cast <const char *> (buffer), size);
 		// Продолжаем разбор
@@ -148,7 +152,7 @@ static void sampleChunked(const fmk_t * fmk, const log_t * log) noexcept {
 		return true;
 	}));
 	// Устанавливаем функцию обратного вызова для обработки заголовков или трейлеров сообщения
-	parser.on(parser_http_t::header_callback_t([](const string_view name, const string_view value, const parser_t::part_t part) noexcept -> bool {
+	parser.on(parser_http_t::header_callback_t([](const uint32_t, const string_view name, const string_view value, const parser_t::part_t part) noexcept -> bool {
 		// Если получен трейлер сообщения - выводим его
 		if(part == parser_t::part_t::TRAILER)
 			// Выводим название и значение трейлера
@@ -246,8 +250,8 @@ static void sampleUntilClose(const fmk_t * fmk, const log_t * log) noexcept {
 	parser_http_t parser(direct_t::RESPONSE, fmk, log);
 	// Собранное тело сообщения
 	string body = "";
-	// Устанавливаем функцию обратного вызова для обработки тела сообщения
-	parser.on(parser_http_t::body_callback_t([&body](const void * buffer, const size_t size) noexcept -> bool {
+	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
+	parser.on(parser_http_t::data_callback_t([&body](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 		// Собираем фрагмент тела сообщения
 		body.append(static_cast <const char *> (buffer), size);
 		// Продолжаем разбор

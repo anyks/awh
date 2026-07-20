@@ -211,7 +211,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 					// Выполняем функцию обратного вызова
 					this->_callback.call <void (const event::status_t)> ("server_status", status);
 			/**
-			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
+			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 			 */
 			#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				/**
@@ -289,7 +289,7 @@ void awh::unit::Server::launch(const event::status_t status) noexcept {
 				this->_callback.set(fid, this->_callback.id("status"), this->_callback);
 			}
 			/**
-			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
+			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 			 */
 			#if __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				// Если необходимо деактивировать кластер
@@ -461,7 +461,7 @@ void awh::unit::Server::cluster(const pid_t pid, const unit::cluster_t::event_t 
 					unit_t::start();
 				}
 			/**
-			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
+			 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 			 */
 			#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 				// Если процесс является дочерним
@@ -1608,7 +1608,7 @@ void awh::unit::Server::stop() noexcept {
 				break;
 			}
 		/**
-		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
+		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 		 */
 		#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 			// Выполняем остановку работы основного юнита
@@ -1715,7 +1715,7 @@ void awh::unit::Server::start() noexcept {
 				} break;
 			}
 		/**
-		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или MacOS X
+		 * Для операционной системы OpenBSD, NetBSD, Sun Solaris или macOS
 		 */
 		#elif __OpenBSD__ || __NetBSD__ || __sun__ || __APPLE__ || __MACH__
 			// Выполняем получение идентификатора функции обратного вызова

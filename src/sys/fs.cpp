@@ -61,7 +61,7 @@
 #endif
 
 /**
- * Если операционной системой является MacOS X
+ * Если операционной системой является macOS
  */
 #if __APPLE__ || __MACH__
 	/**
@@ -70,7 +70,7 @@
 	#include <TargetConditionals.h>
 
 	/**
-	 * Если целевая платформа является MacOS X
+	 * Если целевая платформа является macOS
 	 */
 	#if TARGET_OS_MAC && !TARGET_OS_IPHONE
 		/**
@@ -1020,11 +1020,11 @@ awh::Filesystem::type_t awh::Filesystem::type(string_view addr, const bool detec
 					}
 				#endif
 				/**
-				 * Если операционной системой является MacOS X
+				 * Если операционной системой является macOS
 				 */
 				#if __APPLE__ || __MACH__
 					/**
-					 * Если целевая платформа является MacOS X
+					 * Если целевая платформа является macOS
 					 */
 					#ifdef __AWH_USE_MACOS_ALIAS_RESOLUTION__
 						// Alias-файлы всегда являются обычными файлами — проверяем только их и только если детект включён
@@ -1249,7 +1249,7 @@ string awh::Filesystem::fullpath(string_view addr, const bool resolve) const noe
 					// Получаем полный адрес пути
 					result = buffer;
 					/**
-					 * Если целевая платформа является MacOS X
+					 * Если целевая платформа является macOS
 					 */
 					#ifdef __AWH_USE_MACOS_ALIAS_RESOLUTION__
 						/**

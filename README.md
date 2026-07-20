@@ -111,7 +111,7 @@ $ make doc
 ```
 > Result in ./docs/html/index.html
 
-### Build MacOS X framework
+### Build macOS framework
 
 ```bash
 $ cmake -B build -DCMAKE_BUILD_TYPE=Release
@@ -124,7 +124,7 @@ $ cd build && make framework
 ```
 > Result in ./build/dist/awh.framework
 
-### Build on MacOS X, Linux, FreeBSD or Solaris without Unit-tests
+### Build on macOS, Linux, FreeBSD or Solaris without Unit-tests
 
 ```bash
 $ mkdir ./build
@@ -139,7 +139,7 @@ $ cmake \
 $ make
 ```
 
-### Build on MacOS X, Linux, FreeBSD or Solaris with Unit-tests
+### Build on macOS, Linux, FreeBSD or Solaris with Unit-tests
 
 ```bash
 $ mkdir ./build
@@ -327,7 +327,7 @@ $ cmake --build .
 
 ### Make installation packages
 
-#### Build PKG package for MacOS X
+#### Build PKG package for macOS
 
 ```bash
 # Build installation package
@@ -422,7 +422,7 @@ add_executable(my_app main.cpp)
 target_link_libraries(my_app PRIVATE ${AWH_LIBRARY})
 ```
 
-#### Example project build for MacOS X, Linux, FreeBSD or Solaris
+#### Example project build for macOS, Linux, FreeBSD or Solaris
 
 ```bash
 $ mkdir ./build

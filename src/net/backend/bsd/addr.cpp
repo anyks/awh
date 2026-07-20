@@ -668,7 +668,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						#if __NetBSD__ || __OpenBSD__
 							mib[5] = RTF_LLDATA;
 						/**
-						 * Если операционной системой является MacOS X или FreeBSD
+						 * Если операционной системой является macOS или FreeBSD
 						 */
 						#else
 							mib[5] = RTF_LLINFO;
@@ -791,7 +791,7 @@ void awh::eth::Network_Address::fillSource(const event::node_t node, net::src_t 
 						#if __NetBSD__ || __OpenBSD__
 							mib[5] = RTF_LLDATA;
 						/**
-						 * Если операционной системой является MacOS X или FreeBSD
+						 * Если операционной системой является macOS или FreeBSD
 						 */
 						#else
 							mib[5] = RTF_LLINFO;

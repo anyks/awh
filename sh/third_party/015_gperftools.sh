@@ -186,7 +186,7 @@ if [ -n "$1" ]; then
 				cp "$src/build_awh/$i" "$PREFIX/lib/$i" || exit 1
 			done
 
-			# Если сборка производится в операционной системе MacOS X, FreeBSD, NetBSD или OpenBSD
+			# Если сборка производится в операционной системе macOS, FreeBSD, NetBSD или OpenBSD
 			if [ $OS = "Darwin" ] || [ $OS = "FreeBSD" ] || [ $OS = "NetBSD" ] || [ $OS = "OpenBSD" ]; then
 				# Используем find для поиска всех .h файлов и копируем их с воссозданием структуры
 				cd "$src/src" || exit 1

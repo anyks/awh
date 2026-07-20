@@ -13,6 +13,12 @@
  */
 
 /**
+ * Стандартные заголовочные файлы
+ */
+#include <ctime>
+#include <iomanip>
+
+/**
  * Подключаем заголовочный файл проекта
  */
 #include <proto/http/headers.hpp>
@@ -21,6 +27,16 @@
  * Используем стандартное пространство имён
  */
 using namespace std;
+
+/**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * Заменяем функцию gmtime_r на gmtime_s
+	 */
+	#define gmtime_r(T, Tm) (gmtime_s(Tm, T) ? nullptr : Tm)
+#endif
 
 /**
  * @brief Инкапсулируем статические параметры в пространство имён
@@ -947,6 +963,23 @@ awh::http::Headers::Const_Iterator::Const_Iterator(const_iterator it, const log_
  _it(it), _log(log) {}
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::http::Headers::Ident::Ident() noexcept :
+ id{AWH_SHORT_NAME},
+ name{AWH_NAME},
+ version{AWH_VERSION} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Headers::Max::Max() noexcept :
+ memory(AWH_MAX_MEMORY_HTTP_HEADERS),
+ records(AWH_MAX_COUNT_HTTP_HEADERS) {}
+
+/**
  * @brief Метод приведения названий всех заголовков к канонической форме текущего протокола
  *
  * @details Для протоколов семейства HTTP/2 названия приводятся к нижнему регистру, для остальных -
@@ -1075,6 +1108,121 @@ bool awh::http::Headers::empty() const noexcept {
 	return this->_headers.empty();
 }
 /**
+ * @brief Метод добавления стандартных заголовков по умолчанию
+ *
+ * @details Добавляет недостающие заголовки: User-Agent для запроса клиента,
+ *          Server, X-Powered-By и Date для ответа сервера. Уже установленные заголовки не изменяются.
+ *
+ * @return результат выполнения операции
+ */
+bool awh::http::Headers::addDefaultHeaders() noexcept {
+	// Результат работы функции
+	bool result = false;
+	// Проверяем наличие объекта провайдера HTTP-запроса/ответа
+	if(this->_provider == nullptr)
+		// Если объект провайдера HTTP-запроса/ответа отсутствует
+		return result;
+	/**
+	 * Определяем направление трафика (запрос/ответ) по явному флагу вместо приведения типа через RTTI (dynamic_cast),
+	 * что позволяет избежать накладных расходов на обход таблиц виртуальных методов
+	 */
+	switch(static_cast <uint8_t> (this->_provider->direct)){
+		// Если установлен запрос клиента
+		case static_cast <uint8_t> (direct_t::REQUEST): {
+			// Если заголовок User-Agent отсутствует - формируем его автоматически
+			if((result = !this->has("User-Agent")))
+				// Добавляем заголовок User-Agent с идентификацией сервиса
+				this->emplace("User-Agent", this->ident());
+		} break;
+		// Если установлен ответ сервера
+		case static_cast <uint8_t> (direct_t::RESPONSE): {
+			// Если заголовок Server отсутствует - формируем его автоматически
+			if(!this->has("Server")){
+				// Устанавливаем результат выполнения операции в true, так как заголовок будет добавлен
+				result = true;
+				// Добавляем заголовок Server с названием сервиса
+				this->emplace("Server", this->_ident.name);
+			}
+			// Если заголовок X-Powered-By отсутствует - формируем его автоматически
+			if(!this->has("X-Powered-By")){
+				// Устанавливаем результат выполнения операции в true, так как заголовок будет добавлен
+				result = true;
+				// Добавляем заголовок X-Powered-By с идентификацией сервиса
+				this->emplace("X-Powered-By", this->ident());
+			}
+			// Если заголовок Date отсутствует - формируем его автоматически
+			if(!this->has("Date")){
+				// Устанавливаем результат выполнения операции в true, так как заголовок будет добавлен
+				result = true;
+				// Добавляем заголовок Date с текущей датой в формате HTTP
+				this->emplace("Date", this->date());
+			}
+		} break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод получения текущей даты для HTTP-запроса
+ *
+ * @note Unix Timestamp - количество секунд с 1 января 1970 года
+ *
+ * @param date дата в формате Unix Timestamp
+ * @return     штамп времени в текстовом виде
+ */
+string awh::http::Headers::date(const uint64_t date) const noexcept {
+	// Результат работы функции
+	string result = "";
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Создаем структуру времени
+		std::tm tm = {};
+		// Создаём объект потока
+		stringstream ss{};
+		// Преобразуем дату в нужный нам формат
+		time_t value = static_cast <time_t> (date);
+		// Если штамп времени передан в числовом виде
+		if(value == 0)
+			// Формируем время по умолчанию
+			value = ::time(nullptr);
+		// Получаем текущее значение размерности даты
+		const uint8_t current = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (value))));
+		// Получаем размерность актуальной размерности даты
+		const uint8_t actual = static_cast <uint8_t> (::floor(::log10(static_cast <long double> (::time(nullptr)))));
+		// Если текущий размер выше актуального
+		if(current > actual)
+			// Переводим указанные единицы в секунды
+			value /= static_cast <time_t> (::pow(static_cast <long double> (10), static_cast <long double> (current - actual)));
+		// Формируем локальное время
+		gmtime_r(&value, &tm);
+		// Выполняем извлечение даты
+		ss << ::put_time(&tm, "%a, %d %b %Y %H:%M:%S GMT");
+		// Выводим полученное значение даты
+		return ss.str();
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Выводим сообщение об ошибке
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(date), log_t::flag_t::WARNING, error.what());
+		/**
+		* Если режим отладки не включён
+		*/
+		#else
+			// Выводим сообщение об ошибке
+			this->_log->print("%s", log_t::flag_t::WARNING, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
+}
+/**
  * @brief Метод получения протокола HTTP-запроса/ответа
  *
  * @return протокол HTTP-запроса/ответа
@@ -1096,6 +1244,129 @@ void awh::http::Headers::proto(const proto_t proto) noexcept {
 		// Приводим названия всех заголовков к канонической форме нового протокола
 		this->_recase();
 	}
+}
+/**
+ * @brief Метод получения идентификации сервиса
+ *
+ * @return сформированный агент
+ */
+string awh::http::Headers::ident() const noexcept {
+	// Результат работы функции
+	string result = "";
+	// Проверяем наличие объекта провайдера HTTP-запроса/ответа
+	if(this->_provider == nullptr)
+		// Если объект провайдера HTTP-запроса/ответа отсутствует
+		return result;
+	/**
+	 * Определяем направление трафика (запрос/ответ) по явному флагу вместо приведения типа через RTTI (dynamic_cast),
+	 * что позволяет избежать накладных расходов на обход таблиц виртуальных методов
+	 */
+	switch(static_cast <uint8_t> (this->_provider->direct)){
+		// Если установлен запрос клиента
+		case static_cast <uint8_t> (direct_t::REQUEST): {
+			/**
+			 * Операционной системой является Windows 32bit
+			 */
+			#ifdef _WIN32
+				// Устанавливаем название операционной системы
+				const char * os = "Windows";
+			/**
+			 * Операционной системой является Windows 64bit
+			 */
+			#elif _WIN64
+				// Устанавливаем название операционной системы
+				const char * os = "Windows";
+			/**
+			 * Операционной системой является macOS
+			 */
+			#elif __APPLE__ || __MACH__
+				// Устанавливаем название операционной системы
+				const char * os = "macOS";
+			/**
+			 * Операционной системой является Linux
+			 */
+			#elif __linux__
+				// Устанавливаем название операционной системы
+				const char * os = "Linux";
+			/**
+			 * Операционной системой является FreeBSD
+			 */
+			#elif __FreeBSD__
+				// Устанавливаем название операционной системы
+				const char * os = "FreeBSD";
+			/**
+			 * Операционной системой является NetBSD
+			 */
+			#elif __NetBSD__
+				// Устанавливаем название операционной системы
+				const char * os = "NetBSD";
+			/**
+			 * Операционной системой является OpenBSD
+			 */
+			#elif __OpenBSD__
+				// Устанавливаем название операционной системы
+				const char * os = "OpenBSD";
+			/**
+			 * Реализация под Sun Solaris
+			 */
+			#elif __sun__
+				/**
+				 * Если операционной системой является OpenSolaris
+				 */
+				#ifdef __illumos__
+					// Устанавливаем название операционной системы
+					const char * os = "OpenSolaris";
+				#else
+					// Устанавливаем название операционной системы
+					const char * os = "Solaris";
+				#endif
+			/**
+			 * Операционной системой является Unix
+			 */
+			#elif __unix || __unix__
+				// Устанавливаем название операционной системы
+				const char * os = "Unix";
+			/**
+			 * Операционной системой не распознана
+			 */
+			#else
+				// Устанавливаем название операционной системы
+				const char * os = "Unknown OS";
+			#endif
+			/**
+			 * Выполняем генерацию User-Agent клиента выполняющего HTTP-запрос
+			 */
+			result = ::move(this->_fmk->format("%s (%s; %s/%s)", this->_ident.name.c_str(), os, this->_ident.id.c_str(), this->_ident.version.c_str()));
+		} break;
+		// Если установлен ответ сервера
+		case static_cast <uint8_t> (direct_t::RESPONSE):
+			// Выполняем генерацию X-Powered-By сервера, формирующего HTTP-ответ
+			result = ::move(this->_fmk->format("%s/%s", this->_ident.id.c_str(), this->_ident.version.c_str()));
+		break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод установки идентификации сервиса
+ *
+ * @param id      идентификатор сервиса
+ * @param name    название сервиса
+ * @param version версия сервиса
+ */
+void awh::http::Headers::ident(string_view id, string_view name, string_view version) noexcept {
+	// Если идентификатор сервиса передан
+	if(!id.empty())
+		// Устанавливаем идентификатор сервиса
+		this->_ident.id = id;
+	// Если название сервиса передано
+	if(!name.empty())
+		// Устанавливаем название сервиса
+		this->_ident.name = name;
+	// Если версия сервиса передана
+	if(!version.empty())
+		// Устанавливаем версию сервиса
+		this->_ident.version = version;
 }
 /**
  * @brief Метод получения объекта провайдера HTTP-запроса/ответа

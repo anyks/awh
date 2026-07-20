@@ -26,6 +26,7 @@
  * Подключаем наши заголовочные файлы
  */
 #include "../parser.hpp"
+#include "../../headers.hpp"
 #include "../../provider.hpp"
 #include "../../../../sys/global.hpp"
 
@@ -58,6 +59,13 @@ namespace awh {
 		typedef class __AWH_SHARED_EXPORT__ Parser_HTTP : public parser_t {
 			public:
 				/**
+				 * @brief Идентификатор единственного логического потока HTTP/1.x
+				 *
+				 * @note HTTP/1.x не мультиплексируется - идентификатор существует только
+				 *       для универсальности сигнатур функций обратного вызова с HTTP/2
+				 */
+				static constexpr uint32_t STREAM_ID = (1);
+				/**
 				 * @brief Максимальная длина строки заголовка чанка (size + chunk-ext)
 				 *
 				 * @note Значения по умолчанию подобраны консервативно
@@ -69,6 +77,24 @@ namespace awh {
 				 * @note Значения по умолчанию подобраны консервативно
 				 */
 				static constexpr size_t MAX_REQUEST_LINE = (8 * 1024);
+				/**
+				 * @brief Порог сигнала о готовности принимать данные тела (low-water)
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr size_t SEND_LOW_WATER = (64 * 1024);
+				/**
+				 * @brief Ёмкость выходного буфера отправки (high-water)
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr size_t SEND_HIGH_WATER = (256 * 1024);
+				/**
+				 * @brief Гранулярность порции pull-источника данных тела
+				 *
+				 * @note Значения по умолчанию подобраны консервативно
+				 */
+				static constexpr size_t SOURCE_CHUNK_SIZE = (16 * 1024);
 				/**
 				 * @brief Максимальный размер одного чанка
 				 *
@@ -218,26 +244,28 @@ namespace awh {
 				} message_t;
 			public:
 				/**
-				 * @brief Тип функции обратного вызова для обработки провайдера заголовков сообщения
+				 * @brief Тип функции обратного вызова о готовности принимать данные тела
 				 *
-				 * @note Вызывается один раз, сразу после разбора стартовой строки (request-line/status-line),
-				 *       когда провайдер заполнен методом/URI либо кодом/сообщением и версией протокола.
+				 * @details Вызывается когда выходной буфер опустился ниже low-water
+				 *          (после частичного приёма в sendData можно отправлять дальше).
+				 *          Идентификатор потока для HTTP/1.x всегда равен STREAM_ID -
+				 *          сигнатура универсальна с HTTP/2.
 				 *
-				 * @param provider объект провайдера заголовков сообщения
-				 * @return         результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 * @param sid идентификатор потока (всегда STREAM_ID)
 				 */
-				using provider_callback_t = function <bool (const provider_t *)>;
+				using writable_callback_t = function <void (const uint32_t)>;
 				/**
-				 * @brief Тип функции обратного вызова для обработки тела сообщения
+				 * @brief Тип функции обратного вызова записи исходящих байтов в сеть
 				 *
-				 * @note Буфер указывает во входные данные (zero-copy) и действителен ТОЛЬКО на время вызова.
-				 *       Фрагменты отдаются по мере поступления данных из сети и не совпадают с границами чанков.
+				 * @details Если установлена - парсер сам отдаёт исходящие байты сетевому слою
+				 *          сразу по мере формирования. Если не установлена - исходящие байты
+				 *          накапливаются во внутреннем буфере (pull-модель: pending() +
+				 *          consumePending()).
 				 *
-				 * @param buffer буфер данных тела сообщения
-				 * @param size   размер данных тела сообщения
-				 * @return       результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 * @param buffer буфер исходящих данных
+				 * @param size   размер исходящих данных
 				 */
-				using body_callback_t = function <bool (const void *, const size_t)>;
+				using write_callback_t = function <void (const void *, const size_t)>;
 				/**
 				 * @brief Тип функции обратного вызова для обработки фазы разбора HTTP-сообщения
 				 *
@@ -249,12 +277,15 @@ namespace awh {
 				 *          5. (BEGIN, TRAILER) - начало разбора трейлеров (только для chunked)
 				 *          6. (END, TRAILER)   - трейлеры разобраны (только для chunked)
 				 *          7. (END, NONE)      - сообщение полностью разобрано
+				 *          Идентификатор потока для HTTP/1.x всегда равен STREAM_ID -
+				 *          сигнатура универсальна с HTTP/2.
 				 *
+				 * @param sid   идентификатор потока (всегда STREAM_ID)
 				 * @param phase фаза разбора HTTP-сообщения
 				 * @param part  часть сообщения (заголовки, трейлеры, тело), NONE - сообщение целиком
 				 * @return      результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
 				 */
-				using phase_callback_t = function <bool (const phase_t, const part_t)>;
+				using phase_callback_t = function <bool (const uint32_t, const phase_t, const part_t)>;
 				/**
 				 * @brief Тип функции обратного вызова для обработки границ чанков (Transfer-Encoding: chunked)
 				 *
@@ -263,7 +294,7 @@ namespace awh {
 				 *          и протоколам с семантикой расширений чанков (например, подписи чанков
 				 *          в AWS S3 aws-chunked). Последовательность событий для каждого чанка:
 				 *          1. (BEGIN, size, extension) - строка размера чанка разобрана;
-				 *          2. фрагменты данных чанка отдаются через body_callback_t;
+				 *          2. фрагменты данных чанка отдаются через data_callback_t;
 				 *          3. (END, size, "") - данные чанка дочитаны (принят завершающий CRLF).
 				 *          Для последнего чанка (size == 0) вызывается только BEGIN - далее следуют
 				 *          события трейлеров. Если функция обратного вызова не установлена,
@@ -276,18 +307,70 @@ namespace awh {
 				 */
 				using chunk_callback_t = function <bool (const phase_t, const uint64_t, const string_view)>;
 				/**
+				 * @brief Тип функции обратного вызова для обработки провайдера заголовков сообщения
+				 *
+				 * @details Вызывается по завершению блока заголовков, когда заголовки разобраны
+				 *          и интерпретированы (выбран способ кадрирования тела) - тот же момент,
+				 *          что END_HEADERS у HTTP/2. Для трейлеров провайдер передаётся как nullptr.
+				 *          Идентификатор потока для HTTP/1.x всегда равен STREAM_ID -
+				 *          сигнатура универсальна с HTTP/2.
+				 *
+				 * @param sid       идентификатор потока (всегда STREAM_ID)
+				 * @param provider  объект провайдера заголовков сообщения (nullptr для трейлеров)
+				 * @param endStream флаг завершения сообщения (тела не будет)
+				 * @return          результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 */
+				using provider_callback_t = function <bool (const uint32_t, const provider_t *, const bool)>;
+				/**
+				 * @brief Тип функции обратного вызова для обработки фрагмента тела сообщения
+				 *
+				 * @details Буфер указывает во входные данные (zero-copy) и действителен ТОЛЬКО на время
+				 *          вызова. Фрагменты отдаются по мере поступления данных из сети и не совпадают
+				 *          с границами чанков. Флаг endStream выставляется на фрагменте, завершающем
+				 *          тело фиксированного размера (Content-Length); для тел chunked и "до закрытия
+				 *          соединения" конец тела в момент фрагмента неизвестен - завершение сигнализируется
+				 *          провайдером трейлеров либо фазой (END, NONE). Идентификатор потока для HTTP/1.x
+				 *          всегда равен STREAM_ID - сигнатура универсальна с HTTP/2.
+				 *
+				 * @param sid       идентификатор потока (всегда STREAM_ID)
+				 * @param buffer    буфер данных тела сообщения
+				 * @param size      размер данных тела сообщения
+				 * @param endStream флаг завершения сообщения (фрагмент завершает тело)
+				 * @return          результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
+				 */
+				using data_callback_t = function <bool (const uint32_t, const void *, const size_t, const bool)>;
+				/**
+				 * @brief Тип pull-источника данных тела сообщения (для больших тел без лишней копии)
+				 *
+				 * @details Альтернатива sendData: парсер сам запрашивает у источника данные
+				 *          ровно тогда, когда есть место в выходном буфере. Источник заполняет
+				 *          буфер (не более cap байт), выставляет eof = true по достижении конца
+				 *          тела и возвращает число записанных байт, либо -1 при ошибке.
+				 *          Идентификатор потока для HTTP/1.x всегда равен STREAM_ID -
+				 *          сигнатура универсальна с HTTP/2.
+				 *
+				 * @param sid    идентификатор потока (всегда STREAM_ID)
+				 * @param buffer буфер для заполнения
+				 * @param cap    ёмкость буфера
+				 * @param eof    флаг достижения конца тела
+				 * @return       число записанных байт либо -1 при ошибке
+				 */
+				using data_source_callback_t = function <int64_t (const uint32_t, uint8_t *, const size_t, bool &)>;
+				/**
 				 * @brief Тип функции обратного вызова для обработки заголовков или трейлеров сообщения
 				 *
 				 * @note Заголовки и трейлеры сообщения обрабатываются одинаково, поэтому используется
 				 *       один и тот же тип функции обратного вызова. Название и значение заголовка
-				 *       действительны ТОЛЬКО на время вызова.
+				 *       действительны ТОЛЬКО на время вызова. Идентификатор потока для HTTP/1.x
+				 *       всегда равен STREAM_ID - сигнатура универсальна с HTTP/2.
 				 *
+				 * @param sid   идентификатор потока (всегда STREAM_ID)
 				 * @param name  название заголовка
 				 * @param value значение заголовка (без внешних OWS)
 				 * @param part  часть сообщения (заголовки или трейлеры)
 				 * @return      результат обработки (true - продолжить разбор, false - прервать с ошибкой ABORTED)
 				 */
-				using header_callback_t = function <bool (const string_view, const string_view, const part_t)>;
+				using header_callback_t = function <bool (const uint32_t, const string_view, const string_view, const part_t)>;
 			private:
 				/**
 				 * @brief Структура промежуточных параметров заголовка HTTP
@@ -376,15 +459,58 @@ namespace awh {
 					explicit Flags() noexcept;
 				} flags_t;
 				/**
+				 * @brief Структура состояния отправки исходящего сообщения
+				 *
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Sender {
+					/**
+					 * @brief Способ кадрирования тела исходящего сообщения
+					 *
+					 */
+					enum class framing_t : uint8_t {
+						NONE     = 0x00, // Заголовки ещё не отправлены либо тела нет
+						RAW      = 0x01, // Сырое тело до закрытия соединения (HTTP/1.0)
+						CHUNKED  = 0x02, // Кодировка chunked (Transfer-Encoding: chunked)
+						IDENTITY = 0x03  // Фиксированный размер (Content-Length)
+					};
+					// Исходящее сообщение завершено (конец тела отправлен)
+					bool endSent;
+					// Достигнут конец тела pull-источника данных
+					bool sourceEof;
+					// Заголовки исходящего сообщения отправлены
+					bool headersSent;
+					// Сигнал writable уже подан для текущего провала буфера
+					bool writableNotified;
+					// Способ кадрирования тела исходящего сообщения
+					framing_t framing;
+					// Порог сигнала writable (low-water)
+					size_t lowWater;
+					// Ёмкость выходного буфера отправки (high-water)
+					size_t highWater;
+					// Префикс output, уже отданный сети (вместо erase(0,..))
+					size_t outputPos;
+					// Остаток тела до полного Content-Length (для кадрирования IDENTITY)
+					uint64_t remaining;
+					// Буфер исходящих байтов (заголовки + кадрированное тело)
+					string output;
+					// Pull-источник данных тела (если задан вместо sendData)
+					data_source_callback_t source;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Sender() noexcept;
+				} sender_t;
+				/**
 				 * @brief Структура для хранения функций обратного вызова
 				 *
 				 */
 				typedef struct __AWH_SHARED_EXPORT__ Callbacks {
 					/**
-					 * @brief Функция обратного вызова для обработки тела сообщения
+					 * @brief Функция обратного вызова для обработки фрагмента тела сообщения
 					 *
 					 */
-					body_callback_t body;
+					data_callback_t data;
 					/**
 					 * @brief Функция обратного вызова для обработки фазы разбора HTTP-сообщения
 					 *
@@ -396,6 +522,11 @@ namespace awh {
 					 */
 					chunk_callback_t chunk;
 					/**
+					 * @brief Функция обратного вызова записи исходящих байтов в сеть
+					 *
+					 */
+					write_callback_t write;
+					/**
 					 * @brief Функция обратного вызова для обработки заголовков или трейлеров сообщения
 					 *
 					 */
@@ -405,6 +536,11 @@ namespace awh {
 					 *
 					 */
 					provider_callback_t provider;
+					/**
+					 * @brief Функция обратного вызова о готовности принимать данные тела
+					 *
+					 */
+					writable_callback_t writable;
 					/**
 					 * @brief Конструктор
 					 *
@@ -431,6 +567,9 @@ namespace awh {
 			private:
 				// Промежуточный объект заголовка HTTP
 				header_t _header;
+			private:
+				// Объект состояния отправки исходящего сообщения
+				sender_t _sender;
 			private:
 				// Объект функций обратного вызова
 				callbacks_t _callbacks;
@@ -484,6 +623,58 @@ namespace awh {
 				void fail(const error_t error) noexcept;
 			private:
 				/**
+				 * @brief Метод передачи исходящих байтов сетевому слою через функцию обратного вызова записи
+				 *
+				 * @details Если функция записи не установлена - байты остаются во внутреннем
+				 *          буфере до выборки через pending()/consumePending().
+				 */
+				void flush() noexcept;
+				/**
+				 * @brief Метод получения логического объёма ещё не отправленных исходящих байтов
+				 *
+				 * @return объём не отправленных исходящих байтов
+				 */
+				size_t outputPending() const noexcept;
+			private:
+				/**
+				 * @brief Метод дозагрузки выходного буфера из pull-источника данных (если он задан)
+				 *
+				 * @details Источник пишет напрямую в выходной буфер (без промежуточной копии),
+				 *          кадрирование тела применяется к каждой полученной порции.
+				 *
+				 * @return число полученных от источника байт тела
+				 */
+				size_t refillFromSource() noexcept;
+			private:
+				/**
+				 * @brief Метод прокачки pull-источника данных в сеть
+				 *
+				 * @details В push-режиме (установлена функция обратного вызова записи) качает
+				 *          источник до конца тела либо до временного отсутствия данных.
+				 *          В pull-режиме наполняет выходной буфер до high-water однократно -
+				 *          досылка происходит по мере выборки consumePending().
+				 */
+				void pumpSource() noexcept;
+				/**
+				 * @brief Метод сигнализации о готовности принимать данные (один раз на провал буфера)
+				 *
+				 */
+				void maybeNotifyWritable() noexcept;
+			private:
+				/**
+				 * @brief Метод завершения тела исходящего сообщения (финализация кадрирования)
+				 *
+				 */
+				void finishBody() noexcept;
+				/**
+				 * @brief Метод кадрирования и записи порции тела в выходной буфер
+				 *
+				 * @param buffer буфер данных тела
+				 * @param size   размер данных тела
+				 */
+				void frameBody(const void * buffer, const size_t size) noexcept;
+			private:
+				/**
 				 * @brief Метод вызова функции обратного вызова обработки фазы разбора
 				 *
 				 * @param phase фаза разбора HTTP-сообщения
@@ -499,6 +690,14 @@ namespace awh {
 				 * @return      результат обработки (false - разбор прерван с ошибкой ABORTED)
 				 */
 				bool fireChunk(const phase_t phase, const uint64_t size) noexcept;
+				/**
+				 * @brief Метод вызова функции обратного вызова обработки провайдера заголовков сообщения
+				 *
+				 * @param provider  объект провайдера заголовков сообщения (nullptr для трейлеров)
+				 * @param endStream флаг завершения сообщения (тела не будет)
+				 * @return          результат обработки (false - разбор прерван с ошибкой ABORTED)
+				 */
+				bool fireProvider(const provider_t * provider, const bool endStream) noexcept;
 			private:
 				/**
 				 * @brief Метод интерпретации заголовка Connection
@@ -639,11 +838,86 @@ namespace awh {
 				const message_t & message() const noexcept;
 			public:
 				/**
-				 * @brief Метод установки функции обратного вызова для обработки тела сообщения
+				 * @brief Метод сброса состояния отправки для следующего сообщения в том же соединении
 				 *
-				 * @param callback функция обратного вызова для обработки тела сообщения
+				 * @details Готовит отправитель к следующему сообщению (keep-alive): сбрасывает
+				 *          кадрирование, источник данных и флаги, но НЕ трогает неотправленный
+				 *          остаток выходного буфера. Состояние разбора не затрагивается -
+				 *          для него используется reset().
 				 */
-				void on(body_callback_t callback) noexcept;
+				void resetSender() noexcept;
+			public:
+				/**
+				 * @brief Метод назначения pull-источника данных тела сообщения
+				 *
+				 * @param source pull-источник данных тела
+				 */
+				void dataSource(data_source_callback_t source) noexcept;
+			public:
+				/**
+				 * @brief Метод настройки порогов выходного буфера отправки
+				 *
+				 * @param high ёмкость выходного буфера отправки (high-water)
+				 * @param low  порог сигнала writable (low-water)
+				 */
+				void sendWaterMarks(const size_t high, const size_t low) noexcept;
+			public:
+				/**
+				 * @brief Метод отправки блока заголовков (запрос/ответ/трейлеры) исходящего сообщения
+				 *
+				 * @details Способ кадрирования тела выбирается по заголовкам контейнера:
+				 *          - установлен Content-Length - тело фиксированного размера (IDENTITY);
+				 *          - Content-Length отсутствует и endStream == false - добавляется
+				 *            Transfer-Encoding: chunked (для HTTP/1.0 - сырое тело до закрытия
+				 *            соединения, chunked в HTTP/1.0 не существует);
+				 *          - endStream == true - тела нет, заголовки отправляются как есть.
+				 *          Контейнер без провайдера в режиме chunked интерпретируется как
+				 *          трейлеры (завершает тело последним чанком) - та же семантика,
+				 *          что у HTTP/2.
+				 *
+				 * @param headers   контейнер заголовков (провайдер контейнера задаёт стартовую строку)
+				 * @param endStream флаг завершения сообщения (тела не будет)
+				 */
+				void sendHeaders(const headers_t & headers, const bool endStream) noexcept;
+				/**
+				 * @brief Метод передачи части тела сообщения для отправки (push-модель, bounded buffer)
+				 *
+				 * @details Копирует в выходной буфер столько байт, сколько влезает до high-water,
+				 *          и возвращает это число (0..size). Если вернулось меньше size - буфер
+				 *          заполнен: приостановите выдачу и дождитесь функции обратного вызова
+				 *          writable. Кадрирование тела (chunked/identity) парсер применяет сам.
+				 *
+				 * @param buffer    буфер данных тела
+				 * @param size      размер данных тела
+				 * @param endStream флаг завершения сообщения
+				 * @return          число принятых байт (0..size)
+				 */
+				size_t sendData(const void * buffer, const size_t size, const bool endStream) noexcept;
+			public:
+				/**
+				 * @brief Метод получения ещё не отправленных исходящих байтов (pull-модель)
+				 *
+				 * @details View действителен до следующего вызова любого метода парсера.
+				 *          После записи в сокет освободите отправленную часть методом
+				 *          consumePending(). При установленной функции обратного вызова
+				 *          записи буфер опустошается автоматически.
+				 *
+				 * @return ещё не отправленные исходящие байты (zero-copy view во внутренний буфер)
+				 */
+				string_view pending() const noexcept;
+				/**
+				 * @brief Метод освобождения отправленных байтов из исходящего буфера (амортизированно O(1))
+				 *
+				 * @param size число отправленных байт
+				 */
+				void consumePending(const size_t size) noexcept;
+			public:
+				/**
+				 * @brief Метод установки функции обратного вызова для обработки фрагмента тела сообщения
+				 *
+				 * @param callback функция обратного вызова для обработки фрагмента тела сообщения
+				 */
+				void on(data_callback_t callback) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова для обработки фазы разбора HTTP-сообщения
 				 *
@@ -657,6 +931,12 @@ namespace awh {
 				 */
 				void on(chunk_callback_t callback) noexcept;
 				/**
+				 * @brief Метод установки функции обратного вызова записи исходящих байтов в сеть
+				 *
+				 * @param callback функция обратного вызова записи исходящих байтов в сеть
+				 */
+				void on(write_callback_t callback) noexcept;
+				/**
 				 * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров сообщения
 				 *
 				 * @param callback функция обратного вызова для обработки заголовков или трейлеров сообщения
@@ -668,6 +948,12 @@ namespace awh {
 				 * @param callback функция обратного вызова для обработки провайдера заголовков сообщения
 				 */
 				void on(provider_callback_t callback) noexcept;
+				/**
+				 * @brief Метод установки функции обратного вызова о готовности принимать данные тела
+				 *
+				 * @param callback функция обратного вызова о готовности принимать данные тела
+				 */
+				void on(writable_callback_t callback) noexcept;
 			public:
 				/**
 				 * @brief Конструктор

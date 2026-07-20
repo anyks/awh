@@ -689,9 +689,9 @@ awh::http::Parser_HTTP2::Callbacks::Callbacks() noexcept :
  data(nullptr), push(nullptr),
  write(nullptr), begin(nullptr),
  close(nullptr), error(nullptr),
- header(nullptr), goaway(nullptr),
- writable(nullptr), settings(nullptr),
- provider(nullptr) {}
+ phase(nullptr), header(nullptr),
+ goaway(nullptr), writable(nullptr),
+ settings(nullptr), provider(nullptr) {}
 
 /**
  * @brief Метод передачи исходящих байтов сетевому слою через функцию обратного вызова записи
@@ -921,9 +921,24 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 		return h2::status_t::OK;
 	}
 	// Если это первый блок заголовков потока - собираем провайдер из псевдо-заголовков
-	if(!isTrailers)
+	if(!isTrailers){
 		// Выполняем построение провайдера заголовков потока
 		stream->headers = this->buildProvider(fields, isRequest);
+		// Уведомляем о начале приёма сообщения потока
+		if(!this->firePhase(streamId, phase_t::BEGIN, part_t::NONE))
+			// Обработка блока завершена (поток сброшен, соединение живёт)
+			return h2::status_t::OK;
+	// Если это блок трейлеров - тело потока принято, начинаются трейлеры
+	} else {
+		// Уведомляем о завершении приёма тела потока (трейлеры приходят только после тела)
+		if(!this->firePhase(streamId, phase_t::END, part_t::BODY))
+			// Обработка блока завершена (поток сброшен, соединение живёт)
+			return h2::status_t::OK;
+		// Уведомляем о начале приёма трейлеров потока
+		if(!this->firePhase(streamId, phase_t::BEGIN, part_t::TRAILER))
+			// Обработка блока завершена (поток сброшен, соединение живёт)
+			return h2::status_t::OK;
+	}
 	// Если функция обратного вызова установлена
 	if(this->_callbacks.header != nullptr){
 		// Определяем часть сообщения, к которой относятся заголовки
@@ -971,6 +986,33 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::deliverHeaders() noexcept {
 			// Обработка блока завершена (соединение живёт)
 			return h2::status_t::OK;
 		}
+	}
+	// Если это первый блок заголовков потока
+	if(!isTrailers){
+		// Уведомляем о завершении приёма блока заголовков потока
+		if(!this->firePhase(streamId, phase_t::END, part_t::HEADERS))
+			// Обработка блока завершена (поток сброшен, соединение живёт)
+			return h2::status_t::OK;
+		// Если END_STREAM не получен - за заголовками последует тело
+		if(!endStream){
+			// Уведомляем о начале приёма тела потока
+			if(!this->firePhase(streamId, phase_t::BEGIN, part_t::BODY))
+				// Обработка блока завершена (поток сброшен, соединение живёт)
+				return h2::status_t::OK;
+		}
+	// Если это блок трейлеров
+	} else {
+		// Уведомляем о завершении приёма трейлеров потока
+		if(!this->firePhase(streamId, phase_t::END, part_t::TRAILER))
+			// Обработка блока завершена (поток сброшен, соединение живёт)
+			return h2::status_t::OK;
+	}
+	// Если получен END_STREAM - сообщение потока полностью принято
+	if(endStream){
+		// Уведомляем о завершении приёма всего сообщения потока
+		if(!this->firePhase(streamId, phase_t::END, part_t::NONE))
+			// Обработка блока завершена (поток сброшен, соединение живёт)
+			return h2::status_t::OK;
 	}
 	/**
 	 * Переход по END_STREAM может закрыть и удалить поток - выполняем последним
@@ -1519,9 +1561,22 @@ awh::http::h2::status_t awh::http::Parser_HTTP2::dispatch(const h2::frame::heade
 			// Пополняем окно приёма и при просадке шлём WINDOW_UPDATE (потоку - только если он остаётся открыт)
 			this->replenishReceiveWindow(((endStream || (stream == nullptr)) ? nullptr : stream), header.length);
 			// Если получен END_STREAM и поток ещё существует
-			if(endStream && (stream != nullptr))
-				// Применяем полученный END_STREAM (ссылка на поток может стать недействительной)
-				this->applyRemoteEndStream(* stream);
+			if(endStream && (stream != nullptr)){
+				// Уведомляем о завершении приёма тела потока
+				if(!this->firePhase(header.streamId, phase_t::END, part_t::BODY))
+					// Обработка фрейма завершена (поток сброшен, соединение живёт)
+					return h2::status_t::OK;
+				// Уведомляем о завершении приёма всего сообщения потока
+				if(!this->firePhase(header.streamId, phase_t::END, part_t::NONE))
+					// Обработка фрейма завершена (поток сброшен, соединение живёт)
+					return h2::status_t::OK;
+				// Перечитываем указатель на поток (функция обратного вызова могла его удалить)
+				stream = this->findStream(header.streamId);
+				// Если поток ещё существует
+				if(stream != nullptr)
+					// Применяем полученный END_STREAM (ссылка на поток может стать недействительной)
+					this->applyRemoteEndStream(* stream);
+			}
 			// Обработка фрейма завершена
 			return h2::status_t::OK;
 		}
@@ -1865,6 +1920,59 @@ void awh::http::Parser_HTTP2::closeStream(const uint32_t id, const error_t code)
 	this->eraseStream(id);
 }
 /**
+ * @brief Метод вызова функции обратного вызова обработки фазы приёма сообщения потока
+ *
+ * @param id    идентификатор потока
+ * @param phase фаза приёма сообщения потока
+ * @param part  часть сообщения (заголовки, трейлеры, тело), NONE - сообщение целиком
+ * @return      результат обработки (false - поток сброшен)
+ */
+bool awh::http::Parser_HTTP2::firePhase(const uint32_t id, const phase_t phase, const part_t part) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.phase != nullptr){
+		// Результат обработки пользовательской функцией
+		bool result = false;
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Уведомляем о фазе приёма сообщения потока
+			result = this->_callbacks.phase(id, phase, part);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (phase), static_cast <uint16_t> (part)), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Если функция обратного вызова потребовала сбросить поток
+		if(!result){
+			// Если поток ещё существует (функция обратного вызова могла его закрыть)
+			if(this->findStream(id) != nullptr){
+				// Сбрасываем поток с кодом CANCEL
+				h2::frame::serializeRstStream(this->_buffer.output, id, error_t::CANCEL);
+				// Закрываем поток с вызовом функции обратного вызова закрытия
+				this->closeStream(id, error_t::CANCEL);
+			}
+			// Поток сброшен
+			return false;
+		}
+	}
+	// Продолжаем обработку
+	return true;
+}
+/**
  * @brief Метод прокачки отправки по всем потокам с учётом окон и порога выходного буфера
  *
  * @details Round-robin: за каждый проход отправляется не более одного DATA-фрейма
@@ -2003,10 +2111,12 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 	 * Держим буфер наполненным до high-water, запрашивая источник данных порциями
 	 */
 	while((stream.pending() < this->_transfer.sendHighWater) && !stream.sourceEof){
-		// Временный буфер для порции данных источника
-		uint8_t buffer[16384];
-		// Вычисляем ёмкость запрашиваемой порции
-		const size_t cap = ::min(sizeof(buffer), this->_transfer.sendHighWater - stream.pending());
+		// Вычисляем ёмкость запрашиваемой порции (не больше одного DATA-фрейма пира)
+		const size_t cap = ::min(static_cast <size_t> (this->_remote.maxFrameSize), this->_transfer.sendHighWater - stream.pending());
+		// Запоминаем текущий размер буфера отправки
+		const size_t offset = stream.sendBuffer.size();
+		// Резервируем место под порцию данных прямо в буфере отправки (без промежуточной копии)
+		stream.sendBuffer.resize(offset + cap);
 		// Флаг достижения конца тела
 		bool eof = false;
 		// Результат запроса данных у источника
@@ -2015,8 +2125,8 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 		 * Выполняем отлов ошибок
 		 */
 		try {
-			// Запрашиваем порцию данных у источника
-			bytes = stream.source(stream.id, buffer, cap, eof);
+			// Запрашиваем порцию данных у источника (источник пишет напрямую в буфер отправки)
+			bytes = stream.source(stream.id, reinterpret_cast <uint8_t *> (&stream.sendBuffer[offset]), cap, eof);
 		/**
 		 * Если возникает ошибка
 		 */
@@ -2035,8 +2145,10 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 			#endif
 		}
-		// Если источник сообщил об ошибке данных
-		if(bytes < 0){
+		// Обрезаем буфер отправки до фактически записанного источником размера
+		stream.sendBuffer.resize(offset + static_cast <size_t> (((bytes > 0) && (bytes <= static_cast <int64_t> (cap))) ? bytes : 0));
+		// Если источник сообщил об ошибке данных либо нарушил контракт (записал больше ёмкости)
+		if((bytes < 0) || (bytes > static_cast <int64_t> (cap))){
 			// Запоминаем идентификатор потока
 			const uint32_t id = stream.id;
 			// Сбрасываем поток с кодом INTERNAL_ERROR
@@ -2046,10 +2158,6 @@ void awh::http::Parser_HTTP2::refillFromSource(stream_t & stream) noexcept {
 			// Выходим из метода
 			return;
 		}
-		// Если источник выдал данные - дописываем их в буфер отправки
-		if(bytes > 0)
-			// Дописываем порцию данных в буфер отправки потока
-			stream.sendBuffer.append(reinterpret_cast <const char *> (buffer), static_cast <size_t> (bytes));
 		// Если достигнут конец тела источника
 		if(eof){
 			// Помечаем что конец тела источника достигнут
@@ -3211,6 +3319,15 @@ void awh::http::Parser_HTTP2::on(write_callback_t callback) noexcept {
 void awh::http::Parser_HTTP2::on(begin_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова
 	this->_callbacks.begin = ::move(callback);
+}
+/**
+ * @brief Метод установки функции обратного вызова для обработки фазы приёма сообщения потока
+ *
+ * @param callback функция обратного вызова для обработки фазы приёма сообщения потока
+ */
+void awh::http::Parser_HTTP2::on(phase_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова
+	this->_callbacks.phase = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова для обработки полученного GOAWAY

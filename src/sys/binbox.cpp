@@ -812,7 +812,7 @@ template string awh::BinBox::get <string> (string_view) noexcept;
 template vector <char> awh::BinBox::get <vector <char>> (string_view) noexcept;
 template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (string_view) noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::BinBox::get <size_t> (string_view) noexcept;
@@ -884,7 +884,7 @@ template string awh::BinBox::get <string> (const uint64_t) noexcept;
 template vector <char> awh::BinBox::get <vector <char>> (const uint64_t) noexcept;
 template vector <uint8_t> awh::BinBox::get <vector <uint8_t>> (const uint64_t) noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template size_t awh::BinBox::get <size_t> (const uint64_t) noexcept;
@@ -1072,7 +1072,7 @@ template bool awh::BinBox::add <uint64_t> (const uint64_t, const uint64_t) noexc
 template bool awh::BinBox::add <float> (const uint64_t, const float) noexcept;
 template bool awh::BinBox::add <double> (const uint64_t, const double) noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template bool awh::BinBox::add <size_t> (const uint64_t, const size_t) noexcept;
@@ -1119,7 +1119,7 @@ template bool awh::BinBox::add <uint64_t> (const uint64_t, const vector <uint64_
 template bool awh::BinBox::add <float> (const uint64_t, const vector <float> &) noexcept;
 template bool awh::BinBox::add <double> (const uint64_t, const vector <double> &) noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template bool awh::BinBox::add <size_t> (const uint64_t, const vector <size_t> &) noexcept;
@@ -1246,7 +1246,7 @@ template bool awh::BinBox::add <uint64_t> (string_view, const uint64_t) noexcept
 template bool awh::BinBox::add <float> (string_view, const float) noexcept;
 template bool awh::BinBox::add <double> (string_view, const double) noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template bool awh::BinBox::add <size_t> (string_view, const size_t) noexcept;
@@ -1293,7 +1293,7 @@ template bool awh::BinBox::add <uint64_t> (string_view, const vector <uint64_t> 
 template bool awh::BinBox::add <float> (string_view, const vector <float> &) noexcept;
 template bool awh::BinBox::add <double> (string_view, const vector <double> &) noexcept;
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template bool awh::BinBox::add <size_t> (string_view, const vector <size_t> &) noexcept;

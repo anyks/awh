@@ -49,6 +49,8 @@ class ParserHttp2Fixture : public testing::Test {
 			std::vector <std::tuple <uint32_t, std::string, std::string, awh::http::parser_t::part_t>> headers;
 			// События провайдеров заголовков (поток, трейлеры (провайдер = nullptr), завершение потока)
 			std::vector <std::tuple <uint32_t, bool, bool>> providers;
+			// Собранные фазовые события приёма сообщений (поток, фаза, часть сообщения)
+			std::vector <std::tuple <uint32_t, awh::http::parser_t::phase_t, awh::http::parser_t::part_t>> phases;
 			// Собранные тела потоков
 			std::map <uint32_t, std::string> bodies;
 			// События закрытия потоков (поток, код ошибки закрытия)

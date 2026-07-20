@@ -52,15 +52,15 @@ std::unique_ptr <awh::http::parser_http_t> ParserFixture::make(const awh::http::
  * @param events объект сборщика событий парсера
  */
 void ParserFixture::attach(awh::http::parser_http_t & parser, events_t & events) const noexcept {
-	// Устанавливаем функцию обратного вызова для обработки тела сообщения
-	parser.on(awh::http::parser_http_t::body_callback_t([&events](const void * buffer, const size_t size) noexcept -> bool {
+	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
+	parser.on(awh::http::parser_http_t::data_callback_t([&events](const uint32_t, const void * buffer, const size_t size, const bool) noexcept -> bool {
 		// Собираем фрагмент тела сообщения
 		events.body.append(static_cast <const char *> (buffer), size);
 		// Продолжаем разбор
 		return true;
 	}));
 	// Устанавливаем функцию обратного вызова для обработки фазы разбора HTTP-сообщения
-	parser.on(awh::http::parser_http_t::phase_callback_t([&events](const awh::http::parser_t::phase_t phase, const awh::http::parser_t::part_t part) noexcept -> bool {
+	parser.on(awh::http::parser_http_t::phase_callback_t([&events](const uint32_t, const awh::http::parser_t::phase_t phase, const awh::http::parser_t::part_t part) noexcept -> bool {
 		// Собираем фазовое событие
 		events.phases.emplace_back(phase, part);
 		// Продолжаем разбор
@@ -74,7 +74,7 @@ void ParserFixture::attach(awh::http::parser_http_t & parser, events_t & events)
 		return true;
 	}));
 	// Устанавливаем функцию обратного вызова для обработки заголовков или трейлеров сообщения
-	parser.on(awh::http::parser_http_t::header_callback_t([&events](const std::string_view name, const std::string_view value, const awh::http::parser_t::part_t part) noexcept -> bool {
+	parser.on(awh::http::parser_http_t::header_callback_t([&events](const uint32_t, const std::string_view name, const std::string_view value, const awh::http::parser_t::part_t part) noexcept -> bool {
 		// Если получен трейлер сообщения
 		if(part == awh::http::parser_t::part_t::TRAILER)
 			// Собираем трейлер сообщения
@@ -85,9 +85,11 @@ void ParserFixture::attach(awh::http::parser_http_t & parser, events_t & events)
 		return true;
 	}));
 	// Устанавливаем функцию обратного вызова для обработки провайдера заголовков сообщения
-	parser.on(awh::http::parser_http_t::provider_callback_t([&events](const awh::http::provider_t * provider) noexcept -> bool {
-		// Помечаем что функция обратного вызова обработки провайдера вызвана
-		events.providerFired = (provider != nullptr);
+	parser.on(awh::http::parser_http_t::provider_callback_t([&events](const uint32_t, const awh::http::provider_t * provider, const bool) noexcept -> bool {
+		// Помечаем что функция обратного вызова обработки провайдера вызвана (для трейлеров провайдер - nullptr)
+		if(provider != nullptr)
+			// Помечаем что функция обратного вызова обработки провайдера вызвана
+			events.providerFired = true;
 		// Продолжаем разбор
 		return true;
 	}));

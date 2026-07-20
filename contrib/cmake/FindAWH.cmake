@@ -35,7 +35,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 else()
     # Если произведена установка глобально
     if (AWH_GLOBAL_INSTALLATION)
-        # Если операцинная система относится к MacOS X
+        # Если операцинная система относится к macOS
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
             # Устанавливаем системный путь поиска зависимостей
             SET(AWH_SEARCH_PATH /usr/local)
@@ -121,7 +121,7 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
 else()
     # Если нужно загрузить динамическую библиотеку
     if (CMAKE_SHARED_LIB_AWH)
-        # Если операцинная система относится к MacOS X
+        # Если операцинная система относится к macOS
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
             # Устанавливаем расширение поиска библиотеки
             SET(CMAKE_FIND_LIBRARY_SUFFIXES ".dylib")

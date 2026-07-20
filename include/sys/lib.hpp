@@ -158,7 +158,7 @@
 	// Адрес файла корневого сертификата
 	#define SSL_CA_FILE "%ProgramFiles%\\OpenSSL-Win64\\bin\\PEM\\cert.pem"
 /**
- * Для операционной системы MacOS X
+ * Для операционной системы macOS
  */
 #elif __APPLE__ || __MACH__
 	// Адрес файла корневого сертификата

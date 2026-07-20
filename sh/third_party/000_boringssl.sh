@@ -149,7 +149,7 @@ if [ -n "$1" ]; then
 				 -DCMAKE_INSTALL_PREFIX="$PREFIX" \
 				 -G "MSYS Makefiles" \
 				 .. || exit 1
-			# Выполняем конфигурацию проекта под MacOS X
+			# Выполняем конфигурацию проекта под macOS
 			elif [ $OS = "Darwin" ]; then
 				# Если архитектура ARM
 				if [[ $ARCHITECTURE = "arm" ]]; then

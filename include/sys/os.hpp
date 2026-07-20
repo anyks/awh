@@ -170,7 +170,7 @@ namespace awh {
 				LINUX   = 0x02, // Операционная система Linux
 				WIND32  = 0x03, // Операционная система Windows 32bit
 				WIND64  = 0x04, // Операционная система Windows 64bit
-				MACOSX  = 0x05, // Операционная система MacOS X
+				MACOSX  = 0x05, // Операционная система macOS
 				NETBSD  = 0x06, // Операционная система NetBSD
 				OPENBSD = 0x07, // Операционная система OpenBSD
 				FREEBSD = 0x08, // Операционная система FreeBSD

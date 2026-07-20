@@ -31,7 +31,7 @@
 	#include <fcntl.h>
 	#include <unistd.h>
 /**
- * Для операционной системы  MacOS X, FreeBSD или NetBSD
+ * Для операционной системы  macOS, FreeBSD или NetBSD
  */
 #elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 	/**
@@ -297,7 +297,7 @@ void awh::Notifier::reset() noexcept {
 				this->_socks[1] = INVALID_SOCKET;
 			}
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционной системы macOS, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не закрыт
@@ -437,7 +437,7 @@ SOCKET awh::Notifier::init() noexcept {
 			// Устанавливаем данные сокета на чтение
 			result = this->_socks[0];
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционной системы macOS, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не инициализирован
@@ -612,7 +612,7 @@ uint32_t awh::Notifier::event() noexcept {
 				::memcpy(&result, buffer, size);
 			}
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционной системы macOS, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Выполняем блокировку потока
@@ -765,7 +765,7 @@ void awh::Notifier::notify(const uint32_t id) noexcept {
 				}
 			}
 		/**
-		 * Для операционной системы MacOS X, FreeBSD или NetBSD
+		 * Для операционной системы macOS, FreeBSD или NetBSD
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__
 			// Если сокет ещё не закрыт
@@ -831,7 +831,7 @@ awh::Notifier::Notifier(const fmk_t * fmk, const log_t * log) noexcept : _fmk(fm
 			// Сбрасываем значение сокета на запись
 			this->_socks[1] = INVALID_SOCKET;
 		/**
-		 * Для операционной системы MacOS X, FreeBSD, NetBSD или Linux
+		 * Для операционной системы macOS, FreeBSD, NetBSD или Linux
 		 */
 		#elif __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __linux__
 			// Инициализируем файловый дескриптор

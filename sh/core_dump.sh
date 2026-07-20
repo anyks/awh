@@ -6,7 +6,7 @@ readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # Получаем версию OS
 readonly OS=$(uname -a | awk '{print $1}')
 
-# Если операционной системой является MacOS X
+# Если операционной системой является macOS
 if [ $OS = "Darwin" ]; then
 	# Выполняем активирование разрешения создания дампа ядра
 	/usr/libexec/PlistBuddy -c "Add :com.apple.security.get-task-allow bool true" $2
@@ -14,7 +14,7 @@ if [ $OS = "Darwin" ]; then
 	codesign -s - -f --entitlements $2 $1
 	# Разрешаем создание дампа ядра
 	ulimit -c unlimited
-# Если операционная система не является MacOS X
+# Если операционная система не является macOS
 else
 	# Выводим сообщение об ошибке
 	echo "This script cannot be executed in the $OS operating environment."

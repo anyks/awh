@@ -17,6 +17,7 @@
  */
 #include <set>
 #include <map>
+#include <regex>
 #include <string>
 #include <vector>
 #include <memory>
@@ -1157,4 +1158,215 @@ TEST_F(HeadersFixture, ConstructWithDataTest){
 	ASSERT_EQ(full.startline(), "GET /data HTTP/1.1");
 	// Проверяем что заголовок добавлен
 	ASSERT_TRUE(full.has("Accept"));
+}
+
+/**
+ * @brief Метод проверки установки и получения идентификации сервиса для запроса
+ *
+ */
+TEST_F(HeadersFixture, IdentRequestTest){
+	// Создаём объект запроса клиента
+	request_t request(version_t::HTTP1_1, method_t::GET, "/");
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Устанавливаем идентификацию сервиса
+	this->_headers->ident("MyID", "MyApp", "1.2.3");
+	// Получаем сформированный User-Agent
+	const std::string agent = this->_headers->ident();
+	// Проверяем что название сервиса присутствует в начале агента
+	ASSERT_EQ(agent.find("MyApp ("), 0u);
+	// Проверяем что идентификатор и версия присутствуют в агенте
+	ASSERT_NE(agent.find("MyID/1.2.3)"), std::string::npos);
+	// Проверяем формат агента целиком: «Name (OS; ID/Version)»
+	ASSERT_TRUE(std::regex_match(agent, std::regex("^MyApp \\(.+; MyID/1\\.2\\.3\\)$")));
+}
+
+/**
+ * @brief Метод проверки установки и получения идентификации сервиса для ответа
+ *
+ */
+TEST_F(HeadersFixture, IdentResponseTest){
+	// Создаём объект ответа сервера
+	response_t response(version_t::HTTP1_1, 200, "OK");
+	// Устанавливаем провайдер ответа
+	this->_headers->provider(&response);
+	// Устанавливаем идентификацию сервиса
+	this->_headers->ident("MyID", "MyApp", "1.2.3");
+	// Проверяем формат X-Powered-By: «ID/Version»
+	ASSERT_EQ(this->_headers->ident(), "MyID/1.2.3");
+}
+
+/**
+ * @brief Метод проверки идентификации сервиса по умолчанию
+ *
+ */
+TEST_F(HeadersFixture, IdentDefaultTest){
+	// Создаём объект запроса клиента
+	request_t request(version_t::HTTP1_1, method_t::GET, "/");
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Получаем идентификацию по умолчанию
+	const std::string agent = this->_headers->ident();
+	// Проверяем что название сервиса по умолчанию присутствует
+	ASSERT_EQ(agent.find(AWH_NAME " ("), 0u);
+	// Проверяем что короткий идентификатор и версия по умолчанию присутствуют
+	ASSERT_NE(agent.find(AWH_SHORT_NAME "/" AWH_VERSION ")"), std::string::npos);
+	// Создаём объект ответа сервера
+	response_t response(version_t::HTTP1_1, 200, "OK");
+	// Устанавливаем провайдер ответа
+	this->_headers->provider(&response);
+	// Проверяем идентификацию ответа по умолчанию
+	ASSERT_EQ(this->_headers->ident(), AWH_SHORT_NAME "/" AWH_VERSION);
+}
+
+/**
+ * @brief Метод проверки что пустые аргументы не перезаписывают идентификацию
+ *
+ */
+TEST_F(HeadersFixture, IdentEmptyArgsPreserveTest){
+	// Создаём объект ответа сервера
+	response_t response(version_t::HTTP1_1, 200, "OK");
+	// Устанавливаем провайдер ответа
+	this->_headers->provider(&response);
+	// Устанавливаем исходную идентификацию сервиса
+	this->_headers->ident("KeepID", "KeepName", "9.9.9");
+	// Передаём пустые аргументы - значения не должны измениться
+	this->_headers->ident("", "", "");
+	// Проверяем что идентификация сохранена
+	ASSERT_EQ(this->_headers->ident(), "KeepID/9.9.9");
+	// Частично обновляем только версию
+	this->_headers->ident("", "", "2.0.0");
+	// Проверяем что обновилась только версия
+	ASSERT_EQ(this->_headers->ident(), "KeepID/2.0.0");
+}
+
+/**
+ * @brief Метод проверки форматирования HTTP-даты
+ *
+ */
+TEST_F(HeadersFixture, DateFormatTest){
+	// Формируем дату для известного Unix Timestamp (1 января 2021 00:00:00 GMT)
+	ASSERT_EQ(this->_headers->date(1609459200ull), "Fri, 01 Jan 2021 00:00:00 GMT");
+	// Формируем дату для известного Unix Timestamp (18 декабря 2013 12:00:00 GMT)
+	ASSERT_EQ(this->_headers->date(1387368000ull), "Wed, 18 Dec 2013 12:00:00 GMT");
+	// Формируем дату из миллисекунд - значение должно быть нормализовано до секунд
+	ASSERT_EQ(this->_headers->date(1609459200000ull), "Fri, 01 Jan 2021 00:00:00 GMT");
+}
+
+/**
+ * @brief Метод проверки форматирования текущей HTTP-даты
+ *
+ */
+TEST_F(HeadersFixture, DateNowTest){
+	// Получаем текущую дату в HTTP-формате
+	const std::string now = this->_headers->date();
+	// Проверяем что дата не пустая
+	ASSERT_FALSE(now.empty());
+	// Проверяем соответствие формату RFC 9110 HTTP-date
+	ASSERT_TRUE(std::regex_match(now, std::regex("^[A-Z][a-z]{2}, \\d{2} [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT$")));
+}
+
+/**
+ * @brief Метод проверки добавления заголовков по умолчанию для HTTP-запроса
+ *
+ */
+TEST_F(HeadersFixture, AddDefaultHeadersRequestTest){
+	// Создаём объект запроса клиента
+	request_t request(version_t::HTTP1_1, method_t::GET, "/index.html");
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Устанавливаем идентификацию сервиса
+	this->_headers->ident("TestID", "TestApp", "3.0.0");
+	// Добавляем заголовки по умолчанию
+	ASSERT_TRUE(this->_headers->addDefaultHeaders());
+	// Проверяем что заголовок User-Agent добавлен
+	ASSERT_TRUE(this->_headers->has("User-Agent"));
+	// Проверяем что значение User-Agent совпадает с идентификацией
+	ASSERT_EQ(this->_headers->at("User-Agent"), this->_headers->ident());
+	// Повторная генерация не должна добавлять заголовок повторно
+	ASSERT_FALSE(this->_headers->addDefaultHeaders());
+	// Проверяем что количество заголовков не изменилось
+	ASSERT_EQ(this->_headers->size(), 1u);
+}
+
+/**
+ * @brief Метод проверки что существующий User-Agent не перезаписывается
+ *
+ */
+TEST_F(HeadersFixture, AddDefaultHeadersRequestExistingTest){
+	// Создаём объект запроса клиента
+	request_t request(version_t::HTTP1_1, method_t::GET, "/");
+	// Устанавливаем провайдер запроса
+	this->_headers->provider(&request);
+	// Добавляем собственный User-Agent
+	this->_headers->emplace("User-Agent", "CustomAgent/1.0");
+	// Добавление заголовков по умолчанию не должно изменять существующий User-Agent
+	ASSERT_FALSE(this->_headers->addDefaultHeaders());
+	// Проверяем что исходный User-Agent сохранён
+	ASSERT_EQ(this->_headers->at("User-Agent"), "CustomAgent/1.0");
+}
+
+/**
+ * @brief Метод проверки добавления заголовков по умолчанию для HTTP-ответа
+ *
+ */
+TEST_F(HeadersFixture, AddDefaultHeadersResponseTest){
+	// Создаём объект ответа сервера
+	response_t response(version_t::HTTP1_1, 200, "OK");
+	// Устанавливаем провайдер ответа
+	this->_headers->provider(&response);
+	// Устанавливаем идентификацию сервиса
+	this->_headers->ident("SvcID", "SvcName", "4.5.6");
+	// Добавляем заголовки по умолчанию
+	ASSERT_TRUE(this->_headers->addDefaultHeaders());
+	// Проверяем что заголовок Server добавлен с названием сервиса
+	ASSERT_EQ(this->_headers->at("Server"), "SvcName");
+	// Проверяем что заголовок X-Powered-By добавлен с идентификацией
+	ASSERT_EQ(this->_headers->at("X-Powered-By"), "SvcID/4.5.6");
+	// Проверяем что заголовок Date добавлен
+	ASSERT_TRUE(this->_headers->has("Date"));
+	// Проверяем формат заголовка Date
+	ASSERT_TRUE(std::regex_match(this->_headers->at("Date"), std::regex("^[A-Z][a-z]{2}, \\d{2} [A-Z][a-z]{2} \\d{4} \\d{2}:\\d{2}:\\d{2} GMT$")));
+	// Повторная генерация не должна добавлять заголовки повторно
+	ASSERT_FALSE(this->_headers->addDefaultHeaders());
+	// Проверяем что количество заголовков не изменилось
+	ASSERT_EQ(this->_headers->size(), 3u);
+}
+
+/**
+ * @brief Метод проверки поведения методов идентификации без установленного провайдера
+ *
+ */
+TEST_F(HeadersFixture, NoProviderSafetyTest){
+	// Проверяем что провайдер не установлен
+	ASSERT_TRUE(this->_headers->provider() == nullptr);
+	// Проверяем что идентификация без провайдера возвращает пустую строку
+	ASSERT_TRUE(this->_headers->ident().empty());
+	// Проверяем что добавление заголовков по умолчанию без провайдера не выполняется
+	ASSERT_FALSE(this->_headers->addDefaultHeaders());
+	// Проверяем что заголовки не были добавлены
+	ASSERT_TRUE(this->_headers->empty());
+}
+
+/**
+ * @brief Метод проверки частичного добавления заголовков по умолчанию для ответа
+ *
+ */
+TEST_F(HeadersFixture, AddDefaultHeadersResponsePartialTest){
+	// Создаём объект ответа сервера
+	response_t response(version_t::HTTP1_1, 200, "OK");
+	// Устанавливаем провайдер ответа
+	this->_headers->provider(&response);
+	// Устанавливаем идентификацию сервиса
+	this->_headers->ident("SvcID", "SvcName", "1.0.0");
+	// Добавляем уже существующий заголовок Server
+	this->_headers->emplace("Server", "ExistingServer");
+	// Добавляем недостающие заголовки по умолчанию
+	ASSERT_TRUE(this->_headers->addDefaultHeaders());
+	// Проверяем что существующий Server не перезаписан
+	ASSERT_EQ(this->_headers->at("Server"), "ExistingServer");
+	// Проверяем что X-Powered-By добавлен
+	ASSERT_EQ(this->_headers->at("X-Powered-By"), "SvcID/1.0.0");
+	// Проверяем что Date добавлен
+	ASSERT_TRUE(this->_headers->has("Date"));
 }

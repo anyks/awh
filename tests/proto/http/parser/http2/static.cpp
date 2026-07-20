@@ -878,6 +878,123 @@ TEST_F(ParserHttp2Fixture, TrailersTest){
 }
 
 /**
+ * @brief Метод проверки последовательности фазовых событий приёма сообщений потоков
+ *
+ */
+TEST_F(ParserHttp2Fixture, PhaseSequenceTest){
+	// Создаём объект парсера сервера
+	auto server = this->make(direct_t::REQUEST);
+	// Создаём объект парсера клиента
+	auto client = this->make(direct_t::RESPONSE);
+	// Создаём объекты сборщиков событий парсеров
+	events_t serverEvents, clientEvents;
+	// Подписываем сборщики событий на все функции обратного вызова парсеров
+	this->attach(* server, serverEvents);
+	// Подписываем сборщик событий клиента
+	this->attach(* client, clientEvents);
+	// Соединяем парсеры каналами записи
+	this->connect(* client, * server);
+	// Выполняем рукопожатие соединения
+	this->handshake(* client, * server);
+	/**
+	 * Сценарий 1: запрос без тела (END_STREAM с заголовками)
+	 */
+	const uint32_t sid1 = client->nextStreamId();
+	// Формируем контейнер заголовков запроса без тела
+	headers_t getRequest(std::make_unique <request_t> (version_t::HTTP2, method_t::GET, std::string("/")));
+	// Дописываем заголовок Host
+	getRequest.emplace("Host", "anyks.com");
+	// Отправляем заголовки запроса с завершением потока
+	client->sendHeaders(sid1, getRequest, true);
+	/**
+	 * Сценарий 2: запрос с телом и трейлерами
+	 */
+	const uint32_t sid2 = client->nextStreamId();
+	// Формируем контейнер заголовков запроса с телом
+	headers_t postRequest(std::make_unique <request_t> (version_t::HTTP2, method_t::POST, std::string("/upload")));
+	// Дописываем заголовок Host
+	postRequest.emplace("Host", "anyks.com");
+	// Отправляем заголовки запроса (тело и трейлеры последуют)
+	client->sendHeaders(sid2, postRequest, false);
+	// Отправляем тело запроса (поток остаётся открытым для трейлеров)
+	client->sendData(sid2, "hello", 5, false);
+	// Формируем контейнер трейлеров (без провайдера - псевдо-заголовки не формируются)
+	headers_t trailers;
+	// Дописываем трейлер контрольной суммы
+	trailers.emplace("X-Checksum", "5d41402a");
+	// Отправляем трейлеры с завершением потока
+	client->sendHeaders(sid2, trailers, true);
+	// Собранные фазовые события по каждому из потоков
+	std::vector <std::pair <parser_t::phase_t, parser_t::part_t>> phases1, phases2;
+	/**
+	 * Выполняем разбор собранных фазовых событий сервера по потокам
+	 */
+	for(const auto & phase : serverEvents.phases){
+		// Если событие принадлежит потоку запроса без тела
+		if(std::get <0> (phase) == sid1)
+			// Собираем фазовое событие потока запроса без тела
+			phases1.emplace_back(std::get <1> (phase), std::get <2> (phase));
+		// Если событие принадлежит потоку запроса с телом и трейлерами
+		else if(std::get <0> (phase) == sid2)
+			// Собираем фазовое событие потока запроса с телом и трейлерами
+			phases2.emplace_back(std::get <1> (phase), std::get <2> (phase));
+	}
+	// Ожидаемая последовательность фаз для запроса без тела
+	const std::vector <std::pair <parser_t::phase_t, parser_t::part_t>> expected1 = {
+		{parser_t::phase_t::BEGIN, parser_t::part_t::NONE},
+		{parser_t::phase_t::END, parser_t::part_t::HEADERS},
+		{parser_t::phase_t::END, parser_t::part_t::NONE}
+	};
+	// Ожидаемая последовательность фаз для запроса с телом и трейлерами
+	const std::vector <std::pair <parser_t::phase_t, parser_t::part_t>> expected2 = {
+		{parser_t::phase_t::BEGIN, parser_t::part_t::NONE},
+		{parser_t::phase_t::END, parser_t::part_t::HEADERS},
+		{parser_t::phase_t::BEGIN, parser_t::part_t::BODY},
+		{parser_t::phase_t::END, parser_t::part_t::BODY},
+		{parser_t::phase_t::BEGIN, parser_t::part_t::TRAILER},
+		{parser_t::phase_t::END, parser_t::part_t::TRAILER},
+		{parser_t::phase_t::END, parser_t::part_t::NONE}
+	};
+	// Проверяем последовательность фаз для запроса без тела
+	ASSERT_EQ(phases1, expected1);
+	// Проверяем последовательность фаз для запроса с телом и трейлерами
+	ASSERT_EQ(phases2, expected2);
+	/**
+	 * Сценарий 3: тело завершается фреймом DATA с END_STREAM (без трейлеров)
+	 */
+	const uint32_t sid3 = client->nextStreamId();
+	// Формируем контейнер заголовков запроса с телом без трейлеров
+	headers_t putRequest(std::make_unique <request_t> (version_t::HTTP2, method_t::PUT, std::string("/data")));
+	// Дописываем заголовок Host
+	putRequest.emplace("Host", "anyks.com");
+	// Отправляем заголовки запроса (тело последует)
+	client->sendHeaders(sid3, putRequest, false);
+	// Отправляем тело запроса с завершением потока
+	client->sendData(sid3, "world", 5, true);
+	// Собранные фазовые события потока с телом без трейлеров
+	std::vector <std::pair <parser_t::phase_t, parser_t::part_t>> phases3;
+	/**
+	 * Выполняем разбор собранных фазовых событий сервера по потокам
+	 */
+	for(const auto & phase : serverEvents.phases){
+		// Если событие принадлежит потоку с телом без трейлеров
+		if(std::get <0> (phase) == sid3)
+			// Собираем фазовое событие потока с телом без трейлеров
+			phases3.emplace_back(std::get <1> (phase), std::get <2> (phase));
+	}
+	// Ожидаемая последовательность фаз для тела, завершённого фреймом DATA
+	const std::vector <std::pair <parser_t::phase_t, parser_t::part_t>> expected3 = {
+		{parser_t::phase_t::BEGIN, parser_t::part_t::NONE},
+		{parser_t::phase_t::END, parser_t::part_t::HEADERS},
+		{parser_t::phase_t::BEGIN, parser_t::part_t::BODY},
+		{parser_t::phase_t::END, parser_t::part_t::BODY},
+		{parser_t::phase_t::END, parser_t::part_t::NONE}
+	};
+	// Проверяем последовательность фаз для тела, завершённого фреймом DATA
+	ASSERT_EQ(phases3, expected3);
+}
+
+/**
  * @brief Метод проверки flow control при отправке тела больше окна и буфера отправки
  *
  */

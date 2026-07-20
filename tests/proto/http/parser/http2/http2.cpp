@@ -59,6 +59,13 @@ void ParserHttp2Fixture::attach(awh::http::parser_http2_t & parser, events_t & e
 		// Продолжаем разбор
 		return true;
 	}));
+	// Устанавливаем функцию обратного вызова для обработки фазы приёма сообщения потока
+	parser.on(awh::http::parser_http2_t::phase_callback_t([&events](const uint32_t sid, const awh::http::parser_t::phase_t phase, const awh::http::parser_t::part_t part) noexcept -> bool {
+		// Собираем фазовое событие приёма сообщения потока
+		events.phases.emplace_back(sid, phase, part);
+		// Продолжаем разбор
+		return true;
+	}));
 	// Устанавливаем функцию обратного вызова для обработки заголовков или трейлеров потока
 	parser.on(awh::http::parser_http2_t::header_callback_t([&events](const uint32_t sid, const std::string_view name, const std::string_view value, const awh::http::parser_t::part_t part) noexcept -> bool {
 		// Собираем заголовок или трейлер потока

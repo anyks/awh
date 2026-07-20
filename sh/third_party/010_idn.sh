@@ -117,7 +117,7 @@ if [ -n "$1" ]; then
 					# Выполняем патчинг библиотеки для дальнейшей сборки
 					sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_encode.c"
 					sed -i "s/#ifdef HAVE_SYMVER_ALIAS_SUPPORT/#if 0/g" "$src/lib/puny_decode.c"
-				# Если операционной системой является MacOS X, FreeBSD, NetBSD или OpenBSD
+				# Если операционной системой является macOS, FreeBSD, NetBSD или OpenBSD
 				elif [[ $OS = "Darwin" ]] || [[ $OS = "FreeBSD" ]] || [[ $OS = "NetBSD" ]] || [[ $OS = "OpenBSD" ]]; then
 					# Выполняем патчинг библиотеки для дальнейшей сборки
 					sed -i -e 's!#ifdef HAVE_SYMVER_ALIAS_SUPPORT!#if 0!' "$src/lib/puny_encode.c"

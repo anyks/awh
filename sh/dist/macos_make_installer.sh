@@ -6,9 +6,9 @@ readonly ROOT=$(cd "$(dirname "$0")" && pwd)
 # Получаем версию OS
 readonly OS=$(uname -a | awk '{print $1}')
 
-# Определяем является ли операционная система MacOS X
+# Определяем является ли операционная система macOS
 if ! [ $OS = "Darwin" ]; then
-	echo "Error: Only for MacOS X"
+	echo "Error: Only for macOS"
 	exit 1
 fi
 

@@ -16,6 +16,8 @@
  * Стандартные заголовочные файлы
  */
 #include <array>
+#include <cstdio>
+#include <cstdlib>
 #include <cstring>
 
 /**
@@ -559,7 +561,6 @@ awh::http::Parser_HTTP::Limits::Limits() noexcept :
  maxRequestLine(MAX_REQUEST_LINE),
  maxChunkSize(MAX_CHUNK_SIZE) {}
 
-
 /**
  * @brief Конструктор
  *
@@ -568,6 +569,7 @@ awh::http::Parser_HTTP::Message::Flags::Flags() noexcept :
  chunked(false), upgrade(false),
  complete(false), keepAlive(true),
  expectContinue(false) {}
+
 /**
  * @brief Оператор перемещающего присваивания параметров сообщения
  *
@@ -748,9 +750,26 @@ awh::http::Parser_HTTP::Flags::Flags() noexcept :
  * @brief Конструктор
  *
  */
+awh::http::Parser_HTTP::Sender::Sender() noexcept :
+ endSent(false),
+ sourceEof(false),
+ headersSent(false),
+ writableNotified(false),
+ framing(framing_t::NONE),
+ lowWater(SEND_LOW_WATER),
+ highWater(SEND_HIGH_WATER),
+ outputPos(0), remaining(0),
+ output{""}, source(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
 awh::http::Parser_HTTP::Callbacks::Callbacks() noexcept :
- body(nullptr), phase(nullptr), chunk(nullptr),
- header(nullptr), provider(nullptr) {}
+ data(nullptr), phase(nullptr),
+ chunk(nullptr), write(nullptr),
+ header(nullptr), provider(nullptr),
+ writable(nullptr) {}
 
 /**
  * @brief Метод выбора способа кадрирования тела после завершения заголовков
@@ -798,7 +817,26 @@ void awh::http::Parser_HTTP::beginBody() noexcept {
 		// Переключение протокола выполнено при ответе [101 Switching Protocols] или успешном ответе на CONNECT
 		this->_message.flags.upgrade = ((code == 101) || ((this->_method == method_t::CONNECT) && (code >= 200) && (code < 300)));
 	}
-	// Уведомляем о завершении разбора всех заголовков (заголовки разобраны и осмыслены)
+	// Флаг завершения сообщения (тела не будет)
+	bool endStream = false;
+	// Если ответ сервера не имеет тела по правилам RFC - тела не будет
+	if((this->_direct == direct_t::RESPONSE) && this->responseHasNoBody())
+		// Устанавливаем флаг завершения сообщения
+		endStream = true;
+	// Если тело не кадрируется chunked
+	else if(!this->_message.flags.chunked) {
+		// Если получен заголовок Content-Length - тела не будет только при нулевом размере
+		if(this->_flags.contentLengthSeen)
+			// Устанавливаем флаг завершения сообщения
+			endStream = (this->_statsBody.contentLength == 0);
+		// Если кадрирование не определено - у запроса по умолчанию тела нет
+		else endStream = (!this->_flags.transferEncodingSeen && (this->_direct == direct_t::REQUEST));
+	}
+	// Уведомляем о готовности провайдера заголовков сообщения (заголовки разобраны и осмыслены)
+	if(!this->fireProvider(this->_message.provider.get(), endStream))
+		// Выходим из метода (разбор прерван)
+		return;
+	// Уведомляем о завершении разбора всех заголовков
 	if(!this->firePhase(phase_t::END, part_t::HEADERS))
 		// Выходим из метода (разбор прерван)
 		return;
@@ -971,6 +1009,7 @@ bool awh::http::Parser_HTTP::commitHeader() noexcept {
 		try {
 			// Если функция обратного вызова потребовала прервать разбор
 			if(!this->_callbacks.header(
+				STREAM_ID,
 				this->_header.name,
 				this->_header.value,
 				(this->_flags.inTrailers ? part_t::TRAILER : part_t::HEADERS)
@@ -1018,43 +1057,7 @@ bool awh::http::Parser_HTTP::commitHeader() noexcept {
 bool awh::http::Parser_HTTP::commitStartLine() noexcept {
 	// Переходим к разбору заголовков
 	this->_state = static_cast <uint8_t> (state_t::S_HEADER_START);
-	// Если функция обратного вызова установлена
-	if(this->_callbacks.provider != nullptr){
-		/**
-		 * Выполняем отлов ошибок
-		 */
-		try {
-			// Если функция обратного вызова потребовала прервать разбор
-			if(!this->_callbacks.provider(this->_message.provider.get())){
-				// Фиксируем ошибку прерывания разбора
-				this->_error = error_t::ABORTED;
-				// Разбор прерван
-				return false;
-			}
-		/**
-		 * Если возникает ошибка
-		 */
-		} catch(const exception & error) {
-			/**
-			 * Если включён режим отладки
-			 */
-			#if DEBUG_MODE
-				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
-			/**
-			 * Если режим отладки не включён
-			 */
-			#else
-				// Записываем ошибку в лог
-				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
-			#endif
-			// Фиксируем внутреннюю ошибку
-			this->_error = error_t::INTERNAL;
-			// Разбор прерван
-			return false;
-		}
-	}
-	// Продолжаем разбор
+	// Продолжаем разбор (провайдер отдаётся по завершению блока заголовков, как END_HEADERS у HTTP/2)
 	return true;
 }
 /**
@@ -1176,6 +1179,292 @@ void awh::http::Parser_HTTP::fail(const error_t error) noexcept {
 	);
 }
 /**
+ * @brief Метод передачи исходящих байтов сетевому слою через функцию обратного вызова записи
+ *
+ * @details Если функция записи не установлена - байты остаются во внутреннем
+ *          буфере до выборки через pending()/consumePending().
+ */
+void awh::http::Parser_HTTP::flush() noexcept {
+	// Если функция обратного вызова записи не установлена - работаем в pull-модели
+	if(this->_callbacks.write == nullptr)
+		// Выходим из метода
+		return;
+	/**
+	 * Отдаём исходящие байты, пока они есть: функция обратного вызова могла
+	 * реентрантно породить новые исходящие данные (например, через sendData)
+	 */
+	while(this->outputPending() > 0){
+		// Локальный буфер исходящих байтов
+		string buffer = "";
+		// Забираем буфер исходящих байтов себе (O(1), без копирования)
+		buffer.swap(this->_sender.output);
+		// Запоминаем уже отданный префикс буфера
+		const size_t offset = this->_sender.outputPos;
+		// Сбрасываем отданный префикс нового (пустого) буфера
+		this->_sender.outputPos = 0;
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Отдаём исходящие байты сетевому слою
+			this->_callbacks.write(buffer.data() + offset, buffer.size() - offset);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+			// Прерываем передачу исходящих байтов
+			return;
+		}
+	}
+}
+/**
+ * @brief Метод получения логического объёма ещё не отправленных исходящих байтов
+ *
+ * @return объём не отправленных исходящих байтов
+ */
+size_t awh::http::Parser_HTTP::outputPending() const noexcept {
+	// Выводим объём буфера исходящих байтов без уже отданного префикса
+	return (this->_sender.output.size() - this->_sender.outputPos);
+}
+/**
+ * @brief Метод дозагрузки выходного буфера из pull-источника данных (если он задан)
+ *
+ * @details Источник пишет напрямую в выходной буфер (без промежуточной копии),
+ *          кадрирование тела применяется к каждой полученной порции.
+ *
+ * @return число полученных от источника байт тела
+ */
+size_t awh::http::Parser_HTTP::refillFromSource() noexcept {
+	// Результат работы функции - число полученных от источника байт тела
+	size_t result = 0;
+	// Если источник данных не задан либо его тело уже закончилось - дозагружать нечего
+	if((this->_sender.source == nullptr) || this->_sender.sourceEof)
+		// Выводим результат
+		return result;
+	// Ширина фиксированного hex-заголовка чанка ("%04X" покрывает SOURCE_CHUNK_SIZE)
+	static constexpr size_t CHUNK_HEADER = (4 + 2);
+	/**
+	 * Держим буфер наполненным до high-water, запрашивая источник данных порциями
+	 */
+	while((this->outputPending() < this->_sender.highWater) && !this->_sender.sourceEof){
+		// Признак кадрирования тела кодировкой chunked
+		const bool chunked = (this->_sender.framing == sender_t::framing_t::CHUNKED);
+		// Вычисляем ёмкость запрашиваемой порции
+		size_t cap = ::min(SOURCE_CHUNK_SIZE, this->_sender.highWater - this->outputPending());
+		// Для кадрирования фиксированного размера ограничиваем порцию остатком Content-Length
+		if(this->_sender.framing == sender_t::framing_t::IDENTITY)
+			// Ограничиваем порцию остатком тела до полного Content-Length
+			cap = ::min(cap, static_cast <size_t> (this->_sender.remaining));
+		// Если тело фиксированного размера полностью получено
+		if(cap == 0){
+			// Помечаем что конец тела источника достигнут
+			this->_sender.sourceEof = true;
+			// Завершаем тело исходящего сообщения
+			this->finishBody();
+			// Выходим из цикла дозагрузки
+			break;
+		}
+		// Запоминаем текущий размер выходного буфера
+		const size_t offset = this->_sender.output.size();
+		// Смещение области данных порции (после hex-заголовка чанка для chunked)
+		const size_t data = (offset + (chunked ? CHUNK_HEADER : 0));
+		// Резервируем место под порцию данных прямо в выходном буфере (без промежуточной копии)
+		this->_sender.output.resize(data + cap);
+		// Флаг достижения конца тела
+		bool eof = false;
+		// Результат запроса данных у источника
+		int64_t bytes = -1;
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Запрашиваем порцию данных у источника (источник пишет напрямую в выходной буфер)
+			bytes = this->_sender.source(STREAM_ID, reinterpret_cast <uint8_t *> (&this->_sender.output[data]), cap, eof);
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+		}
+		// Если источник сообщил об ошибке данных либо нарушил контракт (записал больше ёмкости)
+		if((bytes < 0) || (bytes > static_cast <int64_t> (cap))){
+			// Откатываем зарезервированное место
+			this->_sender.output.resize(offset);
+			// Помечаем что конец тела источника достигнут (отправка прервана)
+			this->_sender.sourceEof = true;
+			// Удаляем источник данных (сообщение осталось незавершённым - соединение следует закрыть)
+			this->_sender.source = nullptr;
+			// Выходим из цикла дозагрузки
+			break;
+		}
+		// Если источник выдал данные
+		if(bytes > 0){
+			// Если тело кадрируется chunked
+			if(chunked){
+				// Текстовый буфер hex-представления размера чанка
+				char line[CHUNK_HEADER + 1];
+				// Формируем hex-заголовок чанка фиксированной ширины (ведущие нули допустимы по RFC 7230)
+				::snprintf(line, sizeof(line), "%04zX\r\n", static_cast <size_t> (bytes));
+				// Вписываем hex-заголовок чанка перед данными порции
+				::memcpy(&this->_sender.output[offset], line, CHUNK_HEADER);
+				// Обрезаем выходной буфер до фактического размера порции
+				this->_sender.output.resize(data + static_cast <size_t> (bytes));
+				// Дописываем завершающий CRLF чанка
+				this->_sender.output.append("\r\n", 2);
+			// Для остальных способов кадрирования данные уже на месте
+			} else this->_sender.output.resize(data + static_cast <size_t> (bytes));
+			// Для тела фиксированного размера списываем порцию из остатка Content-Length
+			if(this->_sender.framing == sender_t::framing_t::IDENTITY)
+				// Списываем порцию из остатка тела
+				this->_sender.remaining -= static_cast <uint64_t> (bytes);
+			// Учитываем полученные байты тела в результате
+			result += static_cast <size_t> (bytes);
+		// Если источник данных не выдал - откатываем зарезервированное место
+		} else this->_sender.output.resize(offset);
+		// Если достигнут конец тела источника
+		if(eof){
+			// Помечаем что конец тела источника достигнут
+			this->_sender.sourceEof = true;
+			// Завершаем тело исходящего сообщения
+			this->finishBody();
+		}
+		// Если источник временно без данных - прерываем дозагрузку
+		if((bytes == 0) && !eof)
+			// Прерываем дозагрузку до следующей прокачки
+			break;
+	}
+	// Выводим результат
+	return result;
+}
+/**
+ * @brief Метод прокачки pull-источника данных в сеть
+ *
+ * @details В push-режиме (установлена функция обратного вызова записи) качает
+ *          источник до конца тела либо до временного отсутствия данных.
+ *          В pull-режиме наполняет выходной буфер до high-water однократно -
+ *          досылка происходит по мере выборки consumePending().
+ */
+void awh::http::Parser_HTTP::pumpSource() noexcept {
+	// Если сообщение не находится в фазе отправки тела - качать нечего
+	if(!this->_sender.headersSent || this->_sender.endSent)
+		// Выходим из метода
+		return;
+	// Если установлена функция обратного вызова записи - качаем источник до упора
+	if(this->_callbacks.write != nullptr){
+		/**
+		 * Качаем источник, пока он выдаёт данные: flush() опустошает буфер,
+		 * поэтому дозагрузка продолжается до конца тела либо до паузы источника
+		 */
+		while(!this->_sender.sourceEof && (this->_sender.source != nullptr)){
+			// Дозагружаем выходной буфер из источника данных
+			const size_t bytes = this->refillFromSource();
+			// Передаём исходящие байты сетевому слою
+			this->flush();
+			// Если источник временно без данных - прерываем прокачку
+			if(bytes == 0)
+				// Прерываем прокачку до следующего вызова
+				break;
+		}
+		// Отдаём сформированный финал тела (последний чанк) сетевому слою
+		this->flush();
+	// В pull-модели наполняем выходной буфер до high-water однократно
+	} else this->refillFromSource();
+}
+/**
+ * @brief Метод сигнализации о готовности принимать данные (один раз на провал буфера)
+ *
+ */
+void awh::http::Parser_HTTP::maybeNotifyWritable() noexcept {
+	// Сигнал отдаём только для push-модели (sendData), не для pull-источника данных
+	if((this->_sender.source != nullptr) || (this->_callbacks.writable == nullptr))
+		// Выходим из метода
+		return;
+	// Если сообщение не находится в фазе отправки тела - сигналить не о чем
+	if(!this->_sender.headersSent || this->_sender.endSent)
+		// Выходим из метода
+		return;
+	// Если сигнал ещё не подан и выходной буфер опустился ниже low-water
+	if(!this->_sender.writableNotified && (this->outputPending() <= this->_sender.lowWater)){
+		// Помечаем что сигнал для текущего провала буфера подан
+		this->_sender.writableNotified = true;
+		// Уведомляем о готовности принимать данные
+		this->_callbacks.writable(STREAM_ID);
+	}
+}
+/**
+ * @brief Метод завершения тела исходящего сообщения (финализация кадрирования)
+ *
+ */
+void awh::http::Parser_HTTP::finishBody() noexcept {
+	// Если тело кадрируется chunked - завершаем его последним (нулевым) чанком
+	if(this->_sender.framing == sender_t::framing_t::CHUNKED)
+		// Дописываем последний чанк и пустой блок трейлеров
+		this->_sender.output.append("0\r\n\r\n", 5);
+	// Помечаем что исходящее сообщение завершено
+	this->_sender.endSent = true;
+}
+/**
+ * @brief Метод кадрирования и записи порции тела в выходной буфер
+ *
+ * @param buffer буфер данных тела
+ * @param size   размер данных тела
+ */
+void awh::http::Parser_HTTP::frameBody(const void * buffer, const size_t size) noexcept {
+	// Если данных для кадрирования нет
+	if(size == 0)
+		// Выходим из метода
+		return;
+	/**
+	 * Определяем способ кадрирования тела исходящего сообщения
+	 */
+	switch(static_cast <uint8_t> (this->_sender.framing)){
+		// Кодировка chunked - каждая порция оборачивается в отдельный чанк
+		case static_cast <uint8_t> (sender_t::framing_t::CHUNKED): {
+			// Текстовый буфер hex-представления размера чанка
+			char line[32];
+			// Формируем строку размера чанка (hex + CRLF)
+			const int length = ::snprintf(line, sizeof(line), "%zX\r\n", size);
+			// Дописываем строку размера чанка в выходной буфер
+			this->_sender.output.append(line, static_cast <size_t> (length));
+			// Дописываем данные чанка в выходной буфер
+			this->_sender.output.append(static_cast <const char *> (buffer), size);
+			// Дописываем завершающий CRLF чанка
+			this->_sender.output.append("\r\n", 2);
+		} break;
+		// Фиксированный размер (Content-Length) и сырое тело - данные пишутся как есть
+		case static_cast <uint8_t> (sender_t::framing_t::RAW):
+		case static_cast <uint8_t> (sender_t::framing_t::IDENTITY):
+			// Дописываем данные тела в выходной буфер
+			this->_sender.output.append(static_cast <const char *> (buffer), size);
+		break;
+	}
+}
+/**
  * @brief Метод вызова функции обратного вызова обработки фазы разбора
  *
  * @param phase фаза разбора HTTP-сообщения
@@ -1190,7 +1479,7 @@ bool awh::http::Parser_HTTP::firePhase(const phase_t phase, const part_t part) n
 		 */
 		try {
 			// Если функция обратного вызова потребовала прервать разбор
-			if(!this->_callbacks.phase(phase, part)){
+			if(!this->_callbacks.phase(STREAM_ID, phase, part)){
 				// Фиксируем ошибку прерывания разбора
 				this->_error = error_t::ABORTED;
 				// Разбор прерван
@@ -1253,6 +1542,53 @@ bool awh::http::Parser_HTTP::fireChunk(const phase_t phase, const uint64_t size)
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
 				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (phase), size), log_t::flag_t::CRITICAL, error.what());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+			#endif
+			// Фиксируем внутреннюю ошибку
+			this->_error = error_t::INTERNAL;
+			// Разбор прерван
+			return false;
+		}
+	}
+	// Продолжаем разбор
+	return true;
+}
+/**
+ * @brief Метод вызова функции обратного вызова обработки провайдера заголовков сообщения
+ *
+ * @param provider  объект провайдера заголовков сообщения (nullptr для трейлеров)
+ * @param endStream флаг завершения сообщения (тела не будет)
+ * @return          результат обработки (false - разбор прерван с ошибкой ABORTED)
+ */
+bool awh::http::Parser_HTTP::fireProvider(const provider_t * provider, const bool endStream) noexcept {
+	// Если функция обратного вызова установлена
+	if(this->_callbacks.provider != nullptr){
+		/**
+		 * Выполняем отлов ошибок
+		 */
+		try {
+			// Если функция обратного вызова потребовала прервать разбор
+			if(!this->_callbacks.provider(STREAM_ID, provider, endStream)){
+				// Фиксируем ошибку прерывания разбора
+				this->_error = error_t::ABORTED;
+				// Разбор прерван
+				return false;
+			}
+		/**
+		 * Если возникает ошибка
+		 */
+		} catch(const exception & error) {
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(endStream), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */
@@ -1463,6 +1799,8 @@ void awh::http::Parser_HTTP::clear() noexcept {
 	this->_limits = limits_t();
 	// Удаляем все установленные функции обратного вызова
 	this->_callbacks = callbacks_t();
+	// Полностью сбрасываем состояние отправки (включая выходной буфер и пороги)
+	this->_sender = sender_t();
 }
 /**
  * @brief Метод сброса парсера для разбора следующего сообщения в том же соединении
@@ -1602,6 +1940,10 @@ unique_ptr <awh::http::parser_t> awh::http::Parser_HTTP::clone() const noexcept 
 		parser->_method = this->_method;
 		// Копируем установленные функции обратного вызова
 		parser->_callbacks = this->_callbacks;
+		// Копируем порог сигнала writable
+		parser->_sender.lowWater = this->_sender.lowWater;
+		// Копируем ёмкость выходного буфера отправки
+		parser->_sender.highWater = this->_sender.highWater;
 		// Перемещаем созданный объект парсера в результат
 		result = ::move(parser);
 	/**
@@ -1736,7 +2078,8 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				// Если данные для передачи есть
 				if(take > 0){
 					// Если функция обратного вызова установлена и потребовала прервать разбор
-					if((this->_callbacks.body != nullptr) && !this->_callbacks.body(data + i, static_cast <size_t> (take))){
+					if((this->_callbacks.data != nullptr) &&
+					   !this->_callbacks.data(STREAM_ID, data + i, static_cast <size_t> (take), (take == this->_statsBody.bytesRemaining))){
 						// Фиксируем ошибку прерывания разбора с записью в лог
 						this->fail(error_t::ABORTED);
 						// Выводим количество обработанных байт данных
@@ -1780,8 +2123,11 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				}
 				// Если данные для передачи есть
 				if(avail > 0){
-					// Если функция обратного вызова установлена и потребовала прервать разбор
-					if((this->_callbacks.body != nullptr) && !this->_callbacks.body(data + i, avail)){
+					/**
+					 * Если функция обратного вызова установлена и потребовала прервать разбор
+					 * (конец тела "до закрытия соединения" неизвестен - endStream всегда false)
+					 */
+					if((this->_callbacks.data != nullptr) && !this->_callbacks.data(STREAM_ID, data + i, avail, false)){
 						// Фиксируем ошибку прерывания разбора с записью в лог
 						this->fail(error_t::ABORTED);
 						// Выводим количество обработанных байт данных
@@ -1810,8 +2156,11 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 				}
 				// Если данные для передачи есть
 				if(take > 0){
-					// Если функция обратного вызова установлена и потребовала прервать разбор
-					if((this->_callbacks.body != nullptr) && !this->_callbacks.body(data + i, static_cast <size_t> (take))){
+					/**
+					 * Если функция обратного вызова установлена и потребовала прервать разбор
+					 * (конец тела chunked в момент фрагмента неизвестен - endStream всегда false)
+					 */
+					if((this->_callbacks.data != nullptr) && !this->_callbacks.data(STREAM_ID, data + i, static_cast <size_t> (take), false)){
 						// Фиксируем ошибку прерывания разбора с записью в лог
 						this->fail(error_t::ABORTED);
 						// Выводим количество обработанных байт данных
@@ -2790,8 +3139,8 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 					}
 					// Если получен LF - трейлеры разобраны полностью (толерантность к голому LF)
 					if(ch == '\n'){
-						// Уведомляем о завершении разбора трейлеров
-						if(this->firePhase(phase_t::END, part_t::TRAILER))
+						// Уведомляем о завершении блока трейлеров (провайдер для трейлеров - nullptr)
+						if(this->fireProvider(nullptr, true) && this->firePhase(phase_t::END, part_t::TRAILER))
 							// Завершаем разбор всего сообщения
 							this->completeMessage();
 						// Выходим из состояния
@@ -2944,8 +3293,8 @@ size_t awh::http::Parser_HTTP::parse(const void * buffer, const size_t size) noe
 						// Выходим из состояния
 						break;
 					}
-					// Уведомляем о завершении разбора трейлеров
-					if(this->firePhase(phase_t::END, part_t::TRAILER))
+					// Уведомляем о завершении блока трейлеров (провайдер для трейлеров - nullptr)
+					if(this->fireProvider(nullptr, true) && this->firePhase(phase_t::END, part_t::TRAILER))
 						// Завершаем разбор всего сообщения
 						this->completeMessage();
 				} break;
@@ -3144,13 +3493,289 @@ const awh::http::Parser_HTTP::message_t & awh::http::Parser_HTTP::message() cons
 	return this->_message;
 }
 /**
- * @brief Метод установки функции обратного вызова для обработки тела сообщения
+ * @brief Метод сброса состояния отправки для следующего сообщения в том же соединении
  *
- * @param callback функция обратного вызова для обработки тела сообщения
+ * @details Готовит отправитель к следующему сообщению (keep-alive): сбрасывает
+ *          кадрирование, источник данных и флаги, но НЕ трогает неотправленный
+ *          остаток выходного буфера. Состояние разбора не затрагивается -
+ *          для него используется reset().
  */
-void awh::http::Parser_HTTP::on(body_callback_t callback) noexcept {
-	// Устанавливаем функцию обратного вызова для обработки тела сообщения
-	this->_callbacks.body = ::move(callback);
+void awh::http::Parser_HTTP::resetSender() noexcept {
+	// Сбрасываем остаток тела до полного Content-Length
+	this->_sender.remaining = 0;
+	// Сбрасываем признак завершения исходящего сообщения
+	this->_sender.endSent = false;
+	// Сбрасываем признак достижения конца тела источника
+	this->_sender.sourceEof = false;
+	// Сбрасываем признак отправки заголовков сообщения
+	this->_sender.headersSent = false;
+	// Взводим сигнал writable
+	this->_sender.writableNotified = false;
+	// Сбрасываем способ кадрирования тела исходящего сообщения
+	this->_sender.framing = sender_t::framing_t::NONE;
+	// Удаляем pull-источник данных тела
+	this->_sender.source = nullptr;
+}
+/**
+ * @brief Метод назначения pull-источника данных тела сообщения
+ *
+ * @param source pull-источник данных тела
+ */
+void awh::http::Parser_HTTP::dataSource(data_source_callback_t source) noexcept {
+	// Сбрасываем признак достижения конца тела источника
+	this->_sender.sourceEof = false;
+	// Устанавливаем pull-источник данных тела
+	this->_sender.source = ::move(source);
+	// Запускаем прокачку тела из источника данных
+	this->pumpSource();
+}
+/**
+ * @brief Метод настройки порогов выходного буфера отправки
+ *
+ * @param high ёмкость выходного буфера отправки (high-water)
+ * @param low  порог сигнала writable (low-water)
+ */
+void awh::http::Parser_HTTP::sendWaterMarks(const size_t high, const size_t low) noexcept {
+	// Устанавливаем порог сигнала writable
+	this->_sender.lowWater = low;
+	// Устанавливаем ёмкость выходного буфера отправки (не меньше порога сигнала writable)
+	this->_sender.highWater = ::max(high, low);
+}
+/**
+ * @brief Метод отправки блока заголовков (запрос/ответ/трейлеры) исходящего сообщения
+ *
+ * @details Способ кадрирования тела выбирается по заголовкам контейнера:
+ *          - установлен Content-Length - тело фиксированного размера (IDENTITY);
+ *          - Content-Length отсутствует и endStream == false - добавляется
+ *            Transfer-Encoding: chunked (для HTTP/1.0 - сырое тело до закрытия
+ *            соединения, chunked в HTTP/1.0 не существует);
+ *          - endStream == true - тела нет, заголовки отправляются как есть.
+ *          Контейнер без провайдера в режиме chunked интерпретируется как
+ *          трейлеры (завершает тело последним чанком) - та же семантика,
+ *          что у HTTP/2.
+ *
+ * @param headers   контейнер заголовков (провайдер контейнера задаёт стартовую строку)
+ * @param endStream флаг завершения сообщения (тела не будет)
+ */
+void awh::http::Parser_HTTP::sendHeaders(const headers_t & headers, const bool endStream) noexcept {
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Если заголовки сообщения уже отправлены
+		if(this->_sender.headersSent){
+			// Если тело кадрируется chunked и контейнер без провайдера - это трейлеры
+			if(!this->_sender.endSent && (this->_sender.framing == sender_t::framing_t::CHUNKED) && (headers.provider() == nullptr)){
+				// Завершаем тело последним (нулевым) чанком без пустой строки
+				this->_sender.output.append("0\r\n", 3);
+				// Дописываем блок трейлеров с завершающей пустой строкой
+				this->_sender.output.append(headers.print(http::proto_t::HTTP1));
+				// Помечаем что исходящее сообщение завершено
+				this->_sender.endSent = true;
+				// Передаём исходящие байты сетевому слою
+				this->flush();
+				// Выходим из метода
+				return;
+			}
+			// Если предыдущее сообщение не завершено - отправка нового недопустима
+			if(!this->_sender.endSent)
+				// Выходим из метода
+				return;
+			// Предыдущее сообщение завершено - готовим отправитель к следующему сообщению
+			this->resetSender();
+		}
+		// Версия протокола исходящего сообщения (по умолчанию HTTP/1.1)
+		version_t version = version_t::HTTP1_1;
+		// Если провайдер контейнера установлен и версия протокола определена
+		if((headers.provider() != nullptr) && (headers.provider()->version != version_t::NONE))
+			// Получаем версию протокола из провайдера контейнера
+			version = headers.provider()->version;
+		// Признак необходимости дописать заголовок Transfer-Encoding: chunked
+		bool injectChunked = false;
+		// Если сообщение завершается заголовками - тела не будет
+		if(endStream)
+			// Тело исходящего сообщения отсутствует
+			this->_sender.framing = sender_t::framing_t::NONE;
+		// Если установлен заголовок Content-Length - тело фиксированного размера
+		else if(headers.has("Content-Length")) {
+			// Устанавливаем кадрирование тела фиксированного размера
+			this->_sender.framing = sender_t::framing_t::IDENTITY;
+			// Извлекаем ожидаемый размер тела из заголовка Content-Length
+			this->_sender.remaining = ::strtoull(headers.at("Content-Length").c_str(), nullptr, 10);
+		// Если версия протокола HTTP/1.0 - chunked не существует, тело кадрируется закрытием соединения
+		} else if(version == version_t::HTTP1_0)
+			// Устанавливаем кадрирование сырого тела до закрытия соединения
+			this->_sender.framing = sender_t::framing_t::RAW;
+		// Для HTTP/1.1 без Content-Length тело кадрируется кодировкой chunked
+		else {
+			// Устанавливаем кадрирование тела кодировкой chunked
+			this->_sender.framing = sender_t::framing_t::CHUNKED;
+			// Заголовок Transfer-Encoding дописывается, только если он ещё не установлен
+			injectChunked = !headers.has("Transfer-Encoding");
+		}
+		// Сериализуем стартовую строку и заголовки сообщения
+		string block = headers.print(http::proto_t::HTTP1);
+		// Если необходимо дописать заголовок Transfer-Encoding: chunked
+		if(injectChunked)
+			// Вставляем заголовок перед завершающей пустой строкой блока
+			block.insert(block.size() - 2, "Transfer-Encoding: chunked\r\n");
+		// Дописываем сериализованный блок заголовков в выходной буфер
+		this->_sender.output.append(block);
+		// Помечаем что заголовки сообщения отправлены
+		this->_sender.headersSent = true;
+		// Если сообщение завершается заголовками - помечаем сообщение завершённым
+		this->_sender.endSent = endStream;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(endStream), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Передаём исходящие байты сетевому слою
+	this->flush();
+	// Если задан pull-источник данных - запускаем прокачку тела
+	this->pumpSource();
+}
+/**
+ * @brief Метод передачи части тела сообщения для отправки (push-модель, bounded buffer)
+ *
+ * @details Копирует в выходной буфер столько байт, сколько влезает до high-water,
+ *          и возвращает это число (0..size). Если вернулось меньше size - буфер
+ *          заполнен: приостановите выдачу и дождитесь функции обратного вызова
+ *          writable. Кадрирование тела (chunked/identity) парсер применяет сам.
+ *
+ * @param buffer    буфер данных тела
+ * @param size      размер данных тела
+ * @param endStream флаг завершения сообщения
+ * @return          число принятых байт (0..size)
+ */
+size_t awh::http::Parser_HTTP::sendData(const void * buffer, const size_t size, const bool endStream) noexcept {
+	// Результат работы функции - число принятых байт
+	size_t result = 0;
+	// Если заголовки ещё не отправлены либо сообщение уже завершено - тело не принимается
+	if(!this->_sender.headersSent || this->_sender.endSent)
+		// Выводим число принятых байт
+		return result;
+	// Если сообщение не предполагает тела - данные не принимаются
+	if(this->_sender.framing == sender_t::framing_t::NONE)
+		// Выводим число принятых байт
+		return result;
+	/**
+	 * Выполняем отлов ошибок
+	 */
+	try {
+		// Вычисляем свободное место в выходном буфере до high-water
+		const size_t room = ((this->outputPending() < this->_sender.highWater) ? (this->_sender.highWater - this->outputPending()) : 0);
+		// Принимаем столько байт, сколько влезает (частичный приём + счётчик)
+		result = ::min(size, room);
+		// Для тела фиксированного размера ограничиваем приём остатком Content-Length
+		if(this->_sender.framing == sender_t::framing_t::IDENTITY)
+			// Ограничиваем приём остатком тела до полного Content-Length
+			result = ::min(result, static_cast <size_t> (this->_sender.remaining));
+		// Если есть что принимать - кадрируем и дописываем данные в выходной буфер
+		if(result > 0){
+			// Кадрируем и дописываем порцию тела в выходной буфер
+			this->frameBody(buffer, result);
+			// Для тела фиксированного размера списываем порцию из остатка Content-Length
+			if(this->_sender.framing == sender_t::framing_t::IDENTITY)
+				// Списываем порцию из остатка тела
+				this->_sender.remaining -= static_cast <uint64_t> (result);
+		}
+		// Признак полного приёма тела фиксированного размера
+		const bool identityDone = ((this->_sender.framing == sender_t::framing_t::IDENTITY) && (this->_sender.remaining == 0));
+		// Завершаем тело, когда принят весь финальный фрагмент либо исчерпан Content-Length
+		if((endStream && (result == size)) || identityDone)
+			// Завершаем тело исходящего сообщения
+			this->finishBody();
+		// Если выходной буфер поднялся выше low-water - взводим сигнал writable снова
+		if(this->outputPending() > this->_sender.lowWater)
+			// Взводим сигнал writable для следующего провала буфера
+			this->_sender.writableNotified = false;
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(buffer, size, endStream), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Передаём исходящие байты сетевому слою
+	this->flush();
+	// Выводим число принятых байт
+	return result;
+}
+/**
+ * @brief Метод получения ещё не отправленных исходящих байтов (pull-модель)
+ *
+ * @details View действителен до следующего вызова любого метода парсера.
+ *          После записи в сокет освободите отправленную часть методом
+ *          consumePending(). При установленной функции обратного вызова
+ *          записи буфер опустошается автоматически.
+ *
+ * @return ещё не отправленные исходящие байты (zero-copy view во внутренний буфер)
+ */
+string_view awh::http::Parser_HTTP::pending() const noexcept {
+	// Выводим ещё не отправленные исходящие байты
+	return string_view(this->_sender.output.data() + this->_sender.outputPos, this->_sender.output.size() - this->_sender.outputPos);
+}
+/**
+ * @brief Метод освобождения отправленных байтов из исходящего буфера (амортизированно O(1))
+ *
+ * @param size число отправленных байт
+ */
+void awh::http::Parser_HTTP::consumePending(const size_t size) noexcept {
+	// Сдвигаем отданный префикс вместо удаления; физическую память освобождаем амортизированно
+	this->_sender.outputPos += ::min(size, this->outputPending());
+	// Если весь буфер исходящих байтов отдан
+	if(this->_sender.outputPos >= this->_sender.output.size()){
+		// Сбрасываем отданный префикс
+		this->_sender.outputPos = 0;
+		// Очищаем буфер исходящих байтов
+		this->_sender.output.clear();
+	// Если отданный префикс не меньше остатка - компактифицируем буфер
+	} else if(this->_sender.outputPos >= (this->_sender.output.size() - this->_sender.outputPos)) {
+		// Удаляем отданный префикс из буфера
+		this->_sender.output.erase(0, this->_sender.outputPos);
+		// Сбрасываем отданный префикс
+		this->_sender.outputPos = 0;
+	}
+	// Выходной буфер просел - дозагружаем его из pull-источника данных
+	if(this->_sender.source != nullptr)
+		// Прокачиваем тело из источника данных
+		this->pumpSource();
+	// В push-модели сигнализируем о готовности принимать данные
+	else this->maybeNotifyWritable();
+}
+/**
+ * @brief Метод установки функции обратного вызова для обработки фрагмента тела сообщения
+ *
+ * @param callback функция обратного вызова для обработки фрагмента тела сообщения
+ */
+void awh::http::Parser_HTTP::on(data_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова для обработки фрагмента тела сообщения
+	this->_callbacks.data = ::move(callback);
 }
 /**
  * @brief Метод установки функции обратного вызова для обработки фазы разбора HTTP-сообщения
@@ -3171,6 +3796,17 @@ void awh::http::Parser_HTTP::on(chunk_callback_t callback) noexcept {
 	this->_callbacks.chunk = ::move(callback);
 }
 /**
+ * @brief Метод установки функции обратного вызова записи исходящих байтов в сеть
+ *
+ * @param callback функция обратного вызова записи исходящих байтов в сеть
+ */
+void awh::http::Parser_HTTP::on(write_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова записи исходящих байтов в сеть
+	this->_callbacks.write = ::move(callback);
+	// Передаём накопленные исходящие байты сетевому слою
+	this->flush();
+}
+/**
  * @brief Метод установки функции обратного вызова для обработки заголовков или трейлеров сообщения
  *
  * @param callback функция обратного вызова для обработки заголовков или трейлеров сообщения
@@ -3187,6 +3823,15 @@ void awh::http::Parser_HTTP::on(header_callback_t callback) noexcept {
 void awh::http::Parser_HTTP::on(provider_callback_t callback) noexcept {
 	// Устанавливаем функцию обратного вызова для обработки провайдера заголовков сообщения
 	this->_callbacks.provider = ::move(callback);
+}
+/**
+ * @brief Метод установки функции обратного вызова о готовности принимать данные тела
+ *
+ * @param callback функция обратного вызова о готовности принимать данные тела
+ */
+void awh::http::Parser_HTTP::on(writable_callback_t callback) noexcept {
+	// Устанавливаем функцию обратного вызова о готовности принимать данные тела
+	this->_callbacks.writable = ::move(callback);
 }
 /**
  * @brief Конструктор

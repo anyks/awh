@@ -372,11 +372,11 @@ if(${GTest_FOUND})
             SET(CMAKE_RC_COMPILER_INIT windres)
             ENABLE_LANGUAGE(RC)
             SET(CMAKE_RC_COMPILE_OBJECT "<CMAKE_RC_COMPILER> <FLAGS> -O coff <DEFINES> -i <SOURCE> -o <OBJECT>")
-        # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
+        # Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, macOS или Solaris
         else()
-            # Если сборка производится под операционную систему MacOS X
+            # Если сборка производится под операционную систему macOS
             if (APPLE AND NOT IOS)
-                # Устанавливаем необходимые зависимости для MacOS X
+                # Устанавливаем необходимые зависимости для macOS
                 SET(AWH_FLAGS "-framework Foundation")
             endif()
         endif()
@@ -428,7 +428,7 @@ if(${GTest_FOUND})
             endif()
         endif (CMAKE_SHARED_BUILD_LIB)
 
-        # Если сборка производится под операционную систему MacOS X
+        # Если сборка производится под операционную систему macOS
         if (APPLE AND NOT IOS)
             # Включаем флаги компиляции для сбора статистики покрытия кода
             target_compile_options(

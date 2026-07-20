@@ -59,7 +59,7 @@
 #include <net/eth/iface.hpp>
 
 /**
- * Для операционной системы MacOS X
+ * Для операционной системы macOS
  */
 #if __APPLE__ || __MACH__
 	/**
@@ -1154,7 +1154,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 			// Если создаётся передача сырых IP-пакетов между точками
 			case static_cast <uint8_t> (event::eth_t::TUN): {
 				/**
-				 * Для операционной системы MacOS X
+				 * Для операционной системы macOS
 				 */
 				#if __APPLE__ || __MACH__
 					// Объект контроллера
@@ -1316,7 +1316,7 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 					/**
 					 * Режим по умолчанию обычно включает заголовок семейства адресов (4 байта).
 					 * При необходимости мы можем попытаться отключить его с помощью TUNSIFHEAD ioctl(fd, TUNSIFHEAD, &zero),
-					 * но реализация MacOS X обрабатывает заголовок, поэтому при желании мы можем сохранить его согласованность.
+					 * но реализация macOS обрабатывает заголовок, поэтому при желании мы можем сохранить его согласованность.
 					 */
 					// Флаг активации заголовка
 					int32_t flag = 1;
@@ -1345,11 +1345,11 @@ awh::net::socket_t awh::eth::Interface::create(const event::eth_t type, string &
 			// Если создаётся передача кадров Ethernet (с MAC-адресами)
 			case static_cast <uint8_t> (event::eth_t::TAP): {
 				/**
-				 * Для операционной системы MacOS X
+				 * Для операционной системы macOS
 				 */
 				#if __APPLE__ || __MACH__
 					/**
-					 * В штатной поставке MacOS X нет /dev/tap.
+					 * В штатной поставке macOS нет /dev/tap.
 					 * Для поддержки tap требуются сторонние расширения (например, tuntaposx).
 					 * Пытаемся найти доступные устройства, если драйвер установлен.
 					 */

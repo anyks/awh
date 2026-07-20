@@ -184,21 +184,33 @@ namespace awh {
 				/**
 				 * @brief Тип списка HTTP-заголовков
 				 *
+				 * @details В отличие от карты, список позволяет хранить несколько одноимённых заголовков,
+				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
+				 *          Список также содержит псевдо-заголовки, которые используются в протоколе HTTP/2 для передачи служебной информации.
 				 */
 				using fields_t = vector <header_t>;
 				/**
 				 * @brief Тип набора HTTP-заголовков
 				 *
+				 * @details Набор позволяет хранить несколько одноимённых заголовков,
+				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
+				 *          Набор также содержит псевдо-заголовки, которые используются в протоколе HTTP/2 для передачи служебной информации.
 				 */
 				using entries_t = unordered_multiset <header_t, header_hash_t>;
 				/**
 				 * @brief Тип карты HTTP-заголовков
 				 *
+				 * @details Карта позволяет хранить только уникальные заголовки,
+				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
+				 *          Карта не содержит псевдо-заголовков, так-как они предназначены только для протокола HTTP/2.
 				 */
 				using map_t = unordered_map <string, string, header_name_hash_t, header_name_equal_t>;
 				/**
 				 * @brief Тип мультикарты HTTP-заголовков
 				 *
+				 * @details Мультикарта позволяет хранить несколько одноимённых заголовков,
+				 *          что необходимо для корректной работы с протоколами HTTP/1.1 и HTTP/2.
+				 *          Мультикарта не содержит псевдо-заголовков, так-как они предназначены только для протокола HTTP/2.
 				 */
 				using multimap_t = unordered_multimap <string, string, header_name_hash_t, header_name_equal_t>;
 			public:
@@ -427,10 +439,27 @@ namespace awh {
 				} const_iterator_t;
 			private:
 				/**
+				 * @brief Структура идентификации сервиса
+				 *
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ Ident {
+					// Идентификатор сервиса
+					string id;
+					// Название сервиса
+					string name;
+					// Версия модуля приложения
+					string version;
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit Ident() noexcept;
+				} ident_t;
+				/**
 				 * @brief Структура параметров максимальных значений
 				 *
 				 */
-				typedef struct Max {
+				typedef struct __AWH_SHARED_EXPORT__ Max {
 					// Максимальный размер выделения памяти
 					size_t memory;
 					// Максимальное количество добавляемых записей
@@ -439,13 +468,14 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Max() noexcept :
-					 memory(AWH_MAX_MEMORY_HTTP_HEADERS),
-					 records(AWH_MAX_COUNT_HTTP_HEADERS) {}
+					explicit Max() noexcept;
 				} max_t;
 			private:
 				// Размеры максимальныйх ограничений
 				max_t _max;
+			private:
+				// Идентификация сервиса
+				ident_t _ident;
 			private:
 				// Набор установленных HTTP-заголовков
 				fields_t _headers;
@@ -518,6 +548,26 @@ namespace awh {
 				bool empty() const noexcept;
 			public:
 				/**
+				 * @brief Метод добавления стандартных заголовков по умолчанию
+				 *
+				 * @details Добавляет недостающие заголовки: User-Agent для запроса клиента,
+				 *          Server, X-Powered-By и Date для ответа сервера. Уже установленные заголовки не изменяются.
+				 *
+				 * @return результат выполнения операции
+				 */
+				bool addDefaultHeaders() noexcept;
+			public:
+				/**
+				 * @brief Метод получения текущей даты для HTTP-запроса
+				 *
+				 * @note Unix Timestamp - количество секунд с 1 января 1970 года
+				 *
+				 * @param date дата в формате Unix Timestamp
+				 * @return     штамп времени в текстовом виде
+				 */
+				string date(const uint64_t date = 0) const noexcept;
+			public:
+				/**
 				 * @brief Метод получения протокола HTTP-запроса/ответа
 				 *
 				 * @return протокол HTTP-запроса/ответа
@@ -529,6 +579,21 @@ namespace awh {
 				 * @param proto протокол HTTP-запроса/ответа
 				 */
 				void proto(const proto_t proto) noexcept;
+			public:
+				/**
+				 * @brief Метод получения идентификации сервиса
+				 *
+				 * @return сформированный агент
+				 */
+				string ident() const noexcept;
+				/**
+				 * @brief Метод установки идентификации сервиса
+				 *
+				 * @param id      идентификатор сервиса
+				 * @param name    название сервиса
+				 * @param version версия сервиса
+				 */
+				void ident(string_view id, string_view name, string_view version) noexcept;
 			public:
 				/**
 				 * @brief Метод получения объекта провайдера HTTP-запроса/ответа

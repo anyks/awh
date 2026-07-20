@@ -318,7 +318,7 @@ template awh::Queue::Iterator <double> awh::Queue::end <double> () noexcept;
 	template awh::Queue::Iterator <char> awh::Queue::end <char> () noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template awh::Queue::Iterator <size_t> awh::Queue::end <size_t> () noexcept;
@@ -359,7 +359,7 @@ template awh::Queue::Iterator <double> awh::Queue::begin <double> () noexcept;
 	template awh::Queue::Iterator <char> awh::Queue::begin <char> () noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template awh::Queue::Iterator <size_t> awh::Queue::begin <size_t> () noexcept;
@@ -429,7 +429,7 @@ template awh::Queue::Const_Iterator <double> awh::Queue::cend <double> () const 
 	template awh::Queue::Const_Iterator <char> awh::Queue::cend <char> () const noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template awh::Queue::Const_Iterator <size_t> awh::Queue::end <size_t> () const noexcept;
@@ -501,7 +501,7 @@ template awh::Queue::Const_Iterator <double> awh::Queue::cbegin <double> () cons
 	template awh::Queue::Const_Iterator <char> awh::Queue::cbegin <char> () const noexcept;
 #endif
 /**
- * Если операционной системой является MacOS X или Linux
+ * Если операционной системой является macOS или Linux
  */
 #if __APPLE__ || __MACH__ || __Linux__
 	template awh::Queue::Const_Iterator <size_t> awh::Queue::begin <size_t> () const noexcept;

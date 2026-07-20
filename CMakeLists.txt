@@ -264,12 +264,12 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "SunOS")
     endif()
     # Добавляем расширения Sun Solaris
     add_compile_definitions(__EXTENSIONS__)
-# Если сборка производится под операционную систему MacOS X
+# Если сборка производится под операционную систему macOS
 elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     if (NOT OS_VERSION)
         EXECUTE_PROCESS(COMMAND sw_vers -productVersion COMMAND tr -d '\n' OUTPUT_VARIABLE OS_VERSION)
     endif()
-    message(STATUS "Detected OS: MacOS X v${OS_VERSION}")
+    message(STATUS "Detected OS: macOS v${OS_VERSION}")
     SET(DEBUGGER "-glldb")    
     SET(CMAKE_OSX_DEPLOYMENT_TARGET ${OS_VERSION})
 # Если сборка производится под операционную систему FreeBSD
@@ -333,7 +333,7 @@ string(TIMESTAMP CURRENT_TIME "%d.%m.%Y %H:%M:%S")
 # Опции компилятора
 SET(CMAKE_C_FLAGS "${CMAKE_C_FLAGS} -fPIC")
 
-# Устанавливаем параметры игнорирования ошибок для MacOS X
+# Устанавливаем параметры игнорирования ошибок для macOS
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
     SET(AWH_PARAMS "-Wno-cpp -Wno-deprecated -Wno-unused-command-line-argument")
 # Устанавливаем параметры игнорирования ошибок для Solaris
@@ -496,7 +496,7 @@ include_directories(SYSTEM ${CMAKE_SOURCE_DIR}/include)
 include_directories(BEFORE ${CMAKE_SOURCE_DIR}/contrib/include)
 include_directories(SYSTEM ${CMAKE_CXX_IMPLICIT_INCLUDE_DIRECTORIES})
 
-# Если сборка производится под операционные системы MacOS X, FreeBSD, NetBSD или OpenBSD
+# Если сборка производится под операционные системы macOS, FreeBSD, NetBSD или OpenBSD
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin" OR ${CMAKE_SYSTEM_NAME} STREQUAL "FreeBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "NetBSD" OR ${CMAKE_SYSTEM_NAME} STREQUAL "OpenBSD")
     # Выполняем подключение бэкендов IO
     SET(SOURCE_FILES
@@ -622,7 +622,7 @@ endif (CMAKE_SHARED_BUILD_LIB)
 if (CMAKE_BUILD_TESTS)
     # Собираем библиотеку с флагами gcov для сбора статистики покрытия тестами
     add_library(${AWH_LIB_GCOV_NAME} STATIC ${SOURCE_FILES})
-    # Если сборка производится под операционную систему MacOS X
+    # Если сборка производится под операционную систему macOS
     if (APPLE AND NOT IOS)
         # Устанавливаем свойства компиляции для файловой системы
         target_compile_options(
@@ -641,7 +641,7 @@ if (CMAKE_BUILD_TESTS)
     endif()
 # Если сборка производится не для сбора тестов
 else()
-    # Если сборка производится под операционную систему MacOS X
+    # Если сборка производится под операционную систему macOS
     if (APPLE AND NOT IOS)
         # Устанавливаем свойства компиляции для файловой системы
         target_compile_options(
@@ -1021,11 +1021,11 @@ if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
             )
         endfunction()
     endif (${CMAKE_BUILD_SAMPLES})
-# Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, MacOS X или Solaris
+# Если сборка производится под операционные системы Linux, FreeBSD, NetBSD, OpenBSD, macOS или Solaris
 else()
-    # Если сборка производится под операционную систему MacOS X
+    # Если сборка производится под операционную систему macOS
     if (APPLE AND NOT IOS)
-        # Устанавливаем необходимые зависимости для MacOS X
+        # Устанавливаем необходимые зависимости для macOS
         SET(AWH_FLAGS "-framework Security -framework CoreFoundation -framework Foundation")
     endif()
 
@@ -3601,11 +3601,11 @@ endif (CMAKE_SHARED_BUILD_LIB)
 
 # Если необходимо собрать семплы
 if (${CMAKE_BUILD_SAMPLES})
-    # Активация формирования дампа ядра в реже отладки под MacOS X
+    # Активация формирования дампа ядра в реже отладки под macOS
     if (CMAKE_BUILD_TYPE MATCHES Debug)
-        # Если сборка производится под операционную систему MacOS X
+        # Если сборка производится под операционную систему macOS
         if (${CMAKE_SYSTEM_NAME} STREQUAL "Darwin")
-            # Указываем путь к файлу с правами для разрешения формирования дампа ядра на MacOS X
+            # Указываем путь к файлу с правами для разрешения формирования дампа ядра на macOS
             SET(entitlements_file "${CMAKE_SOURCE_DIR}/segv.entitlements")
 
             # Если нужно собрать семплы для работы с клиентом
@@ -3613,77 +3613,77 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с клиентом UDS
                 add_custom_command(TARGET "${CLIENT_APP_UDS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_UDS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_UDS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_UDS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом UDS версии 2
                 add_custom_command(TARGET "${CLIENT_APP_UDS-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_UDS-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_UDS-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_UDS-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом TCP
                 add_custom_command(TARGET "${CLIENT_APP_TCP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TCP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_TCP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_TCP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом TCP версии 2
                 add_custom_command(TARGET "${CLIENT_APP_TCP-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TCP-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_TCP-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_TCP-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом UDP
                 add_custom_command(TARGET "${CLIENT_APP_UDP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_UDP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_UDP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_UDP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом UDP версии 2
                 add_custom_command(TARGET "${CLIENT_APP_UDP-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_UDP-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_UDP-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_UDP-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом TLS
                 add_custom_command(TARGET "${CLIENT_APP_TLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_TLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_TLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом TLS версии 2
                 add_custom_command(TARGET "${CLIENT_APP_TLS-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_TLS-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_TLS-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом DTLS
                 add_custom_command(TARGET "${CLIENT_APP_DTLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_DTLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_DTLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_DTLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с клиентом DTLS версии 2
                 add_custom_command(TARGET "${CLIENT_APP_DTLS-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_DTLS-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_DTLS-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_DTLS-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             
                 # Выполняем сборку приложения работы с клиентом TLS-Web
                 add_custom_command(TARGET "${CLIENT_APP_TLS-WEB_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_TLS-WEB_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_TLS-WEB_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_TLS-WEB_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
@@ -3692,14 +3692,14 @@ if (${CMAKE_BUILD_SAMPLES})
                     # Выполняем сборку приложения работы с клиентом SCTP
                     add_custom_command(TARGET "${CLIENT_APP_SCTP_NAME}" POST_BUILD
                         COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SCTP_NAME}>" "${entitlements_file}"
-                        COMMENT "Sign target \"${CLIENT_APP_SCTP_NAME}\" to enable core dump on MacOS X"
+                        COMMENT "Sign target \"${CLIENT_APP_SCTP_NAME}\" to enable core dump on macOS"
                         VERBATIM
                     )
 
                     # Выполняем сборку приложения работы с клиентом SCTP версии 2
                     add_custom_command(TARGET "${CLIENT_APP_SCTP-2_NAME}" POST_BUILD
                         COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SCTP-2_NAME}>" "${entitlements_file}"
-                        COMMENT "Sign target \"${CLIENT_APP_SCTP-2_NAME}\" to enable core dump on MacOS X"
+                        COMMENT "Sign target \"${CLIENT_APP_SCTP-2_NAME}\" to enable core dump on macOS"
                         VERBATIM
                     )
                 endif()
@@ -3710,70 +3710,70 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с сервером UDS
                 add_custom_command(TARGET "${SERVER_APP_UDS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_UDS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_UDS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_UDS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером UDS версии 2
                 add_custom_command(TARGET "${SERVER_APP_UDS-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_UDS-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_UDS-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_UDS-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером TCP
                 add_custom_command(TARGET "${SERVER_APP_TCP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TCP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_TCP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_TCP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером TCP версии 2
                 add_custom_command(TARGET "${SERVER_APP_TCP-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TCP-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_TCP-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_TCP-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером UDP
                 add_custom_command(TARGET "${SERVER_APP_UDP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_UDP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_UDP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_UDP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером UDP версии 2
                 add_custom_command(TARGET "${SERVER_APP_UDP-2_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_UDP-2_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_UDP-2_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_UDP-2_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером TLS
                 add_custom_command(TARGET "${SERVER_APP_TLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_TLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_TLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером TLS мультисертификатным
                 add_custom_command(TARGET "${SERVER_APP_TLS-MULTICERT_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_TLS-MULTICERT_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_TLS-MULTICERT_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_TLS-MULTICERT_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером DTLS
                 add_custom_command(TARGET "${SERVER_APP_DTLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_DTLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_DTLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_DTLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с сервером DTLS мультисертификатным
                 add_custom_command(TARGET "${SERVER_APP_DTLS-MULTICERT_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_DTLS-MULTICERT_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_DTLS-MULTICERT_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_DTLS-MULTICERT_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
@@ -3782,14 +3782,14 @@ if (${CMAKE_BUILD_SAMPLES})
                     # Выполняем сборку приложения работы с сервером SCTP
                     add_custom_command(TARGET "${SERVER_APP_SCTP_NAME}" POST_BUILD
                         COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_SCTP_NAME}>" "${entitlements_file}"
-                        COMMENT "Sign target \"${SERVER_APP_SCTP_NAME}\" to enable core dump on MacOS X"
+                        COMMENT "Sign target \"${SERVER_APP_SCTP_NAME}\" to enable core dump on macOS"
                         VERBATIM
                     )
 
                     # Выполняем сборку приложения работы с сервером SCTP версии 2
                     add_custom_command(TARGET "${SERVER_APP_SCTP-2_NAME}" POST_BUILD
                         COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_SCTP-2_NAME}>" "${entitlements_file}"
-                        COMMENT "Sign target \"${SERVER_APP_SCTP-2_NAME}\" to enable core dump on MacOS X"
+                        COMMENT "Sign target \"${SERVER_APP_SCTP-2_NAME}\" to enable core dump on macOS"
                         VERBATIM
                     )
                 endif()
@@ -3800,14 +3800,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом VPN клиентом
                 add_custom_command(TARGET "${CLIENT_APP_VPN_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_VPN_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_VPN_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_VPN_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с юнитом VPN сервером
                 add_custom_command(TARGET "${SERVER_APP_VPN_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_VPN_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_VPN_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_VPN_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_VPN_APP_SAMPLE})
@@ -3817,28 +3817,28 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом
                 add_custom_command(TARGET "${CLIENT_APP_SOCKS5_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SOCKS5_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_SOCKS5_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_SOCKS5_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом для UDP
                 add_custom_command(TARGET "${CLIENT_APP_SOCKS5-UDP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SOCKS5-UDP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_SOCKS5-UDP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_SOCKS5-UDP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с юнитом SOCKS5 клиентом для DTLS
                 add_custom_command(TARGET "${CLIENT_APP_SOCKS5-DTLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_SOCKS5-DTLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_SOCKS5-DTLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_SOCKS5-DTLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с юнитом SOCKS5 сервером
                 add_custom_command(TARGET "${SERVER_APP_SOCKS5_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_SOCKS5_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_SOCKS5_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_SOCKS5_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_SOCKS5_APP_SAMPLE})
@@ -3848,7 +3848,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом файловой системы
                 add_custom_command(TARGET "${UNIT_APP_FS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_FS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${UNIT_APP_FS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${UNIT_APP_FS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_FS_APP_SAMPLE})
@@ -3858,7 +3858,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом резолвером доменных имён
                 add_custom_command(TARGET "${UNIT_APP_DNS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_DNS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${UNIT_APP_DNS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${UNIT_APP_DNS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_DNS_APP_SAMPLE})
@@ -3868,7 +3868,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом синхронизации времени NTP
                 add_custom_command(TARGET "${UNIT_APP_NTP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_NTP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${UNIT_APP_NTP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${UNIT_APP_NTP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_NTP_APP_SAMPLE})
@@ -3878,7 +3878,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом ICMP-клиентом
                 add_custom_command(TARGET "${UNIT_APP_ICMP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_ICMP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${UNIT_APP_ICMP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${UNIT_APP_ICMP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_ICMP_APP_SAMPLE})
@@ -3888,7 +3888,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом таймера
                 add_custom_command(TARGET "${UNIT_APP_TIMER_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_TIMER_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${UNIT_APP_TIMER_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${UNIT_APP_TIMER_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_TIMER_APP_SAMPLE})
@@ -3898,7 +3898,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом кластера
                 add_custom_command(TARGET "${UNIT_APP_CLUSTER_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_CLUSTER_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${UNIT_APP_CLUSTER_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${UNIT_APP_CLUSTER_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_CLUSTER_APP_SAMPLE})
@@ -3908,7 +3908,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с юнитом уведомителя
                 add_custom_command(TARGET "${UNIT_APP_NOTIFIER_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${UNIT_APP_NOTIFIER_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${UNIT_APP_NOTIFIER_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${UNIT_APP_NOTIFIER_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_UNIT_NOTIFIER_APP_SAMPLE})
@@ -3918,7 +3918,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с IP-адресами
                 add_custom_command(TARGET "${IP_APP_NET_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IP_APP_NET_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${IP_APP_NET_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${IP_APP_NET_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_IP_NET_APP_SAMPLE})
@@ -3928,7 +3928,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с URI
                 add_custom_command(TARGET "${URI_APP_NET_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${URI_APP_NET_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${URI_APP_NET_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${URI_APP_NET_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_URI_NET_APP_SAMPLE})
@@ -3938,7 +3938,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с Ethernet-адресами
                 add_custom_command(TARGET "${ETH_APP_NET_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${ETH_APP_NET_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${ETH_APP_NET_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${ETH_APP_NET_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_ETH_NET_APP_SAMPLE})
@@ -3948,7 +3948,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения даты и времени
                 add_custom_command(TARGET "${DATE_APP_SYS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DATE_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${DATE_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${DATE_APP_SYS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_DATE_SYS_APP_SAMPLE})
@@ -3958,7 +3958,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с бинарным контейнером
                 add_custom_command(TARGET "${BINBOX_APP_SYS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${BINBOX_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${BINBOX_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${BINBOX_APP_SYS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_BINBOX_SYS_APP_SAMPLE})
@@ -3968,7 +3968,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения файловой системы
                 add_custom_command(TARGET "${FILESYSTEM_APP_SYS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${FILESYSTEM_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${FILESYSTEM_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${FILESYSTEM_APP_SYS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_FILESYSTEM_SYS_APP_SAMPLE})
@@ -3978,7 +3978,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения резольвера процессов
                 add_custom_command(TARGET "${PROCRE_APP_SYS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${PROCRE_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${PROCRE_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${PROCRE_APP_SYS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_PROCRE_SYS_APP_SAMPLE})
@@ -3988,7 +3988,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения шифрования и хэширования
                 add_custom_command(TARGET "${CRYPTO_APP_SYS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CRYPTO_APP_SYS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CRYPTO_APP_SYS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CRYPTO_APP_SYS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_CRYPTO_SYS_APP_SAMPLE})
@@ -3998,7 +3998,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с HTTP-авторизацией
                 add_custom_command(TARGET "${AUTH_APP_PROTO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${AUTH_APP_PROTO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${AUTH_APP_PROTO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${AUTH_APP_PROTO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_AUTH_PROTO_APP_SAMPLE})
@@ -4008,7 +4008,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с HTTP-заголовками
                 add_custom_command(TARGET "${HEADERS_APP_PROTO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${HEADERS_APP_PROTO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${HEADERS_APP_PROTO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${HEADERS_APP_PROTO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_HEADERS_PROTO_APP_SAMPLE})
@@ -4018,7 +4018,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с парсером HTTP/1.0 и HTTP/1.1
                 add_custom_command(TARGET "${PARSER_APP_PROTO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${PARSER_APP_PROTO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${PARSER_APP_PROTO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${PARSER_APP_PROTO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_PARSER_PROTO_APP_SAMPLE})
@@ -4028,7 +4028,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с парсером HTTP/2
                 add_custom_command(TARGET "${PARSER2_APP_PROTO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${PARSER2_APP_PROTO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${PARSER2_APP_PROTO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${PARSER2_APP_PROTO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_PARSER2_PROTO_APP_SAMPLE})
@@ -4038,13 +4038,13 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения блочной компрессии данных
                 add_custom_command(TARGET "${COMPRESSOR_APP_BLOCK_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${COMPRESSOR_APP_BLOCK_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${COMPRESSOR_APP_BLOCK_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${COMPRESSOR_APP_BLOCK_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
                 # Выполняем сборку приложения потоковой компрессии данных
                 add_custom_command(TARGET "${COMPRESSOR_APP_STREAM_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${COMPRESSOR_APP_STREAM_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${COMPRESSOR_APP_STREAM_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${COMPRESSOR_APP_STREAM_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -4054,7 +4054,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с каталогами
                 add_custom_command(TARGET "${DIR_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${DIR_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${DIR_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${DIR_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_DIR_IO_APP_SAMPLE})
@@ -4064,7 +4064,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с файлами
                 add_custom_command(TARGET "${FILE_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${FILE_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${FILE_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${FILE_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_FILE_IO_APP_SAMPLE})
@@ -4074,7 +4074,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с пингами (ICMP)
                 add_custom_command(TARGET "${PING_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${PING_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${PING_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${PING_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_PING_IO_APP_SAMPLE})
@@ -4084,7 +4084,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения таймера
                 add_custom_command(TARGET "${TIMER_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${TIMER_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${TIMER_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${TIMER_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_TIMER_IO_APP_SAMPLE})
@@ -4094,7 +4094,7 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения пользовательских событий
                 add_custom_command(TARGET "${EVENTS_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${EVENTS_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${EVENTS_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${EVENTS_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_EVENTS_IO_APP_SAMPLE})
@@ -4104,28 +4104,28 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (именованный канал)
                 add_custom_command(TARGET "${IPC_PIPE_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_PIPE_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${IPC_PIPE_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${IPC_PIPE_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (поток)
                 add_custom_command(TARGET "${IPC_STREAM_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_STREAM_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${IPC_STREAM_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${IPC_STREAM_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (датаграмма)
                 add_custom_command(TARGET "${IPC_DATAGRAM_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_DATAGRAM_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${IPC_DATAGRAM_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${IPC_DATAGRAM_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с межпроцессорным взаимодействием (последовательная упаковка)
                 add_custom_command(TARGET "${IPC_SEQPACKET_APP_IO_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${IPC_SEQPACKET_APP_IO_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${IPC_SEQPACKET_APP_IO_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${IPC_SEQPACKET_APP_IO_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_IPC_IO_APP_SAMPLE})
@@ -4135,14 +4135,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с TCP клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_TCP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TCP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_TCP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TCP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с TCP сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_TCP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TCP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_TCP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TCP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_TCP_APP_SAMPLE})
@@ -4152,21 +4152,21 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с UDP клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_UDP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_UDP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDP клиентом с подключением
                 add_custom_command(TARGET "${CLIENT_APP_NET_UDP_CONN_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDP_CONN_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_UDP_CONN_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDP_CONN_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDP сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_UDP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_UDP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_UDP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_UDP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_UDP_APP_SAMPLE})
@@ -4176,14 +4176,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с ограничителем пропускной способности TCP клиента
                 add_custom_command(TARGET "${CLIENT_APP_NET_TCP_BANDWIDTH_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TCP_BANDWIDTH_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_TCP_BANDWIDTH_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TCP_BANDWIDTH_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с ограничителем пропускной способности TCP сервера
                 add_custom_command(TARGET "${SERVER_APP_NET_TCP_BANDWIDTH_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TCP_BANDWIDTH_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_TCP_BANDWIDTH_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TCP_BANDWIDTH_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_BANDWIDTH_APP_SAMPLE})
@@ -4193,14 +4193,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с TUN клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_TUN_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TUN_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_TUN_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TUN_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с TUN сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_TUN_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TUN_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_TUN_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TUN_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_TUN_APP_SAMPLE})
@@ -4210,14 +4210,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с UDP Broadcast клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_BROADCAST_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_BROADCAST_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_BROADCAST_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_BROADCAST_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDP Broadcast сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_BROADCAST_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_BROADCAST_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_BROADCAST_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_BROADCAST_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_BROADCAST_APP_SAMPLE})
@@ -4227,28 +4227,28 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с UDP Multicast клиентом сценарий 1
                 add_custom_command(TARGET "${CLIENT_APP_NET_MULTICAST1_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_MULTICAST1_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_MULTICAST1_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_MULTICAST1_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDP Multicast сервером сценарий 1
                 add_custom_command(TARGET "${SERVER_APP_NET_MULTICAST1_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_MULTICAST1_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_MULTICAST1_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_MULTICAST1_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDP Multicast клиентом сценарий 3
                 add_custom_command(TARGET "${CLIENT_APP_NET_MULTICAST3_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_MULTICAST3_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_MULTICAST3_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_MULTICAST3_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDP Multicast сервером сценарий 3
                 add_custom_command(TARGET "${SERVER_APP_NET_MULTICAST3_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_MULTICAST3_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_MULTICAST3_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_MULTICAST3_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_MULTICAST_APP_SAMPLE})
@@ -4258,14 +4258,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с UDP Splice клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_SPLICE_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_SPLICE_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_SPLICE_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_SPLICE_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDP Splice сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_SPLICE_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_SPLICE_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_SPLICE_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_SPLICE_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_SPLICE_APP_SAMPLE})
@@ -4275,28 +4275,28 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с UDS-TCP клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_UDS_TCP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDS_TCP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_UDS_TCP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDS_TCP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDS-TCP сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_UDS_TCP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_UDS_TCP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_UDS_TCP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_UDS_TCP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDS-UDP клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_UDS_UDP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_UDS_UDP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_UDS_UDP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_UDS_UDP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с UDS-UDP сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_UDS_UDP_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_UDS_UDP_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_UDS_UDP_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_UDS_UDP_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_UDS_APP_SAMPLE})
@@ -4306,14 +4306,14 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с DTLS клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_DTLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_DTLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_DTLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_DTLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с DTLS сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_DTLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_DTLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_DTLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_DTLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_DTLS_APP_SAMPLE})
@@ -4323,28 +4323,28 @@ if (${CMAKE_BUILD_SAMPLES})
                 # Выполняем сборку приложения работы с TLS клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_TLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_TLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с TLS сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_TLS_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TLS_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_TLS_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TLS_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с TLS и HTTP/1.1 клиентом
                 add_custom_command(TARGET "${CLIENT_APP_NET_TLS_WEB_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${CLIENT_APP_NET_TLS_WEB_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${CLIENT_APP_NET_TLS_WEB_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${CLIENT_APP_NET_TLS_WEB_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
 
                 # Выполняем сборку приложения работы с TLS и мультисертификатом сервером
                 add_custom_command(TARGET "${SERVER_APP_NET_TLS_MULTI_NAME}" POST_BUILD
                     COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${SERVER_APP_NET_TLS_MULTI_NAME}>" "${entitlements_file}"
-                    COMMENT "Sign target \"${SERVER_APP_NET_TLS_MULTI_NAME}\" to enable core dump on MacOS X"
+                    COMMENT "Sign target \"${SERVER_APP_NET_TLS_MULTI_NAME}\" to enable core dump on macOS"
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_NET_TLS_APP_SAMPLE})
@@ -4763,7 +4763,7 @@ if (CMAKE_BUILD_TESTS)
         find_program(GCOVR_EXECUTABLE gcovr)
         # Если утилита gcovr найдена
         if (GCOVR_EXECUTABLE)
-            # Если сборка производится под операционную систему MacOS X
+            # Если сборка производится под операционную систему macOS
             if (APPLE)
                 # На macOS данные покрытия clang разбираются через llvm-cov из состава Xcode
                 SET(AWH_GCOV_TOOL "xcrun llvm-cov gcov")
@@ -5256,7 +5256,7 @@ if (APPLE AND NOT IOS)
 
     # 4. Создаем цель 'framework'
     add_custom_target(framework
-        COMMAND ${CMAKE_COMMAND} -E echo "📦 Building MacOS X Framework..."
+        COMMAND ${CMAKE_COMMAND} -E echo "📦 Building macOS Framework..."
         COMMAND bash "${CMAKE_SOURCE_DIR}/sh/build_framework.sh" 
             "${AWH_LIB_NAME}"             # Arg 1: Имя фреймворка
             "${CMAKE_BINARY_DIR}"         # Arg 2: Build dir
@@ -5266,12 +5266,12 @@ if (APPLE AND NOT IOS)
         BYPRODUCTS ${FRAMEWORK_BYPRODUCTS}
         DEPENDS ${AWH_LIB_NAME}
         WORKING_DIRECTORY ${CMAKE_BINARY_DIR}
-        COMMENT "Packaging ${AWH_LIB_NAME} into MacOS X Framework"
+        COMMENT "Packaging ${AWH_LIB_NAME} into macOS Framework"
         VERBATIM
     )
 
     # Выводим сообщение об удачной сборке framework
-    message(STATUS "✅ Target 'framework' added for MacOS X build")
+    message(STATUS "✅ Target 'framework' added for macOS build")
 
     # Устанавливаем сгенерированную версию framework
     install(DIRECTORY "${CMAKE_BINARY_DIR}/dist/${AWH_LIB_NAME}.framework"

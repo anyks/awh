@@ -17,7 +17,7 @@
  * # Назначаем адрес 10.0.0.1, destination 10.0.0.1 (Point-to-Point to self)
  * $ sudo ifconfig utun7 10.0.0.1 10.0.0.1 netmask 255.255.255.255 up
  *
- * MacOS X:
+ * macOS:
  * # Весь трафик для 10.0.0.x отправлять в интерфейс utun7 (сетевой интерфейс сервера)
  * $ sudo route -n add -net 10.0.0.0/24 -interface utun7
  *

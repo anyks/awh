@@ -35,7 +35,7 @@ if [ -n "$DESTINATION" ]; then
 	# Выполняем копирование CMAKE-файла
 	cp "$ROOT/../contrib/cmake/$NAME" "$CMAKE"
 
-	# Если операционная система MacOS X
+	# Если операционная система macOS
 	if [ "$OS" = "Darwin" ]; then
 		# Заменяем конечный адрес назначения
 		sed -i -e "s!\${CMAKE_SOURCE_DIR}/third_party!${DESTINATION}!" "$CMAKE"

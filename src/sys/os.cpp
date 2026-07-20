@@ -78,7 +78,7 @@
 #endif
 
 /**
- * Если операционной системой является MacOS X, FreeBSD, NetBSD и OpenBSD
+ * Если операционной системой является macOS, FreeBSD, NetBSD и OpenBSD
  */
 #if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 	/**
@@ -88,7 +88,7 @@
 #endif
 
 /**
- * Если операционной системой является MacOS X и Unix
+ * Если операционной системой является macOS и Unix
  */
 #if __unix__ || __unix || unix || (__APPLE__ && __MACH__)
 	/**
@@ -99,7 +99,7 @@
 	#include <sys/resource.h>
 
 	/**
-	 * Для операционной системы MacOS X
+	 * Для операционной системы macOS
 	 */
 	#if __APPLE__ || __MACH__
 		/**
@@ -225,20 +225,20 @@ using namespace std;
 		}
 	}
 	/**
-	 * Тип элемента списка групп пользователя для функции getgrouplist (на MacOS X прототип использует int32_t, на остальных системах gid_t)
+	 * Тип элемента списка групп пользователя для функции getgrouplist (на macOS прототип использует int32_t, на остальных системах gid_t)
 	 */
 	#if __APPLE__ || __MACH__
 		/**
-		 * @brief Тип элемента списка групп пользователя для функции getgrouplist на MacOS X
+		 * @brief Тип элемента списка групп пользователя для функции getgrouplist на macOS
 		 *
 		 */
 		typedef int32_t grouplist_t;
 	/**
-	 * Для операционной системы не являющейся MacOS X
+	 * Для операционной системы не являющейся macOS
 	 */
 	#else
 		/**
-		 * @brief Тип элемента списка групп пользователя для функции getgrouplist для операционной системы не являющейся MacOS X
+		 * @brief Тип элемента списка групп пользователя для функции getgrouplist для операционной системы не являющейся macOS
 		 *
 		 */
 		typedef gid_t grouplist_t;
@@ -355,7 +355,7 @@ using namespace std;
 			// Выполняем очистку буфера данных
 			buffer.clear();
 			/**
-			 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
+			 * Если мы работаем в macOS, FreeBSD, NetBSD или OpenBSD
 			 */
 			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Получаем размер буфера
@@ -504,7 +504,7 @@ using namespace std;
 		// Если название параметра передано
 		if(!name.empty() && (buffer != nullptr) && (size > 0)){
 			/**
-			 * Если мы работаем в MacOS X, FreeBSD, NetBSD или OpenBSD
+			 * Если мы работаем в macOS, FreeBSD, NetBSD или OpenBSD
 			 */
 			#if __APPLE__ || __MACH__ || __FreeBSD__ || __NetBSD__ || __OpenBSD__
 				// Устанавливаем новые параметры настройки ядра
@@ -657,7 +657,7 @@ awh::Operating_System::family_t awh::Operating_System::family() const noexcept {
 		// Возвращаем флаг операционной системы
 		return family_t::WIND64;
 	/**
-	 * Операционной системой является MacOS X
+	 * Операционной системой является macOS
 	 */
 	#elif __APPLE__ || __MACH__
 		// Возвращаем флаг операционной системы
@@ -821,7 +821,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 						// Выполняем извлечение размера пика потребляемой памяти
 						} else result = static_cast <size_t> (info.WorkingSetSize);
 					/**
-					 * Для операционной системы MacOS X
+					 * Для операционной системы macOS
 					 */
 					#elif __APPLE__ || __MACH__
 						// Создаём объект информации о памяти
@@ -1061,7 +1061,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					// Выполняем извлечение размера пика потребляемой памяти
 					result = static_cast <size_t> (psinfo.pr_rssize * 1024L);
 				/**
-				 * Если операционной системой является MacOS X, FreeBSD, NetBSD, OpenBSD и Linux
+				 * Если операционной системой является macOS, FreeBSD, NetBSD, OpenBSD и Linux
 				 */
 				#elif __unix__ || __unix || unix || (__APPLE__ && __MACH__)
 					// Создаём объект информации о памяти
@@ -1084,7 +1084,7 @@ size_t awh::Operating_System::rss(const rss_t mode) const noexcept {
 					// Если данные получили удачно
 					} else {
 						/**
-						 * Реализация под MacOS X
+						 * Реализация под macOS
 						 */
 						#if __APPLE__ && __MACH__
 							// Выполняем извлечение размера пика потребляемой памяти
@@ -1173,11 +1173,11 @@ void awh::Operating_System::releaseFreeMemory() const noexcept {
 		// Выполняем сброс памяти
 		::malloc_trim(0);
 	/**
-	 * Операционной системой является MacOS X
+	 * Операционной системой является macOS
 	 */
 	#elif __APPLE__ || __MACH__
 		/**
-		 * MacOS X: нет malloc_trim, но можно использовать malloc_zone.
+		 * macOS: нет malloc_trim, но можно использовать malloc_zone.
 		 * В новых версиях достаточно madvise, но явного API нет.
 		 * Альтернатива: malloc_zone_pressure_relief (доступна в macOS 11+)
 		 */
@@ -2489,7 +2489,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template double awh::Operating_System::sysctl <double> (string_view) const noexcept;
 	template string awh::Operating_System::sysctl <string> (string_view) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является macOS или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __linux__
 		template size_t awh::Operating_System::sysctl <size_t> (string_view) const noexcept;
@@ -2510,7 +2510,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template vector <double> awh::Operating_System::sysctl <vector <double>> (string_view) const noexcept;
 	template vector <string> awh::Operating_System::sysctl <vector <string>> (string_view) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является macOS или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __linux__
 		template vector <size_t> awh::Operating_System::sysctl <vector <size_t>> (string_view) const noexcept;
@@ -2569,7 +2569,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template bool awh::Operating_System::sysctl <float> (string_view, const float) const noexcept;
 	template bool awh::Operating_System::sysctl <double> (string_view, const double) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является macOS или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __linux__
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const size_t) const noexcept;
@@ -2678,7 +2678,7 @@ bool awh::Operating_System::disableReturnMemory([[maybe_unused]] const bool mode
 	template bool awh::Operating_System::sysctl <float> (string_view, const vector <float> &) const noexcept;
 	template bool awh::Operating_System::sysctl <double> (string_view, const vector <double> &) const noexcept;
 	/**
-	 * Если операционной системой является MacOS X или Linux
+	 * Если операционной системой является macOS или Linux
 	 */
 	#if __APPLE__ || __MACH__ || __linux__
 		template bool awh::Operating_System::sysctl <size_t> (string_view, const vector <size_t> &) const noexcept;
