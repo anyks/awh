@@ -136,6 +136,8 @@ namespace awh {
 					uint64_t pn;
 					// Время отправки пакета в миллисекундах
 					uint64_t time;
+					// Размер пакета в октетах (для congestion control)
+					size_t size;
 					// Флаг наличия фрейма HANDSHAKE_DONE в пакете
 					bool handshakeDone;
 					// Отправленные CRYPTO-данные пакета со смещениями (для ретрансмиссии)
@@ -258,6 +260,25 @@ namespace awh {
 					 */
 					explicit Space() noexcept;
 				} space_data_t;
+				/**
+				 * @brief Структура идентификатора соединения удалённого эндпоинта (RFC 9000 §5.1.1)
+				 *
+				 */
+				typedef struct __AWH_SHARED_EXPORT__ RemoteCid {
+					// Порядковый номер идентификатора соединения
+					uint64_t seq;
+					// Флаг использования идентификатора в качестве DCID
+					bool used;
+					// Идентификатор соединения
+					cid_t cid;
+					// Токен сброса без сохранения состояния (RFC 9000 §10.3)
+					uint8_t resetToken[proto::RESET_TOKEN_SIZE];
+					/**
+					 * @brief Конструктор
+					 *
+					 */
+					explicit RemoteCid() noexcept;
+				} remote_cid_t;
 			private:
 				// Роль локального эндпоинта на соединении
 				endpoint_t _endpoint;
@@ -270,6 +291,66 @@ namespace awh {
 				cid_t _dcid;
 				// Флаг обновления DCID по первому ответу сервера (RFC 9000 §7.2)
 				bool _dcidUpdated;
+			private:
+				// Исходный DCID первого пакета Initial клиента (RFC 9000 §7.3)
+				cid_t _odcid;
+				// SCID пакета Retry (RFC 9000 §17.2.5)
+				cid_t _retryCid;
+				// Флаг обработанного клиентом пакета Retry
+				bool _retried;
+				// Флаг проверки адреса клиента сервером через пакет Retry
+				bool _retryMode;
+				// Токен пакетов Initial (полученный клиентом из пакета Retry)
+				string _token;
+				// Токен проверки адреса, выданный сервером в пакете Retry
+				string _retryToken;
+				// Готовая датаграмма без состояния (Version Negotiation либо Retry)
+				string _stateless;
+			private:
+				// Бит фазы ключей уровня приложения (RFC 9001 §6)
+				bool _keyPhase;
+				// Флаг наличия выведенных ключей следующей фазы
+				bool _keysReady;
+				// Флаг наличия ключей чтения предыдущей фазы
+				bool _hasPrevRead;
+				// Ключи снятия защиты пакетов следующей фазы
+				crypto::keys_t _nextRead;
+				// Ключи защиты пакетов следующей фазы
+				crypto::keys_t _nextWrite;
+				// Ключи снятия защиты пакетов предыдущей фазы (для отставших пакетов)
+				crypto::keys_t _prevRead;
+				// Номер первого пакета, отправленного в текущей фазе ключей
+				uint64_t _phaseTx;
+			private:
+				// Список идентификаторов соединения удалённого эндпоинта (RFC 9000 §5.1.1)
+				vector <remote_cid_t> _remoteCids;
+				// Порядковый номер текущего идентификатора соединения удалённого эндпоинта
+				uint64_t _dcidSeq;
+				// Порядковый номер, до которого идентификаторы удалённого эндпоинта выведены из обращения
+				uint64_t _retirePrior;
+				// Очередь порядковых номеров для отправки фреймов RETIRE_CONNECTION_ID
+				vector <uint64_t> _retireQueue;
+				// Выданные локальные идентификаторы соединения по порядковым номерам (RFC 9000 §5.1.1)
+				map <uint64_t, frame::new_connection_id_t> _issuedCids;
+				// Очередь порядковых номеров для отправки фреймов NEW_CONNECTION_ID
+				vector <uint64_t> _issueQueue;
+				// Порядковый номер следующего выдаваемого идентификатора соединения
+				uint64_t _issuedSeq;
+				// Флаг вывода идентификатора хендшейка локального эндпоинта из обращения
+				bool _scidRetired;
+			private:
+				// Окно перегрузки в октетах (RFC 9002 §7)
+				uint64_t _cwnd;
+				// Порог замедленного старта (RFC 9002 §7.3.1)
+				uint64_t _ssthresh;
+				// Количество неподтверждённых октетов в полёте (RFC 9002 §B.2)
+				uint64_t _inflight;
+				// Время начала периода восстановления (RFC 9002 §7.3.2)
+				uint64_t _recovery;
+				// Флаг активного периода восстановления
+				bool _inRecovery;
+				// Количество зондирующих пакетов, разрешённых сверх окна перегрузки (RFC 9002 §7.5)
+				uint8_t _probes;
 			private:
 				// Флаг подтверждения хендшейка (RFC 9001 §4.1.2)
 				bool _confirmed;
@@ -468,6 +549,42 @@ namespace awh {
 				void consume(stream_data_t & stream, const uint64_t target) noexcept;
 			private:
 				/**
+				 * @brief Метод вывода ключей следующей фазы уровня приложения (RFC 9001 §6)
+				 *
+				 * @note Вызывается после подтверждения хендшейка - ключи следующей
+				 *       фазы выводятся заранее для приёма обновления от пира
+				 */
+				void prepare() noexcept;
+				/**
+				 * @brief Метод переключения на следующую фазу ключей уровня приложения (RFC 9001 §6)
+				 *
+				 * @note Текущие ключи чтения сохраняются для отставших пакетов
+				 *       предыдущей фазы, выводятся ключи новой следующей фазы
+				 */
+				void promote() noexcept;
+			private:
+				/**
+				 * @brief Метод учёта подтверждённого пакета в congestion control (RFC 9002 §7.3.1)
+				 *
+				 * @param packet учётная запись подтверждённого пакета
+				 */
+				void acked(const sent_t & packet) noexcept;
+				/**
+				 * @brief Метод обработки события перегрузки при детекте потерь (RFC 9002 §7.3.2)
+				 *
+				 * @param time время отправки наиболее позднего потерянного пакета
+				 */
+				void congestion(const uint64_t time) noexcept;
+			private:
+				/**
+				 * @brief Метод выдачи дополнительных идентификаторов соединения (RFC 9000 §5.1.1)
+				 *
+				 * @note Вызывается после установления соединения - количество
+				 *       ограничено лимитом active_connection_id_limit удалённого эндпоинта
+				 */
+				void issue() noexcept;
+			private:
+				/**
 				 * @brief Метод проверки возможности отправки данных в поток локальным эндпоинтом
 				 *
 				 * @param sid идентификатор потока
@@ -549,14 +666,15 @@ namespace awh {
 				/**
 				 * @brief Метод сборки нагрузки очередного пакета уровня шифрования
 				 *
-				 * @param level  уровень шифрования пакета
-				 * @param budget доступно октетов в датаграмме для нагрузки
-				 * @param output собранная нагрузка пакета (фреймы)
-				 * @param meta   учётная запись пакета для восстановления потерь
-				 * @param elicit флаг наличия ack-eliciting фреймов в нагрузке
-				 * @return       результат сборки (true - нагрузка не пустая)
+				 * @param level   уровень шифрования пакета
+				 * @param budget  доступно октетов в датаграмме для нагрузки
+				 * @param output  собранная нагрузка пакета (фреймы)
+				 * @param meta    учётная запись пакета для восстановления потерь
+				 * @param elicit  флаг наличия ack-eliciting фреймов в нагрузке
+				 * @param limited флаг исчерпанного окна перегрузки (только подтверждения)
+				 * @return        результат сборки (true - нагрузка не пустая)
 				 */
-				bool payload(const level_t level, const size_t budget, string & output, sent_t & meta, bool & elicit) noexcept;
+				bool payload(const level_t level, const size_t budget, string & output, sent_t & meta, bool & elicit, const bool limited) noexcept;
 				/**
 				 * @brief Метод вычисления размера заголовка пакета уровня шифрования
 				 *
@@ -626,6 +744,17 @@ namespace awh {
 				 * @return       результат извлечения (OK/INCOMPLETE/ERROR)
 				 */
 				status_t peer(quic::params::params_t & params, error_t & error) const noexcept;
+			public:
+				/**
+				 * @brief Метод установки проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
+				 *
+				 * @note Вызывается сервером до приёма первой датаграммы: первый пакет
+				 *       Initial без токена получает в ответ пакет Retry с токеном,
+				 *       соединение продолжается только с корректным токеном
+				 *
+				 * @param mode режим проверки адреса клиента
+				 */
+				void retry(const bool mode) noexcept;
 			public:
 				/**
 				 * @brief Метод начала соединения клиентом
@@ -750,6 +879,45 @@ namespace awh {
 				 * @return     результат проверки (true - поток сброшен удалённым эндпоинтом)
 				 */
 				bool aborted(const uint64_t sid, uint64_t & code) const noexcept;
+			public:
+				/**
+				 * @brief Метод инициирования обновления ключей уровня приложения (RFC 9001 §6)
+				 *
+				 * @note Доступен после подтверждения хендшейка; повторное обновление
+				 *       возможно только после подтверждения пакета текущей фазы
+				 *
+				 * @return результат инициирования (OK/ERROR)
+				 */
+				status_t rekey() noexcept;
+				/**
+				 * @brief Метод получения бита фазы ключей уровня приложения (RFC 9001 §6)
+				 *
+				 * @return бит фазы ключей
+				 */
+				bool phase() const noexcept;
+			public:
+				/**
+				 * @brief Метод ротации идентификатора соединения удалённого эндпоинта (RFC 9000 §5.1.1)
+				 *
+				 * @note Переключает DCID на неиспользованный идентификатор из анонсированных
+				 *       фреймами NEW_CONNECTION_ID, прежний выводится из обращения
+				 *
+				 * @return результат ротации (false - неиспользованных идентификаторов нет)
+				 */
+				bool rotate() noexcept;
+			public:
+				/**
+				 * @brief Метод получения окна перегрузки congestion control (RFC 9002 §7)
+				 *
+				 * @return окно перегрузки в октетах
+				 */
+				uint64_t cwnd() const noexcept;
+				/**
+				 * @brief Метод получения количества неподтверждённых октетов в полёте
+				 *
+				 * @return количество неподтверждённых октетов в полёте
+				 */
+				uint64_t inflight() const noexcept;
 			public:
 				/**
 				 * @brief Метод завершения соединения приложением (RFC 9000 §10.2)

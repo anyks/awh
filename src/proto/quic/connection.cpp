@@ -83,6 +83,31 @@ namespace {
 	 */
 	static constexpr uint8_t MAX_PTO_COUNT = 10;
 	/**
+	 * @brief Размер токена проверки адреса пакета Retry
+	 *
+	 */
+	static constexpr size_t RETRY_TOKEN_SIZE = 16;
+	/**
+	 * @brief Предельное количество выдаваемых идентификаторов соединения
+	 *
+	 */
+	static constexpr uint64_t MAX_ISSUED_CIDS = 4;
+	/**
+	 * @brief Начальное окно перегрузки в октетах (RFC 9002 §7.2)
+	 *
+	 */
+	static constexpr uint64_t INITIAL_WINDOW = 12000;
+	/**
+	 * @brief Минимальное окно перегрузки в октетах (RFC 9002 §7.2)
+	 *
+	 */
+	static constexpr uint64_t MINIMUM_WINDOW = 2400;
+	/**
+	 * @brief Количество зондирующих пакетов сверх окна перегрузки по таймеру PTO (RFC 9002 §7.5)
+	 *
+	 */
+	static constexpr uint8_t PTO_PROBES = 2;
+	/**
 	 * @brief Функция генерации случайного идентификатора соединения
 	 *
 	 * @param cid генерируемый идентификатор соединения
@@ -106,7 +131,13 @@ awh::quic::Connection::Chunk::Chunk() noexcept : sid(0), offset(0), fin(false), 
  * @brief Конструктор учётной записи отправленного пакета
  *
  */
-awh::quic::Connection::Sent::Sent() noexcept : pn(0), time(0), handshakeDone(false) {}
+awh::quic::Connection::Sent::Sent() noexcept : pn(0), time(0), size(0), handshakeDone(false) {}
+
+/**
+ * @brief Конструктор идентификатора соединения удалённого эндпоинта
+ *
+ */
+awh::quic::Connection::RemoteCid::RemoteCid() noexcept : seq(0), used(false), resetToken{0} {}
 
 /**
  * @brief Конструктор состояния потока приложения
@@ -310,6 +341,12 @@ void awh::quic::Connection::discard(const level_t level) noexcept {
 	this->_handshake.discard(level);
 	// Получаем состояние пространства номеров пакетов
 	auto & item = this->_spaces[static_cast <size_t> (this->space(level))];
+	/**
+	 * Перебираем список отправленных пакетов пространства
+	 */
+	for(auto & packet : item.sent)
+		// Списываем пакет из октетов в полёте (RFC 9002 §B.8)
+		this->_inflight -= ::min(this->_inflight, static_cast <uint64_t> (packet.size));
 	// Очищаем список отправленных пакетов
 	item.sent.clear();
 	// Очищаем очередь ретрансмиссии CRYPTO-данных
@@ -371,7 +408,9 @@ void awh::quic::Connection::rtt(const uint64_t sample, const uint64_t delay) noe
 void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) noexcept {
 	// Получаем состояние пространства номеров пакетов
 	auto & item = this->_spaces[static_cast <size_t> (space)];
-	// Перебираем отправленные CRYPTO-данные пакета
+	/**
+	 * Перебираем отправленные CRYPTO-данные пакета
+	 */
 	for(auto & chunk : packet.crypto)
 		// Ставим CRYPTO-данные в очередь ретрансмиссии
 		item.rtxQueue.push_back(chunk);
@@ -379,7 +418,9 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 	if(packet.handshakeDone)
 		// Восстанавливаем флаг необходимости отправки фрейма HANDSHAKE_DONE
 		this->_handshakeDone = true;
-	// Перебираем отправленные блоки данных потоков приложения
+	/**
+	 * Перебираем отправленные блоки данных потоков приложения
+	 */
 	for(auto & chunk : packet.stream)
 		// Ставим блок данных потока в очередь ретрансмиссии
 		this->_streamRtx.push_back(chunk);
@@ -405,6 +446,18 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 			case frame_t::MAX_STREAMS_UNI:
 				// Восстанавливаем флаг необходимости отправки обновлённого лимита
 				this->_maxUniQueued = true;
+			break;
+			// Фрейм анонса нового идентификатора соединения NEW_CONNECTION_ID
+			case frame_t::NEW_CONNECTION_ID: {
+				// Если идентификатор ещё выдан (не выведен из обращения)
+				if(this->_issuedCids.find(control.second) != this->_issuedCids.end())
+					// Восстанавливаем порядковый номер в очереди отправки анонсов
+					this->_issueQueue.push_back(control.second);
+			} break;
+			// Фрейм вывода идентификатора соединения из обращения RETIRE_CONNECTION_ID
+			case frame_t::RETIRE_CONNECTION_ID:
+				// Восстанавливаем порядковый номер в очереди вывода из обращения
+				this->_retireQueue.push_back(control.second);
 			break;
 			// Фреймы состояния потока
 			case frame_t::MAX_STREAM_DATA:
@@ -449,6 +502,10 @@ void awh::quic::Connection::detect(const space_t space) noexcept {
 	const uint64_t base = (this->_rttSampled ? ::max(this->_latestRtt, this->_smoothedRtt) : INITIAL_RTT);
 	// Вычисляем задержку детекта потерь с коэффициентом 9/8
 	const uint64_t lossDelay = ::max((9 * base) / 8, GRANULARITY);
+	// Время отправки наиболее позднего потерянного пакета
+	uint64_t lostTime = 0;
+	// Флаг наличия потерянных пакетов
+	bool lost = false;
 	/**
 	 * Перебираем список отправленных пакетов
 	 */
@@ -464,6 +521,12 @@ void awh::quic::Connection::detect(const space_t space) noexcept {
 		if(((i->pn + PACKET_THRESHOLD) <= item.largestAcked) || ((i->time + lossDelay) <= this->_now)){
 			// Ставим содержимое потерянного пакета в очереди отправки
 			this->requeue(space, * i);
+			// Списываем потерянный пакет из октетов в полёте (RFC 9002 §B.8)
+			this->_inflight -= ::min(this->_inflight, static_cast <uint64_t> (i->size));
+			// Запоминаем время отправки наиболее позднего потерянного пакета
+			lostTime = ::max(lostTime, i->time);
+			// Устанавливаем флаг наличия потерянных пакетов
+			lost = true;
 			// Удаляем потерянный пакет из списка отправленных
 			i = item.sent.erase(i);
 		// Если пакет ещё не потерян - взводим таймер детекта потерь
@@ -481,6 +544,10 @@ void awh::quic::Connection::detect(const space_t space) noexcept {
 			++i;
 		}
 	}
+	// Если детектированы потерянные пакеты
+	if(lost)
+		// Выполняем обработку события перегрузки (RFC 9002 §7.3.2)
+		this->congestion(lostTime);
 }
 /**
  * @brief Метод постановки зондирующих данных пространства в очередь (RFC 9002 §6.2.4)
@@ -571,6 +638,122 @@ void awh::quic::Connection::consume(stream_data_t & stream, const uint64_t targe
 		this->_rxConsumed += (target - stream.rxCounted);
 		// Продвигаем учтённое смещение данных потока
 		stream.rxCounted = target;
+	}
+}
+/**
+ * @brief Метод вывода ключей следующей фазы уровня приложения (RFC 9001 §6)
+ *
+ */
+void awh::quic::Connection::prepare() noexcept {
+	// Если хендшейк не подтверждён либо ключи следующей фазы уже выведены
+	if(!this->_confirmed || this->_keysReady)
+		// Выходим из метода
+		return;
+	// Получаем текущие ключи снятия защиты пакетов уровня приложения
+	const crypto::keys_t * read = this->_handshake.decryption(level_t::APPLICATION);
+	// Получаем текущие ключи защиты пакетов уровня приложения
+	const crypto::keys_t * write = this->_handshake.encryption(level_t::APPLICATION);
+	// Если ключи уровня приложения ещё не выведены
+	if((read == nullptr) || (write == nullptr))
+		// Выходим из метода
+		return;
+	// Выводим ключи следующей фазы обоих направлений меткой "quic ku"
+	this->_keysReady = (crypto::update(* read, this->_nextRead) && crypto::update(* write, this->_nextWrite));
+}
+/**
+ * @brief Метод переключения на следующую фазу ключей уровня приложения (RFC 9001 §6)
+ *
+ */
+void awh::quic::Connection::promote() noexcept {
+	// Сохраняем текущие ключи чтения для отставших пакетов предыдущей фазы
+	this->_prevRead = (* this->_handshake.decryption(level_t::APPLICATION));
+	// Устанавливаем флаг наличия ключей чтения предыдущей фазы
+	this->_hasPrevRead = true;
+	// Устанавливаем ключи следующей фазы текущими
+	this->_handshake.install(level_t::APPLICATION, this->_nextRead, this->_nextWrite);
+	// Переключаем бит фазы ключей
+	this->_keyPhase = !this->_keyPhase;
+	// Запоминаем номер первого пакета текущей фазы
+	this->_phaseTx = this->_spaces[static_cast <size_t> (space_t::APPLICATION)].txPn;
+	// Сбрасываем флаг наличия выведенных ключей следующей фазы
+	this->_keysReady = false;
+	// Выводим ключи новой следующей фазы
+	this->prepare();
+}
+/**
+ * @brief Метод учёта подтверждённого пакета в congestion control (RFC 9002 §7.3.1)
+ *
+ * @param packet учётная запись подтверждённого пакета
+ */
+void awh::quic::Connection::acked(const sent_t & packet) noexcept {
+	// Списываем подтверждённый пакет из октетов в полёте
+	this->_inflight -= ::min(this->_inflight, static_cast <uint64_t> (packet.size));
+	// Если период восстановления активен
+	if(this->_inRecovery){
+		// Если подтверждён пакет, отправленный после начала восстановления
+		if(packet.time > this->_recovery)
+			// Завершаем период восстановления (RFC 9002 §7.3.2)
+			this->_inRecovery = false;
+		// Пакеты периода восстановления окно перегрузки не увеличивают
+		else return;
+	}
+	// Если окно перегрузки меньше порога замедленного старта
+	if(this->_cwnd < this->_ssthresh)
+		// Замедленный старт: окно растёт на размер подтверждённого пакета (RFC 9002 §7.3.1)
+		this->_cwnd += packet.size;
+	// Предотвращение перегрузки: окно растёт на долю датаграммы (RFC 9002 §7.3.3)
+	else this->_cwnd += ::max(static_cast <uint64_t> (1), (MAX_DATAGRAM_SIZE * static_cast <uint64_t> (packet.size)) / this->_cwnd);
+}
+/**
+ * @brief Метод обработки события перегрузки при детекте потерь (RFC 9002 §7.3.2)
+ *
+ * @param time время отправки наиболее позднего потерянного пакета
+ */
+void awh::quic::Connection::congestion(const uint64_t time) noexcept {
+	// Если потерянный пакет отправлен в текущем периоде восстановления
+	if(this->_inRecovery && (time <= this->_recovery))
+		// Выходим из метода - окно уже уменьшено (RFC 9002 §7.3.2)
+		return;
+	// Начинаем период восстановления
+	this->_inRecovery = true;
+	// Устанавливаем время начала периода восстановления
+	this->_recovery = this->_now;
+	// Уменьшаем порог замедленного старта вдвое
+	this->_ssthresh = (this->_cwnd / 2);
+	// Уменьшаем окно перегрузки не ниже минимального (RFC 9002 §7.2)
+	this->_cwnd = ::max(this->_ssthresh, MINIMUM_WINDOW);
+}
+/**
+ * @brief Метод выдачи дополнительных идентификаторов соединения (RFC 9000 §5.1.1)
+ *
+ */
+void awh::quic::Connection::issue() noexcept {
+	// Вычисляем целевое количество активных идентификаторов (включая идентификатор хендшейка)
+	const uint64_t target = ::min(this->_remote.activeConnectionIdLimit, MAX_ISSUED_CIDS);
+	/**
+	 * Выдаём идентификаторы до достижения целевого количества
+	 */
+	while((this->_issuedCids.size() + (this->_scidRetired ? 0 : 1)) < target){
+		// Формируем фрейм анонса нового идентификатора соединения
+		frame::new_connection_id_t frame;
+		// Устанавливаем порядковый номер идентификатора
+		frame.seq = this->_issuedSeq;
+		// Идентификаторы из обращения не выводятся
+		frame.retirePriorTo = 0;
+		// Выполняем генерацию нового идентификатора соединения
+		if(!::makeCid(frame.cid))
+			// Выходим из метода - ошибка генератора случайных чисел
+			return;
+		// Выполняем генерацию токена сброса без сохранения состояния
+		if(::RAND_bytes(frame.resetToken, proto::RESET_TOKEN_SIZE) != 1)
+			// Выходим из метода - ошибка генератора случайных чисел
+			return;
+		// Сохраняем выданный идентификатор соединения
+		this->_issuedCids.emplace(frame.seq, frame);
+		// Ставим порядковый номер в очередь отправки фрейма NEW_CONNECTION_ID
+		this->_issueQueue.push_back(frame.seq);
+		// Продвигаем порядковый номер следующего выдаваемого идентификатора
+		this->_issuedSeq++;
 	}
 }
 /**
@@ -832,6 +1015,42 @@ bool awh::quic::Connection::established() noexcept {
 		// Выводим отрицательный результат
 		return false;
 	}
+	// Если SCID первого пакета удалённого эндпоинта отсутствует или не совпадает (RFC 9000 §7.3)
+	if(!this->_remote.hasInitialScid || !(this->_remote.initialScid == this->_dcid)){
+		// Ставим завершение соединения с ошибкой транспортных параметров в очередь
+		this->fail(error_t::TRANSPORT_PARAMETER_ERROR);
+		// Выводим отрицательный результат
+		return false;
+	}
+	// Если локальный эндпоинт является клиентом
+	if(this->_endpoint == endpoint_t::CLIENT){
+		// Если исходный DCID отсутствует или не совпадает с отправленным (RFC 9000 §7.3)
+		if(!this->_remote.hasOdcid || !(this->_remote.odcid == this->_odcid)){
+			// Ставим завершение соединения с ошибкой транспортных параметров в очередь
+			this->fail(error_t::TRANSPORT_PARAMETER_ERROR);
+			// Выводим отрицательный результат
+			return false;
+		}
+		// Если наличие SCID пакета Retry не соответствует обработанному Retry (RFC 9000 §7.3)
+		if(this->_retried ? (!this->_remote.hasRetryScid || !(this->_remote.retryScid == this->_retryCid)) : this->_remote.hasRetryScid){
+			// Ставим завершение соединения с ошибкой транспортных параметров в очередь
+			this->fail(error_t::TRANSPORT_PARAMETER_ERROR);
+			// Выводим отрицательный результат
+			return false;
+		}
+	}
+	// Формируем запись идентификатора хендшейка удалённого эндпоинта (RFC 9000 §5.1.1)
+	remote_cid_t cid;
+	// Устанавливаем нулевой порядковый номер идентификатора хендшейка
+	cid.seq = 0;
+	// Устанавливаем идентификатор соединения удалённого эндпоинта
+	cid.cid = this->_dcid;
+	// Устанавливаем флаг использования идентификатора в качестве DCID
+	cid.used = true;
+	// Добавляем идентификатор хендшейка в список
+	this->_remoteCids.push_back(cid);
+	// Выдаём дополнительные идентификаторы соединения (RFC 9000 §5.1.1)
+	this->issue();
 	// Устанавливаем лимит отправки данных соединения от удалённого эндпоинта
 	this->_txMaxData = this->_remote.initialMaxData;
 	// Устанавливаем лимит на локально открываемые двунаправленные потоки
@@ -1100,6 +1319,8 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 								// Устанавливаем флаг подтверждения наибольшего номера
 								largest = true;
 							}
+							// Учитываем подтверждённый пакет в congestion control (RFC 9002 §7.3.1)
+							this->acked(* i);
 							// Удаляем подтверждённый пакет из списка отправленных
 							i = item.sent.erase(i);
 						// Если пакет ещё не подтверждён
@@ -1328,6 +1549,38 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 							// Обновляем лимит на локально открываемые однонаправленные потоки
 							this->_maxUniRemote = ::max(this->_maxUniRemote, value);
 						break;
+						// Фрейм вывода идентификатора соединения из обращения (RFC 9000 §19.16)
+						case frame_t::RETIRE_CONNECTION_ID: {
+							// Если порядковый номер не выдавался локальным эндпоинтом
+							if(value >= this->_issuedSeq){
+								// Ставим завершение соединения с нарушением протокола в очередь
+								this->fail(error_t::PROTOCOL_VIOLATION);
+								// Выводим отрицательный результат
+								return status_t::ERROR;
+							}
+							// Если выведен идентификатор соединения хендшейка
+							if(value == 0)
+								// Устанавливаем флаг вывода идентификатора хендшейка из обращения
+								this->_scidRetired = true;
+							// Если выведен дополнительно выданный идентификатор
+							else {
+								// Удаляем идентификатор из списка выданных
+								this->_issuedCids.erase(value);
+								/**
+								 * Перебираем очередь отправки фреймов NEW_CONNECTION_ID
+								 */
+								for(auto i = this->_issueQueue.begin(); i != this->_issueQueue.end();){
+									// Если порядковый номер выведен из обращения
+									if(* i == value)
+										// Удаляем порядковый номер из очереди отправки
+										i = this->_issueQueue.erase(i);
+									// Переходим к следующему порядковому номеру
+									else ++i;
+								}
+							}
+							// Выдаём замещающий идентификатор соединения (RFC 9000 §5.1.1)
+							this->issue();
+						} break;
 						// Остальные фреймы информационные - лимиты обновляются локальной логикой
 						default: break;
 					}
@@ -1360,8 +1613,98 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 			case frame_t::NEW_CONNECTION_ID: {
 				// Разобранный фрейм анонса идентификатора
 				frame::new_connection_id_t frame;
-				// Выполняем разбор фрейма NEW_CONNECTION_ID (ротация идентификаторов - следующий этап)
+				// Выполняем разбор фрейма NEW_CONNECTION_ID
 				status = frame::parser::newConnectionId(data + offset, size - offset, frame, consumed, error);
+				// Если фрейм разобран успешно
+				if(status == status_t::OK){
+					// Если анонсирован рост порядкового номера вывода из обращения
+					if(frame.retirePriorTo > this->_retirePrior){
+						// Обновляем порядковый номер вывода идентификаторов из обращения
+						this->_retirePrior = frame.retirePriorTo;
+						/**
+						 * Перебираем список идентификаторов удалённого эндпоинта
+						 */
+						for(auto i = this->_remoteCids.begin(); i != this->_remoteCids.end();){
+							// Если идентификатор выводится из обращения (RFC 9000 §5.1.2)
+							if(i->seq < this->_retirePrior){
+								// Ставим порядковый номер в очередь отправки фрейма RETIRE_CONNECTION_ID
+								this->_retireQueue.push_back(i->seq);
+								// Удаляем идентификатор из списка
+								i = this->_remoteCids.erase(i);
+							// Переходим к следующему идентификатору
+							} else ++i;
+						}
+					}
+					// Если порядковый номер идентификатора уже выведен из обращения
+					if(frame.seq < this->_retirePrior){
+						// Ставим порядковый номер в очередь отправки фрейма RETIRE_CONNECTION_ID (RFC 9000 §19.15)
+						this->_retireQueue.push_back(frame.seq);
+						// Устанавливаем флаг приёма ack-eliciting фрейма
+						elicit = true;
+						// Прекращаем обработку фрейма
+						break;
+					}
+					// Флаг повторного анонса идентификатора
+					bool known = false;
+					/**
+					 * Перебираем список идентификаторов удалённого эндпоинта
+					 */
+					for(auto & item : this->_remoteCids){
+						// Если порядковый номер уже анонсирован
+						if(item.seq == frame.seq){
+							// Если содержимое анонса отличается (RFC 9000 §19.15)
+							if(!(item.cid == frame.cid)){
+								// Ставим завершение соединения с нарушением протокола в очередь
+								this->fail(error_t::PROTOCOL_VIOLATION);
+								// Выводим отрицательный результат
+								return status_t::ERROR;
+							}
+							// Устанавливаем флаг повторного анонса
+							known = true;
+							// Прекращаем перебор
+							break;
+						}
+					}
+					// Если идентификатор анонсирован впервые
+					if(!known){
+						// Формируем запись идентификатора удалённого эндпоинта
+						remote_cid_t item;
+						// Устанавливаем порядковый номер идентификатора
+						item.seq = frame.seq;
+						// Устанавливаем идентификатор соединения
+						item.cid = frame.cid;
+						// Копируем токен сброса без сохранения состояния
+						::memcpy(item.resetToken, frame.resetToken, proto::RESET_TOKEN_SIZE);
+						// Добавляем идентификатор в список
+						this->_remoteCids.push_back(item);
+						// Если превышен анонсированный лимит активных идентификаторов (RFC 9000 §5.1.1)
+						if(this->_remoteCids.size() > this->_params.activeConnectionIdLimit){
+							// Ставим завершение соединения с превышением лимита идентификаторов в очередь
+							this->fail(error_t::CONNECTION_ID_LIMIT_ERROR);
+							// Выводим отрицательный результат
+							return status_t::ERROR;
+						}
+					}
+					// Если текущий идентификатор выведен из обращения
+					if(this->_dcidSeq < this->_retirePrior){
+						/**
+						 * Перебираем список идентификаторов удалённого эндпоинта
+						 */
+						for(auto & item : this->_remoteCids){
+							// Если идентификатор ещё не использовался
+							if(!item.used){
+								// Переключаем идентификатор соединения удалённого эндпоинта
+								this->_dcid = item.cid;
+								// Обновляем порядковый номер текущего идентификатора
+								this->_dcidSeq = item.seq;
+								// Устанавливаем флаг использования идентификатора
+								item.used = true;
+								// Прекращаем перебор
+								break;
+							}
+						}
+					}
+				}
 				// Устанавливаем флаг приёма ack-eliciting фрейма
 				elicit = true;
 			} break;
@@ -1453,14 +1796,15 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 /**
  * @brief Метод сборки нагрузки очередного пакета уровня шифрования
  *
- * @param level  уровень шифрования пакета
- * @param budget доступно октетов в датаграмме для нагрузки
- * @param output собранная нагрузка пакета (фреймы)
- * @param meta   учётная запись пакета для восстановления потерь
- * @param elicit флаг наличия ack-eliciting фреймов в нагрузке
- * @return       результат сборки (true - нагрузка не пустая)
+ * @param level   уровень шифрования пакета
+ * @param budget  доступно октетов в датаграмме для нагрузки
+ * @param output  собранная нагрузка пакета (фреймы)
+ * @param meta    учётная запись пакета для восстановления потерь
+ * @param elicit  флаг наличия ack-eliciting фреймов в нагрузке
+ * @param limited флаг исчерпанного окна перегрузки (только подтверждения)
+ * @return        результат сборки (true - нагрузка не пустая)
  */
-bool awh::quic::Connection::payload(const level_t level, const size_t budget, string & output, sent_t & meta, bool & elicit) noexcept {
+bool awh::quic::Connection::payload(const level_t level, const size_t budget, string & output, sent_t & meta, bool & elicit, const bool limited) noexcept {
 	// Получаем состояние пространства номеров пакетов
 	auto & item = this->_spaces[static_cast <size_t> (this->space(level))];
 	// Если требуется отправка подтверждения и есть принятые пакеты
@@ -1475,6 +1819,15 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 		frame::serialize::ack(output, frame);
 		// Сбрасываем флаг необходимости отправки подтверждения
 		item.ackElicited = false;
+	}
+	// Если окно перегрузки исчерпано - отправляются только подтверждения (RFC 9002 §7)
+	if(limited){
+		// Если нагрузка меньше минимума для выборки защиты заголовка
+		if(!output.empty() && (output.size() < MIN_PAYLOAD_SIZE))
+			// Дополняем нагрузку фреймами PADDING
+			frame::serialize::padding(output, MIN_PAYLOAD_SIZE - output.size());
+		// Выводим результат сборки
+		return !output.empty();
 	}
 	/**
 	 *  Пока есть CRYPTO-данные для ретрансмиссии и в датаграмме осталось место
@@ -1580,6 +1933,41 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			elicit = true;
 			// Сбрасываем флаг заблокированной отправки данных соединения
 			this->_txDataBlocked = false;
+		}
+		/**
+		 * Пока есть анонсы новых идентификаторов соединения и в датаграмме осталось место
+		 */
+		while(!this->_issueQueue.empty() && (budget > (output.size() + 48))){
+			// Получаем порядковый номер первого анонса очереди
+			const uint64_t seq = this->_issueQueue.front();
+			// Ищем выданный идентификатор по порядковому номеру
+			auto i = this->_issuedCids.find(seq);
+			// Если идентификатор ещё выдан (не выведен из обращения)
+			if(i != this->_issuedCids.end()){
+				// Выполняем сборку фрейма NEW_CONNECTION_ID (RFC 9000 §19.15)
+				frame::serialize::newConnectionId(output, i->second);
+				// Запоминаем управляющий фрейм в учётной записи пакета
+				meta.control.emplace_back(frame_t::NEW_CONNECTION_ID, seq);
+				// Устанавливаем флаг наличия ack-eliciting фреймов
+				elicit = true;
+			}
+			// Удаляем порядковый номер из очереди отправки
+			this->_issueQueue.erase(this->_issueQueue.begin());
+		}
+		/**
+		 * Пока есть выводимые из обращения идентификаторы и в датаграмме осталось место
+		 */
+		while(!this->_retireQueue.empty() && (budget > (output.size() + 16))){
+			// Получаем порядковый номер первого вывода очереди
+			const uint64_t seq = this->_retireQueue.front();
+			// Выполняем сборку фрейма RETIRE_CONNECTION_ID (RFC 9000 §19.16)
+			frame::serialize::single(output, frame_t::RETIRE_CONNECTION_ID, seq);
+			// Запоминаем управляющий фрейм в учётной записи пакета
+			meta.control.emplace_back(frame_t::RETIRE_CONNECTION_ID, seq);
+			// Устанавливаем флаг наличия ack-eliciting фреймов
+			elicit = true;
+			// Удаляем порядковый номер из очереди отправки
+			this->_retireQueue.erase(this->_retireQueue.begin());
 		}
 		/**
 		 * Перебираем список потоков приложения (управляющие фреймы потоков)
@@ -1809,8 +2197,8 @@ size_t awh::quic::Connection::headerSize(const level_t level, const uint64_t len
 	size_t result = (1 + 4 + 1 + this->_dcid.size + 1 + this->_scid.size);
 	// Если пакет уровня Initial
 	if(level == level_t::INITIAL)
-		// Дописываем размер поля длины токена (токен пустой - Retry следующий этап)
-		result += varint::size(0);
+		// Дописываем размер поля длины токена и токена проверки адреса (RFC 9000 §17.2.2)
+		result += (varint::size(this->_token.size()) + this->_token.size());
 	// Дописываем размер поля Length и номера пакета
 	result += (varint::size(length) + pnSize);
 	// Выводим размер заголовка пакета
@@ -1847,8 +2235,8 @@ bool awh::quic::Connection::seal(string & output, const level_t level, string_vi
 	switch(level){
 		// Пакет уровня Initial
 		case level_t::INITIAL: {
-			// Выполняем сборку длинного заголовка пакета Initial
-			if(!packet::serialize::longHeader(header, packet_t::INITIAL, proto::VERSION_1, this->_dcid, this->_scid, "", length, pn, pnSize))
+			// Выполняем сборку длинного заголовка пакета Initial с токеном проверки адреса
+			if(!packet::serialize::longHeader(header, packet_t::INITIAL, proto::VERSION_1, this->_dcid, this->_scid, this->_token, length, pn, pnSize))
 				// Выводим отрицательный результат
 				return false;
 		} break;
@@ -1861,8 +2249,8 @@ bool awh::quic::Connection::seal(string & output, const level_t level, string_vi
 		} break;
 		// Пакет уровня приложения (1-RTT)
 		case level_t::APPLICATION: {
-			// Выполняем сборку короткого заголовка пакета 1-RTT
-			if(!packet::serialize::shortHeader(header, this->_dcid, pn, pnSize, false, false))
+			// Выполняем сборку короткого заголовка пакета 1-RTT с битом фазы ключей (RFC 9001 §6)
+			if(!packet::serialize::shortHeader(header, this->_dcid, pn, pnSize, this->_keyPhase, false))
 				// Выводим отрицательный результат
 				return false;
 		} break;
@@ -1947,6 +2335,17 @@ awh::quic::status_t awh::quic::Connection::peer(quic::params::params_t & params,
 	return this->_handshake.peer(params, error);
 }
 /**
+ * @brief Метод установки проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
+ *
+ * @param mode режим проверки адреса клиента
+ */
+void awh::quic::Connection::retry(const bool mode) noexcept {
+	// Если эндпоинт является сервером и соединение не начато
+	if((this->_endpoint == endpoint_t::SERVER) && (this->_state == state_t::NONE))
+		// Устанавливаем режим проверки адреса клиента
+		this->_retryMode = mode;
+}
+/**
  * @brief Метод начала соединения клиентом
  *
  * @return результат начала соединения (OK/ERROR)
@@ -1964,6 +2363,8 @@ awh::quic::status_t awh::quic::Connection::connect() noexcept {
 	if(!::makeCid(this->_dcid))
 		// Выводим отрицательный результат
 		return status_t::ERROR;
+	// Запоминаем исходный DCID первого пакета Initial (RFC 9000 §7.3)
+	this->_odcid = this->_dcid;
 	// Выполняем вывод ключей уровня Initial из DCID (RFC 9001 §5.2)
 	if(!this->_handshake.initial(this->_dcid))
 		// Выводим отрицательный результат
@@ -2018,29 +2419,165 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 	 *  Перебираем коалесцированные пакеты датаграммы (RFC 9000 §12.2)
 	 */
 	while(offset < buffer.size()){
+		// Указатель на начало очередного пакета
+		const uint8_t * bytes = (reinterpret_cast <const uint8_t *> (buffer.data()) + offset);
+		// Количество доступных октетов пакета
+		const size_t avail = (buffer.size() - offset);
+		// Если пакет с длинным заголовком содержит поле версии (инварианты RFC 8999)
+		if(((bytes[0] & 0x80) != 0) && (avail >= 7)){
+			// Извлекаем версию протокола
+			const uint32_t version = ((static_cast <uint32_t> (bytes[1]) << 24) | (static_cast <uint32_t> (bytes[2]) << 16) |
+			                          (static_cast <uint32_t> (bytes[3]) << 8) | static_cast <uint32_t> (bytes[4]));
+			// Если версия пакета не поддерживается
+			if((version != proto::VERSION_NEGOTIATION) && (version != proto::VERSION_1)){
+				// Если сервер принял первый пакет достаточного размера (RFC 9000 §5.2.2/§6.1)
+				if((this->_endpoint == endpoint_t::SERVER) && (this->_state == state_t::NONE) && (size >= proto::MIN_INITIAL_SIZE)){
+					// Извлекаем длину идентификатора соединения получателя (инварианты RFC 8999)
+					const size_t dcidSize = static_cast <size_t> (bytes[5]);
+					// Если идентификатор получателя с октетом длины отправителя помещаются в пакет
+					if((dcidSize <= proto::MAX_CID_SIZE) && (avail >= (7 + dcidSize))){
+						// Извлекаем длину идентификатора соединения отправителя
+						const size_t scidSize = static_cast <size_t> (bytes[6 + dcidSize]);
+						// Если идентификатор отправителя помещается в пакет
+						if((scidSize <= proto::MAX_CID_SIZE) && (avail >= (7 + dcidSize + scidSize))){
+							// Идентификатор соединения получателя пакета Version Negotiation
+							cid_t dcid;
+							// Идентификатор соединения отправителя пакета Version Negotiation
+							cid_t scid;
+							// Устанавливаем длину идентификатора получателя (SCID пакета клиента)
+							dcid.size = scidSize;
+							// Копируем данные идентификатора получателя
+							::memcpy(dcid.data, bytes + 7 + dcidSize, scidSize);
+							// Устанавливаем длину идентификатора отправителя (DCID пакета клиента)
+							scid.size = dcidSize;
+							// Копируем данные идентификатора отправителя
+							::memcpy(scid.data, bytes + 6, dcidSize);
+							// Поддерживаемые локальным эндпоинтом версии
+							static const uint32_t versions[] = {proto::VERSION_1};
+							// Очищаем буфер датаграммы без состояния
+							this->_stateless.clear();
+							// Выполняем сборку пакета Version Negotiation (RFC 9000 §6.1)
+							packet::serialize::versionNegotiation(this->_stateless, dcid, scid, versions, 1);
+						}
+					}
+				}
+				// Прекращаем разбор датаграммы - границы пакета неизвестной версии ненадёжны
+				break;
+			}
+		}
 		// Разобранный заголовок пакета
 		packet::header_t header;
 		// Код ошибки транспорта разбора заголовка
 		error_t error = error_t::NO_ERROR;
 		// Выполняем разбор заголовка очередного пакета
-		if(packet::parser::header(reinterpret_cast <const uint8_t *> (buffer.data()) + offset, buffer.size() - offset, this->_scid.size, header, error) != status_t::OK)
+		if(packet::parser::header(bytes, avail, this->_scid.size, header, error) != status_t::OK)
 			// Прекращаем разбор датаграммы - остаток отбрасывается (RFC 9000 §12.2)
 			break;
 		// Если размер пакета не определён либо выходит за пределы датаграммы
 		if((header.size == 0) || (header.size > (buffer.size() - offset)))
 			// Прекращаем разбор датаграммы
 			break;
-		// Если принят пакет Version Negotiation либо Retry (обработка - следующий этап)
-		if((header.type == packet_t::VERSION_NEGOTIATION) || (header.type == packet_t::RETRY))
-			// Прекращаем разбор датаграммы
+		// Если принят пакет Version Negotiation либо Retry
+		if((header.type == packet_t::VERSION_NEGOTIATION) || (header.type == packet_t::RETRY)){
+			// Флаг приёма хотя бы одного пакета от удалённого эндпоинта
+			bool received = false;
+			/**
+			 * Перебираем пространства номеров пакетов
+			 */
+			for(size_t i = 0; i < SPACES; i++)
+				// Определяем наличие принятых пакетов
+				received = (received || this->_spaces[i].hasRx);
+			// Если эндпоинт не является клиентом в ожидании первого ответа (RFC 9000 §6.2/§17.2.5.2)
+			if((this->_endpoint != endpoint_t::CLIENT) || (this->_state != state_t::HANDSHAKING) || received || this->_retried)
+				// Прекращаем разбор датаграммы - пакет игнорируется
+				break;
+			// Если принят пакет Version Negotiation
+			if(header.type == packet_t::VERSION_NEGOTIATION){
+				// Если идентификаторы соединения не соответствуют отправленным (RFC 9000 §6.2)
+				if(!(header.dcid == this->_scid) || !(header.scid == this->_dcid))
+					// Прекращаем разбор датаграммы - пакет игнорируется
+					break;
+				// Список поддерживаемых удалённым эндпоинтом версий
+				vector <uint32_t> versions;
+				// Код ошибки транспорта разбора списка версий
+				error_t verror = error_t::NO_ERROR;
+				// Выполняем разбор списка версий пакета Version Negotiation
+				if(packet::parser::versions(header, versions, verror) != status_t::OK)
+					// Прекращаем разбор датаграммы - пакет игнорируется
+					break;
+				// Флаг наличия локальной версии в списке
+				bool found = false;
+				/**
+				 * Перебираем список поддерживаемых версий
+				 */
+				for(auto & version : versions)
+					// Определяем наличие локальной версии в списке
+					found = (found || (version == proto::VERSION_1));
+				// Если локальная версия присутствует в списке (RFC 9000 §6.2)
+				if(found)
+					// Прекращаем разбор датаграммы - пакет игнорируется
+					break;
+				// Устанавливаем код ошибки согласования версии (RFC 9368 §4)
+				this->_error = error_t::VERSION_NEGOTIATION_ERROR;
+				// Завершаем соединение молча - общей версии нет (RFC 9000 §6.2)
+				this->_state = state_t::DRAINING;
+				// Выводим положительный результат
+				return status_t::OK;
+			}
+			// Токен пакета Retry
+			string_view token;
+			// Тег целостности пакета Retry
+			uint8_t tag[proto::RETRY_TAG_SIZE];
+			// Код ошибки транспорта разбора пакета Retry
+			error_t rerror = error_t::NO_ERROR;
+			// Выполняем разбор нагрузки пакета Retry
+			if(packet::parser::retry(header, token, tag, rerror) != status_t::OK)
+				// Прекращаем разбор датаграммы - пакет игнорируется
+				break;
+			// Если токен пуст либо SCID не изменился (RFC 9000 §17.2.5.2)
+			if(token.empty() || (header.scid == this->_dcid))
+				// Прекращаем разбор датаграммы - пакет игнорируется
+				break;
+			// Выполняем проверку тега целостности пакета Retry (RFC 9001 §5.8)
+			if(!crypto::retryVerify(this->_odcid, string_view(buffer.data() + offset, header.size)))
+				// Прекращаем разбор датаграммы - пакет игнорируется
+				break;
+			// Устанавливаем флаг обработанного пакета Retry
+			this->_retried = true;
+			// Запоминаем SCID пакета Retry для проверки транспортных параметров (RFC 9000 §7.3)
+			this->_retryCid = header.scid;
+			// Устанавливаем токен последующих пакетов Initial
+			this->_token.assign(token);
+			// Обновляем идентификатор соединения удалённого эндпоинта
+			this->_dcid = header.scid;
+			// Выполняем повторный вывод ключей уровня Initial из нового DCID (RFC 9001 §5.2)
+			if(!this->_handshake.initial(this->_dcid))
+				// Выводим отрицательный результат
+				return status_t::ERROR;
+			// Получаем состояние пространства пакетов Initial
+			auto & item = this->_spaces[static_cast <size_t> (space_t::INITIAL)];
+			/**
+			 * Перебираем список отправленных пакетов Initial
+			 */
+			for(auto & packet : item.sent){
+				// Ставим содержимое пакета в очереди повторной отправки (RFC 9002 §6.3)
+				this->requeue(space_t::INITIAL, packet);
+				// Списываем пакет из октетов в полёте
+				this->_inflight -= ::min(this->_inflight, static_cast <uint64_t> (packet.size));
+			}
+			// Очищаем список отправленных пакетов Initial
+			item.sent.clear();
+			// Сбрасываем флаг взведённого таймера детекта потерь
+			item.hasLossTime = false;
+			// Сбрасываем счётчик срабатываний таймера PTO
+			this->_ptoCount = 0;
+			// Прекращаем разбор датаграммы - пакет Retry занимает её целиком
 			break;
-		// Если версия пакета с длинным заголовком не поддерживается
-		if((header.type != packet_t::ONE_RTT) && (header.version != proto::VERSION_1)){
-			// Пропускаем пакет неподдерживаемой версии
-			offset += header.size;
-			// Продолжаем разбор датаграммы
-			continue;
 		}
+		// Если версия пакета с длинным заголовком не поддерживается
+		if((header.type != packet_t::ONE_RTT) && (header.version != proto::VERSION_1))
+			// Прекращаем разбор датаграммы - границы пакета ненадёжны
+			break;
 		// Уровень шифрования пакета
 		level_t level = level_t::INITIAL;
 		/**
@@ -2080,10 +2617,57 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 			if((header.type != packet_t::INITIAL) || (header.dcid.size < MIN_INITIAL_DCID))
 				// Прекращаем разбор датаграммы
 				break;
-			// Выполняем генерацию идентификатора соединения локального эндпоинта
-			if(!::makeCid(this->_scid))
-				// Выводим отрицательный результат
-				return status_t::ERROR;
+			// Если включена проверка адреса клиента через пакет Retry (RFC 9000 §8.1.2)
+			if(this->_retryMode){
+				// Если пакет Initial не содержит токена
+				if(header.token.empty()){
+					// Запоминаем исходный DCID первого пакета Initial клиента
+					this->_odcid = header.dcid;
+					// Выполняем генерацию нового идентификатора соединения пакета Retry
+					if(!::makeCid(this->_retryCid))
+						// Выводим отрицательный результат
+						return status_t::ERROR;
+					// Выделяем память под токен проверки адреса
+					this->_retryToken.resize(RETRY_TOKEN_SIZE);
+					// Выполняем генерацию токена проверки адреса
+					if(::RAND_bytes(reinterpret_cast <uint8_t *> (&this->_retryToken[0]), RETRY_TOKEN_SIZE) != 1)
+						// Выводим отрицательный результат
+						return status_t::ERROR;
+					// Нулевой тег целостности для сборки пакета
+					uint8_t tag[proto::RETRY_TAG_SIZE] = {0};
+					// Очищаем буфер датаграммы без состояния
+					this->_stateless.clear();
+					// Выполняем сборку пакета Retry с нулевым тегом (RFC 9000 §17.2.5)
+					if(!packet::serialize::retry(this->_stateless, proto::VERSION_1, header.scid, this->_retryCid, this->_retryToken, tag))
+						// Выводим отрицательный результат
+						return status_t::ERROR;
+					// Вычисляем тег целостности по пакету без тега (RFC 9001 §5.8)
+					if(!crypto::retryTag(this->_odcid, string_view(this->_stateless.data(), this->_stateless.size() - proto::RETRY_TAG_SIZE), tag)){
+						// Очищаем буфер датаграммы без состояния
+						this->_stateless.clear();
+						// Выводим отрицательный результат
+						return status_t::ERROR;
+					}
+					// Заменяем нулевой тег вычисленным тегом целостности
+					this->_stateless.replace(this->_stateless.size() - proto::RETRY_TAG_SIZE, proto::RETRY_TAG_SIZE, reinterpret_cast <const char *> (tag), proto::RETRY_TAG_SIZE);
+					// Прекращаем разбор датаграммы - соединение продолжится по токену
+					break;
+				}
+				// Если токен пакета Initial не совпадает с выданным (RFC 9000 §8.1.2)
+				if((this->_retryToken.empty()) || (header.token != this->_retryToken))
+					// Прекращаем разбор датаграммы - токен некорректен
+					break;
+				// Используем SCID пакета Retry идентификатором локального эндпоинта
+				this->_scid = this->_retryCid;
+			// Если проверка адреса клиента не выполняется
+			} else {
+				// Выполняем генерацию идентификатора соединения локального эндпоинта
+				if(!::makeCid(this->_scid))
+					// Выводим отрицательный результат
+					return status_t::ERROR;
+				// Запоминаем исходный DCID первого пакета Initial клиента
+				this->_odcid = header.dcid;
+			}
 			// Устанавливаем идентификатор соединения удалённого эндпоинта
 			this->_dcid = header.scid;
 			// Выполняем вывод ключей уровня Initial из DCID клиента (RFC 9001 §5.2)
@@ -2097,7 +2681,14 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 			// Устанавливаем флаг наличия исходного DCID первого пакета Initial клиента
 			this->_params.hasOdcid = true;
 			// Устанавливаем исходный DCID первого пакета Initial клиента (RFC 9000 §7.3)
-			this->_params.odcid = header.dcid;
+			this->_params.odcid = this->_odcid;
+			// Если соединение продолжается после пакета Retry
+			if(this->_retryMode){
+				// Устанавливаем флаг наличия SCID пакета Retry
+				this->_params.hasRetryScid = true;
+				// Устанавливаем SCID пакета Retry (RFC 9000 §7.3)
+				this->_params.retryScid = this->_retryCid;
+			}
 			// Устанавливаем локальные транспортные параметры хендшейк-машине
 			if(!this->_handshake.params(this->_params))
 				// Выводим отрицательный результат
@@ -2126,12 +2717,54 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 		string plain = "";
 		// Код ошибки транспорта снятия защиты
 		error_t oerror = error_t::NO_ERROR;
+		// Флаг возможности сохранения защищённых октетов заголовка
+		const bool snapshot = ((header.pnOffset + proto::MAX_PKT_NUM_SIZE) <= header.size);
+		// Сохраняем защищённые октеты заголовка для повторных попыток расшифровки
+		uint8_t guarded[1 + proto::MAX_PKT_NUM_SIZE] = {0};
+		// Если октеты номера пакета помещаются в датаграмму
+		if(snapshot){
+			// Копируем первый октет пакета
+			guarded[0] = static_cast <uint8_t> (buffer[offset]);
+			// Копируем октеты номера пакета
+			::memcpy(guarded + 1, buffer.data() + offset + header.pnOffset, proto::MAX_PKT_NUM_SIZE);
+		}
 		// Выполняем снятие защиты пакета: защита заголовка и AEAD-расшифровка
 		if(crypto::open(reinterpret_cast <uint8_t *> (buffer.data()) + offset, header.size, header.pnOffset, (item.hasRx ? item.largestRx : 0), * keys, pn, plain, oerror) != status_t::OK){
-			// Пропускаем повреждённый либо чужой пакет (RFC 9000 §12.2)
-			offset += header.size;
-			// Продолжаем разбор датаграммы
-			continue;
+			// Флаг успешного снятия защиты ключами другой фазы
+			bool unsealed = false;
+			// Если пакет уровня приложения и хендшейк подтверждён (RFC 9001 §6)
+			if((level == level_t::APPLICATION) && this->_confirmed && snapshot){
+				// Если выведены ключи следующей фазы
+				if(this->_keysReady){
+					// Восстанавливаем первый защищённый октет пакета
+					buffer[offset] = static_cast <char> (guarded[0]);
+					// Восстанавливаем защищённые октеты номера пакета
+					::memcpy(&buffer[offset + header.pnOffset], guarded + 1, proto::MAX_PKT_NUM_SIZE);
+					// Выполняем снятие защиты ключами следующей фазы (обновление ключей пиром)
+					if(crypto::open(reinterpret_cast <uint8_t *> (buffer.data()) + offset, header.size, header.pnOffset, (item.hasRx ? item.largestRx : 0), this->_nextRead, pn, plain, oerror) == status_t::OK){
+						// Выполняем переключение на следующую фазу ключей (RFC 9001 §6.2)
+						this->promote();
+						// Устанавливаем флаг успешного снятия защиты
+						unsealed = true;
+					}
+				}
+				// Если снятие защиты не выполнено и есть ключи предыдущей фазы
+				if(!unsealed && this->_hasPrevRead){
+					// Восстанавливаем первый защищённый октет пакета
+					buffer[offset] = static_cast <char> (guarded[0]);
+					// Восстанавливаем защищённые октеты номера пакета
+					::memcpy(&buffer[offset + header.pnOffset], guarded + 1, proto::MAX_PKT_NUM_SIZE);
+					// Выполняем снятие защиты ключами предыдущей фазы (отставший пакет)
+					unsealed = (crypto::open(reinterpret_cast <uint8_t *> (buffer.data()) + offset, header.size, header.pnOffset, (item.hasRx ? item.largestRx : 0), this->_prevRead, pn, plain, oerror) == status_t::OK);
+				}
+			}
+			// Если снятие защиты не выполнено ни одним набором ключей
+			if(!unsealed){
+				// Пропускаем повреждённый либо чужой пакет (RFC 9000 §12.2)
+				offset += header.size;
+				// Продолжаем разбор датаграммы
+				continue;
+			}
 		}
 		// Если пакет с таким номером уже был принят
 		if(this->duplicate(this->space(level), pn)){
@@ -2204,6 +2837,8 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 		this->fail(this->_handshake.error());
 	// Перекладываем исходящие CRYPTO-данные в буферы пространств
 	this->pull();
+	// Выводим ключи следующей фазы после подтверждения хендшейка (RFC 9001 §6)
+	this->prepare();
 	// Выводим положительный результат
 	return status_t::OK;
 }
@@ -2217,6 +2852,15 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept {
 	// Очищаем буфер исходящей датаграммы
 	output.clear();
+	// Если подготовлена датаграмма без состояния (Version Negotiation либо Retry)
+	if(!this->_stateless.empty()){
+		// Передаём датаграмму без состояния вызывающему коду
+		output.swap(this->_stateless);
+		// Очищаем буфер датаграммы без состояния
+		this->_stateless.clear();
+		// Выводим положительный результат
+		return true;
+	}
 	// Если соединение не начато
 	if(this->_state == state_t::NONE)
 		// Выводим отрицательный результат
@@ -2229,6 +2873,8 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		this->_idleTime = now;
 	// Перекладываем исходящие CRYPTO-данные в буферы пространств
 	this->pull();
+	// Выводим ключи следующей фазы после подтверждения хендшейка (RFC 9001 §6)
+	this->prepare();
 	// Если завершение соединения поставлено в очередь и ещё не отправлено
 	if(this->_closeQueued && !this->_closeSent){
 		// Список уровней шифрования в порядке убывания предпочтения
@@ -2295,6 +2941,8 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	vector <spec_t> specs;
 	// Оценка занятого размера датаграммы
 	size_t used = 0;
+	// Флаг исчерпанного окна перегрузки (RFC 9002 §7)
+	const bool limited = ((this->_inflight >= this->_cwnd) && (this->_probes == 0));
 	/**
 	 * Перебираем список уровней шифрования
 	 */
@@ -2312,7 +2960,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		// Устанавливаем уровень шифрования пакета
 		spec.level = level;
 		// Выполняем сборку нагрузки пакета уровня
-		if(!this->payload(level, MAX_DATAGRAM_SIZE - used - OVERHEAD_RESERVE, spec.payload, spec.meta, spec.elicit))
+		if(!this->payload(level, MAX_DATAGRAM_SIZE - used - OVERHEAD_RESERVE, spec.payload, spec.meta, spec.elicit, limited))
 			// Переходим к следующему уровню
 			continue;
 		// Учитываем оценку размера пакета: заголовок + нагрузка + тег AEAD
@@ -2373,6 +3021,8 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	}
 	// Флаг наличия пакета Handshake в датаграмме
 	bool handshake = false;
+	// Флаг наличия ack-eliciting пакетов в датаграмме
+	bool elicited = false;
 	/**
 	 * Перебираем список собранных нагрузок
 	 */
@@ -2383,6 +3033,8 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		auto & item = this->_spaces[static_cast <size_t> (this->space(spec.level))];
 		// Запоминаем номер отправляемого пакета
 		spec.meta.pn = item.txPn;
+		// Смещение начала пакета в буфере датаграммы
+		const size_t start = output.size();
 		// Выполняем сборку и защиту пакета уровня
 		if(!this->seal(output, spec.level, spec.payload))
 			// Выводим отрицательный результат
@@ -2391,14 +3043,24 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		if(spec.elicit){
 			// Устанавливаем время отправки пакета
 			spec.meta.time = now;
+			// Устанавливаем размер пакета для congestion control
+			spec.meta.size = (output.size() - start);
+			// Учитываем отправленный пакет в октетах в полёте (RFC 9002 §B.2)
+			this->_inflight += spec.meta.size;
 			// Добавляем учётную запись в список отправленных пакетов
 			item.sent.push_back(::move(spec.meta));
 			// Устанавливаем время отправки последнего ack-eliciting пакета
 			item.lastElicited = now;
 			// Устанавливаем флаг наличия отправленных ack-eliciting пакетов
 			item.hasElicited = true;
+			// Устанавливаем флаг наличия ack-eliciting пакетов в датаграмме
+			elicited = true;
 		}
 	}
+	// Если отправлен зондирующий пакет сверх окна перегрузки (RFC 9002 §7.5)
+	if(elicited && (this->_probes > 0))
+		// Списываем разрешение на зондирующий пакет
+		this->_probes--;
 	// Если клиент отправил первый пакет Handshake
 	if((this->_endpoint == endpoint_t::CLIENT) && handshake && (this->_handshake.encryption(level_t::INITIAL) != nullptr))
 		// Сбрасываем ключи уровня Initial (RFC 9001 §4.9.1)
@@ -2507,9 +3169,122 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
 		if(this->_ptoCount < MAX_PTO_COUNT)
 			// Увеличиваем счётчик срабатываний таймера PTO (RFC 9002 §6.2.1)
 			this->_ptoCount++;
+		// Разрешаем отправку зондирующих пакетов сверх окна перегрузки (RFC 9002 §7.5)
+		this->_probes = PTO_PROBES;
 		// Ставим зондирующие данные пространства в очередь отправки
 		this->probe(expired);
 	}
+}
+/**
+ * @brief Метод инициирования обновления ключей уровня приложения (RFC 9001 §6)
+ *
+ * @return результат инициирования (OK/ERROR)
+ */
+awh::quic::status_t awh::quic::Connection::rekey() noexcept {
+	// Если соединение не установлено, хендшейк не подтверждён либо ключи не выведены
+	if((this->_state != state_t::CONNECTED) || !this->_confirmed || !this->_keysReady)
+		// Выводим отрицательный результат
+		return status_t::ERROR;
+	// Получаем состояние пространства пакетов приложения
+	const auto & item = this->_spaces[static_cast <size_t> (space_t::APPLICATION)];
+	// Если пакет текущей фазы ещё не подтверждён (RFC 9001 §6.1)
+	if(!item.hasAcked || (item.largestAcked < this->_phaseTx))
+		// Выводим отрицательный результат
+		return status_t::ERROR;
+	// Выполняем переключение на следующую фазу ключей
+	this->promote();
+	// Выводим положительный результат
+	return status_t::OK;
+}
+/**
+ * @brief Метод получения бита фазы ключей уровня приложения (RFC 9001 §6)
+ *
+ * @return бит фазы ключей
+ */
+bool awh::quic::Connection::phase() const noexcept {
+	// Выводим бит фазы ключей уровня приложения
+	return this->_keyPhase;
+}
+/**
+ * @brief Метод ротации идентификатора соединения удалённого эндпоинта (RFC 9000 §5.1.1)
+ *
+ * @return результат ротации (false - неиспользованных идентификаторов нет)
+ */
+bool awh::quic::Connection::rotate() noexcept {
+	// Если соединение не установлено
+	if(this->_state != state_t::CONNECTED)
+		// Выводим отрицательный результат
+		return false;
+	// Порядковый номер неиспользованного идентификатора удалённого эндпоинта
+	uint64_t next = 0;
+	// Флаг наличия неиспользованного идентификатора
+	bool found = false;
+	/**
+	 * Перебираем список идентификаторов удалённого эндпоинта
+	 */
+	for(auto & item : this->_remoteCids){
+		// Если найден первый неиспользованный идентификатор
+		if(!item.used && !found){
+			// Запоминаем порядковый номер неиспользованного идентификатора
+			next = item.seq;
+			// Устанавливаем флаг наличия неиспользованного идентификатора
+			found = true;
+		}
+	}
+	// Если неиспользованных идентификаторов нет
+	if(!found)
+		// Выводим отрицательный результат
+		return false;
+	// Ставим прежний идентификатор в очередь вывода из обращения (RFC 9000 §5.1.2)
+	this->_retireQueue.push_back(this->_dcidSeq);
+	/**
+	 * Перебираем список идентификаторов удалённого эндпоинта
+	 */
+	for(auto i = this->_remoteCids.begin(); i != this->_remoteCids.end(); ++i){
+		// Если найден прежний идентификатор
+		if(i->seq == this->_dcidSeq){
+			// Удаляем прежний идентификатор из списка
+			this->_remoteCids.erase(i);
+			// Прекращаем перебор
+			break;
+		}
+	}
+	/**
+	 * Перебираем список идентификаторов после удаления прежнего
+	 */
+	for(auto & item : this->_remoteCids){
+		// Если найден новый идентификатор
+		if(item.seq == next){
+			// Переключаем идентификатор соединения удалённого эндпоинта
+			this->_dcid = item.cid;
+			// Обновляем порядковый номер текущего идентификатора
+			this->_dcidSeq = item.seq;
+			// Устанавливаем флаг использования идентификатора
+			item.used = true;
+			// Прекращаем перебор
+			break;
+		}
+	}
+	// Выводим положительный результат
+	return true;
+}
+/**
+ * @brief Метод получения окна перегрузки congestion control (RFC 9002 §7)
+ *
+ * @return окно перегрузки в октетах
+ */
+uint64_t awh::quic::Connection::cwnd() const noexcept {
+	// Выводим окно перегрузки
+	return this->_cwnd;
+}
+/**
+ * @brief Метод получения количества неподтверждённых октетов в полёте
+ *
+ * @return количество неподтверждённых октетов в полёте
+ */
+uint64_t awh::quic::Connection::inflight() const noexcept {
+	// Выводим количество неподтверждённых октетов в полёте
+	return this->_inflight;
 }
 /**
  * @brief Метод завершения соединения приложением (RFC 9000 §10.2)
@@ -2821,6 +3596,11 @@ const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept
  */
 awh::quic::Connection::Connection(const endpoint_t endpoint) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _dcidUpdated(false),
+ _retried(false), _retryMode(false), _token{""}, _retryToken{""}, _stateless{""},
+ _keyPhase(false), _keysReady(false), _hasPrevRead(false), _phaseTx(0),
+ _dcidSeq(0), _retirePrior(0), _issuedSeq(1), _scidRetired(false),
+ _cwnd(INITIAL_WINDOW), _ssthresh(proto::VARINT_MAX), _inflight(0),
+ _recovery(0), _inRecovery(false), _probes(0),
  _confirmed(false), _handshakeDone(false), _pathResponse(false), _pathData{0},
  _closeCode(0), _closeApp(false), _closeQueued(false), _closeSent(false),
  _closeRx(0), _closeThreshold(1), _closeReason{""}, _error(error_t::NO_ERROR),

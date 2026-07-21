@@ -203,6 +203,7 @@ namespace awh {
 			KEY_UPDATE_ERROR          = 0x0E, // Ошибка обновления ключей
 			AEAD_LIMIT_REACHED        = 0x0F, // Достигнут лимит использования AEAD-ключей
 			NO_VIABLE_PATH            = 0x10, // Нет пригодного сетевого пути
+			VERSION_NEGOTIATION_ERROR = 0x11, // Согласование версии не дало общей версии (RFC 9368 §4)
 			CRYPTO_ERROR              = 0x0100 // База диапазона ошибок TLS-хендшейка 0x0100-0x01FF (RFC 9001 §4.8)
 		};
 

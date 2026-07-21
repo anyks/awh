@@ -817,6 +817,25 @@ const awh::quic::crypto::keys_t * awh::quic::Handshake::decryption(const level_t
 	return (item.hasRead ? &item.read : nullptr);
 }
 /**
+ * @brief Метод замены ключей уровня шифрования (RFC 9001 §6)
+ *
+ * @param level уровень шифрования
+ * @param read  ключи снятия защиты входящих пакетов уровня
+ * @param write ключи защиты исходящих пакетов уровня
+ */
+void awh::quic::Handshake::install(const level_t level, const crypto::keys_t & read, const crypto::keys_t & write) noexcept {
+	// Получаем состояние уровня шифрования
+	auto & item = this->_levels[static_cast <size_t> (level)];
+	// Устанавливаем ключи снятия защиты входящих пакетов уровня
+	item.read = read;
+	// Устанавливаем ключи защиты исходящих пакетов уровня
+	item.write = write;
+	// Устанавливаем флаг наличия ключей чтения
+	item.hasRead = true;
+	// Устанавливаем флаг наличия ключей записи
+	item.hasWrite = true;
+}
+/**
  * @brief Метод сброса ключей уровня шифрования (RFC 9001 §4.9)
  *
  * @param level уровень шифрования

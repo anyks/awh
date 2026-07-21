@@ -291,6 +291,18 @@ namespace awh {
 				const crypto::keys_t * decryption(const level_t level) const noexcept;
 			public:
 				/**
+				 * @brief Метод замены ключей уровня шифрования (RFC 9001 §6)
+				 *
+				 * @note Используется слоем соединения при обновлении ключей (key update):
+				 *       ключи уровня APPLICATION заменяются ключами следующей фазы
+				 *
+				 * @param level уровень шифрования
+				 * @param read  ключи снятия защиты входящих пакетов уровня
+				 * @param write ключи защиты исходящих пакетов уровня
+				 */
+				void install(const level_t level, const crypto::keys_t & read, const crypto::keys_t & write) noexcept;
+			public:
+				/**
 				 * @brief Метод сброса ключей уровня шифрования (RFC 9001 §4.9)
 				 *
 				 * @note Ключи Initial сбрасываются после установки ключей Handshake,

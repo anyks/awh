@@ -1233,3 +1233,285 @@ TEST_F(QuicFixture, ConnectionCloseRetransmitTest){
 	// Проверяем что сервер принял завершение соединения
 	ASSERT_EQ(server.state(), connection_t::state_t::DRAINING);
 }
+
+/**
+ * @brief Тест согласования версии протокола (RFC 9000 §6)
+ *
+ */
+TEST_F(QuicFixture, VersionNegotiationTest){
+	// Сертификат сервера в формате PEM
+	std::string certificate = "";
+	// Приватный ключ сервера в формате PEM
+	std::string privateKey = "";
+	// Выполняем генерацию самоподписанного сертификата
+	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT);
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER);
+	// Выполняем подготовку соединения клиента
+	::setup(client, certificate, privateKey, endpoint_t::CLIENT);
+	// Выполняем подготовку соединения сервера
+	::setup(server, certificate, privateKey, endpoint_t::SERVER);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Буфер первой датаграммы клиента
+	std::string datagram = "";
+	// Извлекаем первую датаграмму клиента с пакетом Initial
+	ASSERT_TRUE(client.write(datagram, now));
+	// Подменяем версию пакета на неподдерживаемую (октеты 1-4 длинного заголовка)
+	datagram[1] = static_cast <char> (0x0A);
+	datagram[2] = static_cast <char> (0x0A);
+	datagram[3] = static_cast <char> (0x0A);
+	datagram[4] = static_cast <char> (0x0A);
+	// Продвигаем тестовые часы
+	now += 5;
+	// Передаём датаграмму серверу
+	ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+	// Буфер датаграммы сервера
+	std::string response = "";
+	// Извлекаем датаграмму сервера с пакетом Version Negotiation
+	ASSERT_TRUE(server.write(response, now));
+	// Проверяем что версия пакета сервера - Version Negotiation (октеты 1-4 нулевые)
+	ASSERT_EQ(static_cast <uint8_t> (response[1]), 0x00);
+	ASSERT_EQ(static_cast <uint8_t> (response[2]), 0x00);
+	ASSERT_EQ(static_cast <uint8_t> (response[3]), 0x00);
+	ASSERT_EQ(static_cast <uint8_t> (response[4]), 0x00);
+	// Проверяем что установлен бит длинного заголовка
+	ASSERT_NE(static_cast <uint8_t> (response[0]) & 0x80, 0);
+	/**
+	 * Формируем синтетический пакет Version Negotiation без поддерживаемых клиентом версий:
+	 * идентификаторы соединения соответствуют отправленным клиентом (RFC 9000 §6.2)
+	 */
+	std::string forged = "";
+	// Дописываем первый октет (длинный заголовок с произвольными младшими битами)
+	forged.push_back(static_cast <char> (0xC0));
+	// Дописываем версию Version Negotiation (нулевую)
+	forged.append(4, '\0');
+	// Дописываем длину идентификатора соединения получателя (SCID клиента)
+	forged.push_back(static_cast <char> (client.scid().size));
+	// Дописываем данные идентификатора соединения получателя
+	forged.append(reinterpret_cast <const char *> (client.scid().data), client.scid().size);
+	// Дописываем длину идентификатора соединения отправителя (DCID клиента)
+	forged.push_back(static_cast <char> (client.dcid().size));
+	// Дописываем данные идентификатора соединения отправителя
+	forged.append(reinterpret_cast <const char *> (client.dcid().data), client.dcid().size);
+	// Дописываем единственную неподдерживаемую версию (RFC 9000 §6.2)
+	forged.append("\x0A\x0A\x0A\x0A", 4);
+	// Продвигаем тестовые часы
+	now += 5;
+	// Передаём синтетический пакет Version Negotiation клиенту
+	ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (forged.data()), forged.size(), now), status_t::OK);
+	// Проверяем что клиент завершил соединение из-за отсутствия общей версии (RFC 9000 §6.2)
+	ASSERT_EQ(client.state(), connection_t::state_t::DRAINING);
+	// Проверяем код ошибки согласования версии
+	ASSERT_EQ(client.error(), error_t::VERSION_NEGOTIATION_ERROR);
+}
+
+/**
+ * @brief Тест проверки адреса клиента через пакет Retry (RFC 9000 §8.1.2)
+ *
+ */
+TEST_F(QuicFixture, RetryTest){
+	// Сертификат сервера в формате PEM
+	std::string certificate = "";
+	// Приватный ключ сервера в формате PEM
+	std::string privateKey = "";
+	// Выполняем генерацию самоподписанного сертификата
+	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT);
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER);
+	// Выполняем подготовку соединения клиента
+	::setup(client, certificate, privateKey, endpoint_t::CLIENT);
+	// Выполняем подготовку соединения сервера
+	::setup(server, certificate, privateKey, endpoint_t::SERVER);
+	// Включаем проверку адреса клиента через пакет Retry
+	server.retry(true);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Буфер первой датаграммы клиента
+	std::string datagram = "";
+	// Извлекаем первую датаграмму клиента с пакетом Initial без токена
+	ASSERT_TRUE(client.write(datagram, now));
+	// Продвигаем тестовые часы
+	now += 5;
+	// Передаём датаграмму серверу
+	ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+	// Проверяем что сервер не начал соединение (ожидает токен)
+	ASSERT_EQ(server.state(), connection_t::state_t::NONE);
+	// Буфер датаграммы сервера
+	std::string retry = "";
+	// Извлекаем датаграмму сервера с пакетом Retry
+	ASSERT_TRUE(server.write(retry, now));
+	// Проверяем что тип пакета сервера - Retry (биты 4-5 первого октета)
+	ASSERT_EQ((static_cast <uint8_t> (retry[0]) & 0x30) >> 4, 0x03);
+	// Продвигаем тестовые часы
+	now += 5;
+	// Передаём пакет Retry клиенту
+	ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (retry.data()), retry.size(), now), status_t::OK);
+	// Выполняем полное установление соединения после обработки Retry
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем состояние соединения обоих эндпоинтов
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест обновления ключей уровня приложения (RFC 9001 §6)
+ *
+ */
+TEST_F(QuicFixture, KeyUpdateTest){
+	// Сертификат сервера в формате PEM
+	std::string certificate = "";
+	// Приватный ключ сервера в формате PEM
+	std::string privateKey = "";
+	// Выполняем генерацию самоподписанного сертификата
+	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT);
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER);
+	// Выполняем подготовку соединения клиента
+	::setup(client, certificate, privateKey, endpoint_t::CLIENT);
+	// Выполняем подготовку соединения сервера
+	::setup(server, certificate, privateKey, endpoint_t::SERVER);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Ставим первые данные в очередь отправки
+	ASSERT_EQ(client.send(sid, "phase zero", false), status_t::OK);
+	// Выполняем обмен датаграммами
+	::pump(client, server, now);
+	// Запоминаем бит фазы ключей клиента до обновления
+	const bool phase = client.phase();
+	// Выполняем обновление ключей клиентом (RFC 9001 §6)
+	ASSERT_EQ(client.rekey(), status_t::OK);
+	// Проверяем что бит фазы ключей переключился
+	ASSERT_NE(client.phase(), phase);
+	// Ставим вторые данные в очередь отправки в новой фазе ключей
+	ASSERT_EQ(client.send(sid, " phase one", false), status_t::OK);
+	// Выполняем обмен датаграммами
+	::pump(client, server, now);
+	// Проверяем что сервер переключился на новую фазу ключей
+	ASSERT_EQ(server.phase(), client.phase());
+	// Принятые данные потока
+	std::string received = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Выдаём собранные данные потока на сервере
+	ASSERT_EQ(server.receive(sid, received, fin), status_t::OK);
+	// Проверяем данные обеих фаз ключей
+	ASSERT_EQ(received, "phase zero phase one");
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест ротации идентификатора соединения (RFC 9000 §5.1.1)
+ *
+ */
+TEST_F(QuicFixture, ConnectionIdRotationTest){
+	// Сертификат сервера в формате PEM
+	std::string certificate = "";
+	// Приватный ключ сервера в формате PEM
+	std::string privateKey = "";
+	// Выполняем генерацию самоподписанного сертификата
+	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT);
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER);
+	// Выполняем подготовку соединения клиента
+	::setup(client, certificate, privateKey, endpoint_t::CLIENT);
+	// Выполняем подготовку соединения сервера
+	::setup(server, certificate, privateKey, endpoint_t::SERVER);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Запоминаем идентификатор соединения удалённого эндпоинта до ротации
+	const cid_t before = client.dcid();
+	// Выполняем ротацию идентификатора соединения удалённого эндпоинта
+	ASSERT_TRUE(client.rotate());
+	// Запоминаем идентификатор соединения удалённого эндпоинта после ротации
+	const cid_t after = client.dcid();
+	// Проверяем что идентификатор соединения изменился
+	ASSERT_FALSE(before == after);
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Ставим данные в очередь отправки с новым идентификатором соединения
+	ASSERT_EQ(client.send(sid, "rotated cid", false), status_t::OK);
+	// Выполняем обмен датаграммами
+	::pump(client, server, now);
+	// Принятые данные потока
+	std::string received = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Выдаём собранные данные потока на сервере
+	ASSERT_EQ(server.receive(sid, received, fin), status_t::OK);
+	// Проверяем данные потока после ротации идентификатора
+	ASSERT_EQ(received, "rotated cid");
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест инициализации окна перегрузки congestion control (RFC 9002 §7.2)
+ *
+ */
+TEST_F(QuicFixture, CongestionControlTest){
+	// Сертификат сервера в формате PEM
+	std::string certificate = "";
+	// Приватный ключ сервера в формате PEM
+	std::string privateKey = "";
+	// Выполняем генерацию самоподписанного сертификата
+	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT);
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER);
+	// Выполняем подготовку соединения клиента
+	::setup(client, certificate, privateKey, endpoint_t::CLIENT);
+	// Выполняем подготовку соединения сервера
+	::setup(server, certificate, privateKey, endpoint_t::SERVER);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Проверяем начальное окно перегрузки до отправки (RFC 9002 §7.2)
+	ASSERT_EQ(client.cwnd(), 12000);
+	// Проверяем отсутствие октетов в полёте до отправки
+	ASSERT_EQ(client.inflight(), 0);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Ставим данные в очередь отправки
+	ASSERT_EQ(client.send(sid, "congestion window data", true), status_t::OK);
+	// Выполняем обмен датаграммами
+	::pump(client, server, now);
+	// Проиграем тестовые часы для подтверждения всех пакетов
+	::pump(client, server, now);
+	// Проверяем что подтверждённые данные списаны из полёта
+	ASSERT_EQ(client.inflight(), 0);
+	// Проверяем что окно перегрузки выросло в замедленном старте (RFC 9002 §7.3.1)
+	ASSERT_GT(client.cwnd(), 12000);
+}

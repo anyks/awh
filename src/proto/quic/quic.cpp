@@ -281,6 +281,10 @@ string_view awh::quic::errorName(const error_t code) noexcept {
 		case static_cast <uint64_t> (error_t::NO_VIABLE_PATH):
 			// Выводим название кода ошибки
 			return "NO_VIABLE_PATH";
+		// Согласование версии не дало общей версии
+		case static_cast <uint64_t> (error_t::VERSION_NEGOTIATION_ERROR):
+			// Выводим название кода ошибки
+			return "VERSION_NEGOTIATION_ERROR";
 	}
 	// Код ошибки неизвестен
 	return "UNKNOWN_ERROR";
