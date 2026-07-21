@@ -1129,3 +1129,107 @@ TEST_F(QuicFixture, StreamLossTest){
 	ASSERT_EQ(received, "lost stream data");
 	ASSERT_TRUE(fin);
 }
+
+/**
+ * @brief Тест завершения соединения по таймауту простоя (RFC 9000 §10.1)
+ *
+ */
+TEST_F(QuicFixture, ConnectionIdleTimeoutTest){
+	// Сертификат сервера в формате PEM
+	std::string certificate = "";
+	// Приватный ключ сервера в формате PEM
+	std::string privateKey = "";
+	// Выполняем генерацию самоподписанного сертификата
+	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT);
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER);
+	// Транспортные параметры эндпоинтов
+	params::params_t params;
+	// Устанавливаем таймаут простоя соединения в миллисекундах
+	params.maxIdleTimeout = 5000;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	params.initialMaxStreamsBidi = 100;
+	// Выполняем подготовку соединения клиента
+	::configure(client, certificate, privateKey, endpoint_t::CLIENT, params);
+	// Выполняем подготовку соединения сервера
+	::configure(server, certificate, privateKey, endpoint_t::SERVER, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Получаем дедлайн ближайшего события таймера сервера
+	const uint64_t deadline = server.timeout();
+	// Проверяем что таймаут простоя взведён
+	ASSERT_GT(deadline, now);
+	// Проверяем что дедлайн не превышает согласованный таймаут простоя
+	ASSERT_LE(deadline, now + 5000);
+	// Обрабатываем таймеры сервера до наступления дедлайна
+	server.tick(deadline - 1);
+	// Проверяем что соединение сервера ещё активно
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Обрабатываем таймеры сервера после наступления дедлайна
+	server.tick(deadline);
+	// Проверяем что соединение сервера завершено молча (RFC 9000 §10.1)
+	ASSERT_EQ(server.state(), connection_t::state_t::DRAINING);
+	// Обрабатываем таймеры клиента после наступления его дедлайна
+	client.tick(client.timeout());
+	// Проверяем что соединение клиента завершено молча
+	ASSERT_EQ(client.state(), connection_t::state_t::DRAINING);
+}
+
+/**
+ * @brief Тест повторной отправки CONNECTION_CLOSE при потере (RFC 9000 §10.2.1)
+ *
+ */
+TEST_F(QuicFixture, ConnectionCloseRetransmitTest){
+	// Сертификат сервера в формате PEM
+	std::string certificate = "";
+	// Приватный ключ сервера в формате PEM
+	std::string privateKey = "";
+	// Выполняем генерацию самоподписанного сертификата
+	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT);
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER);
+	// Выполняем подготовку соединения клиента
+	::setup(client, certificate, privateKey, endpoint_t::CLIENT);
+	// Выполняем подготовку соединения сервера
+	::setup(server, certificate, privateKey, endpoint_t::SERVER);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Выполняем завершение соединения клиентом
+	client.close(0x00, "goodbye");
+	// Буфер исходящей датаграммы
+	std::string datagram = "";
+	// Извлекаем датаграмму с фреймом CONNECTION_CLOSE и теряем её (не передаём серверу)
+	ASSERT_TRUE(client.write(datagram, now));
+	// Проверяем что повторная датаграмма не собирается без принятых пакетов
+	ASSERT_FALSE(client.write(datagram, now));
+	// Открываем двунаправленный поток на сервере (сервер не знает о завершении)
+	const uint64_t sid = server.open(false);
+	// Ставим данные сервера в очередь отправки
+	ASSERT_EQ(server.send(sid, "server data", false), status_t::OK);
+	// Извлекаем датаграмму сервера с данными потока
+	ASSERT_TRUE(server.write(datagram, now));
+	// Передаём датаграмму сервера завершающемуся клиенту
+	ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+	// Извлекаем повторную датаграмму с фреймом CONNECTION_CLOSE (RFC 9000 §10.2.1)
+	ASSERT_TRUE(client.write(datagram, now));
+	// Передаём повторную датаграмму серверу
+	ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+	// Проверяем что сервер принял завершение соединения
+	ASSERT_EQ(server.state(), connection_t::state_t::DRAINING);
+}

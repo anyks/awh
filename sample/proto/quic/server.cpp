@@ -155,6 +155,8 @@ int32_t main(int32_t argc, char * argv[]){
 				connection->certificate(certificate, privateKey);
 				// Транспортные параметры сервера
 				quic::params::params_t params;
+				// Устанавливаем таймаут простоя соединения в миллисекундах
+				params.maxIdleTimeout = 30000;
 				// Устанавливаем лимит данных соединения
 				params.initialMaxData = 1048576;
 				// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
@@ -213,16 +215,24 @@ int32_t main(int32_t argc, char * argv[]){
 					/**
 					 * Переходим по всем соединениям клиентов
 					 */
-					for(auto & connection : connections){
+					for(auto i = connections.begin(); i != connections.end();){
 						// Дедлайн ближайшего события таймера соединения
-						const uint64_t timeout = connection.second->timeout();
+						const uint64_t timeout = i->second->timeout();
 						// Если дедлайн таймера соединения наступил
 						if((timeout > 0) && (date >= timeout)){
 							// Выполняем обработку просроченных таймеров соединения
-							connection.second->tick(date);
+							i->second->tick(date);
 							// Отправляем все готовые исходящие датаграммы
-							flush(connection.first, * connection.second);
+							flush(i->first, * i->second);
 						}
+						// Если соединение завершено (таймаут простоя либо закрытие пиром)
+						if(i->second->state() == quic::connection_t::state_t::DRAINING){
+							// Записываем в лог сообщение о завершении соединения
+							log.print("Соединение завершено: ID=%u", log_t::flag_t::INFO, i->first);
+							// Удаляем соединение из списка соединений
+							i = connections.erase(i);
+						// Переходим к следующему соединению
+						} else ++i;
 					}
 				}
 			});

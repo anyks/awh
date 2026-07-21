@@ -191,6 +191,8 @@ namespace awh {
 					uint64_t rxFinal;
 					// Флаг выданного приложению завершения потока (FIN)
 					bool rxFinDelivered;
+					// Количество данных потока, учтённых потреблёнными в flow control соединения
+					uint64_t rxCounted;
 					// Флаг аварийного завершения потока удалённым эндпоинтом (RESET_STREAM)
 					bool rxReset;
 					// Код ошибки приложения принятого фрейма RESET_STREAM
@@ -287,6 +289,10 @@ namespace awh {
 				bool _closeQueued;
 				// Флаг выполненной отправки фрейма CONNECTION_CLOSE
 				bool _closeSent;
+				// Количество принятых пакетов после отправки фрейма CONNECTION_CLOSE
+				uint64_t _closeRx;
+				// Порог принятых пакетов для повторной отправки CONNECTION_CLOSE (RFC 9000 §10.2.1)
+				uint64_t _closeThreshold;
 				// Причина завершения соединения
 				string _closeReason;
 			private:
@@ -295,6 +301,8 @@ namespace awh {
 			private:
 				// Текущее время последнего вызова в миллисекундах
 				uint64_t _now;
+				// Время последнего принятого и обработанного пакета (RFC 9000 §10.1)
+				uint64_t _idleTime;
 			private:
 				// Последняя измеренная задержка приёма-передачи (RFC 9002 §5)
 				uint64_t _latestRtt;
@@ -445,6 +453,19 @@ namespace awh {
 				 * @return      дедлайн таймера PTO в миллисекундах (0 - таймер не взведён)
 				 */
 				uint64_t deadline(const space_t space) const noexcept;
+				/**
+				 * @brief Метод вычисления дедлайна таймаута простоя соединения (RFC 9000 §10.1)
+				 *
+				 * @return дедлайн таймаута простоя в миллисекундах (0 - таймаут не согласован)
+				 */
+				uint64_t idle() const noexcept;
+				/**
+				 * @brief Метод учёта данных потока потреблёнными в flow control соединения
+				 *
+				 * @param stream состояние потока
+				 * @param target учтённое смещение данных потока в октетах
+				 */
+				void consume(stream_data_t & stream, const uint64_t target) noexcept;
 			private:
 				/**
 				 * @brief Метод проверки возможности отправки данных в поток локальным эндпоинтом

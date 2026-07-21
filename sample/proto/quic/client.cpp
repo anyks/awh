@@ -57,6 +57,8 @@ int32_t main(int32_t argc, char * argv[]){
 	connection.serverNameIndication("localhost");
 	// Транспортные параметры клиента
 	quic::params::params_t params;
+	// Устанавливаем таймаут простоя соединения в миллисекундах
+	params.maxIdleTimeout = 30000;
 	// Устанавливаем лимит данных соединения
 	params.initialMaxData = 1048576;
 	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
@@ -187,6 +189,13 @@ int32_t main(int32_t argc, char * argv[]){
 							connection.tick(now());
 							// Отправляем все готовые исходящие датаграммы
 							flush(eid);
+						}
+						// Если соединение завершено (таймаут простоя либо закрытие сервером)
+						if(connection.state() == quic::connection_t::state_t::DRAINING){
+							// Записываем в лог сообщение о завершении соединения
+							log.print("Соединение завершено: ID=%u", log_t::flag_t::INFO, eid);
+							// Завершаем работу приложения
+							::exit(EXIT_SUCCESS);
 						}
 					}
 				});

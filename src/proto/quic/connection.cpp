@@ -78,11 +78,6 @@ namespace {
 	 */
 	static constexpr uint64_t INITIAL_RTT = 333;
 	/**
-	 * @brief Максимальная задержка подтверждения удалённого эндпоинта в миллисекундах (RFC 9000 §18.2)
-	 *
-	 */
-	static constexpr uint64_t MAX_ACK_DELAY = 25;
-	/**
 	 * @brief Предельный показатель экспоненциальной выдержки таймера PTO
 	 *
 	 */
@@ -121,9 +116,9 @@ awh::quic::Connection::Stream::Stream() noexcept :
  txOffset(0), txBuffer{""}, txMax(0), txFin(false), txFinSent(false),
  txReset(false), txResetSent(false), txResetCode(0), txBlocked(false),
  rxOffset(0), rxHigh(0), rxReady{""}, rxMax(0), rxMaxQueued(false),
- rxFin(false), rxFinal(0), rxFinDelivered(false), rxReset(false),
- rxResetCode(0), stopQueued(false), stopSent(false), stopCode(0),
- credited(false) {}
+ rxFin(false), rxFinal(0), rxFinDelivered(false), rxCounted(0),
+ rxReset(false), rxResetCode(0), stopQueued(false), stopSent(false),
+ stopCode(0), credited(false) {}
 
 /**
  * @brief Конструктор состояния пространства номеров пакетов
@@ -521,8 +516,8 @@ uint64_t awh::quic::Connection::interval(const space_t space) const noexcept {
 	uint64_t result = (this->_rttSampled ? (this->_smoothedRtt + ::max(4 * this->_rttVar, GRANULARITY)) : (3 * INITIAL_RTT));
 	// Если пространство пакетов приложения и хендшейк подтверждён (RFC 9002 §6.2.1)
 	if((space == space_t::APPLICATION) && this->_confirmed)
-		// Дописываем максимальную задержку подтверждения удалённого эндпоинта
-		result += MAX_ACK_DELAY;
+		// Дописываем максимальную задержку подтверждения удалённого эндпоинта (RFC 9000 §18.2)
+		result += this->_remote.maxAckDelay;
 	// Выводим интервал таймера PTO
 	return result;
 }
@@ -541,6 +536,42 @@ uint64_t awh::quic::Connection::deadline(const space_t space) const noexcept {
 		return 0;
 	// Выводим дедлайн: время последней ack-eliciting отправки + интервал с экспоненциальной выдержкой
 	return (item.lastElicited + (this->interval(space) << this->_ptoCount));
+}
+/**
+ * @brief Метод вычисления дедлайна таймаута простоя соединения (RFC 9000 §10.1)
+ *
+ * @return дедлайн таймаута простоя в миллисекундах (0 - таймаут не согласован)
+ */
+uint64_t awh::quic::Connection::idle() const noexcept {
+	// Таймаут простоя локального эндпоинта
+	uint64_t result = this->_params.maxIdleTimeout;
+	// Таймаут простоя удалённого эндпоинта (известен после завершения хендшейка)
+	const uint64_t remote = this->_remote.maxIdleTimeout;
+	// Если таймаут удалённого эндпоинта задан и строже локального (RFC 9000 §10.1)
+	if((remote > 0) && ((result == 0) || (remote < result)))
+		// Устанавливаем таймаут удалённого эндпоинта
+		result = remote;
+	// Если таймаут простоя не согласован либо активности ещё не было
+	if((result == 0) || (this->_idleTime == 0))
+		// Выводим нулевой дедлайн - таймаут отключён
+		return 0;
+	// Выводим дедлайн: таймаут не короче трёх интервалов PTO (RFC 9000 §10.1)
+	return (this->_idleTime + ::max(result, 3 * this->interval(space_t::APPLICATION)));
+}
+/**
+ * @brief Метод учёта данных потока потреблёнными в flow control соединения
+ *
+ * @param stream состояние потока
+ * @param target учтённое смещение данных потока в октетах
+ */
+void awh::quic::Connection::consume(stream_data_t & stream, const uint64_t target) noexcept {
+	// Если смещение ещё не учтено потреблённым (защита от повторных фреймов)
+	if(target > stream.rxCounted){
+		// Учитываем неучтённую часть данных потока в flow control соединения
+		this->_rxConsumed += (target - stream.rxCounted);
+		// Продвигаем учтённое смещение данных потока
+		stream.rxCounted = target;
+	}
 }
 /**
  * @brief Метод проверки возможности отправки данных в поток локальным эндпоинтом
@@ -731,7 +762,7 @@ awh::quic::status_t awh::quic::Connection::inputStream(const frame::stream_t & f
 	// Если поток сброшен удалённым эндпоинтом либо прекращён локально - данные отбрасываются
 	if(stream->rxReset || stream->stopQueued || stream->stopSent){
 		// Учитываем отброшенные данные как потреблённые в flow control соединения
-		this->_rxConsumed += delta;
+		this->consume(* stream, stream->rxHigh);
 		// Выводим положительный результат
 		return status_t::OK;
 	}
@@ -1083,9 +1114,20 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 							// Задержка подтверждения удалённого эндпоинта в миллисекундах
 							uint64_t delay = 0;
 							// Если пространство пакетов приложения (RFC 9002 §5.3)
-							if(space == space_t::APPLICATION)
-								// Вычисляем задержку подтверждения с показателем по умолчанию (RFC 9000 §18.2)
-								delay = ((frame.delay << 3) / 1000);
+							if(space == space_t::APPLICATION){
+								// Получаем показатель степени задержки удалённого эндпоинта (RFC 9000 §18.2)
+								const uint64_t exponent = this->_remote.ackDelayExponent;
+								// Если сдвиг не переполняет разрядность
+								if(frame.delay <= (proto::VARINT_MAX >> exponent))
+									// Вычисляем задержку подтверждения в миллисекундах
+									delay = ((frame.delay << exponent) / 1000);
+								// Задержка закодирована некорректно - используем максимальную
+								else delay = this->_remote.maxAckDelay;
+								// Если хендшейк подтверждён - ограничиваем задержку максимумом пира (RFC 9002 §5.3)
+								if(this->_confirmed && (delay > this->_remote.maxAckDelay))
+									// Ограничиваем задержку анонсированным максимумом
+									delay = this->_remote.maxAckDelay;
+							}
 							// Выполняем обновление оценки задержки приёма-передачи
 							this->rtt(this->_now - sentTime, delay);
 						}
@@ -1187,7 +1229,7 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					// Устанавливаем финальный размер потока
 					stream->rxFinal = frame.finalSize;
 					// Учитываем отброшенные данные как потреблённые в flow control соединения
-					this->_rxConsumed += (frame.finalSize - (stream->rxOffset - stream->rxReady.size()));
+					this->consume(* stream, frame.finalSize);
 					// Отбрасываем несобранные фрагменты данных потока
 					stream->rxBuffer.clear();
 					// Отбрасываем собранные данные потока (RFC 9000 §3.2)
@@ -2028,6 +2070,10 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 				continue;
 			}
 		}
+		// Если сервер принял пакет Initial в датаграмме меньше 1200 октетов (RFC 9000 §14.1)
+		if((this->_endpoint == endpoint_t::SERVER) && (header.type == packet_t::INITIAL) && (size < proto::MIN_INITIAL_SIZE))
+			// Отбрасываем датаграмму целиком - защита от амплификации
+			break;
 		// Если сервер принимает первый пакет соединения
 		if((this->_endpoint == endpoint_t::SERVER) && (this->_state == state_t::NONE)){
 			// Если первый пакет не является пакетом Initial либо DCID короче минимума (RFC 9000 §7.2)
@@ -2101,12 +2147,28 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 			// Устанавливаем флаг обновления DCID по первому ответу сервера
 			this->_dcidUpdated = true;
 		}
+		// Если локальный эндпоинт завершил соединение и фрейм CONNECTION_CLOSE уже отправлен
+		if((this->_state == state_t::CLOSING) && this->_closeSent){
+			// Учитываем очередной принятый пакет после отправки завершения
+			this->_closeRx++;
+			// Если порог принятых пакетов достигнут (RFC 9000 §10.2.1)
+			if(this->_closeRx >= this->_closeThreshold){
+				// Сбрасываем счётчик принятых пакетов
+				this->_closeRx = 0;
+				// Удваиваем порог повторной отправки (экспоненциальная выдержка)
+				this->_closeThreshold <<= 1;
+				// Разрешаем повторную отправку фрейма CONNECTION_CLOSE
+				this->_closeSent = false;
+			}
+		}
 		// Регистрируем принятый номер пакета в диапазонах пространства
 		this->record(this->space(level), pn);
 		// Выполняем разбор и диспетчеризацию фреймов нагрузки пакета
 		if(this->frames(level, reinterpret_cast <const uint8_t *> (plain.data()), plain.size()) != status_t::OK)
 			// Выводим отрицательный результат
 			return status_t::ERROR;
+		// Обновляем время последнего принятого и обработанного пакета (RFC 9000 §10.1)
+		this->_idleTime = this->_now;
 		// Если сервер успешно обработал первый пакет Handshake
 		if((this->_endpoint == endpoint_t::SERVER) && (level == level_t::HANDSHAKE) && (this->_handshake.decryption(level_t::INITIAL) != nullptr))
 			// Сбрасываем ключи уровня Initial (RFC 9001 §4.9.1)
@@ -2161,6 +2223,10 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		return false;
 	// Обновляем текущее время последнего вызова
 	this->_now = now;
+	// Если активности на соединении ещё не было
+	if(this->_idleTime == 0)
+		// Начинаем отсчёт таймаута простоя с первой отправки (RFC 9000 §10.1)
+		this->_idleTime = now;
 	// Перекладываем исходящие CRYPTO-данные в буферы пространств
 	this->pull();
 	// Если завершение соединения поставлено в очередь и ещё не отправлено
@@ -2369,6 +2435,12 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
 			// Устанавливаем дедлайн таймера PTO
 			result = pto;
 	}
+	// Получаем дедлайн таймаута простоя соединения (RFC 9000 §10.1)
+	const uint64_t idle = this->idle();
+	// Если таймаут простоя согласован и является ближайшим событием
+	if((idle > 0) && ((result == 0) || (idle < result)))
+		// Устанавливаем дедлайн таймаута простоя
+		result = idle;
 	// Выводим дедлайн ближайшего события таймера
 	return result;
 }
@@ -2384,6 +2456,15 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
 		return;
 	// Обновляем текущее время последнего вызова
 	this->_now = now;
+	// Получаем дедлайн таймаута простоя соединения (RFC 9000 §10.1)
+	const uint64_t idle = this->idle();
+	// Если таймаут простоя соединения истёк
+	if((idle > 0) && (idle <= now)){
+		// Завершаем соединение молча без отправки фреймов (RFC 9000 §10.1)
+		this->_state = state_t::DRAINING;
+		// Выходим из метода
+		return;
+	}
 	// Флаг выполненного детекта потерь
 	bool detected = false;
 	/**
@@ -2571,6 +2652,8 @@ awh::quic::status_t awh::quic::Connection::receive(const uint64_t sid, string & 
 	if(!stream.rxReady.empty()){
 		// Учитываем выданные данные в flow control соединения
 		this->_rxConsumed += stream.rxReady.size();
+		// Продвигаем учтённое смещение данных потока
+		stream.rxCounted += stream.rxReady.size();
 		// Дописываем собранные данные в выходной буфер
 		output.append(stream.rxReady);
 		// Очищаем буфер выдачи приложению
@@ -2660,7 +2743,7 @@ void awh::quic::Connection::stop(const uint64_t sid, const uint64_t code) noexce
 	// Устанавливаем код ошибки приложения фрейма STOP_SENDING
 	stream.stopCode = code;
 	// Учитываем отброшенные данные как потреблённые в flow control соединения
-	this->_rxConsumed += (stream.rxHigh - (stream.rxOffset - stream.rxReady.size()));
+	this->consume(stream, stream.rxHigh);
 	// Отбрасываем несобранные фрагменты данных потока
 	stream.rxBuffer.clear();
 	// Отбрасываем собранные данные потока
@@ -2740,7 +2823,8 @@ awh::quic::Connection::Connection(const endpoint_t endpoint) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _dcidUpdated(false),
  _confirmed(false), _handshakeDone(false), _pathResponse(false), _pathData{0},
  _closeCode(0), _closeApp(false), _closeQueued(false), _closeSent(false),
- _closeReason{""}, _error(error_t::NO_ERROR), _now(0), _latestRtt(0),
+ _closeRx(0), _closeThreshold(1), _closeReason{""}, _error(error_t::NO_ERROR),
+ _now(0), _idleTime(0), _latestRtt(0),
  _minRtt(0), _smoothedRtt(0), _rttVar(0), _rttSampled(false), _ptoCount(0),
  _handshake(endpoint), _openedBidi(0), _openedUni(0), _maxBidiRemote(0),
  _maxUniRemote(0), _acceptedBidi(0), _acceptedUni(0), _maxBidiLocal(0),
