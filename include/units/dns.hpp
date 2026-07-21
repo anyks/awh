@@ -77,8 +77,9 @@ namespace awh {
 				/**
 				 * @brief Структура буфера полезной нагрузки
 				 *
+				 * @details Используется для хранения данных DNS-запроса или DNS-ответа.
 				 */
-				typedef struct Payload {
+				typedef struct __AWH_SHARED_EXPORT__ Payload {
 					// Размер буфера
 					size_t size;
 					// Данные буфера
@@ -87,17 +88,18 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Payload() noexcept : size(0), buffer(nullptr) {}
+					explicit Payload() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
 					 */
-					~Payload() noexcept {}
+					~Payload() noexcept = default;
 				} payload_t;
 			private:
 				/**
 				 * @brief Класс активного пакета при выполнении DNS-запросов
 				 *
+				 * @details Хранит информацию о текущем DNS-запросе, включая время жизни, количество попыток и полезную нагрузку.
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Packet {
 					public:
@@ -128,23 +130,29 @@ namespace awh {
 						 *
 						 * @param packet объект параметров пакета
 						 */
-						Packet(Packet && packet) noexcept;
+						explicit Packet(Packet && packet) noexcept;
 						/**
 						 * @brief Конструктор копирования
 						 *
 						 * @param packet объект параметров пакета
 						 */
-						Packet(const Packet & packet) noexcept;
+						explicit Packet(const Packet & packet) noexcept;
 					public:
 						/**
 						 * @brief Конструктор
 						 *
 						 */
 						explicit Packet() noexcept;
+						/**
+						 * @brief Деструктор
+						 *
+						 */
+						~Packet() noexcept = default;
 				} packet_t;
 				/**
 				 * @brief Класс для управления очередью идентификаторов событий
 				 *
+				 * @details Используется для хранения идентификаторов событий DNS-резолвера, которые могут быть повторно использованы.
 				 */
 				typedef class __AWH_SHARED_EXPORT__ SimpleQueue {
 					private:
@@ -191,10 +199,17 @@ namespace awh {
 						 *
 						 */
 						explicit SimpleQueue() noexcept;
+						/**
+						 * @brief Деструктор
+						 *
+						 */
+						~SimpleQueue() noexcept = default;
 				} queue_t;
 				/**
 				 * @brief Класс для управления списком DNS-серверов
 				 *
+				 * @details Хранит список DNS-серверов для выполнения запросов,
+				 *          поддерживает раунд-робин распределение нагрузки и инициализацию из переменных окружения.
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Servers {
 					private:
@@ -246,18 +261,25 @@ namespace awh {
 						 *
 						 */
 						explicit Servers() noexcept;
+						/**
+						 * @brief Деструктор
+						 *
+						 */
+						~Servers() noexcept = default;
 				} servers_t;
 			private:
 				/**
 				 * @brief Структура для управления состоянием DNS-резолвера
 				 *
+				 * @details Хранит настройки DNS-резолвера, включая префикс для переменных окружения,
+				 *          порт, таймаут, очередь идентификаторов событий и список DNS-серверов.
 				 */
-				typedef struct Resolver {
-					// Префикс для переменных окружения
+				typedef struct __AWH_SHARED_EXPORT__ Resolver {
+					// Префикс для переменных окружения (по умолчанию "AWH")
 					string prefix;
 					// UDP-порт DNS-сервера (по умолчанию 53)
 					uint16_t port;
-					// Таймаут ожидания ответа от DNS-сервера (в миллисекундах)
+					// Таймаут ожидания ответа от DNS-сервера (в миллисекундах, по умолчанию 5000)
 					uint32_t delay;
 					// Очередь свободных идентификаторов событий DNS-резолвера (IPv4 и IPv6)
 					queue_t queue;
@@ -275,19 +297,24 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Resolver() noexcept :
-					 prefix{AWH_SHORT_NAME},
-					 port(53), delay(5000),
-					 sourceIPv4(nullptr), sourceIPv6(nullptr) {}
+					explicit Resolver() noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~Resolver() noexcept = default;
 				} resolver_t;
 				/**
 				 * @brief Структура для управления очередью и состоянием DNS-запросов
 				 *
+				 * @details Хранит количество попыток DNS-запроса, максимальное количество пакетов в очереди,
+				 *          очередь пакетов, ожидающих отправки, активные DNS-запросы, ожидающие ответа,
+				 *          и соответствие между идентификатором события и идентификатором запроса.
 				 */
-				typedef struct Transfer {
-					// Количество попыток DNS-запроса
+				typedef struct __AWH_SHARED_EXPORT__ Transfer {
+					// Количество попыток DNS-запроса (по умолчанию 3)
 					uint8_t attempts;
-					// Максимальное количество пакетов в очереди ожидания выполнения запроса к DNS-серверу
+					// Максимальное количество пакетов в очереди ожидания выполнения запроса к DNS-серверу (по умолчанию 200)
 					uint16_t maxPackets;
 					// Очередь пакетов, ожидающих отправки
 					std::queue <packet_t> packets;
@@ -299,7 +326,12 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Transfer() noexcept : attempts(3), maxPackets(200) {}
+					explicit Transfer() noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~Transfer() noexcept = default;
 				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами

@@ -136,6 +136,13 @@ awh::Logging::Payload::Payload(const payload_t & payload) noexcept {
 awh::Logging::Payload::Payload() noexcept : flag(flag_t::NONE), text{""}, date{""} {}
 
 /**
+ * @brief Конструктор
+ *
+ * @param log объект логирования
+ */
+awh::Logging::Sink::Sink(const Logging * log) noexcept : _log(log) {}
+
+/**
  * @brief Метод записи полезной нагрузки в консоль
  *
  * @param payload объект полезной нагрузки
@@ -192,6 +199,13 @@ void awh::Logging::ConsoleSink::write(const payload_t & payload) const noexcept 
 		// Выполняем сброс накопленных логов
 		cout << flush;
 }
+/**
+ * @brief Конструктор
+ *
+ * @param log объект логирования
+ */
+awh::Logging::ConsoleSink::ConsoleSink(const Logging * log) noexcept : Sink(log) {}
+
 /**
  * @brief Метод (пере)открытия постоянного дескриптора записи
  *
@@ -646,6 +660,13 @@ void awh::Logging::FileSink::write(const payload_t & payload) const noexcept {
 	}
 }
 /**
+ * @brief Конструктор
+ *
+ * @param log объект логирования
+ */
+awh::Logging::FileSink::FileSink(const Logging * log) noexcept :
+ Sink(log), _pid(0), _fd(-1), _opened{""}, _size(0) {}
+/**
  * @brief Деструктор
  *
  */
@@ -669,6 +690,7 @@ awh::Logging::FileSink::~FileSink() noexcept {
 		this->_fd = -1;
 	}
 }
+
 /**
  * @brief Метод отправки полезной нагрузки в SysLog
  *
@@ -723,6 +745,13 @@ void awh::Logging::SyslogSink::write(const payload_t & payload) const noexcept {
 	#endif
 }
 /**
+ * @brief Конструктор
+ *
+ * @param log объект логирования
+ */
+awh::Logging::SyslogSink::SyslogSink(const Logging * log) noexcept : Sink(log) {}
+
+/**
  * @brief Метод передачи полезной нагрузки в функцию обратного вызова
  *
  * @param payload объект полезной нагрузки
@@ -735,6 +764,13 @@ void awh::Logging::CallbackSink::write(const payload_t & payload) const noexcept
 		// Рассылаем сообщение лога подписчику
 		self->_callback(payload.flag, payload.text);
 }
+/**
+ * @brief Конструктор
+ *
+ * @param log объект логирования
+ */
+awh::Logging::CallbackSink::CallbackSink(const Logging * log) noexcept : Sink(log) {}
+
 /**
  * @brief Метод перестроения набора приёмников по текущему списку режимов
  *

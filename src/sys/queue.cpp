@@ -31,6 +31,21 @@
 using namespace std;
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::Queue::Range::Range() noexcept :
+ end(0), begin(0), count(0), offset(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Queue::Max::Max() noexcept :
+ memory(AWH_MAX_MEMORY_QUEUE),
+ records(AWH_MAX_RECORDS_QUEUE) {}
+
+/**
  * @brief Метод контроля памяти
  *
  * @note Метод является внутренним и вызывается под уже захваченной блокировкой
@@ -562,9 +577,9 @@ bool awh::Queue::empty(const uint32_t timeout) const noexcept {
 		return (this->_range.count == 0);
 	}
 	// Выполняем блокировку потока для ожидания появления данных
-	std::unique_lock <std::mutex> lock(static_cast <std::mutex &> (this->_mtx));
+	unique_lock <std::mutex> lock(static_cast <std::mutex &> (this->_mtx));
 	// Ожидаем появления записей в очереди либо истечения таймаута
-	this->_cv.wait_for(lock, std::chrono::milliseconds(timeout), [this]() noexcept -> bool {
+	this->_cv.wait_for(lock, chrono::milliseconds(timeout), [this]() noexcept -> bool {
 		// Условием выхода из ожидания является появление хотя бы одной записи
 		return (this->_range.count > 0);
 	});
@@ -737,15 +752,15 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 	 */
 	try {
 		// Объекты блокировки потоков для обеих очередей
-		std::unique_lock <std::mutex> lock1, lock2;
+		unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
 		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
-			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
+			lock1 = unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
-			lock2 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
+			lock2 = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
 			// Выполняем захват обоих мьютексов без риска взаимной блокировки
-			std::lock(lock1, lock2);
+			::lock(lock1, lock2);
 		}
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
@@ -766,7 +781,7 @@ void awh::Queue::swap(queue_t & queue) noexcept {
 		// Выполняем обмен буферами данных
 		this->_buffer.swap(queue._buffer);
 		// Выполняем обмен смещениями чтения данных
-		std::swap(this->_range.offset, queue._range.offset);
+		::swap(this->_range.offset, queue._range.offset);
 		/**
 		 * Выполняем обмен последними итераторами (поля упакованной структуры обмениваем через копирование значений)
 		 */
@@ -899,15 +914,15 @@ awh::Queue & awh::Queue::operator = (queue_t && queue) noexcept {
 	 */
 	try {
 		// Объекты блокировки потоков для обеих очередей
-		std::unique_lock <std::mutex> lock1, lock2;
+		unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
 		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
-			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
+			lock1 = unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
-			lock2 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
+			lock2 = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
 			// Выполняем захват обоих мьютексов без риска взаимной блокировки
-			std::lock(lock1, lock2);
+			::lock(lock1, lock2);
 		}
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
@@ -967,15 +982,15 @@ awh::Queue & awh::Queue::operator = (const queue_t & queue) noexcept {
 	 */
 	try {
 		// Объекты блокировки потоков для обеих очередей
-		std::unique_lock <std::mutex> lock1, lock2;
+		unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
 		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
-			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
+			lock1 = unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
-			lock2 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
+			lock2 = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
 			// Выполняем захват обоих мьютексов без риска взаимной блокировки
-			std::lock(lock1, lock2);
+			::lock(lock1, lock2);
 		}
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
@@ -1027,15 +1042,15 @@ bool awh::Queue::operator == (const queue_t & queue) const noexcept {
 	 */
 	try {
 		// Объекты блокировки потоков для обеих очередей
-		std::unique_lock <std::mutex> lock1, lock2;
+		unique_lock <std::mutex> lock1, lock2;
 		// Если хотя бы для одной из очередей включена потокобезопасность
 		if(this->_mtx.enabled || queue._mtx.enabled){
 			// Готовим блокировку текущей очереди
-			lock1 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
+			lock1 = unique_lock <std::mutex> (static_cast <std::mutex &> (this->_mtx), std::defer_lock);
 			// Готовим блокировку сторонней очереди
-			lock2 = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
+			lock2 = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx), std::defer_lock);
 			// Выполняем захват обоих мьютексов без риска взаимной блокировки
-			std::lock(lock1, lock2);
+			::lock(lock1, lock2);
 		}
 		// Если не совпадает количество записей или смещение чтения данных
 		if((this->_range.count != queue._range.count) || (this->_range.offset != queue._range.offset))
@@ -1081,11 +1096,11 @@ awh::Queue::Queue(queue_t && queue) noexcept {
 	 */
 	try {
 		// Объект блокировки потока сторонней очереди
-		std::unique_lock <std::mutex> lock;
+		unique_lock <std::mutex> lock;
 		// Если для сторонней очереди включена потокобезопасность
 		if(queue._mtx.enabled)
 			// Выполняем блокировку сторонней очереди
-			lock = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
+			lock = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка
@@ -1135,11 +1150,11 @@ awh::Queue::Queue(const queue_t & queue) noexcept {
 	 */
 	try {
 		// Объект блокировки потока сторонней очереди
-		std::unique_lock <std::mutex> lock;
+		unique_lock <std::mutex> lock;
 		// Если для сторонней очереди включена потокобезопасность
 		if(queue._mtx.enabled)
 			// Выполняем блокировку сторонней очереди
-			lock = std::unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
+			lock = unique_lock <std::mutex> (static_cast <std::mutex &> (queue._mtx));
 		// Если объект фреймворка установлен
 		if((queue._fmk != nullptr) && (this->_fmk == nullptr))
 			// Копируем объект фреймворка

@@ -50,8 +50,9 @@ namespace awh {
 			/**
 			 * @brief Структура портов
 			 *
+			 * @details Порт источника и порт назначения процесса.
 			 */
-			typedef struct Ports {
+			typedef struct __AWH_SHARED_EXPORT__ Ports {
 				// Порт источника
 				uint16_t src;
 				// Порт назначения
@@ -60,13 +61,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Ports() noexcept : src(0), dst(0) {}
+				explicit Ports() noexcept;
 			} ports_t;
 			/**
 			 * @brief Структура IP-адресов процесса
 			 *
+			 * @details IP-адрес источника и IP-адрес назначения процесса.
 			 */
-			typedef struct Addresses {
+			typedef struct __AWH_SHARED_EXPORT__ Addresses {
 				// Адрес источника процесса
 				unique_ptr <net::addr_t> src;
 				// Адрес назначения процесса
@@ -75,13 +77,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Addresses() noexcept : src(nullptr), dst(nullptr) {}
+				explicit Addresses() noexcept;
 			} addrs_t;
 			/**
 			 * @brief Структура информационных метаданных процесса
 			 *
+			 * @details Содержит информацию о портах, IP-адресах, семействе протокола и протоколе процесса.
 			 */
-			typedef struct Info {
+			typedef struct __AWH_SHARED_EXPORT__ Info {
 				// Порты процесса
 				ports_t ports;
 				// IP-адреса процесса
@@ -94,9 +97,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Info() noexcept :
-				 family(event::family_t::NONE),
-				 protocol(event::protocol_t::NONE) {}
+				explicit Info() noexcept;
 			} info_t;
 		private:
 			/**

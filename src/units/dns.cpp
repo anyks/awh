@@ -190,7 +190,7 @@ namespace {
 	 * @param b второй IP-адрес
 	 * @return  результат сравнения
 	 */
-	static inline bool sameAddress(const net::addr_t * a, const net::addr_t * b) noexcept {
+	inline bool sameAddress(const net::addr_t * a, const net::addr_t * b) noexcept {
 		// Если один из адресов не передан
 		if((a == nullptr) || (b == nullptr))
 			// Адреса не совпадают
@@ -222,7 +222,7 @@ namespace {
 	 * @param entries список записей домена
 	 * @param record  запись для добавления или обновления
 	 */
-	static inline void upsertEntryIP(vector <EntryIP> & entries, EntryIP && record) noexcept {
+	inline void upsertEntryIP(vector <EntryIP> & entries, EntryIP && record) noexcept {
 		/**
 		 * Выполняем перебор всех записей домена
 		 */
@@ -247,7 +247,7 @@ namespace {
 	 * @param entries список записей IP-адреса
 	 * @param record  запись для добавления или обновления
 	 */
-	static inline void upsertEntryDomain(vector <EntryDomain> & entries, EntryDomain && record) noexcept {
+	inline void upsertEntryDomain(vector <EntryDomain> & entries, EntryDomain && record) noexcept {
 		/**
 		 * Выполняем перебор всех записей IP-адреса
 		 */
@@ -370,7 +370,7 @@ namespace {
 	 * @param ttl время жизни записи (в секундах, 0 — не кэшировать)
 	 * @return    абсолютное время истечения записи (в миллисекундах)
 	 */
-	static inline uint64_t cacheLifeFromTtl(const uint64_t now, const uint32_t ttl) noexcept {
+	inline uint64_t cacheLifeFromTtl(const uint64_t now, const uint32_t ttl) noexcept {
 		// Если время жизни не установлено
 		if(ttl == 0)
 			// Возвращаем нулевое значение (запись без срока истечения)
@@ -1297,6 +1297,12 @@ namespace dns {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::unit::DNS::Payload::Payload() noexcept : size(0), buffer(nullptr) {}
+
+/**
  * @brief Оператор перемещающего присваивания параметров пакета
  *
  * @param packet объект параметров пакета
@@ -1652,6 +1658,21 @@ void awh::unit::DNS::Servers::push(const net::addr_t * server) noexcept {
 awh::unit::DNS::Servers::Servers() noexcept :
  _indexIPv4(0), _indexIPv6(0),
  _initializedIPv4(false), _initializedIPv6(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::DNS::Resolver::Resolver() noexcept :
+ prefix{AWH_SHORT_NAME},
+ port(53), delay(5000),
+ sourceIPv4(nullptr), sourceIPv6(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::DNS::Transfer::Transfer() noexcept : attempts(3), maxPackets(200) {}
 
 /**
  * @brief Метод сохранения дампа DNS-кэша в файл

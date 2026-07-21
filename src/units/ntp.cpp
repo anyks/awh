@@ -598,6 +598,25 @@ awh::unit::NTP::Servers::Servers() noexcept :
  _initializedIPv4(false), _initializedIPv6(false) {}
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::unit::NTP::Client::Client() noexcept :
+ prefix{AWH_SHORT_NAME},
+ port(123), delay(5000),
+ eid(0), source(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::NTP::Transfer::Transfer() noexcept :
+ waiting(false),
+ attempt(0), attempts(3),
+ origSec(0), origFrac(0),
+ version(version_t::V4) {}
+
+/**
  * @brief Метод обработки ошибок событий NTP-клиента
  *
  * @param eid         идентификатор события NTP-клиента

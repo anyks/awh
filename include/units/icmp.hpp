@@ -62,8 +62,11 @@ namespace awh {
 				/**
 				 * @brief Структура ответа от удалённого сервера на запрос ICMP-клиента
 				 *
+				 * @details Содержит информацию о размере ответа, времени выполнения запроса,
+				 *          индексе последовательности запроса, времени жизни пакета (TTL) и адресе удалённого сервера,
+				 *          от которого пришёл ответ на запрос ICMP-клиента.
 				 */
-				typedef struct Response {
+				typedef struct __AWH_SHARED_EXPORT__ Response {
 					// Размер полученного ответа от удалённого сервера на запрос ICMP-клиента
 					size_t size;
 					// Время выполнения запроса в миллисекундах
@@ -78,17 +81,17 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Response() noexcept :
-					 size(0), elapsed(0), sequence(0),
-					 timeToLive(0), address(nullptr) {}
+					explicit Response() noexcept;
 				} response_t;
 			private:
 				/**
 				 * @brief Структура для управления состоянием ICMP-клиента
 				 *
+				 * @details Содержит информацию о времени ожидания ответа от удалённого сервера, идентификаторе события ICMP-клиента,
+				 *          адресе удалённого сервера для выполнения запросов и локальном адресе, с которого выполняется запрос.
 				 */
-				typedef struct Client {
-					// Время ожидания ответа от удалённого сервера (в миллисекундах)
+				typedef struct __AWH_SHARED_EXPORT__ Client {
+					// Время ожидания ответа от удалённого сервера (в миллисекундах, по умолчанию 5000 мс)
 					uint32_t delay;
 					// Идентификатор события для ICMP-клиента
 					event::id_t eid;
@@ -100,15 +103,16 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Client() noexcept :
-                     delay(5000), eid(0),
-					 target(nullptr), source(nullptr) {}
+					explicit Client() noexcept;
 				} client_t;
 				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов ICMP
 				 *
+				 * @details Содержит информацию о текущем идентификаторе запроса, флаге ожидания ответа от удалённого сервера,
+				 *          количестве повторений запросов, номере последовательности последнего отправленного запроса
+				 *          и штампе времени начала запроса.
 				 */
-				typedef struct Transfer {
+				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Активный идентификатор запроса
 					id_t id;
 					// Флаг ожидания ответа от сервера
@@ -123,8 +127,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Transfer() noexcept :
-					  id(0), waiting(false), count(0), sequence(0), timestamp(0) {}
+					explicit Transfer() noexcept;
 				} transfer_t;
 			private:
 				// Объект работы с сетевыми адресами

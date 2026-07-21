@@ -75,6 +75,8 @@ namespace awh {
 				/**
 				 * @brief Структура событий сигналов
 				 *
+				 * @details Для операционной системы не являющейся MS Windows используется структура sigaction для установки обработчика сигнала,
+				 *          которая позволяет передать контекст в обработчик сигнала.
 				 */
 				typedef struct Events {
 					// Перехватчик сигнала SIGINT
@@ -110,8 +112,10 @@ namespace awh {
 				/**
 				 * @brief Структура событий сигналов
 				 *
+				 * @details Для операционной системы MS Windows используется функция signal() для установки обработчика сигнала,
+				 *          которая возвращает указатель на предыдущий обработчик сигнала.
 				 */
-				typedef struct Events {
+				typedef struct __AWH_SHARED_EXPORT__ Events {
 					// Перехватчик сигнала SIGINT
 					SignalHandlerPointer sigint;
 					// Перехватчик сигнала SIGFPE
@@ -128,10 +132,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Events() noexcept :
-					 sigint(nullptr), sigfpe(nullptr),
-					 sigill(nullptr), sigabrt(nullptr),
-					 sigterm(nullptr), sigsegv(nullptr) {}
+					explicit Events() noexcept;
 				} events_t;
 			#endif
 		private:

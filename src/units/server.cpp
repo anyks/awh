@@ -28,6 +28,15 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::unit::Server::ClusterParams::ClusterParams() noexcept :
+ name{""}, rebirth(false), count(0),
+ restartLimit(10), restartWindow(30000),
+ mode(event::mode_t::DISABLED) {}
+
+/**
  * @brief Метод удаления связи клиента с сервером
  *
  * @param cid идентификатор клиентского события

@@ -122,7 +122,7 @@ namespace {
 	 *
 	 * @return уникальный идентификатор
 	 */
-	static unit::icmp_t::id_t identifier() noexcept {
+	unit::icmp_t::id_t identifier() noexcept {
 		// Начинаем с 1 (0 можно оставить как "invalid")
 		static atomic_uint16_t id{1};
 		// Переменная результата
@@ -147,7 +147,7 @@ namespace {
 	 *
 	 * @return ссылка на генератор случайных чисел
 	 */
-	static mt19937 & icmpRng() noexcept {
+	mt19937 & icmpRng() noexcept {
 		// Генератор случайных чисел для текущего потока
 		static thread_local mt19937 generator(::__awh_randev__());
 		// Возвращаем генератор случайных чисел
@@ -159,7 +159,7 @@ namespace {
 	 *
 	 * @return случайное значение полезной нагрузки
 	 */
-	static uint64_t icmpPayload() noexcept {
+	uint64_t icmpPayload() noexcept {
 		// Распределение случайных чисел для полезной нагрузки
 		static thread_local uniform_int_distribution <mt19937::result_type> dist(0, numeric_limits <uint32_t>::max() - 1);
 		// Возвращаем случайное значение полезной нагрузки
@@ -172,7 +172,7 @@ namespace {
 	 * @param sum  текущая сумма
 	 * @param word добавляемое слово
 	 */
-	static void checksumAdd(uint32_t & sum, const uint16_t word) noexcept {
+	void checksumAdd(uint32_t & sum, const uint16_t word) noexcept {
 		// Добавляем слово в сумму
 		sum += word;
 		// Если контрольная сумма достигла предела
@@ -188,7 +188,7 @@ namespace {
 	 * @param buffer буфер данных
 	 * @param size   размер буфера
 	 */
-	static void checksumAdd(uint32_t & sum, const void * buffer, const size_t size) noexcept {
+	void checksumAdd(uint32_t & sum, const void * buffer, const size_t size) noexcept {
 		// Если данные переданы верные
 		if((buffer != nullptr) && (size > 0)){
 			// Указатель на данные буфера
@@ -218,7 +218,7 @@ namespace {
 	 * @param size   размер ICMP-сообщения
 	 * @return       подсчитанная контрольная сумма
 	 */
-	static uint16_t checksum6(const uint8_t src[16], const uint8_t dst[16], const void * buffer, const size_t size) noexcept {
+	uint16_t checksum6(const uint8_t src[16], const uint8_t dst[16], const void * buffer, const size_t size) noexcept {
 		// Контрольная сумма расчёта
 		uint32_t sum = 0;
 		// Добавляем адреса и длину псевдозаголовка IPv6
@@ -251,7 +251,7 @@ namespace {
 	 * @param size   размер данных для подсчёта
 	 * @return       подсчитанная контрольная сумма
 	 */
-	static uint16_t checksum(const void * buffer, const size_t size) noexcept {
+	uint16_t checksum(const void * buffer, const size_t size) noexcept {
 		// Переменная результата
 		uint16_t result = 0;
 		// Если данные переданы верные
@@ -359,6 +359,29 @@ namespace dns {
 		return ips;
 	}
 };
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::ICMP::Response::Response() noexcept :
+ size(0), elapsed(0), sequence(0),
+ timeToLive(0), address(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::ICMP::Client::Client() noexcept :
+ delay(5000), eid(0),
+ target(nullptr), source(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::ICMP::Transfer::Transfer() noexcept :
+ id(0), waiting(false), count(0), sequence(0), timestamp(0) {}
 
 /**
  * @brief Метод уничтожения события ICMP-клиента

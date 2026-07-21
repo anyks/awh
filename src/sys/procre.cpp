@@ -188,6 +188,26 @@ using namespace std;
 #endif
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::Process_Resolver::Ports::Ports() noexcept : src(0), dst(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Process_Resolver::Addresses::Addresses() noexcept : src(nullptr), dst(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Process_Resolver::Info::Info() noexcept :
+ family(event::family_t::NONE),
+ protocol(event::protocol_t::NONE) {}
+
+/**
  * @brief Метод запуска процесса сканирования активных процессов и получения информации о них
  *
  */

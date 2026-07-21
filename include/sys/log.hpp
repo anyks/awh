@@ -127,6 +127,7 @@ namespace awh {
 			/**
 			 * @brief Класс полезной нагрузки
 			 *
+			 * @details Полезная нагрузка формируется в момент вызова логирования и содержит текст сообщения, дату формирования и флаг типа сообщения.
 			 */
 			typedef class __AWH_SHARED_EXPORT__ Payload {
 				public:
@@ -165,19 +166,19 @@ namespace awh {
 					 *
 					 * @param payload объект полезной нагрузки для перемещения
 					 */
-					Payload(Payload && payload) noexcept;
+					explicit Payload(Payload && payload) noexcept;
 					/**
 					 * @brief Конструктор копирования
 					 *
 					 * @param payload объект полезной нагрузки для копирования
 					 */
-					Payload(const Payload & payload) noexcept;
+					explicit Payload(const Payload & payload) noexcept;
 				public:
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					Payload() noexcept;
+					explicit Payload() noexcept;
 				public:
 					/**
 					 * @brief Деструктор
@@ -189,8 +190,10 @@ namespace awh {
 			/**
 			 * @brief Базовый абстрактный приёмник вывода логов
 			 *
+			 * @details Приёмник вывода логов может быть реализован в виде консольного вывода,
+			 *          записи в файл, отправки в SysLog или передачи в функцию обратного вызова.
 			 */
-			class Sink {
+			class __AWH_SHARED_EXPORT__ Sink {
 				protected:
 					// Указатель на владеющий объект логирования
 					const Logging * _log;
@@ -207,7 +210,7 @@ namespace awh {
 					 *
 					 * @param log объект логирования
 					 */
-					explicit Sink(const Logging * log) noexcept : _log(log) {}
+					explicit Sink(const Logging * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -217,8 +220,9 @@ namespace awh {
 			/**
 			 * @brief Приёмник вывода логов в консоль
 			 *
+			 * @details Приёмник вывода логов в консоль может быть реализован в виде стандартного вывода (stdout) или стандартного потока ошибок (stderr).
 			 */
-			class ConsoleSink : public Sink {
+			class __AWH_SHARED_EXPORT__ ConsoleSink : public Sink {
 				public:
 					/**
 					 * @brief Метод записи полезной нагрузки в консоль
@@ -232,13 +236,19 @@ namespace awh {
 					 *
 					 * @param log объект логирования
 					 */
-					explicit ConsoleSink(const Logging * log) noexcept : Sink(log) {}
+					explicit ConsoleSink(const Logging * log) noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~ConsoleSink() noexcept = default;
 			};
 			/**
 			 * @brief Приёмник вывода логов в файл
 			 *
+			 * @details Приёмник вывода логов в файл может быть реализован в виде записи в указанный файл с возможностью ротации и удаления устаревших архивов.
 			 */
-			class FileSink : public Sink {
+			class __AWH_SHARED_EXPORT__ FileSink : public Sink {
 				private:
 					// Идентификатор процесса, владеющего дескриптором
 					mutable pid_t _pid;
@@ -286,8 +296,7 @@ namespace awh {
 					 *
 					 * @param log объект логирования
 					 */
-					explicit FileSink(const Logging * log) noexcept :
-					 Sink(log), _pid(0), _fd(-1), _opened{""}, _size(0) {}
+					explicit FileSink(const Logging * log) noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -297,8 +306,9 @@ namespace awh {
 			/**
 			 * @brief Приёмник отправки логов в SysLog
 			 *
+			 * @details Приёмник отправки логов в SysLog может быть реализован в виде отправки сообщений в системный журнал.
 			 */
-			class SyslogSink : public Sink {
+			class __AWH_SHARED_EXPORT__ SyslogSink : public Sink {
 				public:
 					/**
 					 * @brief Метод отправки полезной нагрузки в SysLog
@@ -312,13 +322,19 @@ namespace awh {
 					 *
 					 * @param log объект логирования
 					 */
-					explicit SyslogSink(const Logging * log) noexcept : Sink(log) {}
+					explicit SyslogSink(const Logging * log) noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~SyslogSink() noexcept = default;
 			};
 			/**
 			 * @brief Приёмник передачи логов в функцию обратного вызова
 			 *
+			 * @details Приёмник передачи логов в функцию обратного вызова может быть реализован в виде вызова пользовательской функции, которая будет обрабатывать полезную нагрузку.
 			 */
-			class CallbackSink : public Sink {
+			class __AWH_SHARED_EXPORT__ CallbackSink : public Sink {
 				public:
 					/**
 					 * @brief Метод передачи полезной нагрузки в функцию обратного вызова
@@ -332,7 +348,12 @@ namespace awh {
 					 *
 					 * @param log объект логирования
 					 */
-					explicit CallbackSink(const Logging * log) noexcept : Sink(log) {}
+					explicit CallbackSink(const Logging * log) noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					virtual ~CallbackSink() noexcept = default;
 			};
 		private:
 			// Флаг асинхронного режима работы

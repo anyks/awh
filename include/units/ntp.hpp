@@ -58,6 +58,7 @@ namespace awh {
 				/**
 				 * @brief Класс для управления списком NTP-серверов
 				 *
+				 * @details Содержит методы для инициализации, сброса и получения текущего NTP-сервера из списка.
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Servers {
 					private:
@@ -109,17 +110,23 @@ namespace awh {
 						 *
 						 */
 						explicit Servers() noexcept;
+						/**
+						 * @brief Деструктор
+						 *
+						 */
+						~Servers() noexcept = default;
 				} servers_t;
 				/**
 				 * @brief Структура для управления состоянием NTP-клиента
 				 *
+				 * @details Содержит параметры для выполнения запросов к NTP-серверам и хранения состояния NTP-клиента.
 				 */
-				typedef struct Client {
-					// Префикс для переменных окружения
+				typedef struct __AWH_SHARED_EXPORT__ Client {
+					// Префикс для переменных окружения (по умолчанию: AWH_SHORT_NAME)
 					string prefix;
-					// Порт NTP-сервера
+					// Порт NTP-сервера (по умолчанию: 123)
 					uint16_t port;
-					// Задержка ожидания ответа от NTP-сервера (в миллисекундах)
+					// Задержка ожидания ответа от NTP-сервера (в миллисекундах, по умолчанию: 5000)
 					uint32_t delay;
 					// Идентификатор события для NTP-клиента
 					event::id_t eid;
@@ -131,37 +138,41 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Client() noexcept :
-					 prefix{AWH_SHORT_NAME},
-                     port(123), delay(5000),
-					 eid(0), source(nullptr) {}
+					explicit Client() noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~Client() noexcept = default;
 				} client_t;
 				/**
 				 * @brief Структура для управления передачей данных при выполнении запросов NTP-клиента
 				 *
+				 * @details Содержит параметры для управления передачей данных при выполнении запросов NTP-клиента.
 				 */
-				typedef struct Transfer {
+				typedef struct __AWH_SHARED_EXPORT__ Transfer {
 					// Флаг ожидания ответа от NTP-сервера
 					bool waiting;
 					// Количество попыток получения ответа от NTP-сервера
 					uint8_t attempt;
-					// Количество попыток получения ответа от NTP-сервера
+					// Количество попыток получения ответа от NTP-сервера (по умолчанию: 3)
 					uint8_t attempts;
 					// Метка transmit из последнего запроса (сетевой порядок байтов)
 					uint32_t origSec;
 					// Дробная часть метки transmit из последнего запроса (сетевой порядок байтов)
 					uint32_t origFrac;
-					// Версия протокола NTP для выполнения запроса
+					// Версия протокола NTP для выполнения запроса (по умолчанию: version_t::V4)
 					version_t version;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					 explicit Transfer() noexcept :
-					  waiting(false),
-					  attempt(0), attempts(3),
-					  origSec(0), origFrac(0),
-					  version(version_t::V4) {}
+					explicit Transfer() noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~Transfer() noexcept = default;
 				} __attribute__((packed)) transfer_t;
 			private:
 				// Объект работы с сетевыми адресами

@@ -53,28 +53,31 @@ namespace awh {
 				/**
 				 * @brief Структура параметров кластера
 				 *
+				 * @details Параметры кластера задаются при его создании и не могут быть изменены в процессе работы.
 				 */
-				typedef struct ClusterParams {
+				typedef struct __AWH_SHARED_EXPORT__ ClusterParams {
 					// Имя кластера
 					string name;
 					// Флаг пересоздания процесса при его завершении
 					bool rebirth;
 					// Максимальное количество процессов в кластере
 					uint16_t count;
-					// Максимальное число подряд идущих быстрых падений процессов до остановки кластера (0 — без ограничения)
+					// Максимальное число подряд идущих быстрых падений процессов до остановки кластера (0 — без ограничения, по умолчанию 10)
 					uint16_t restartLimit;
-					// Временное окно «быстрого» (раннего) падения процесса в миллисекундах
+					// Временное окно «быстрого» (раннего) падения процесса в миллисекундах (по умолчанию 30000)
 					uint64_t restartWindow;
-					// Режим активации кластера
+					// Режим активации кластера (по умолчанию event::mode_t::DISABLED)
 					event::mode_t mode;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit ClusterParams() noexcept :
-					 name{""}, rebirth(false), count(0),
-					 restartLimit(10), restartWindow(30000),
-					 mode(event::mode_t::DISABLED) {}
+					explicit ClusterParams() noexcept;
+					/**
+					 * @brief Деструктор
+					 *
+					 */
+					~ClusterParams() noexcept = default;
 				} cluster_params_t;
 			private:
 				// Объект работы с кластером

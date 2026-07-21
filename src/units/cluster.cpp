@@ -203,6 +203,21 @@ using namespace placeholders;
 #endif
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::unit::Cluster::Worker::Worker() noexcept :
+ pid(0), life(0), eid(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::unit::Cluster::Rebirth::Rebirth() noexcept :
+ mode(false), limit(10),
+ window(30000), restarts(0) {}
+
+/**
  * @brief Метод создания дочерних процессов при запуске кластера
  *
  */

@@ -238,6 +238,20 @@ namespace signals {
 };
 
 /**
+ * Для операционной системы MS Windows
+ */
+#if _WIN32 || _WIN64
+	/**
+	 * @brief Конструктор
+	 *
+	 */
+	awh::Signals::Events::Events() noexcept :
+	 sigint(nullptr), sigfpe(nullptr),
+	 sigill(nullptr), sigabrt(nullptr),
+	 sigterm(nullptr), sigsegv(nullptr) {}
+#endif
+
+/**
  * @brief Метод восстановления обработчиков сигналов по умолчанию
  *
  */

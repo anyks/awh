@@ -72,8 +72,9 @@ namespace awh {
 			/**
 			 * @brief Структура диапазонов записей
 			 *
+			 * @note Структура является внутренней и используется для хранения диапазонов записей в очереди
 			 */
-			typedef struct Range {
+			typedef struct __AWH_SHARED_EXPORT__ Range {
 				size_t end;    // Конец записи
 				size_t begin;  // Начало записи
 				size_t count;  // Количество добавленных записей
@@ -82,29 +83,29 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Range() noexcept :
-				 end(0), begin(0), count(0), offset(0) {}
+				explicit Range() noexcept;
 			} __attribute__((packed)) range_t;
 			/**
 			 * @brief Структура параметров максимальных значений
 			 *
+			 * @note Структура является внутренней и используется для хранения максимальных значений очереди
 			 */
-			typedef struct Max {
-				size_t memory;  // Максимальный размер выделения памяти
-				size_t records; // Максимальное количество добавляемых записей
+			typedef struct __AWH_SHARED_EXPORT__ Max {
+				// Максимальный размер выделения памяти (по умолчанию 1 МБ)
+				size_t memory;
+				// Максимальное количество добавляемых записей (по умолчанию 1000)
+				size_t records;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Max() noexcept :
-				 memory(AWH_MAX_MEMORY_QUEUE),
-				 records(AWH_MAX_RECORDS_QUEUE) {}
+				explicit Max() noexcept;
 			} __attribute__((packed)) max_t;
 		public:
 			/**
 			 * Создаём тип данных добавляемой записи
 			 */
-			typedef std::pair <const void *, size_t> record_t;
+			typedef pair <const void *, size_t> record_t;
 			/**
 			 * @brief Шаблон типа данных итератора
 			 *
@@ -352,7 +353,7 @@ namespace awh {
 			vector <uint8_t> _buffer;
 		private:
 			// Условная переменная ожидания появления данных в очереди
-			mutable std::condition_variable _cv;
+			mutable condition_variable _cv;
 			// Объект состояния блокировки для обеспечения потокобезопасности
 			mutable lock_state_t <std::mutex> _mtx;
 		private:
