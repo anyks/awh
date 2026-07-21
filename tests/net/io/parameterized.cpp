@@ -338,7 +338,9 @@ TEST_P(IoPingParameterizedFixture, IoPingTest){
 	icmp.code = 0;
 	// Последовательность
 	uint16_t sequence = 0;
-	// Выполняем пинг 3 раза 
+	/**
+	 * Выполняем пинг 3 раза 
+	 */
 	for(uint8_t i = 0; i < 3; i++){
 		// Устанавливаем номер последовательности
 		icmp.meta.echo.sequence = htons(sequence);

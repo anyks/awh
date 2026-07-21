@@ -53,7 +53,9 @@ TEST_P(ThreadPoolParameterizedFixture, ThreadPoolTest){
 	ASSERT_TRUE(this->_thr->initialized());
 	// Счётчики для проверки результатов
 	uint32_t count1 = 0, count2 = 0;
-	// Перебираем элементы для обработки
+	/**
+	 * Перебираем элементы для обработки
+	 */
 	for(auto & item : this->_parameter.items){
 		// Увеличиваем первый счётчик
 		count1 += item;

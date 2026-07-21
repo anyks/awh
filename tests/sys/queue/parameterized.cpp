@@ -49,7 +49,9 @@ TEST_P(QueueParameterizedFixture, QueueTest){
 	this->_queue->setMaxRecords(1024);
 	// Устанавливаем объект логов
 	this->_queue->setLogger(this->_log.get());
-	// Переход по всем числам для добавления в очередь
+	/**
+	 * Переход по всем числам для добавления в очередь
+	 */
 	for(auto & number : this->_parameter.numbers)
 		// Добавляем число в очередь
 		this->_queue->push(&number, sizeof(number));
@@ -94,7 +96,9 @@ TEST_P(QueueParameterizedFixture, QueueTest){
 	size_t size = 0;
 	// Создаём список записей для добавления в очередь
 	std::vector <awh::queue_t::record_t> records;
-	// Переход по всем числам для добавления в очередь
+	/**
+	 * Переход по всем числам для добавления в очередь
+	 */
 	for(auto & number : this->_parameter.numbers){
 		// Увеличиваем общий размер добавляемых данных
 		size += sizeof(number);

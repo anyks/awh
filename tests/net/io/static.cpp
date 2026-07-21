@@ -234,7 +234,9 @@ TEST_F(IoFixture, IoSuiteTest){
 				ASSERT_FALSE(this->_sctp->authenticateChunks(eid1, awh::event::origin_t::LOCAL, chunks));
 				// Проверяем что чанки аутентификации SCTP-сокета получены
 				ASSERT_TRUE(chunks.empty());
-				// Перебираем все извлечённые чанки
+				/**
+				 * Перебираем все извлечённые чанки
+				 */
 				for(auto & chunk : chunks)
 					// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
@@ -11850,7 +11852,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			std::vector <awh::net::sctp::auth_chunk_t> chunks;
 			// Выполняем извлечение чанков аутентификации SCTP-сокета
 			ASSERT_TRUE(this->_sctp->authenticateChunks(events[1], awh::event::origin_t::LOCAL, chunks));
-			// Перебираем все извлечённые чанки
+			/**
+			 * Перебираем все извлечённые чанки
+			 */
 			for(auto & chunk : chunks)
 				// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 				std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
@@ -12018,7 +12022,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
 				ASSERT_TRUE(this->_sctp->authenticateChunks(cid, awh::event::origin_t::REMOTE, chunks));
-				// Перебираем все извлечённые чанки
+				/**
+				 * Перебираем все извлечённые чанки
+				 */
 				for(auto & chunk : chunks)
 					// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
@@ -12308,7 +12314,9 @@ TEST_F(IoFixture, IoDTLSTest){
 			std::vector <awh::net::sctp::auth_chunk_t> chunks;
 			// Выполняем извлечение чанков аутентификации SCTP-сокета
 			ASSERT_TRUE(this->_sctp->authenticateChunks(events[0], awh::event::origin_t::LOCAL, chunks));
-			// Перебираем все извлечённые чанки
+			/**
+			 * Перебираем все извлечённые чанки
+			 */
 			for(auto & chunk : chunks)
 				// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 				std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
@@ -12413,7 +12421,9 @@ TEST_F(IoFixture, IoDTLSTest){
 						std::vector <awh::net::sctp::auth_chunk_t> chunks;
 						// Выполняем извлечение чанков аутентификации SCTP-сокета
 						ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::LOCAL, chunks));
-						// Перебираем все извлечённые чанки
+						/**
+						 * Перебираем все извлечённые чанки
+						 */
 						for(auto & chunk : chunks)
 							// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 							std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;
@@ -12527,7 +12537,9 @@ TEST_F(IoFixture, IoDTLSTest){
 				std::vector <awh::net::sctp::auth_chunk_t> chunks;
 				// Выполняем извлечение чанков аутентификации SCTP-сокета
 				ASSERT_TRUE(this->_sctp->authenticateChunks(eid, awh::event::origin_t::REMOTE, chunks));
-				// Перебираем все извлечённые чанки
+				/**
+				 * Перебираем все извлечённые чанки
+				 */
 				for(auto & chunk : chunks)
 					// Записываем в лог информацию о чанках аутентификации SCTP-сокета
 					std::cout << " Извлечён чанк аутентификации SCTP-сокета: " << static_cast <uint16_t> (chunk) << std::endl;

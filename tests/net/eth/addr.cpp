@@ -30,7 +30,8 @@
 #include "eth.hpp"
 
 /**
- * Инкапсулируем вспомогательные функции тестов в анонимное пространство имён
+ * @brief Инкапсулируем вспомогательные функции тестов в анонимное пространство имён
+ *
  */
 namespace {
 	/**
@@ -45,7 +46,9 @@ namespace {
 		const uint16_t * buffer = reinterpret_cast <const uint16_t *> (data);
 		// Инициализируем сумму
 		uint32_t sum = 0;
-		// Пока есть данные для обработки
+		/**
+		 *  Пока есть данные для обработки
+		 */
 		while(length > 1){
 			// Добавляем к сумме очередные два байта данных
 			sum += (* buffer++);
@@ -56,7 +59,9 @@ namespace {
 		if(length == 1)
 			// Добавляем к сумме последний байт данных
 			sum += (* reinterpret_cast <const uint8_t *> (buffer));
-		// Складываем старшие 16 бит суммы с младшими 16 битами суммы
+		/**
+		 *  Складываем старшие 16 бит суммы с младшими 16 битами суммы
+		 */
 		while(sum >> 16)
 			// Выполняем свёртку суммы
 			sum = ((sum & 0xFFFF) + (sum >> 16));
@@ -78,7 +83,9 @@ namespace {
 	uint16_t refChecksum(const awh::event::family_t family, const awh::event::protocol_t protocol, const void * src, const void * dst, const void * transport, const size_t length, const bool applyUdp = true) noexcept {
 		// Смещение поля контрольной суммы в транспортном заголовке
 		size_t checksumOffset = 0;
-		// Определяем смещение поля контрольной суммы
+		/**
+		 * Определяем смещение поля контрольной суммы
+		 */
 		switch(static_cast <uint8_t> (protocol)){
 			// Если протокол определён как TCP
 			case static_cast <uint8_t> (awh::event::protocol_t::TCP):
@@ -95,7 +102,9 @@ namespace {
 		std::vector <uint8_t> buffer;
 		// Размер псевдозаголовка
 		size_t pseudoSize = 0;
-		// Определяем семейство протоколов
+		/**
+		 * Определяем семейство протоколов
+		 */
 		switch(static_cast <uint8_t> (family)){
 			// Для семейства IPv4
 			case static_cast <uint8_t> (awh::event::family_t::IPV4): {
@@ -341,7 +350,9 @@ TEST_F(EthFixture, AddressChecksumIPv4TcpTest){
 	::inet_pton(AF_INET, "192.168.1.20", &dst);
 	// Транспортный сегмент TCP (заголовок 20 байт + полезная нагрузка)
 	std::vector <uint8_t> data(20 + 16);
-	// Заполняем сегмент произвольными данными
+	/**
+	 * Заполняем сегмент произвольными данными
+	 */
 	for(size_t i = 0; i < data.size(); ++i)
 		data[i] = static_cast <uint8_t> (i + 1);
 	// Записываем заведомо ненулевое значение в поле контрольной суммы
@@ -365,7 +376,9 @@ TEST_F(EthFixture, AddressChecksumIPv4UdpTest){
 	::inet_pton(AF_INET, "10.0.0.2", &dst);
 	// Транспортная датаграмма UDP (заголовок 8 байт + полезная нагрузка)
 	std::vector <uint8_t> data(8 + 13);
-	// Заполняем датаграмму произвольными данными
+	/**
+	 * Заполняем датаграмму произвольными данными
+	 */
 	for(size_t i = 0; i < data.size(); ++i)
 		data[i] = static_cast <uint8_t> (0xFF - i);
 	// Сравниваем результат с эталоном
@@ -386,7 +399,9 @@ TEST_F(EthFixture, AddressChecksumIPv6TcpTest){
 	::inet_pton(AF_INET6, "2001:db8::2", &dst);
 	// Транспортный сегмент TCP
 	std::vector <uint8_t> data(20 + 32);
-	// Заполняем сегмент произвольными данными
+	/**
+	 * Заполняем сегмент произвольными данными
+	 */
 	for(size_t i = 0; i < data.size(); ++i)
 		data[i] = static_cast <uint8_t> ((i * 7) & 0xFF);
 	// Сравниваем результат с эталоном
@@ -407,7 +422,9 @@ TEST_F(EthFixture, AddressChecksumIPv6UdpTest){
 	::inet_pton(AF_INET6, "fe80::2", &dst);
 	// Транспортная датаграмма UDP
 	std::vector <uint8_t> data(8 + 20);
-	// Заполняем датаграмму произвольными данными
+	/**
+	 * Заполняем датаграмму произвольными данными
+	 */
 	for(size_t i = 0; i < data.size(); ++i)
 		data[i] = static_cast <uint8_t> ((i * 3 + 5) & 0xFF);
 	// Сравниваем результат с эталоном
@@ -428,7 +445,9 @@ TEST_F(EthFixture, AddressChecksumOddLengthTest){
 	::inet_pton(AF_INET, "172.16.0.2", &dst);
 	// Транспортные данные нечётной длины (заголовок 20 байт + 7 байт полезной нагрузки)
 	std::vector <uint8_t> data(20 + 7);
-	// Заполняем данные произвольными значениями
+	/**
+	 * Заполняем данные произвольными значениями
+	 */
 	for(size_t i = 0; i < data.size(); ++i)
 		data[i] = static_cast <uint8_t> (0x10 + i);
 	// Сравниваем результат с эталоном
@@ -449,7 +468,9 @@ TEST_F(EthFixture, AddressChecksumDeterministicTest){
 	::inet_pton(AF_INET, "192.0.2.2", &dst);
 	// Транспортный сегмент TCP с ненулевым полем контрольной суммы
 	std::vector <uint8_t> data(20 + 8);
-	// Заполняем сегмент произвольными данными
+	/**
+	 * Заполняем сегмент произвольными данными
+	 */
 	for(size_t i = 0; i < data.size(); ++i)
 		data[i] = static_cast <uint8_t> (i + 0x20);
 	// Сохраняем исходную копию буфера
@@ -473,7 +494,9 @@ TEST_F(EthFixture, AddressChecksumUdpZeroIsFFFFTest){
 	uint32_t src = 0, dst = 0;
 	// Признак того, что подходящие данные найдены
 	bool found = false;
-	// Перебираем все варианты двухбайтовой полезной нагрузки
+	/**
+	 * Перебираем все варианты двухбайтовой полезной нагрузки
+	 */
 	for(uint32_t value = 0; value <= 0xFFFF; ++value){
 		// Формируем двухбайтовую полезную нагрузку
 		uint16_t payload = static_cast <uint16_t> (value);
@@ -494,7 +517,9 @@ TEST_F(EthFixture, AddressChecksumUdpZeroIsFFFFTest){
 
 	// Дополнительно убеждаемся, что для TCP правило 0xFFFF не применяется
 	found = false;
-	// Перебираем все варианты двухбайтовой полезной нагрузки
+	/**
+	 * Перебираем все варианты двухбайтовой полезной нагрузки
+	 */
 	for(uint32_t value = 0; value <= 0xFFFF; ++value){
 		// Формируем двухбайтовую полезную нагрузку
 		uint16_t payload = static_cast <uint16_t> (value);

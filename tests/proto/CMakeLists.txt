@@ -76,6 +76,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PARSER2_TEST "Build unit HTTP/2 parser test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для подмодуля протокола SOCKS5
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST "Build unit SOCKS5 protocol test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для подмодуля протокола QUIC
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_QUIC_TEST "Build unit QUIC protocol test for ${UNIT_TEST_NAME}" ON)
 
         # Если нужно собрать тесты для подмодуля провайдера HTTP-запроса/ответа
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_HTTP_PROVIDER_TEST})
@@ -174,6 +176,26 @@ if (${GTest_FOUND})
             message(STATUS "Build tests SOCKS5 protocol submodule: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_SOCKS5_TEST})
 
+        # Если нужно собрать тесты для подмодуля протокола QUIC
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUIC_TEST})
+            # Выводим сообщение о сборке тестов для подмодуля протокола QUIC
+            message(STATUS "Build tests QUIC protocol submodule: Yes\n")
+            # Дополняем список источников тестами для подмодуля протокола QUIC
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                quic/quic.cpp
+                quic/static.cpp
+                quic/params.cpp
+                quic/crypto.cpp
+                quic/handshake.cpp
+                quic/connection.cpp
+                quic/parameterized.cpp
+            )
+        # Если не нужно собрать тесты для подмодуля протокола QUIC
+        else()
+            # Выводим сообщение о сборке тестов для подмодуля протокола QUIC
+            message(STATUS "Build tests QUIC protocol submodule: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_QUIC_TEST})
+
         # Библиотеки GTest для линковки
         SET(${PROJECT_NAME}_GTEST_LIBS
             GTest::gtest
@@ -234,6 +256,7 @@ if (${GTest_FOUND})
                 target_link_libraries(${PROJECT_NAME}${POSTFIX} PUBLIC
                     ${${PROJECT_NAME}_GTEST_LIBS}
                     ${AWH_LIB_GCOV_NAME}
+                    ${DEPEND_LIBRARY}
                     ${PCRE_LIBRARY}
                     ${GCC_COVERAGE_LIBS}
                     ${TCMALLOC_LIBRARIES}

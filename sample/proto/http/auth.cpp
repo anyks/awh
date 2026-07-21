@@ -234,7 +234,9 @@ static void sampleHmac(const fmk_t * fmk, const log_t * log) noexcept {
 	vector <pair <string, string>> headers;
 	// Формируем набор заголовков подписи (Signature-Input и Signature)
 	client.headers(headers);
-	// Выводим сформированные заголовки подписи
+	/**
+	 * Выводим сформированные заголовки подписи
+	 */
 	for(auto & header : headers)
 		// Выводим название и значение заголовка подписи
 		cout << "Client " << header.first << ": " << header.second << endl;
@@ -253,7 +255,9 @@ static void sampleHmac(const fmk_t * fmk, const log_t * log) noexcept {
 		// Возвращаем секретный ключ только для известного идентификатора
 		return (keyId == "test-key" ? string("shared-secret-key") : string(""));
 	});
-	// Сервер разбирает заголовки подписи
+	/**
+	 * Сервер разбирает заголовки подписи
+	 */
 	for(auto & header : headers)
 		// Разбираем очередной заголовок подписи с указанием его имени
 		server.parse(header.first, header.second);

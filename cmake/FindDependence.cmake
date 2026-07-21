@@ -20,7 +20,6 @@ find_path(LIZARD_INCLUDE_DIR NAMES lizard_compress.h PATHS ${CMAKE_SOURCE_DIR}/t
 find_path(BORINGSSL_INCLUDE_DIR NAMES openssl/opensslconf.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 find_path(MINIUPNPC_INCLUDE_DIR NAMES miniupnpc/miniupnpc.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include NO_DEFAULT_PATH)
 find_path(PCRE_INCLUDE_DIR NAMES pcre2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/pcre2 NO_DEFAULT_PATH)
-find_path(NGHTTP2_INCLUDE_DIR NAMES nghttp2.h PATHS ${CMAKE_SOURCE_DIR}/third_party/include/nghttp2 NO_DEFAULT_PATH)
 
 # Сборка модуля AWH_IDN, если операционной системой не является Windows
 if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
@@ -52,7 +51,6 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         BORINGSSL_INCLUDE_DIR
         MINIUPNPC_INCLUDE_DIR
         PCRE_INCLUDE_DIR
-        NGHTTP2_INCLUDE_DIR
         IDN2_INCLUDE_DIR
         ICONV_INCLUDE_DIR
 
@@ -72,7 +70,6 @@ if (CMAKE_BUILD_IDN AND (NOT ${CMAKE_SYSTEM_NAME} STREQUAL "Windows"))
         ${BORINGSSL_INCLUDE_DIR}
         ${MINIUPNPC_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
-        ${NGHTTP2_INCLUDE_DIR}
         ${IDN2_INCLUDE_DIR}
         ${ICONV_INCLUDE_DIR}
     )
@@ -97,7 +94,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         BORINGSSL_INCLUDE_DIR
         MINIUPNPC_INCLUDE_DIR
         PCRE_INCLUDE_DIR
-        NGHTTP2_INCLUDE_DIR
 
         FAIL_MESSAGE "Missing Dependence. Run ./build_third_party.sh first"
     )
@@ -115,7 +111,6 @@ elseif (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")
         ${BORINGSSL_INCLUDE_DIR}
         ${MINIUPNPC_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
-        ${NGHTTP2_INCLUDE_DIR}
     )
 # Если операцинная система относится к Nix-подобной
 else()
@@ -135,7 +130,6 @@ else()
         BORINGSSL_INCLUDE_DIR
         MINIUPNPC_INCLUDE_DIR
         PCRE_INCLUDE_DIR
-        NGHTTP2_INCLUDE_DIR
 
         FAIL_MESSAGE "Missing Dependence. Run ./build_third_party.sh first"
     )
@@ -153,7 +147,6 @@ else()
         ${BORINGSSL_INCLUDE_DIR}
         ${MINIUPNPC_INCLUDE_DIR}
         ${PCRE_INCLUDE_DIR}
-        ${NGHTTP2_INCLUDE_DIR}
     )
 endif()
 
@@ -167,7 +160,6 @@ install(DIRECTORY "${PCRE_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/inc
 install(DIRECTORY "${SNAPPY_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${LIZARD_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${DENSITY_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
-install(DIRECTORY "${NGHTTP2_INCLUDE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BROTLI_INCLUDE_ENCODE_DIR}" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${BORINGSSL_INCLUDE_DIR}/openssl" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")
 install(DIRECTORY "${MINIUPNPC_INCLUDE_DIR}/miniupnpc" DESTINATION "${CMAKE_INSTALL_PREFIX}/include" FILES_MATCHING PATTERN "*.h")

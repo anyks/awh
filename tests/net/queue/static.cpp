@@ -308,7 +308,9 @@ TEST_F(NetworkQueueFixture, UdpUnalignedRecordTest){
 	this->_queue->type(awh::net_queue_t::type_t::UDP);
 	// Список записей разной длины для создания невыровненных смещений заголовков
 	const std::vector <std::string> records = {"a", "bc", "def", "ghij", "klmno", "pqrstu", "vwxyz012"};
-	// Добавляем все записи в очередь
+	/**
+	 * Добавляем все записи в очередь
+	 */
 	for(auto & record : records)
 		// Добавляем запись в очередь
 		ASSERT_EQ(this->_queue->push(record.data(), record.size()), record.size());
@@ -505,7 +507,9 @@ TEST_F(NetworkQueueFixture, UdpCompactIntegrityTest){
 	ASSERT_EQ(this->_queue->count(), RECORDS);
 	// Ожидаемые записи после удаления первой и добавления хвостовой (байт-заполнитель и размер)
 	std::vector <std::pair <uint8_t, size_t>> expected;
-	// Записи со 2-й по 6-ю сохраняют исходный порядок и содержимое
+	/**
+	 * Записи со 2-й по 6-ю сохраняют исходный порядок и содержимое
+	 */
 	for(size_t i = 1; i < RECORDS; i++)
 		// Добавляем ожидаемую запись
 		expected.emplace_back(static_cast <uint8_t> (i + 1), PAYLOAD);
@@ -610,7 +614,9 @@ TEST_F(NetworkQueueFixture, ClearAndSwitchTypeTest){
 	this->_queue->type(awh::net_queue_t::type_t::UDP);
 	// Записи разной длины для UDP-режима
 	const std::vector <std::string> records = {"alpha", "beta", "gamma"};
-	// Добавляем записи в очередь
+	/**
+	 * Добавляем записи в очередь
+	 */
 	for(auto & record : records)
 		// Добавляем запись в очередь
 		ASSERT_EQ(this->_queue->push(record.data(), record.size()), record.size());
@@ -665,7 +671,9 @@ TEST_F(NetworkQueueFixture, DISABLED_RssFootprintBenchmark){
 	std::vector <std::unique_ptr <awh::net_queue_t>> queues;
 	// Резервируем место под указатели заранее, чтобы не мерить рост самого вектора
 	queues.reserve(CONNECTIONS);
-	// Создаём очереди для всех эмулируемых соединений (все пустые - буфер не выделяется)
+	/**
+	 * Создаём очереди для всех эмулируемых соединений (все пустые - буфер не выделяется)
+	 */
 	for(size_t i = 0; i < CONNECTIONS; i++)
 		// Создаём очередь отправки для соединения
 		queues.push_back(std::make_unique <awh::net_queue_t> (this->_fmk.get(), this->_log.get()));
@@ -673,7 +681,9 @@ TEST_F(NetworkQueueFixture, DISABLED_RssFootprintBenchmark){
 	const size_t rssEmpty = currentRSS();
 	// Блок данных для активации буфера у части соединений
 	std::vector <uint8_t> payload(4096, 0x5A);
-	// Активируем буфер у доли соединений (эмуляция backpressure)
+	/**
+	 * Активируем буфер у доли соединений (эмуляция backpressure)
+	 */
 	for(size_t i = 0; i < ACTIVE; i++){
 		// Устанавливаем тип потоковой очереди
 		queues[i]->type(awh::net_queue_t::type_t::TCP);
@@ -759,7 +769,9 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 		this->_queue->clear();
 		// Устанавливаем тип очереди
 		this->_queue->type(type);
-		// Предварительно заполняем очередь до целевого объёма
+		/**
+		 *  Предварительно заполняем очередь до целевого объёма
+		 */
 		while(this->_queue->size() + BLOCK <= FILL)
 			// Добавляем блок данных в очередь
 			this->_queue->push(payload.data(), payload.size());
@@ -769,7 +781,9 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 		samples.reserve(ITERS);
 		// Контрольная сумма для предотвращения оптимизации измерений
 		size_t sink = 0;
-		// Выполняем измеряемые итерации
+		/**
+		 * Выполняем измеряемые итерации
+		 */
 		for(size_t i = 0; i < ITERS; i++){
 			// Удаляем один блок из начала очереди (освобождаем место)
 			if(type == awh::net_queue_t::type_t::UDP)
@@ -792,7 +806,9 @@ TEST_F(NetworkQueueFixture, DISABLED_LatencyBenchmark){
 		std::sort(samples.begin(), samples.end());
 		// Вычисляем среднее значение задержки
 		double sum = 0.0;
-		// Суммируем все измерения
+		/**
+		 * Суммируем все измерения
+		 */
 		for(double value : samples) sum += value;
 		// Выводим результаты
 		::printf("%-18s p50=%7.1f  p90=%7.1f  p99=%7.1f  p99.9=%8.1f  max=%9.1f  mean=%7.1f  (ns)\n",

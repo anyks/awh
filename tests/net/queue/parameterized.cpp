@@ -45,7 +45,9 @@ TEST_P(QueueParameterizedFixture, QueueTest){
 	this->_queue->clear();
 	// Устанавливаем тип очереди для записей фиксированного размера (например, UDP)
 	this->_queue->type(awh::net_queue_t::type_t::UDP);
-	// Переход по всем числам для добавления в очередь
+	/**
+	 * Переход по всем числам для добавления в очередь
+	 */
 	for(auto & number : this->_parameter.numbers)
 		// Добавляем число в очередь
 		this->_queue->push(&number, sizeof(number));

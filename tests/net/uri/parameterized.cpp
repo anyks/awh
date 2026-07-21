@@ -1160,7 +1160,9 @@ TEST_P(UriTestMatchParameterizedFixture, UriMatchTest){
 			} break;
 		}
 	}
-	// Выполняем перебор всех запросов в параметрах теста
+	/**
+	 * Выполняем перебор всех запросов в параметрах теста
+	 */
 	for(size_t i = 0; i < this->_parameter.request.size(); i++){
 		// Выполняем установку запроса в объект работы с URI
 		(* this->_uri.get()) = this->_parameter.request[i];

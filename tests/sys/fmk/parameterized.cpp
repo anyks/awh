@@ -1471,7 +1471,9 @@ TEST_P(FmkKVParameterizedFixture, FmkKVTest){
 		const auto & result = this->_fmk->kv(this->_parameter.text1, this->_parameter.delim1);
 		// Проверяем, что количество разобранных ключ-значение совпадает с ожидаемым
 		ASSERT_EQ(this->_parameter.result1.size(), result.size());
-		// Выполняем проверку каждого ключ-значение
+		/**
+		 * Выполняем проверку каждого ключ-значение
+		 */
 		for(const auto & [key, value] : this->_parameter.result1)
 			ASSERT_EQ(value, result.at(key));
 	// Если широкие текстовые параметры для замены заданы и не пустые, то проверяем результат разбора ключ-значение (широкая строка)

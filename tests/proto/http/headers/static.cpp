@@ -1101,7 +1101,9 @@ TEST_F(HeadersFixture, IterationTest){
 	this->_headers->emplace("User-Agent", "awh");
 	// Счётчик пройденных заголовков
 	size_t counter = 0;
-	// Обходим все заголовки контейнера через итераторы
+	/**
+	 * Обходим все заголовки контейнера через итераторы
+	 */
 	for(headers_t::iterator_t it = this->_headers->begin(); it != this->_headers->end(); ++it){
 		// Проверяем что название текущего заголовка не пустое
 		ASSERT_FALSE(it->name.empty());

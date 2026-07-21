@@ -115,7 +115,9 @@ TEST_F(FmkFixture, DomainZoneFmkTest){
 	this->_fmk->domainZone("goga");
 	// Добавляем ещё одну доменную зону
 	ASSERT_EQ(4, this->_fmk->domainZones().size());
-	// Проходим по всем доменным зонам
+	/**
+	 * Проходим по всем доменным зонам
+	 */
 	for(auto & zone : this->_fmk->domainZones())
 		// Проверяем что доменная зона установлена корректно
 		ASSERT_TRUE((zone.compare("goga") == 0) || (zone.compare("anyks") == 0) || (zone.compare("google") == 0) || (zone.compare("yandex") == 0));

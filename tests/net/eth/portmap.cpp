@@ -143,7 +143,9 @@ TEST_F(EthFixture, PortMapMappingTypeNone){
  * @note Переключение режима не должно приводить к падению и должно быть идемпотентным
  */
 TEST_F(EthFixture, PortMapThreadSafetyToggle){
-	// Многократно переключаем режим потокобезопасности
+	/**
+	 * Многократно переключаем режим потокобезопасности
+	 */
 	for(uint8_t i = 0; i < 3; ++i){
 		// Включаем потокобезопасность
 		this->_eth->portmap.threadSafety(true);
@@ -182,7 +184,9 @@ TEST_F(EthFixture, PortMapConcurrentMappings){
 	for(uint8_t i = 0; i < threadsCount; ++i){
 		// Создаём поток, многократно обращающийся к общему кешу
 		threads.emplace_back([this, &completed]() noexcept {
-			// Выполняем несколько итераций обращения к кешу
+			/**
+			 * Выполняем несколько итераций обращения к кешу
+			 */
 			for(uint8_t j = 0; j < 2; ++j)
 				// Получаем список пробросов (обращается к статическому кешу IGD)
 				(void) this->_eth->portmap.mappings();

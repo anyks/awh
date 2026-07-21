@@ -34,9 +34,9 @@
 [submodule "submodules/boringssl"]
 	path = submodules/boringssl
 	url = https://gitflic.ru/project/third_party/boringssl.git
-[submodule "submodules/nghttp2"]
-	path = submodules/nghttp2
-	url = https://gitflic.ru/project/third_party/nghttp2.git
+[submodule "submodules/ngtcp2"]
+	path = submodules/ngtcp2
+	url = https://github.com/ngtcp2/ngtcp2.git
 [submodule "submodules/gperftools"]
 	path = submodules/gperftools
 	url = https://gitflic.ru/project/third_party/gperftools.git

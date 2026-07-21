@@ -117,7 +117,9 @@ class HeadersParameterizedFixture : public HeadersFixture, public ::testing::Wit
 TEST_P(HeadersParameterizedFixture, HeadersFillPrintTest){
 	// Ожидаемый суммарный объём полезной нагрузки заголовков
 	size_t expectedMemory = 0;
-	// Наполняем контейнер заголовками из параметров теста
+	/**
+	 * Наполняем контейнер заголовками из параметров теста
+	 */
 	for(auto & item : this->_parameter.items){
 		// Добавляем заголовок в контейнер
 		this->_headers->emplace(item.first, item.second);
@@ -132,7 +134,9 @@ TEST_P(HeadersParameterizedFixture, HeadersFillPrintTest){
 	this->_headers->proto(this->_parameter.proto);
 	// Формируем текстовое представление заголовков
 	std::string output = this->_headers->print(this->_parameter.proto);
-	// Проверяем что каждый добавленный заголовок присутствует в выводе
+	/**
+	 * Проверяем что каждый добавленный заголовок присутствует в выводе
+	 */
 	for(auto & item : this->_parameter.items){
 		// Проверяем что значение заголовка присутствует в выводе
 		ASSERT_NE(output.find(item.second), std::string::npos);
@@ -148,7 +152,9 @@ TEST_P(HeadersParameterizedFixture, HeadersFillPrintTest){
  *
  */
 TEST_P(HeadersParameterizedFixture, HeadersCopyCompareTest){
-	// Наполняем контейнер заголовками из параметров теста
+	/**
+	 * Наполняем контейнер заголовками из параметров теста
+	 */
 	for(auto & item : this->_parameter.items)
 		// Добавляем заголовок в контейнер
 		this->_headers->emplace(item.first, item.second);

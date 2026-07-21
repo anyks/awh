@@ -84,7 +84,9 @@ TEST_P(NwtTestParameterizedFixture, NwtTestingTest){
 		this->_nwt->zones(this->_parameter.zones);
 		// Выполняем извлечение списка установленных зон
 		auto zones = this->_nwt->zones();
-		// Выполняем перебор всех установленных зон
+		/**
+		 * Выполняем перебор всех установленных зон
+		 */
 		for(const auto & zone : this->_parameter.zones)
 			// Проверяем наличие зоны в списке установленных зон
 			ASSERT_TRUE(zones.find(zone) != zones.end());

@@ -9,7 +9,6 @@ brotli --version 1.1.0
 density --version 0.14.2
 lizard --version 1.0
 pcre2 --version 10.46
-nghttp2 --version 1.67.1
 miniupnp --version 2.3.3
 idn --none
 static --none

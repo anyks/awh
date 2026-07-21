@@ -579,6 +579,14 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/frame.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/hpack.cpp"
     "${CMAKE_SOURCE_DIR}/src/proto/http/parser/http2/http.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/quic.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/varint.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/params.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/crypto.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/packet.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/frame.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/handshake.cpp"
+    "${CMAKE_SOURCE_DIR}/src/proto/quic/connection.cpp"
     "${CMAKE_SOURCE_DIR}/contrib/src/cityhash/city.cc"
 )
 
@@ -839,6 +847,13 @@ if (${CMAKE_BUILD_SAMPLES})
     SET(SOCKS5_APP_PROTO_NAME proto-socks5)
     # Указываем что нужно собрать приложение работы с протоколом SOCKS5
     option(CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE "Build SOCKS5 Protocol app sample" ON)
+
+    # Устанавливаем имя клиентского приложения работы с протоколом QUIC
+    SET(QUIC_CLIENT_APP_PROTO_NAME proto-quic-client)
+    # Устанавливаем имя серверного приложения работы с протоколом QUIC
+    SET(QUIC_SERVER_APP_PROTO_NAME proto-quic-server)
+    # Указываем что нужно собрать приложения работы с протоколом QUIC
+    option(CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE "Build QUIC Protocol app sample" ON)
 
     # Устанавливаем имя приложения блочной компрессии данных
     SET(COMPRESSOR_APP_BLOCK_NAME compressor-block)
@@ -1370,6 +1385,20 @@ if (${CMAKE_BUILD_SAMPLES})
         # Выводим сообщение о сборке семпла
         message(STATUS "Build sample SOCKS5 Protocol: No\n")
     endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с протоколом QUIC
+    if (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample QUIC Protocol: Yes\n")
+        # Выполняем создание приложения работы с QUIC клиентом
+        add_sample(${QUIC_CLIENT_APP_PROTO_NAME} sample/proto/quic/client.cpp proto/quic)
+        # Выполняем создание приложения работы с QUIC сервером
+        add_sample(${QUIC_SERVER_APP_PROTO_NAME} sample/proto/quic/server.cpp proto/quic)
+    # Если не нужно собирать семплы для работы с протоколом QUIC
+    else()
+        # Выводим сообщение о сборке семпла
+        message(STATUS "Build sample QUIC Protocol: No\n")
+    endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -2191,6 +2220,24 @@ if (CMAKE_SHARED_BUILD_LIB)
                 ${AWH_FLAGS}
             )
         endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+
+        # Если нужно собрать семплы для работы с протоколом QUIC
+        if (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с QUIC клиентом
+            target_link_libraries(
+                ${QUIC_CLIENT_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с QUIC сервером
+            target_link_libraries(
+                ${QUIC_SERVER_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
 
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -3162,6 +3209,26 @@ else (CMAKE_SHARED_BUILD_LIB)
             )
         endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
 
+        # Если нужно собрать семплы для работы с протоколом QUIC
+        if (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+            # Выполняем сборку приложения работы с QUIC клиентом
+            target_link_libraries(
+                ${QUIC_CLIENT_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+            # Выполняем сборку приложения работы с QUIC сервером
+            target_link_libraries(
+                ${QUIC_SERVER_APP_PROTO_NAME}
+                ${AWH_LIB_NAME}
+                ${DEPEND_LIBRARY}
+                ${TCMALLOC_LIBRARIES}
+                ${AWH_FLAGS}
+            )
+        endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+
         # Если нужно собрать семплы для работы с компрессией данных
         if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
             # Выполняем сборку приложения компрессии данных
@@ -4084,6 +4151,23 @@ if (${CMAKE_BUILD_SAMPLES})
                     VERBATIM
                 )
             endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+
+            # Если нужно собрать семплы для работы с протоколом QUIC
+            if (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+                # Выполняем сборку приложения работы с QUIC клиентом
+                add_custom_command(TARGET "${QUIC_CLIENT_APP_PROTO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${QUIC_CLIENT_APP_PROTO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${QUIC_CLIENT_APP_PROTO_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+
+                # Выполняем сборку приложения работы с QUIC сервером
+                add_custom_command(TARGET "${QUIC_SERVER_APP_PROTO_NAME}" POST_BUILD
+                    COMMAND bash "${CMAKE_SOURCE_DIR}/sh/core_dump.sh" "$<TARGET_FILE:${QUIC_SERVER_APP_PROTO_NAME}>" "${entitlements_file}"
+                    COMMENT "Sign target \"${QUIC_SERVER_APP_PROTO_NAME}\" to enable core dump on macOS"
+                    VERBATIM
+                )
+            endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
 
             # Если нужно собрать семплы для работы с компрессией данных
             if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})
@@ -5093,6 +5177,14 @@ if (${CMAKE_BUILD_SAMPLES})
         # Устанавливаем приложение работы с протоколом SOCKS5
         install(TARGETS ${SOCKS5_APP_PROTO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
     endif (${CMAKE_BUILD_SOCKS5_PROTO_APP_SAMPLE})
+
+    # Если нужно собрать семплы для работы с протоколом QUIC
+    if (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
+        # Устанавливаем приложение работы с QUIC клиентом
+        install(TARGETS ${QUIC_CLIENT_APP_PROTO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+        # Устанавливаем приложение работы с QUIC сервером
+        install(TARGETS ${QUIC_SERVER_APP_PROTO_NAME} DESTINATION "${CMAKE_INSTALL_PREFIX}/bin/${CMAKE_PROJECT_NAME}")
+    endif (${CMAKE_BUILD_QUIC_PROTO_APP_SAMPLE})
 
     # Если нужно собрать семплы для работы с компрессией данных
     if (${CMAKE_BUILD_COMPRESSOR_SYS_APP_SAMPLE})

@@ -31,7 +31,9 @@
  * @return    имя петлевого интерфейса либо пустая строка
  */
 static std::string findLoopback(const awh::eth_t * eth) noexcept {
-	// Перебираем все доступные сетевые интерфейсы
+	/**
+	 * Перебираем все доступные сетевые интерфейсы
+	 */
 	for(auto & name : eth->iface.available()){
 		// Получаем флаги сетевого интерфейса
 		auto flags = eth->iface.flags(name);
@@ -286,7 +288,9 @@ TEST_F(EthFixture, IfaceLoopbackVirtualTest){
  *
  */
 TEST_F(EthFixture, IfaceTunnelIsVirtualTest){
-	// Перебираем все доступные сетевые интерфейсы
+	/**
+	 * Перебираем все доступные сетевые интерфейсы
+	 */
 	for(auto & name : this->_eth->iface.available()){
 		// Если интерфейс является туннельным
 		if(this->_eth->iface.isTunnel(name))
@@ -321,7 +325,9 @@ TEST_F(EthFixture, IfaceNameByLoopbackAddrTest){
  *
  */
 TEST_F(EthFixture, IfaceGetAddressFamiliesTest){
-	// Перебираем все доступные сетевые интерфейсы
+	/**
+	 * Перебираем все доступные сетевые интерфейсы
+	 */
 	for(auto & name : this->_eth->iface.available()){
 		// Получаем IPv4-адрес интерфейса
 		this->_eth->iface.getAddress(name, awh::event::family_t::IPV4);

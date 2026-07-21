@@ -51,10 +51,6 @@ $ROOT/submodule.sh add pcre2 https://gitflic.ru/project/third_party/pcre2.git
 $ROOT/submodule.sh remove boringssl
 $ROOT/submodule.sh add boringssl https://gitflic.ru/project/third_party/boringssl.git
 
-# Выполняем пересборку сабмодуля nghttp2
-$ROOT/submodule.sh remove nghttp2
-$ROOT/submodule.sh add nghttp2 https://gitflic.ru/project/third_party/nghttp2.git
-
 # Выполняем пересборку сабмодуля gperftools
 $ROOT/submodule.sh remove gperftools
 $ROOT/submodule.sh add gperftools https://gitflic.ru/project/third_party/gperftools.git

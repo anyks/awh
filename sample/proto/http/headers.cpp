@@ -92,13 +92,17 @@ static void sampleMulti(const fmk_t * fmk, const log_t * log) noexcept {
 	headers.emplace("Set-Cookie", "theme=dark; Path=/", headers_t::mode_t::APPEND);
 	// Выводим количество заголовков с указанным названием
 	cout << "Set-Cookie count: " << headers.count("Set-Cookie") << endl;
-	// Получаем список всех значений заголовков с одним названием
+	/**
+	 * Получаем список всех значений заголовков с одним названием
+	 */
 	for(const auto & value : headers.range("Set-Cookie"))
 		// Выводим очередное значение заголовка установки cookie
 		cout << "Set-Cookie: " << value << endl;
 	// Выводим список названий всех заголовков контейнера
 	cout << "Names:";
-	// Проходим по всем названиям заголовков
+	/**
+	 * Проходим по всем названиям заголовков
+	 */
 	for(const auto & name : headers.names())
 		// Выводим очередное название заголовка
 		cout << " [" << name << "]";
@@ -122,7 +126,9 @@ static void sampleIterate(const fmk_t * fmk, const log_t * log) noexcept {
 	headers.emplace("Content-Length", "1024");
 	// Добавляем заголовок кодировки передачи
 	headers.emplace("Transfer-Encoding", "chunked");
-	// Проходим по всем заголовкам контейнера при помощи диапазонного цикла
+	/**
+	 * Проходим по всем заголовкам контейнера при помощи диапазонного цикла
+	 */
 	for(const auto & header : headers)
 		// Выводим название и значение очередного заголовка
 		cout << header.name << ": " << header.value << endl;
@@ -256,7 +262,9 @@ static void sampleConvert(const fmk_t * fmk, const log_t * log) noexcept {
 	const headers_t::multimap_t multi = static_cast <headers_t::multimap_t> (headers);
 	// Выводим количество записей в мультикарте
 	cout << "Multimap entries: " << multi.size() << endl;
-	// Проходим по всем записям мультикарты заголовков
+	/**
+	 * Проходим по всем записям мультикарты заголовков
+	 */
 	for(const auto & item : multi)
 		// Выводим название и значение очередной записи мультикарты
 		cout << item.first << " => " << item.second << endl;

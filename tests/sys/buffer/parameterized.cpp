@@ -59,7 +59,9 @@ TEST_P(BufferParameterizedFixture, BufferTest){
 	this->_buffer->setMaxMemory(1024);
 	// Устанавливаем объект логов
 	this->_buffer->setLogger(this->_log.get());
-	// Переход по всем данным для добавления в буфер
+	/**
+	 * Переход по всем данным для добавления в буфер
+	 */
 	for(auto & item : this->_parameter.items)
 		// Добавляем данные в буфер
 		this->_buffer->push(item);
@@ -77,13 +79,19 @@ TEST_P(BufferParameterizedFixture, BufferTest){
 	ASSERT_EQ(this->_parameter.items.front().front(), this->_buffer->front <char> ());
 	// Создаём временный буфер для проверки индексов
 	std::vector <uint8_t> tempBuffer1, tempBuffer2;
-	// Переход по всем данным для проверки индексов буфера
+	/**
+	 * Переход по всем данным для проверки индексов буфера
+	 */
 	for(auto & item : this->_buffer->as <char>())
 		// Добавляем данные во временный буфер
 		tempBuffer1.push_back(item);
-	// Переход по всем данным переданным для добавления в буфер
+	/**
+	 * Переход по всем данным переданным для добавления в буфер
+	 */
 	for(auto & item : this->_parameter.items)
-		// Переход по всем символам строки
+		/**
+		 * Переход по всем символам строки
+		 */
 		for(auto & ch : item)
 			// Добавляем символ во временный буфер
 			tempBuffer2.push_back(ch);
@@ -159,7 +167,9 @@ class FrameBufferParameterizedFixture : public BufferFixture, public ::testing::
 		std::string generate(const size_t size, const size_t seed) const noexcept {
 			// Результирующие данные
 			std::string result(size, '\0');
-			// Заполняем данные детерминированными значениями
+			/**
+			 * Заполняем данные детерминированными значениями
+			 */
 			for(size_t i = 0; i < size; i++)
 				// Устанавливаем значение байта
 				result[i] = static_cast <char> ((seed + i) & 0xFF);
@@ -260,7 +270,9 @@ TEST_P(FrameBufferParameterizedFixture, ChunkedPrepareCommitTest){
 	awh::buffer_t buffer(this->_fmk.get(), this->_log.get());
 	// Собираем все данные в одну строку
 	std::string source;
-	// Формируем исходные данные из всех фреймов
+	/**
+	 * Формируем исходные данные из всех фреймов
+	 */
 	for(size_t i = 0; i < this->_parameter.frames.size(); i++)
 		// Дополняем исходные данные данными фрейма
 		source.append(this->generate(this->_parameter.frames.at(i), i));

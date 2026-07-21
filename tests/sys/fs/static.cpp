@@ -269,7 +269,9 @@ TEST_F(FSFixture, ReadfileZeroChunkSizeTest){
 	const std::string file = dir + "/blob.bin";
 	// Формируем содержимое заведомо больше одной страницы памяти
 	std::string content;
-	// Наполняем содержимое данными
+	/**
+	 * Наполняем содержимое данными
+	 */
 	for(size_t i = 0; i < 10000; ++i)
 		// Добавляем строку с номером
 		content.append("0123456789ABCDEF");
