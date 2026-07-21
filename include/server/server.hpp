@@ -44,11 +44,12 @@ namespace awh {
 			/**
 			 * @brief Структура для хранения параметров DNS-резолвера
 			 *
+			 * @details Хранит идентификатор DNS-резолвера, время жизни DNS-запроса и объект DNS-резолвера.
 			 */
-			typedef struct Domain_Name_System {
+			typedef struct __AWH_SHARED_EXPORT__ Domain_Name_System {
 				// Идентификатор DNS-резолвера
 				unit::dns_t::id_t id;
-				// Время жизни DNS запроса (в миллисекундах)
+				// Время жизни DNS запроса (в миллисекундах, по умолчанию 15 секунд)
 				atomic_uint32_t alive;
 				// Объект DNS-резолвера
 				unit::dns_t * client;
@@ -56,14 +57,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Domain_Name_System() noexcept :
-				 id(0), alive(15000), client(nullptr) {}
+				explicit Domain_Name_System() noexcept;
 			} dns_t;
 			/**
 			 * @brief Структура идентификаторов клиента
 			 *
+			 * @details Хранит идентификатор сервера и идентификатор безопасности TLS.
 			 */
-			typedef struct Identifier {
+			typedef struct __AWH_SHARED_EXPORT__ Identifier {
 				// Идентификатор клиента
 				event::id_t eid;
 				// Идентификатор безопасности
@@ -72,13 +73,14 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Identifier() noexcept : eid(0), sid(0) {}
+				explicit Identifier() noexcept;
 			} __attribute__((packed)) id_t;
 			/**
 			 * @brief Структура для хранения параметров транспортного уровня безопасности
 			 *
+			 * @details Хранит объект транспортного уровня безопасности и список для сопоставления идентификаторов клиентов с идентификаторами TLS.
 			 */
-			typedef struct TLS {
+			typedef struct __AWH_SHARED_EXPORT__ TLS {
 				// Объект транспортного уровня безопасности
 				tls::coder_t * coder;
 				// Список для сопоставления идентификаторов клиентов с идентификаторами TLS
@@ -86,16 +88,15 @@ namespace awh {
 				/**
 				 * @brief Конструктор
 				 *
-				 * @param fmk объект фреймворка
-				 * @param log объект для работы с логами
 				 */
-				explicit TLS() noexcept : coder(nullptr) {}
+				explicit TLS() noexcept;
 			} tls_t;
 			/**
 			 * @brief Структура юнита сервера
 			 *
+			 * @details Хранит объект работы с сетевыми адресами и объект юнита сервера.
 			 */
-			typedef struct Unit {
+			typedef struct __AWH_SHARED_EXPORT__ Unit {
 				// Объект работы с сетевыми адресами
 				net_addr_t addr;
 				// Объект юнита сервера
@@ -106,8 +107,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept :
-				 addr(fmk, log), server(fmk, log) {}
+				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept;
 			} unit_t;
 		protected:
 			// Идентификатор сервера

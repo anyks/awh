@@ -2382,6 +2382,32 @@ namespace driver {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::compressor::Block::BufferGZip::BufferGZip() noexcept :
+ compress(nullptr), decompress(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::compressor::Block::Takeover::Takeover() noexcept :
+ compress(false), decompress(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::compressor::Block::Zlib::Zlib() noexcept : wbits(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::compressor::Block::GZip::GZip() noexcept : wbits(0) {}
+
+/**
  * @brief Метод установки уровня компрессии
  *
  * @param level уровень компрессии

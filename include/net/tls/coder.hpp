@@ -145,8 +145,9 @@ namespace awh {
 				/**
 				 * @brief Структура информации о шифре
 				 *
+				 * @note Содержит информацию о шифре, используемом в TLS-соединении, включая его название, стандартное название и код шифра.
 				 */
-				typedef struct CipherInfo {
+				typedef struct __AWH_SHARED_EXPORT__ CipherInfo {
 					bool tls13;      // Флаг, указывающий, является ли шифр TLSv1.3
 					string name;     // Название шифра, например AES_128_GCM_SHA256
 					string origin;   // Стандартное название шифра, например TLS_AES_128_GCM_SHA256
@@ -155,10 +156,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit CipherInfo() noexcept :
-					tls13(false),
-					name{""}, origin{""},
-					cipher(cipher_t::UNKNOWN) {}
+					explicit CipherInfo() noexcept;
 				} cipher_info_t;
 			public:
 				/**

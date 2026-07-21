@@ -227,8 +227,10 @@ namespace awh {
 				/**
 				 * @brief Структура режима работы схемы авторизации
 				 *
+				 * @details Поля mode.nonceMaxAge, mode.signMaxAge и mode.signStrictMaxAge
+				 *          используются схемами Digest/HMAC для ограничения срока жизни nonce/signature.
 				 */
-				typedef struct Mode_Digest {
+				typedef struct __AWH_SHARED_EXPORT__ Mode_Digest {
 					// Флаг наличия параметра qop (RFC 7616, иначе legacy RFC 2069)
 					bool qop;
 					// Флаг использования сессионного алгоритма (-sess)
@@ -241,9 +243,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Mode_Digest() noexcept :
-					 qop(false), sess(false),
-					 authInt(false), stamp(0) {}
+					explicit Mode_Digest() noexcept;
 				} mode_digest_t;
 				/**
 				 * @brief Структура параметров Digest-авторизации
@@ -252,16 +252,15 @@ namespace awh {
 				 *          внутренне схемой Digest. На сервере lncs хранит последние принятые
 				 *          значения nc по ключу «логин + nonce» для защиты от replay-атак.
 				 *          Таблица сбрасывается при выдаче нового nonce и при reset()/type().
-				 *
 				 */
-				typedef struct Digest {
+				typedef struct __AWH_SHARED_EXPORT__ Digest {
 					// Флаги состояния авторизации (для внутреннего использования схемой Digest)
 					mode_digest_t mode;
 					// Счётчик запросов клиента (nonce count)
 					string nc;
 					// Параметры HTTP-запроса (request-uri)
 					string uri;
-					// Тип защиты (quality of protection)
+					// Тип защиты (quality of protection), по умолчанию "auth" (RFC 7616)
 					string qop;
 					// Название сервера или realm
 					string realm;
@@ -287,20 +286,16 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Digest() noexcept :
-					 nc{"00000000"}, uri{""},
-					 qop{"auth"}, realm{""},
-					 nonce{""}, issued{""},
-					 entity{""}, opaque{""},
-					 cnonce{""}, response{""},
-					 issuedOpaque{""} {}
+					explicit Digest() noexcept;
 				} digest_t;
 			public:
 				/**
 				 * @brief Структура даты подписи HMAC (RFC 9421)
 				 *
+				 * @details Поля created и expires включаются в Signature-Input и участвуют
+				 *          в расчёте подписи. На сервере usedNonces хранит уже принятые значения nonce для защиты от повторного использования подписи.
 				 */
-				typedef struct Sign_Date {
+				typedef struct __AWH_SHARED_EXPORT__ Sign_Date {
 					// Штамп времени создания подписи в секундах
 					uint64_t created;
 					// Штамп времени истечения подписи в секундах (0 — не задано)
@@ -309,7 +304,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Sign_Date() noexcept : created(0), expires(0) {}
+					explicit Sign_Date() noexcept;
 				} sign_date_t;
 				/**
 				 * @brief Структура параметров авторизации подписью HMAC (RFC 9421)
@@ -317,9 +312,8 @@ namespace awh {
 				 * @details Поля created, expires и nonce включаются в Signature-Input и участвуют
 				 *          в расчёте подписи. На сервере usedNonces хранит уже принятые значения
 				 *          nonce для защиты от повторного использования подписи.
-				 *
 				 */
-				typedef struct Sign {
+				typedef struct __AWH_SHARED_EXPORT__ Sign {
 					// Параметры даты подписи (created/expires)
 					sign_date_t date;
 					// Секретный ключ подписи (HMAC)
@@ -352,17 +346,17 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Sign() noexcept :
-					 key{""}, tag{""},
-					 keyId{""}, label{"sig1"},
-					 nonce{""}, params{""},
-					 signature{""}, inputLabel{""} {}
+					explicit Sign() noexcept;
 				} sign_t;
 				/**
 				 * @brief Структура обратных вызовов для проверки учётных данных (сервер)
 				 *
+				 * @details Функции обратных вызовов вызываются схемой авторизации на сервере
+				 *          для проверки учётных данных, извлечения пароля пользователя или
+				 *          секретного ключа подписи по идентификатору.
+				 *          Функции должны быть зарегистрированы через методы callback*() до вызова parse().
 				 */
-				typedef struct Callback {
+				typedef struct __AWH_SHARED_EXPORT__ Callback {
 					/**
 					 * @brief Внешняя функция проверки токена доступа (BEARER, сервер)
 					 *
@@ -396,37 +390,34 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Callback() noexcept :
-					 checkToken(nullptr), extractKey(nullptr),
-					 extractPass(nullptr), checkUser(nullptr) {}
+					explicit Callback() noexcept;
 				} callback_t;
 			public:
 				/**
 				 * @brief Структура режима работы параметров авторизации
 				 *
+				 * @details Поля clockSkew задаёт допуск (в секундах) при проверке created/expires
+				 *          подписи HMAC на сервере. Значение по умолчанию — 60 секунд.
+				 *          signMaxAge ограничивает срок жизни подписи без expires (0 — без лимита).
 				 */
-				typedef struct Mode_Params {
+				typedef struct __AWH_SHARED_EXPORT__ Mode_Params {
 					// Флаг работы через прокси (Proxy-Authorization/Proxy-Authenticate)
 					bool proxy;
-					// Режим строгости проверки учётных данных на сервере
+					// Режим строгости проверки учётных данных на сервере (по умолчанию SIMPLE)
 					mode_t validation;
-					// Допустимое расхождение локальных часов при проверке HMAC (секунды)
+					// Допустимое расхождение локальных часов при проверке HMAC (секунды, по умолчанию 60)
 					uint64_t clockSkew;
 					// Максимальный возраст HMAC-подписи без expires (секунды, 0 — не ограничен)
 					uint64_t signMaxAge;
-					// Максимальный возраст Digest-nonce (секунды, 0 — без ограничения по времени)
+					// Максимальный возраст Digest-nonce (секунды, 0 — без ограничения по времени, по умолчанию 1800)
 					uint64_t nonceMaxAge;
-					// Максимальный возраст HMAC-подписи без expires в строгом режиме (секунды, 0 — не ограничен)
+					// Максимальный возраст HMAC-подписи без expires в строгом режиме (секунды, 0 — не ограничен, по умолчанию 300)
 					uint64_t signStrictMaxAge;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Mode_Params() noexcept :
-					 proxy(false),
-					 validation(mode_t::SIMPLE),
-					 clockSkew(60), signMaxAge(0),
-					 nonceMaxAge(1800), signStrictMaxAge(300) {}
+					explicit Mode_Params() noexcept;
 				} mode_params_t;
 				/**
 				 * @brief Структура общих параметров авторизации
@@ -434,9 +425,8 @@ namespace awh {
 				 * @details clockSkew задаёт допуск (в секундах) при проверке created/expires
 				 *          подписи HMAC на сервере. Значение по умолчанию — 60 секунд.
 				 *          signMaxAge ограничивает срок жизни подписи без expires (0 — без лимита).
-				 *
 				 */
-				typedef struct Params {
+				typedef struct __AWH_SHARED_EXPORT__ Params {
 					// Режим работы параметров авторизации
 					mode_params_t mode;
 					// Логин пользователя
@@ -445,11 +435,11 @@ namespace awh {
 					string pass;
 					// Токен доступа (для BEARER)
 					string token;
-					// HTTP-метод запроса (для расчёта ответа DIGEST)
+					// HTTP-метод запроса (для расчёта ответа DIGEST, по умолчанию GET)
 					string method;
-					// Текущий алгоритм хэширования (может переопределяться из заголовка Digest)
+					// Текущий алгоритм хэширования (может переопределяться из заголовка Digest, по умолчанию MD5)
 					hash_t hash;
-					// Алгоритм хэширования, заданный через type() (для DIGEST/HMAC)
+					// Алгоритм хэширования, заданный через type() (для DIGEST/HMAC, по умолчанию MD5)
 					hash_t scheme;
 					// Параметры авторизации подписью HMAC
 					sign_t sign;
@@ -461,15 +451,15 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Params() noexcept :
-					 user{""}, pass{""},
-					 token{""}, method{"GET"},
-					 hash(hash_t::MD5), scheme(hash_t::MD5) {}
+					explicit Params() noexcept;
 				} params_t;
 			public:
 				/**
 				 * @brief Абстрактный интерфейс схемы авторизации (внутренняя стратегия)
 				 *
+				 * @details Конкретные схемы (Basic/Digest/Bearer/HMAC) реализуют интерфейс
+				 *          scheme_t и делегируют ему методы parse()/header()/check().
+				 *          Интерфейс scheme_t не должен использоваться напрямую.
 				 */
 				typedef class __AWH_SHARED_EXPORT__ Scheme {
 					protected:

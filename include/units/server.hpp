@@ -87,10 +87,10 @@ namespace awh {
 				unordered_map <event::id_t, event::id_t> _events;
 			private:
 				// Список клиентов по идентификатору серверного события
-				unordered_map <event::id_t, std::list <event::id_t>> _serverClients;
+				unordered_map <event::id_t, list <event::id_t>> _serverClients;
 			private:
 				// Позиция клиента в списке клиентов его сервера
-				unordered_map <event::id_t, std::list <event::id_t>::iterator> _clientPositions;
+				unordered_map <event::id_t, list <event::id_t>::iterator> _clientPositions;
 			private:
 				/**
 				 * @brief Метод удаления связи клиента с сервером

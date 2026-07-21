@@ -53,15 +53,16 @@ namespace awh {
 			/**
 			 * @brief Структура контейнера бинарных данных
 			 *
+			 * @details Содержит размер записи и буфер бинарных данных.
 			 */
-			typedef struct Record {
+			typedef struct __AWH_SHARED_EXPORT__ Record {
 				uintmax_t size;                 // Размер записи данных
 				unique_ptr <uint8_t []> buffer; // Буфер записи данных
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Record() noexcept : size(0), buffer(nullptr) {}
+				explicit Record() noexcept;
 			} record_t;
 		public:
 			/**
@@ -71,7 +72,8 @@ namespace awh {
 			typedef class __AWH_SHARED_EXPORT__ Iterator {
 				public:
 					/**
-					 * Создаём необходимые нам типы данных
+					 * @brief Создаём необходимые нам типы данных
+					 *
 					 */
 					using value_type        = record_t;
 					using pointer           = record_t *;

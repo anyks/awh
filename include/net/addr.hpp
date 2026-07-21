@@ -120,22 +120,21 @@ namespace awh {
 			/**
 			 * @brief Структура локального адреса
 			 *
+			 * @details Структура локального адреса содержит информацию о локальном адресе сети,
+			 *          включая его префикс, начальный и конечный диапазон адресов, а также флаг, указывающий, является ли адрес зарезервированным.
 			 */
-			typedef struct LocalNet {
-				bool reserved;                           // Адрес является зарезервированным
-				uint8_t prefix;                          // Префикс сети
-				std::unique_ptr <Network_Address> end;   // Конечный диапазон адреса
-				std::unique_ptr <Network_Address> begin; // Начальный IP-адрес
+			typedef struct __AWH_SHARED_EXPORT__ LocalNet {
+				bool reserved;                      // Адрес является зарезервированным
+				uint8_t prefix;                     // Префикс сети
+				unique_ptr <Network_Address> end;   // Конечный диапазон адреса
+				unique_ptr <Network_Address> begin; // Начальный IP-адрес
 				/**
 				 * @brief Конструктор
 				 *
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				LocalNet(const fmk_t * fmk, const log_t * log) noexcept :
-				 reserved(false), prefix(0),
-				 end(std::make_unique <Network_Address> (fmk, log)),
-				 begin(std::make_unique <Network_Address> (fmk, log)) {}
+				explicit LocalNet(const fmk_t * fmk, const log_t * log) noexcept;
 			} localNet_t;
 		private:
 			// Тип обрабатываемого адреса
@@ -151,7 +150,7 @@ namespace awh {
 			vector <uint8_t> _buffer;
 		private:
 			// Список локальных адресов
-			std::unordered_multimap <type_t, localNet_t> _localsNet;
+			unordered_multimap <type_t, localNet_t> _localsNet;
 		private:
 			// Объект фреймворка
 			const fmk_t * _fmk;
@@ -230,13 +229,13 @@ namespace awh {
 			 *
 			 * @return аппаратный адрес в чистом виде
 			 */
-			std::array <uint8_t, 6> mac() const noexcept;
+			array <uint8_t, 6> mac() const noexcept;
 			/**
 			 * @brief Метод установки аппаратного адреса в чистом виде
 			 *
 			 * @param addr аппаратный адрес в чистом виде
 			 */
-			void mac(const std::array <uint8_t, 6> & addr) noexcept;
+			void mac(const array <uint8_t, 6> & addr) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения адреса IPv4 в чистом виде
@@ -259,14 +258,14 @@ namespace awh {
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 * @return       адрес IPv6 в чистом виде
 			 */
-			std::array <uint8_t, 16> v6(const endian_t endian = endian_t::LITTLE) const noexcept;
+			array <uint8_t, 16> v6(const endian_t endian = endian_t::LITTLE) const noexcept;
 			/**
 			 * @brief Метод установки адреса IPv6 в чистом виде
 			 *
 			 * @param addr   адрес IPv6 в чистом виде
 			 * @param endian флаг формирования адреса в установленном порядке следовании байт
 			 */
-			void v6(const std::array <uint8_t, 16> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
+			void v6(const array <uint8_t, 16> & addr, const endian_t endian = endian_t::LITTLE) noexcept;
 		public:
 			/**
 			 * @brief Метод извлечения адреса в чистом виде
@@ -623,14 +622,14 @@ namespace awh {
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			Network_Address & operator = (const std::array <uint8_t, 6> & addr) noexcept;
+			Network_Address & operator = (const array <uint8_t, 6> & addr) noexcept;
 			/**
 			 * @brief Оператор присваивания присвоения IP-адреса
 			 *
 			 * @param addr адрес для присвоения
 			 * @return     текущий объект
 			 */
-			Network_Address & operator = (const std::array <uint8_t, 16> & addr) noexcept;
+			Network_Address & operator = (const array <uint8_t, 16> & addr) noexcept;
 		public:
 			/**
 			 * @brief Конструктор

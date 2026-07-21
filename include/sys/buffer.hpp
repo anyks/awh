@@ -60,17 +60,18 @@ namespace awh {
 			 * @brief Структура диапазонов записей
 			 *
 			 */
-			typedef struct Range {
-				size_t end;       // Конец записи
-				size_t begin;     // Начало записи
-				size_t maxMemory; // Максимальный размер выделения памяти
+			typedef struct __AWH_SHARED_EXPORT__ Range {
+				// Конец записи
+				size_t end;
+				// Начало записи
+				size_t begin;
+				// Максимальный размер выделения памяти (по умолчанию AWH_MAX_MEMORY_BUFFER)
+				size_t maxMemory;
 				/**
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Range() noexcept :
-				 end(0), begin(0),
-				 maxMemory(AWH_MAX_MEMORY_BUFFER) {}
+				explicit Range() noexcept;
 			} __attribute__((packed)) range_t;
 		public:
 			/**

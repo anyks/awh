@@ -183,7 +183,7 @@ namespace awh {
 					 * @brief Деструктор
 					 *
 					 */
-					~Payload() noexcept {}
+					~Payload() noexcept = default;
 			} payload_t;
 		private:
 			/**
@@ -212,7 +212,7 @@ namespace awh {
 					 * @brief Деструктор
 					 *
 					 */
-					virtual ~Sink() noexcept {}
+					virtual ~Sink() noexcept = default;
 			};
 			/**
 			 * @brief Приёмник вывода логов в консоль

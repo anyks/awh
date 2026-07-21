@@ -237,6 +237,14 @@ namespace gw {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::eth::Gateway::Route::Route() noexcept :
+ ifname{""}, prefix(0),
+ destination(nullptr), gateway(nullptr) {}
+
+/**
  * @brief Метод получения маршрута для указанного адреса
  *
  * @param route объект для извлечения маршрута

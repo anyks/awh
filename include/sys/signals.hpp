@@ -95,10 +95,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Events() noexcept :
-					 sigint{}, sigfpe{},
-					 sigill{}, sigbus{},
-					 sigabrt{}, sigterm{}, sigsegv{} {}
+					explicit Events() noexcept = default;
 				} events_t;
 			/**
 			 * Для операционной системы MS Windows
@@ -131,7 +128,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					Events() noexcept :
+					explicit Events() noexcept :
 					 sigint(nullptr), sigfpe(nullptr),
 					 sigill(nullptr), sigabrt(nullptr),
 					 sigterm(nullptr), sigsegv(nullptr) {}

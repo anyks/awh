@@ -32,6 +32,14 @@
 using namespace std;
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::Buffer::Range::Range() noexcept :
+ end(0), begin(0),
+ maxMemory(AWH_MAX_MEMORY_BUFFER) {}
+
+/**
  * @brief Метод получения указателя на зарезервированную область
  *
  * @return указатель для записи данных либо nullptr при ошибке резервирования

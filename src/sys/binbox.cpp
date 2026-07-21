@@ -332,6 +332,12 @@ namespace binbox {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::BinBox::Record::Record() noexcept : size(0), buffer(nullptr) {}
+
+/**
  * @brief Оператор преобразования в сырой итератор
  *
  * @return iterator итератор для преобразования

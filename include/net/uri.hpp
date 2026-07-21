@@ -102,7 +102,7 @@ namespace awh {
 			 * @brief Структура пользователя URI
 			 *
 			 */
-			typedef struct User {
+			typedef struct __AWH_SHARED_EXPORT__ User {
 				// Имя пользователя
 				string username;
 				// Пароль пользователя
@@ -111,8 +111,7 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit User() noexcept :
-				 username{""}, password{""} {}
+				explicit User() noexcept;
 			} user_t;
 		private:
 			// Тип URI

@@ -879,6 +879,24 @@ namespace driver {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::Crypto::Params_RSA::Params_RSA() noexcept :
+ rounds(AWH_CRYPTO_AES_ROUNDS),
+ salt{""}, password{""},
+ state(nullptr), key(nullptr) {}
+
+/**
+ * @brief Метод установки безопасности работы потоков
+ *
+ * @param mode флаг режима безопасности потоков
+ */
+void awh::Crypto::threadSafety(const bool mode) noexcept {
+	// Устанавливаем режим безопасности потоков
+	this->_mtx.enabled = mode;
+}
+/**
  * @brief Метод установки количества итераций PBKDF2 для вывода ключа AES
  *
  * @param round количество итераций PBKDF2
@@ -982,15 +1000,6 @@ void awh::Crypto::password(string_view password) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
-}
-/**
- * @brief Метод установки безопасности работы потоков
- *
- * @param mode флаг режима безопасности потоков
- */
-void awh::Crypto::threadSafety(const bool mode) noexcept {
-	// Устанавливаем режим безопасности потоков
-	this->_mtx.enabled = mode;
 }
 /**
  * @brief Метод преобразования 128-битного хэша в 64-битный

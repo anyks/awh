@@ -50,7 +50,7 @@ namespace awh {
 				 * @brief Структура маршрута
 				 *
 				 */
-				typedef struct Route {
+				typedef struct __AWH_SHARED_EXPORT__ Route {
 					// Сетевой интерфейс
 					string ifname;
 					// Префикс сети
@@ -63,9 +63,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Route() noexcept :
-					ifname{""}, prefix(0),
-					destination(nullptr), gateway(nullptr) {}
+					explicit Route() noexcept;
 				} route_t;
 			private:
 				// Объект фреймворка

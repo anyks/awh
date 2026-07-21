@@ -46,9 +46,10 @@
 #endif
 
 /**
- * Подключаем заголовочный файл проекта
+ * Подключаем заголовочные файлы проекта
  */
 #include "event.hpp"
+#include "../sys/global.hpp"
 
 /**
  * @brief Основное пространство имён
@@ -142,8 +143,12 @@ namespace awh {
 		/**
 		 * @brief Структура адреса
 		 *
+		 * @details Базовая структура для хранения адреса подключения.
+		 *
+		 * @note Используется для хранения адреса подключения в виде массива байт
+		 * @note Размер адреса задаётся в конструкторе структуры
 		 */
-		typedef struct Address {
+		typedef struct __AWH_SHARED_EXPORT__ Address {
 			// Размер адреса
 			uint16_t size;
 			/**
@@ -151,7 +156,7 @@ namespace awh {
 			 *
 			 * @param size размер адреса
 			 */
-			explicit Address(const uint16_t size = 0) noexcept : size(size) {}
+			explicit Address(const uint16_t size = 0) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
@@ -162,23 +167,24 @@ namespace awh {
 		/**
 		 * @brief Структура MAC-адреса
 		 *
+		 * @details Структура для хранения MAC-адреса сетевого интерфейса.
 		 */
-		typedef struct Address_MAC : public addr_t {
+		typedef struct __AWH_SHARED_EXPORT__ Address_MAC : public addr_t {
 			// Буфер MAC-адреса
 			array <uint8_t, 6> address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Address_MAC() noexcept :
-			 addr_t(6), address{0} {}
+			explicit Address_MAC() noexcept;
 		} addr_mac_t;
 
 		/**
 		 * @brief Структура сетевого адреса
 		 *
+		 * @details Структура для хранения сетевого адреса с указанием префикса сети.
 		 */
-		typedef struct Address_Network : public addr_t {
+		typedef struct __AWH_SHARED_EXPORT__ Address_Network : public addr_t {
 			// Префикс сети
 			uint8_t prefix;
 			/**
@@ -187,23 +193,22 @@ namespace awh {
 			 * @param prefix префикс сети
 			 * @param size   размер адреса
 			 */
-			explicit Address_Network(const uint8_t prefix, const uint16_t size) noexcept :
-			 addr_t(size), prefix(prefix) {}
+			explicit Address_Network(const uint8_t prefix, const uint16_t size) noexcept;
 		} addr_net_t;
 
 		/**
 		 * @brief Структура IPv4 сетевого адреса
 		 *
+		 * @details Структура для хранения IPv4 сетевого адреса с указанием префикса сети.
 		 */
-		typedef struct Address_Network_IPv4 : public addr_net_t {
+		typedef struct __AWH_SHARED_EXPORT__ Address_Network_IPv4 : public addr_net_t {
 			// IP-адрес сети
 			uint32_t address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Address_Network_IPv4() noexcept :
-			 addr_net_t(32, 4), address(0) {}
+			explicit Address_Network_IPv4() noexcept;
 			/**
 			 * @brief Деструктор
 			 *
@@ -214,37 +219,39 @@ namespace awh {
 		/**
 		 * @brief Структура IPv6 сетевого адреса
 		 *
+		 * @details Структура для хранения IPv6 сетевого адреса с указанием префикса сети.
 		 */
-		typedef struct Address_Network_IPv6 : public addr_net_t {
+		typedef struct __AWH_SHARED_EXPORT__ Address_Network_IPv6 : public addr_net_t {
 			// Буфер IP-адрес сети
 			array <uint8_t, 16> address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Address_Network_IPv6() noexcept :
-			 addr_net_t(128, 16), address{0} {}
+			explicit Address_Network_IPv6() noexcept;
 		} addr_net_ipv6_t;
 
 		/**
 		 * @brief Структура адреса файловой системы
 		 *
+		 * @details Структура для хранения адреса в файловой системе.
 		 */
-		typedef struct Address_Filesystem : public addr_t {
+		typedef struct __AWH_SHARED_EXPORT__ Address_Filesystem : public addr_t {
 			// Путь к файлу, каталогу или сокету
 			string address;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Address_Filesystem() noexcept : address{""} {}
+			explicit Address_Filesystem() noexcept;
 		} addr_fs_t;
 
 		/**
 		 * @brief Структура сетевых адресов текущей машины
 		 *
+		 * @details Структура для хранения сетевых адресов текущей машины.
 		 */
-		typedef struct Source {
+		typedef struct __AWH_SHARED_EXPORT__ Source {
 			// Название сетвого интерфейса
 			string iface;
 			// IP-адрес сети
@@ -256,16 +263,15 @@ namespace awh {
 			 *
 			 * @param ip адрес сетевого подключения
 			 */
-			explicit Source(unique_ptr <addr_t> ip) noexcept :
-			 iface{""}, ip(std::move(ip)),
-			 mac(make_unique <addr_mac_t> ()) {}
+			explicit Source(unique_ptr <addr_t> ip) noexcept;
 		} src_t;
 
 		/**
 		 * @brief Структура атрибутов подключения
 		 *
+		 * @details Структура для хранения атрибутов подключения.
 		 */
-		typedef struct Attributes {
+		typedef struct __AWH_SHARED_EXPORT__ Attributes {
 			// Тип адреса подключения
 			type_t type;
 			/**
@@ -273,7 +279,7 @@ namespace awh {
 			 *
 			 * @param type тип адреса подключения
 			 */
-			explicit Attributes(const type_t type) noexcept : type(type) {}
+			explicit Attributes(const type_t type) noexcept;
 			/**
 			 * @brief Деструктор
 			 *
@@ -284,8 +290,9 @@ namespace awh {
 		/**
 		 * @brief Структура FQDN-адреса подключения
 		 *
+		 * @details Структура для хранения FQDN-адреса подключения.
 		 */
-		typedef struct Attributes_FQDN : public attr_t {
+		typedef struct __AWH_SHARED_EXPORT__ Attributes_FQDN : public attr_t {
 			// Порт хоста
 			uint16_t port;
 			// Доменное имя хоста
@@ -294,15 +301,15 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Attributes_FQDN() noexcept :
-			 attr_t(type_t::FQDN), port(0), domain{""} {}
+			explicit Attributes_FQDN() noexcept;
 		} attr_fqdn_t;
 
 		/**
 		 * @brief Структура IP-адреса подключения
 		 *
+		 * @details Структура для хранения IP-адреса подключения.
 		 */
-		typedef struct Attributes_Network : public attr_t {
+		typedef struct __AWH_SHARED_EXPORT__ Attributes_Network : public attr_t {
 			// Порт хоста
 			uint16_t port;
 			// IP-адрес хоста
@@ -311,31 +318,30 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Attributes_Network() noexcept :
-			 attr_t(type_t::IPV4), port(0),
-			 ip(make_unique <addr_net_ipv4_t> ()) {}
+			explicit Attributes_Network() noexcept;
 		} attr_net_t;
 
 		/**
 		 * @brief Структура UDS-адреса подключения
 		 *
+		 * @details Структура для хранения UDS-адреса подключения.
 		 */
-		typedef struct Attributes_Unix_Domain_Socket : public attr_t {
+		typedef struct __AWH_SHARED_EXPORT__ Attributes_Unix_Domain_Socket : public attr_t {
 			// Путь к сокету
 			unique_ptr <addr_t> path;
 			/**
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Attributes_Unix_Domain_Socket() noexcept :
-			 attr_t(type_t::FS), path(make_unique <addr_fs_t> ()) {}
+			explicit Attributes_Unix_Domain_Socket() noexcept;
 		} attr_uds_t;
 
 		/**
 		 * @brief Структура метаданных последнего принятого дейтаграммного пакета
 		 *
+		 * @details Структура метаданных последнего принятого дейтаграммного пакета.
 		 */
-		typedef struct Datagram_Info {
+		typedef struct __AWH_SHARED_EXPORT__ Datagram_Info {
 			// Сырое значение TTL/Hop Limit последнего принятого пакета (RFC, 0..255)
 			uint8_t hops;
 			// Индекс входного интерфейса
@@ -350,18 +356,15 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Datagram_Info() noexcept :
-			 hops(0), ifaceIndex(0),
-			 family(event::family_t::NONE),
-			 protocol(event::protocol_t::NONE),
-			 trafficClass(event::dscp_t::CS0) {}
+			explicit Datagram_Info() noexcept;
 		} dgram_info_t;
 
 		/**
 		 * @brief Структура информации о пакетах в тоннеле
 		 *
+		 * @details Структура информации о пакетах в тоннеле.
 		 */
-		typedef struct Tunnel_Info {
+		typedef struct __AWH_SHARED_EXPORT__ Tunnel_Info {
 			// Количество хопов
 			event::hops_t hops;
 			// Семейство адресов
@@ -376,18 +379,15 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Tunnel_Info() noexcept :
-			 hops(event::hops_t::WORLD),
-			 family(event::family_t::NONE),
-			 protocol(event::protocol_t::NONE),
-			 target(nullptr), source(nullptr) {}
+			explicit Tunnel_Info() noexcept;
 		} tun_info_t;
 
 		/**
 		 * @brief Структура сетевого интерфейса
 		 *
+		 * @details Структура сетевого интерфейса.
 		 */
-		typedef struct Interface {
+		typedef struct __AWH_SHARED_EXPORT__ Interface {
 			string name;                             // Название интерфейса
 			uint16_t mtu;                            // MTU интерфейса
 			unordered_set <event::eth_flag_t> flags; // Флаги интерфейса
@@ -395,7 +395,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Interface() noexcept : name{""}, mtu(0), flags{} {}
+			explicit Interface() noexcept;
 		} iface_t;
 
 		/**
@@ -405,6 +405,7 @@ namespace awh {
 			/**
 			 * @brief Пространство имён для работы с SCTP
 			 *
+			 * @details Пространство имён для работы с протоколом SCTP (Stream Control Transmission Protocol).
 			 */
 			namespace sctp {
 				/**
@@ -637,8 +638,10 @@ namespace awh {
 				/**
 				 * @brief Структура метаданных сообщения SCTP
 				 *
+				 * @details Структура содержит информацию о полезной нагрузке,
+				 *          номере потока, времени жизни, контексте и флагах сообщения.
 				 */
-				typedef struct Message_Info {
+				typedef struct __AWH_SHARED_EXPORT__ Message_Info {
 					ppid_t ppid;                  // Идентификатор полезной нагрузки
 					uint16_t num;                 // Номер потока
 					uint32_t ttl;                 // Время жизни (в миллисекундах)
@@ -648,38 +651,36 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Message_Info() noexcept :
-					 ppid(ppid_t::DTLS),
-					 num(0), ttl(0), ctx(0) {}
+					explicit Message_Info() noexcept;
 				} __attribute__((packed)) minfo_t;
 
 				/**
 				 * @brief Структура инициализации рукопожатия SCTP
 				 *
+				 * @details Структура содержит информацию о таймаутах, попытках подключения и количестве потоков.
 				 */
-				typedef struct Initialization_Message {
+				typedef struct __AWH_SHARED_EXPORT__ Initialization_Message {
 					// Максимальное время инициализации SCTP
 					uint16_t timeout;
-					// Максимальное количество попыток подключения
+					// Максимальное количество попыток подключения (по умолчанию 4)
 					uint16_t attempts;
-					// Максимальное количество исходящих потоков
+					// Максимальное количество исходящих потоков (по умолчанию 5)
 					uint16_t ostreams;
-					// Максимальное количество входящих потоков
+					// Максимальное количество входящих потоков (по умолчанию 5)
 					uint16_t istreams;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Initialization_Message() noexcept :
-					 timeout(0), attempts(4),
-					 ostreams(5), istreams(5) {}
+					explicit Initialization_Message() noexcept;
 				} __attribute__((packed)) initmsg_t;
 
 				/**
 				 * @brief Структура статуса SCTP подключения
 				 *
+				 * @details Структура содержит информацию о состоянии ассоциации, размере окна передачи, количестве потоков и фрагментации.
 				 */
-				typedef struct Status {
+				typedef struct __AWH_SHARED_EXPORT__ Status {
 					uint32_t id;          // ID ассоциации
 					uint32_t ratewind;    // Размер окна скорости передачи
 					uint16_t penddata;    // Количество ожидающих данных
@@ -692,34 +693,30 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Status() noexcept :
-					 id(0),
-					 ratewind(0), penddata(0),
-					 ostreams(0), istreams(0),
-					 unackdata(0), fragpoint(0),
-					 state(state_status_t::NONE) {}
+					explicit Status() noexcept;
 				} __attribute__((packed)) status_t;
 
 				/**
 				 * @brief Структура ошибки события SCTP
 				 *
+				 * @details Структура содержит информацию о коде и сообщении ошибки события.
 				 */
-				typedef struct Error {
+				typedef struct __AWH_SHARED_EXPORT__ Error {
 					int32_t code;   // Код ошибки события
 					string message; // Сообщение ошибки события
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Error() noexcept :
-					 code(0), message{""} {}
+					explicit Error() noexcept;
 				} error_t;
 
 				/**
 				 * @brief Структура события SCTP
 				 *
+				 * @details Структура содержит идентификатор события и его тип.
 				 */
-				typedef struct Event {
+				typedef struct __AWH_SHARED_EXPORT__ Event {
 					// Идентификатор события
 					uint32_t id;
 					// Тип события
@@ -728,8 +725,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event() noexcept :
-					 id(0), type(event_type_t::NONE) {}
+					explicit Event() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -740,15 +736,16 @@ namespace awh {
 				/**
 				 * @brief Структура адаптационного указания SCTP
 				 *
+				 * @details Структура адаптационного указания SCTP.
 				 */
-				typedef struct Event_Adaptation : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Event_Adaptation : public event_t {
 					// Адаптационное указание
 					uint32_t indication;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Adaptation() noexcept : indication(0) {}
+					explicit Event_Adaptation() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -759,8 +756,10 @@ namespace awh {
 				/**
 				 * @brief Структура изменения ассоциации события SCTP
 				 *
+				 * @details Структура содержит информацию о состоянии ассоциации,
+				 *          количестве потоков и дополнительной информации события.
 				 */
-				typedef struct Event_Association_Change : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Event_Association_Change : public event_t {
 					error_t error;              // Ошибка события
 					uint16_t ostreams;          // Максимальное количество исходящих потоков
 					uint16_t istreams;          // Максимальное количество входящих потоков
@@ -770,9 +769,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Association_Change() noexcept :
-					 ostreams(0), istreams(0),
-					 state(assoc_state_t::NONE) {}
+					explicit Event_Association_Change() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -783,8 +780,10 @@ namespace awh {
 				/**
 				 * @brief Структура сброса ассоциации SCTP
 				 *
+				 * @details Структура содержит информацию о последнем подтверждённом TSN,
+				 *          последнем подтверждённом пиром TSN и флагах сброса ассоциации.
 				 */
-				typedef struct Event_Association_Reset : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Event_Association_Reset : public event_t {
 					// Последний TSN (Transmission Sequence Number), подтверждённый вами (вы получили его от пира)
 					uint32_t localTSN;
 					// Последний TSN (Transmission Sequence Number), подтверждённый пиром (он получил его от вас)
@@ -795,8 +794,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Association_Reset() noexcept :
-					 localTSN(0), remoteTSN(0) {}
+					explicit Event_Association_Reset() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -807,6 +805,8 @@ namespace awh {
 				/**
 				 * @brief Структура ошибки удалённого узла SCTP
 				 *
+				 * @details Структура содержит информацию о коде и сообщении ошибки удалённого узла,
+				 *          а также дополнительную информацию события.
 				 */
 				typedef struct Event_Remote_Error : public event_t {
 					error_t error;         // Ошибка события
@@ -826,8 +826,10 @@ namespace awh {
 				/**
 				 * @brief Структура изменения адреса однорангового узла SCTP
 				 *
+				 * @details Структура содержит информацию о коде ошибки события,
+				 *          состоянии адреса однорангового узла и указатель на адрес однорангового узла.
 				 */
-				typedef struct Event_Address_Change : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Event_Address_Change : public event_t {
 					error_t error;            // Ошибка события
 					paddr_state_t state;      // Состояние события
 					unique_ptr <addr_t> addr; // Адрес однорангового узла
@@ -835,8 +837,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Address_Change() noexcept :
-					 state(paddr_state_t::NONE), addr(nullptr) {}
+					explicit Event_Address_Change() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -847,8 +848,9 @@ namespace awh {
 				/**
 				 * @brief Структура частичной доставки SCTP
 				 *
+				 * @details Структура содержит информацию о номере потока, последовательном номере сообщения и индикаторе частичной доставки.
 				 */
-				typedef struct Partial_Delivery_Event : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Partial_Delivery_Event : public event_t {
 					uint16_t stream;           // Номер потока
 					uint16_t sequence;         // Последовательный номер сообщения
 					pdapi_indics_t indication; // Индикатор частичной доставки
@@ -856,9 +858,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Partial_Delivery_Event() noexcept :
-					 stream(0), sequence(0),
-					 indication(pdapi_indics_t::NONE) {}
+					explicit Partial_Delivery_Event() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -869,16 +869,16 @@ namespace awh {
 				/**
 				 * @brief Структура аутентификации SCTP
 				 *
+				 * @details Структура содержит информацию о номере ключа и индикаторе аутентификации.
 				 */
-				typedef struct Event_Authentication : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Event_Authentication : public event_t {
 					uint16_t key;             // Номер ключа
 					auth_indics_t indication; // Индикатор аутентификации
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Authentication() noexcept :
-					 key(0), indication(auth_indics_t::NONE) {}
+					explicit Event_Authentication() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -889,8 +889,10 @@ namespace awh {
 				/**
 				 * @brief Структура ошибки отправки SCTP
 				 *
+				 * @details Структура содержит информацию о коде ошибки события,
+				 *          статусе отправки сообщения и дополнительную информацию события.
 				 */
-				typedef struct Event_Send_Failed : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Event_Send_Failed : public event_t {
 					error_t error;         // Ошибка события
 					send_failed_t status;  // Статус отправки сообщения
 					vector <uint8_t> data; // Дополнительная информация события
@@ -898,7 +900,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Send_Failed() noexcept : status(send_failed_t::NONE) {}
+					explicit Event_Send_Failed() noexcept;
 					/**
 					 * @brief Деструктор
 					 *
@@ -909,6 +911,7 @@ namespace awh {
 				/**
 				 * @brief Структура сброса потоков SCTP
 				 *
+				 * @details Структура содержит информацию о номерах сброшенных потоков и типах сброса потоков.
 				 */
 				typedef struct Event_Stream_Reset : public event_t {
 					vector <uint16_t> streams;            // Номера сброшенных потоков
@@ -917,7 +920,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Stream_Reset() noexcept {}
+					explicit Event_Stream_Reset() noexcept = default;
 					/**
 					 * @brief Деструктор
 					 *
@@ -928,8 +931,9 @@ namespace awh {
 				/**
 				 * @brief Структура изменения потоков SCTP
 				 *
+				 * @details Структура содержит информацию о максимальном количестве исходящих и входящих потоков, а также флаги сброса ассоциации.
 				 */
-				typedef struct Event_Stream_Change : public event_t {
+				typedef struct __AWH_SHARED_EXPORT__ Event_Stream_Change : public event_t {
 					// Максимальное количество исходящих потоков
 					uint16_t ostreams;
 					// Максимальное количество входящих потоков
@@ -940,8 +944,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Event_Stream_Change() noexcept :
-					 ostreams(0), istreams(0) {}
+					explicit Event_Stream_Change() noexcept;
 					/**
 					 * @brief Деструктор
 					 *

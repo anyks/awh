@@ -544,6 +544,15 @@ namespace {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::eth::Port_Mapping::Forwarding::Forwarding() noexcept :
+ type(type_t::NONE), proto(proto_t::NONE), lifeTime(0),
+ internalPort(0), externalPort(0), description{0},
+ internalAddress{nullptr}, externalAddress{nullptr} {}
+
+/**
  * @brief Метод установки безопасности работы потоков
  *
  * @param mode флаг режима безопасности потоков

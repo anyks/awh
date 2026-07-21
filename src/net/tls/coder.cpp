@@ -2962,6 +2962,15 @@ namespace verify {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Coder::CipherInfo::CipherInfo() noexcept :
+ tls13(false),
+ name{""}, origin{""},
+ cipher(cipher_t::UNKNOWN) {}
+
+/**
  * @brief Метод получения версии OpenSSL
  *
  * @return версия OpenSSL

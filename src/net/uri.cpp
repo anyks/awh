@@ -854,6 +854,13 @@ namespace uri {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::Uniform_Resource_Identifier::User::User() noexcept :
+ username{""}, password{""} {}
+
+/**
  * @brief Метод очистки URI
  *
  */

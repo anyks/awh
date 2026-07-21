@@ -3431,6 +3431,359 @@ namespace http2 {
 };
 
 /**
+ * @brief Конструктор
+ *
+ * @param type Тип расширения
+ */
+awh::tls::Fingerprint::Extension::Extension(const extension_type_t type) noexcept : type(type) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Grease::Extension_Grease() noexcept :
+ extension_t(extension_type_t::GREASE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Channel_ID::Extension_Channel_ID() noexcept :
+ extension_t(extension_type_t::CHANNEL_ID) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_OID_Filters::Extension_OID_Filters() noexcept :
+ extension_t(extension_type_t::OID_FILTERS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Trust_Anchors::Extension_Trust_Anchors() noexcept :
+ extension_t(extension_type_t::TRUST_ANCHORS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Encrypt_Then_MAC::Extension_Encrypt_Then_MAC() noexcept :
+ extension_t(extension_type_t::ENCRYPT_THEN_MAC) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Transparency_Info::Extension_Transparency_Info() noexcept :
+ extension_t(extension_type_t::TRANSPARENCY_INFO) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Post_Handshake_Auth::Extension_Post_Handshake_Auth() noexcept :
+ extension_t(extension_type_t::POST_HANDSHAKE_AUTH) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Client_Certificate_Type::Extension_Client_Certificate_Type() noexcept :
+ extension_t(extension_type_t::CLIENT_CERTIFICATE_TYPE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Server_Certificate_Type::Extension_Server_Certificate_Type() noexcept :
+ extension_t(extension_type_t::SERVER_CERTIFICATE_TYPE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Server_Name::Extension_Server_Name() noexcept :
+ extension_t(extension_type_t::SERVER_NAME) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Status_Request::Extension_Status_Request() noexcept :
+ extension_t(extension_type_t::STATUS_REQUEST),
+ certificateStatusType{""},
+ responderIdListLength(0),
+ requestExtensionsLength(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Supported_Groups::Extension_Supported_Groups() noexcept :
+ extension_t(extension_type_t::SUPPORTED_GROUPS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_EC_Point::Extension_EC_Point() noexcept :
+ extension_t(extension_type_t::EC_POINT_FORMATS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_ALPN::Extension_ALPN() noexcept :
+ extension_t(extension_type_t::ALPN) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Application_Settings::Extension_Application_Settings() noexcept :
+ extension_t(extension_type_t::APPLICATION_SETTINGS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Application_Settings_Old::Extension_Application_Settings_Old() noexcept :
+ extension_t(extension_type_t::APPLICATION_SETTINGS_OLD) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Next_Proto_Neg::Extension_Next_Proto_Neg() noexcept :
+ extension_t(extension_type_t::NEXT_PROTO_NEG) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Signed_Certificate_Timestamp::Extension_Signed_Certificate_Timestamp() noexcept :
+ extension_t(extension_type_t::SIGNED_CERTIFICATE_TIMESTAMP) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Padding::Extension_Padding() noexcept :
+ extension_t(extension_type_t::PADDING), size(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Extended_Master_Secret::Extension_Extended_Master_Secret() noexcept :
+ extension_t(extension_type_t::EXTENDED_MASTER_SECRET),
+ masterSecretData{""}, extendedMasterSecretData{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Compress_Certificate::Extension_Compress_Certificate() noexcept :
+ extension_t(extension_type_t::COMPRESS_CERTIFICATE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Session_Ticket::Extension_Session_Ticket() noexcept :
+ extension_t(extension_type_t::SESSION_TICKET) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Supported_Versions::Extension_Supported_Versions() noexcept :
+ extension_t(extension_type_t::SUPPORTED_VERSIONS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_PSK_Key_Exchange::Extension_PSK_Key_Exchange() noexcept :
+ extension_t(extension_type_t::PSK_KEY_EXCHANGE_MODES) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Early_Data::Extension_Early_Data() noexcept :
+ extension_t(extension_type_t::EARLY_DATA), maxSize(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Key_Share::Extension_Key_Share() noexcept :
+ extension_t(extension_type_t::KEY_SHARE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Encryption_Client_Hello::Extension_Encryption_Client_Hello() noexcept :
+ extension_t(extension_type_t::ENCRYPTED_CLIENT_HELLO) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Renegotiation_Info::Extension_Renegotiation_Info() noexcept :
+ extension_t(extension_type_t::RENEGOTIATION_INFO) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Record_Size_Limit::Extension_Record_Size_Limit() noexcept :
+ extension_t(extension_type_t::RECORD_SIZE_LIMIT), data(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Cookie::Extension_Cookie() noexcept :
+ extension_t(extension_type_t::COOKIE) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Pre_Shared_Key::Identity::Identity() noexcept : ticketAge(0) {}
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Pre_Shared_Key::Extension_Pre_Shared_Key() noexcept :
+ extension_t(extension_type_t::PRE_SHARED_KEY) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Certificate_Authorities::Extension_Certificate_Authorities() noexcept :
+ extension_t(extension_type_t::CERTIFICATE_AUTHORITIES) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Max_Fragment_Length::Extension_Max_Fragment_Length() noexcept :
+ extension_t(extension_type_t::MAX_FRAGMENT_LENGTH), length(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Use_SRTP::Extension_Use_SRTP() noexcept :
+ extension_t(extension_type_t::USE_SRTP), mkiLength(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Heartbeat::Extension_Heartbeat() noexcept :
+ extension_t(extension_type_t::HEARTBEAT), mode(heartbeat_t::UNKNOWN) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Signature::Extension_Signature() noexcept :
+ extension_t(extension_type_t::SIGNATURE_ALGORITHMS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Delegated_Credential::Extension_Delegated_Credential() noexcept :
+ extension_t(extension_type_t::DELEGATED_CREDENTIAL) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Signature_Algorithms_Cert::Extension_Signature_Algorithms_Cert() noexcept :
+ extension_t(extension_type_t::SIGNATURE_ALGORITHMS_CERT) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_TLS_Flags::Extension_TLS_Flags() noexcept :
+ extension_t(extension_type_t::TLS_FLAGS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Quic_Transport_Params::Extension_Quic_Transport_Params() noexcept :
+ extension_t(extension_type_t::QUIC_TRANSPORT_PARAMETERS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_Quic_Transport_Params_Legacy::Extension_Quic_Transport_Params_Legacy() noexcept :
+ extension_t(extension_type_t::QUIC_TRANSPORT_PARAMETERS_LEGACY) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Extension_ECH_Outer_Extensions::Extension_ECH_Outer_Extensions() noexcept :
+ extension_t(extension_type_t::ECH_OUTER_EXTENSIONS) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::VersionTLS::VersionTLS() noexcept :
+ record{""}, negotiated{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Imprint::Imprint() noexcept :
+ ja3{""}, ja4{""}, ja4r{""},
+ ja3Hash{""}, sessionId{""},
+ peetprint{""}, peetprintHash{""},
+ clientRandom{""}, akamai{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Record::Record() noexcept :
+ epoch(0), length(0), sequence(0),
+ version(version_t::UNKNOWN) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Fragment::Fragment() noexcept : offset(0), length(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Handshake::Handshake() noexcept : length(0), sequence(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::ClientHello::ClientHello() noexcept : version(version_t::UNKNOWN) {}
+	
+/**
  * @brief Оператор сравнения двух отпечатков браузеров
  *
  * @param browser объект цифрового отпечатка браузера для сравнения
@@ -4573,6 +4926,32 @@ awh::tls::Fingerprint::Browser::Browser(const browser_t & browser) noexcept {
 		}
 	}
 }
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::Browser::Browser() noexcept : grease(false) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param i идентификатор параметра
+ * @param v значение параметра
+ */
+awh::tls::Fingerprint::H2Setting::H2Setting(const uint16_t i, const uint32_t v) noexcept : id(i), value(v) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::H2Priority::H2Priority() noexcept :
+ exclusive(false), weight(0), streamId(0),  dependency(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::tls::Fingerprint::H2Browser::H2Browser() noexcept : windowUpdate(0) {}
 
 /**
  * @brief Оператор преобразования в сырой итератор
@@ -4654,6 +5033,14 @@ bool awh::tls::Fingerprint::Iterator::operator != (const Iterator & other) const
 	// Возвращаем результат
 	return (this->_it != other._it);
 }
+/**
+ * @brief Конструктор
+ *
+ * @param it  итератор для установки
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::tls::Fingerprint::Iterator::Iterator(iterator it, const fmk_t * fmk, const log_t * log) noexcept : _it(it), _fmk(fmk), _log(log) {}
 
 /**
  * @brief Метод форматированного вывода всех данных цифрового отпечатка браузера

@@ -458,6 +458,19 @@ size_t awh::server::Socks5::Origin_Hash::operator()(const origin_t & id) const n
 }
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::server::Socks5::Peer::Peer() noexcept : eid(0), did(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::server::Socks5::UDP_Server::UDP_Server() noexcept :
+ begin(0), end(0), count(0), address(nullptr) {}
+
+/**
  * @brief Метод удаления связи DNS-запроса с пиром
  *
  * @param did идентификатор DNS-запроса

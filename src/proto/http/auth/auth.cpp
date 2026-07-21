@@ -84,6 +84,68 @@ namespace {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::http::Authorization::Mode_Digest::Mode_Digest() noexcept :
+ qop(false), sess(false), authInt(false), stamp(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Authorization::Digest::Digest() noexcept :
+ nc{"00000000"}, uri{""},
+ qop{"auth"}, realm{""},
+ nonce{""}, issued{""},
+ entity{""}, opaque{""},
+ cnonce{""}, response{""},
+ issuedOpaque{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Authorization::Sign_Date::Sign_Date() noexcept : created(0), expires(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Authorization::Sign::Sign() noexcept :
+ key{""}, tag{""},
+ keyId{""}, label{"sig1"},
+ nonce{""}, params{""},
+ signature{""}, inputLabel{""} {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Authorization::Callback::Callback() noexcept :
+ checkToken(nullptr), extractKey(nullptr),
+ extractPass(nullptr), checkUser(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Authorization::Mode_Params::Mode_Params() noexcept :
+ proxy(false),
+ validation(mode_t::SIMPLE),
+ clockSkew(60), signMaxAge(0),
+ nonceMaxAge(1800), signStrictMaxAge(300) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::http::Authorization::Params::Params() noexcept :
+ user{""}, pass{""},
+ token{""}, method{"GET"},
+ hash(hash_t::MD5), scheme(hash_t::MD5) {}
+
+/**
  * @brief Метод получения имени исходящего заголовка авторизации
  *
  * @details Клиент формирует заголовок учётных данных

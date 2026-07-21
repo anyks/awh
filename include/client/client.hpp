@@ -45,10 +45,10 @@ namespace awh {
 			 * @brief Структура для хранения параметров DNS-резолвера
 			 *
 			 */
-			typedef struct Domain_Name_System {
+			typedef struct __AWH_SHARED_EXPORT__ Domain_Name_System {
 				// Идентификатор DNS-резолвера
 				unit::dns_t::id_t id;
-				// Время жизни DNS запроса (в миллисекундах)
+				// Время жизни DNS запроса (в миллисекундах, по умолчанию 15 секунд)
 				atomic_uint32_t alive;
 				// Объект DNS-резолвера
 				unit::dns_t * client;
@@ -56,14 +56,13 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Domain_Name_System() noexcept :
-				 id(0), alive(15000), client(nullptr) {}
+				explicit Domain_Name_System() noexcept;
 			} dns_t;
 			/**
 			 * @brief Структура идентификаторов клиента
 			 *
 			 */
-			typedef struct Identifier {
+			typedef struct __AWH_SHARED_EXPORT__ Identifier {
 				// Идентификатор клиента
 				event::id_t eid;
 				// Идентификатор безопасности
@@ -72,13 +71,13 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Identifier() noexcept : eid(0), sid(0) {}
+				explicit Identifier() noexcept;
 			} __attribute__((packed)) id_t;
 			/**
 			 * @brief Структура юнита клиента
 			 *
 			 */
-			typedef struct Unit {
+			typedef struct __AWH_SHARED_EXPORT__ Unit {
 				// Объект работы с сетевыми адресами
 				net_addr_t addr;
 				// Объект юнита клиента
@@ -89,8 +88,7 @@ namespace awh {
 				 * @param fmk объект фреймворка
 				 * @param log объект для работы с логами
 				 */
-				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept :
-				 addr(fmk, log), client(fmk, log) {}
+				explicit Unit(const fmk_t * fmk, const log_t * log) noexcept;
 			} unit_t;
 		protected:
 			// Идентификатор клиента

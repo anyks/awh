@@ -129,7 +129,7 @@ namespace awh {
 					 * @brief Деструктор
 					 *
 					 */
-					~URL() noexcept {}
+					~URL() noexcept = default;
 			} url_t;
 		private:
 			// Список пользовательских доменных зон интернета

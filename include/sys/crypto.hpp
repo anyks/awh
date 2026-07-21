@@ -118,9 +118,10 @@ namespace awh {
 			/**
 			 * @brief Структура параметров RSA
 			 *
+			 * @details Хранит параметры шифрования и расшифровки данных с помощью RSA.
 			 */
-			typedef struct Params_RSA {
-				// Количество итераций PBKDF2 для вывода ключа AES из пароля
+			typedef struct __AWH_SHARED_EXPORT__ Params_RSA {
+				// Количество итераций PBKDF2 для вывода ключа AES из пароля (по умолчанию 100000)
 				uint32_t rounds;
 				// Соль шифрования
 				string salt;
@@ -134,15 +135,13 @@ namespace awh {
 				 * @brief Конструктор
 				 *
 				 */
-				explicit Params_RSA() noexcept :
-				 rounds(AWH_CRYPTO_AES_ROUNDS),
-				 salt{""}, password{""},
-				 state(nullptr), key(nullptr) {}
+				explicit Params_RSA() noexcept;
 			} params_rsa_t;
 		public:
 			/**
 			 * @brief Тип 128-битного хэша
 			 *
+			 * @details Представлен в виде массива из 16 байт.
 			 */
 			using uint128_t = array <uint8_t, 16>;
 		private:

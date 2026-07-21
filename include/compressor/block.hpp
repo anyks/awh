@@ -62,9 +62,9 @@ namespace awh {
 				/**
 				 * @brief Структура буфера GZip
 				 *
-				 * @details Владеющие указатели на непрозрачный контекст (управление временем жизни в конструкторе/деструкторе Block)
+				 * @note Владеющие указатели на непрозрачный контекст (управление временем жизни в конструкторе/деструкторе Block)
 				 */
-				typedef struct BufferGZip {
+				typedef struct __AWH_SHARED_EXPORT__ BufferGZip {
 					// Поток GZip для компрессии
 					gzip_stream_t * compress;
 					// Поток GZip для декомпрессии
@@ -73,14 +73,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit BufferGZip() noexcept :
-					 compress(nullptr), decompress(nullptr) {}
+					explicit BufferGZip() noexcept;
 				} buffer_gzip_t;
 				/**
 				 * @brief Структура переиспользования контекста компрессии/декомпрессии
 				 *
 				 */
-				typedef struct Takeover {
+				typedef struct __AWH_SHARED_EXPORT__ Takeover {
 					// Флаг переиспользования контекста компрессии
 					atomic_bool compress;
 					// Флаг переиспользования контекста декомпрессии
@@ -89,27 +88,26 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Takeover() noexcept :
-					 compress(false), decompress(false) {}
+					explicit Takeover() noexcept;
 				} takeover_t;
 				/**
 				 * @brief Структура Zlib
 				 *
 				 */
-				typedef struct Zlib {
+				typedef struct __AWH_SHARED_EXPORT__ Zlib {
 					// Размер скользящего окна (атомарный для потокобезопасного доступа)
 					atomic_int16_t wbits;
 					/**
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Zlib() noexcept : wbits(0) {}
+					explicit Zlib() noexcept;
 				} zlib_t;
 				/**
 				 * @brief Структура GZip
 				 *
 				 */
-				typedef struct GZip {
+				typedef struct __AWH_SHARED_EXPORT__ GZip {
 					// Флаги переиспользования контекста компрессии/декомпрессии
 					takeover_t takeover;
 					// Буфер GZip
@@ -120,7 +118,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit GZip() noexcept : wbits(0) {}
+					explicit GZip() noexcept;
 				} gzip_t;
 			private:
 				// Уровни компрессии (атомарные для потокобезопасного доступа)

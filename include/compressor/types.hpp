@@ -24,6 +24,11 @@
 #include <cstdint>
 
 /**
+ * Подключаем заголовочный файл проекта
+ */
+#include "../sys/global.hpp"
+
+/**
  * @brief Основное пространство имён
  *
  */
@@ -83,8 +88,8 @@ namespace awh {
 		 * @brief Параметры инициализации потоковой сессии
 		 *
 		 */
-		typedef struct Params {
-			// Размер скользящего окна (для deflate/gzip/zlib)
+		typedef struct __AWH_SHARED_EXPORT__ Params {
+			// Размер скользящего окна (для deflate/gzip/zlib, по умолчанию 15)
 			int16_t wbits;
 			// Уровень компрессии (интерпретация зависит от движка)
 			int32_t level;
@@ -92,7 +97,7 @@ namespace awh {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Params() noexcept : wbits(15), level(0) {}
+			explicit Params() noexcept;
 		} params_t;
 	};
 };

@@ -40,6 +40,9 @@ namespace {
 	/**
 	 * @brief Структура справочных таблиц для календарных вычислений
 	 *
+	 * @details Структура содержит справочные таблицы, необходимые для выполнения различных календарных вычислений,
+	 *          таких как определение дня недели, количества дней в каждом месяце, а также
+	 *          сокращённые и полные названия дней недели и месяцев.
 	 */
 	struct Params {
 		// Коды (сдвиги) месяцев для расчёта дня недели
@@ -103,6 +106,9 @@ namespace {
 	/**
 	 * @brief Структура одной группы совпадения (полуинтервал [begin, end) в тексте)
 	 *
+	 * @details Структура содержит два поля: begin - индекс первого символа группы (относительно начала анализируемого текста),
+	 *          end - индекс символа сразу за концом группы (относительно начала анализируемого текста).
+	 *          Если группа не найдена, оба поля устанавливаются в -1.
 	 */
 	struct match_t {
 		// Индекс символа сразу за концом группы (относительно начала анализируемого текста)
@@ -122,7 +128,7 @@ namespace {
 	 * @param letter проверяемый символ
 	 * @return       true если символ является цифрой
 	 */
-	static inline bool isDigitChar(const char letter) noexcept {
+	inline bool isDigitChar(const char letter) noexcept {
 		// Цифра попадает в диапазон от '0' до '9' таблицы ASCII
 		return ((letter >= '0') && (letter <= '9'));
 	}
@@ -132,7 +138,7 @@ namespace {
 	 * @param letter проверяемый символ
 	 * @return       true если символ является заглавной буквой
 	 */
-	static inline bool isUpperChar(const char letter) noexcept {
+	inline bool isUpperChar(const char letter) noexcept {
 		// Заглавная латинская буква попадает в диапазон от 'A' до 'Z'
 		return ((letter >= 'A') && (letter <= 'Z'));
 	}
@@ -142,7 +148,7 @@ namespace {
 	 * @param letter проверяемый символ
 	 * @return       true если символ является строчной буквой
 	 */
-	static inline bool isLowerChar(const char letter) noexcept {
+	inline bool isLowerChar(const char letter) noexcept {
 		// Строчная латинская буква попадает в диапазон от 'a' до 'z'
 		return ((letter >= 'a') && (letter <= 'z'));
 	}
@@ -152,7 +158,7 @@ namespace {
 	 * @param letter проверяемый символ
 	 * @return       true если символ является буквой
 	 */
-	static inline bool isAlphaChar(const char letter) noexcept {
+	inline bool isAlphaChar(const char letter) noexcept {
 		// Буквой считается как заглавная, так и строчная латинская буква
 		return (isUpperChar(letter) || isLowerChar(letter));
 	}
@@ -162,7 +168,7 @@ namespace {
 	 * @param letter проверяемый символ
 	 * @return       true если символ является словесным
 	 */
-	static inline bool isWordChar(const char letter) noexcept {
+	inline bool isWordChar(const char letter) noexcept {
 		// Словесный символ — это буква, цифра или знак подчёркивания
 		return (isAlphaChar(letter) || isDigitChar(letter) || (letter == '_'));
 	}
@@ -172,7 +178,7 @@ namespace {
 	 * @param letter проверяемый символ
 	 * @return       true если символ является пробельным
 	 */
-	static inline bool isSpaceChar(const char letter) noexcept {
+	inline bool isSpaceChar(const char letter) noexcept {
 		// Пробельными считаются пробел, табуляция, перевод строки, возврат каретки и перевод страницы
 		return (
 			(letter == ' ') || (letter == '\t') ||
@@ -190,7 +196,7 @@ namespace {
 	 * @param max    максимальное количество цифр
 	 * @return       количество захваченных цифр или 0 если их меньше min
 	 */
-	static inline size_t takeDigits(const char * text, const size_t length, const size_t pos, const size_t min, const size_t max) noexcept {
+	inline size_t takeDigits(const char * text, const size_t length, const size_t pos, const size_t min, const size_t max) noexcept {
 		// Счётчик подряд идущих цифр, захваченных начиная с позиции pos
 		size_t count = 0;
 		/**
@@ -213,7 +219,7 @@ namespace {
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
 	 */
-	static inline bool matchDigits(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
+	inline bool matchDigits(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
 		// Пробуем захватить от min до max цифр начиная с текущей позиции
 		const size_t digits = takeDigits(text, length, pos, min, max);
 		// Нужного количества цифр в этой позиции нет — совпадения не будет
@@ -239,7 +245,7 @@ namespace {
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
 	 */
-	static inline bool matchLiteral(const char * text, const size_t length, size_t & pos, const char letter) noexcept {
+	inline bool matchLiteral(const char * text, const size_t length, size_t & pos, const char letter) noexcept {
 		// За концом текста или при несовпадении символа разделитель не найден
 		if((pos >= length) || (text[pos] != letter))
 			// Выводим отрицательный результат проверки совпадения
@@ -257,7 +263,7 @@ namespace {
 	 * @param pos    позиция в тексте
 	 * @return       результат проверки совпадения
 	 */
-	static inline bool matchSpaces(const char * text, const size_t length, size_t & pos) noexcept {
+	inline bool matchSpaces(const char * text, const size_t length, size_t & pos) noexcept {
 		// Требуется хотя бы один пробельный символ — иначе совпадения нет
 		if((pos >= length) || !isSpaceChar(text[pos]))
 			// Выводим отрицательный результат проверки совпадения
@@ -282,7 +288,7 @@ namespace {
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
 	 */
-	static inline bool matchName(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
+	inline bool matchName(const char * text, const size_t length, size_t & pos, const size_t min, const size_t max, match_t & match) noexcept {
 		// Название обязано начинаться с заглавной буквы (например, Jan или Monday)
 		if((pos >= length) || !isUpperChar(text[pos]))
 			// Выводим отрицательный результат проверки совпадения
@@ -317,7 +323,7 @@ namespace {
 	 * @param match  группа совпадения
 	 * @return       результат проверки совпадения
 	 */
-	static inline bool matchAlpha2(const char * text, const size_t length, size_t & pos, match_t & match) noexcept {
+	inline bool matchAlpha2(const char * text, const size_t length, size_t & pos, match_t & match) noexcept {
 		// Нужны ровно две буквы подряд (например, метка AM/PM) и место под них в тексте
 		if(((pos + 2) > length) || !isAlphaChar(text[pos]) || !isAlphaChar(text[pos + 1]))
 			// Выводим отрицательный результат проверки совпадения
@@ -340,7 +346,7 @@ namespace {
 	 * @param max    максимальное количество цифр
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 */
-	static vector <match_t> parseDigits(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+	vector <match_t> parseDigits(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
 		// Итоговый список групп: остаётся пустым, если совпадение не найдено
 		vector <match_t> result;
 		/**
@@ -375,7 +381,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 */
-	static vector <match_t> parseWord(const char * text, const size_t length) noexcept {
+	vector <match_t> parseWord(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если слово не найдено
 		vector <match_t> result;
 		/**
@@ -412,7 +418,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 */
-	static vector <match_t> parseAlpha2(const char * text, const size_t length) noexcept {
+	vector <match_t> parseAlpha2(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если пара букв не найдена
 		vector <match_t> result;
 		/**
@@ -445,7 +451,7 @@ namespace {
 	 * @param max    максимальное количество строчных букв
 	 * @return       список групп совпадения (пустой если совпадения нет)
 	 */
-	static vector <match_t> parseName(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
+	vector <match_t> parseName(const char * text, const size_t length, const size_t min, const size_t max) noexcept {
 		// Итоговый список групп: остаётся пустым, если название не найдено
 		vector <match_t> result;
 		/**
@@ -478,7 +484,7 @@ namespace {
 	 * @param specs  список диапазонов [min,max] для каждой группы
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 */
-	static vector <match_t> parseDigitGroups(const char * text, const size_t length, const char sep, const vector <pair <size_t, size_t>> & specs) noexcept {
+	vector <match_t> parseDigitGroups(const char * text, const size_t length, const char sep, const vector <pair <size_t, size_t>> & specs) noexcept {
 		// Итоговый список групп: остаётся пустым, если последовательность не найдена
 		vector <match_t> result;
 		/**
@@ -540,7 +546,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 */
-	static vector <match_t> parseTimeMeridiem(const char * text, const size_t length) noexcept {
+	vector <match_t> parseTimeMeridiem(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если время с меткой не найдено
 		vector <match_t> result;
 		/**
@@ -584,7 +590,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение)
 	 */
-	static vector <match_t> parseAsctime(const char * text, const size_t length) noexcept {
+	vector <match_t> parseAsctime(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если дата asctime не найдена
 		vector <match_t> result;
 		/**
@@ -634,7 +640,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - знак, группа 2 - блок смещения, группы 3 и 4 - часы и минуты при формате с двоеточием, группа 5 - цифровое смещение при формате без двоеточия)
 	 */
-	static vector <match_t> parseZoneOffset(const char * text, const size_t length) noexcept {
+	vector <match_t> parseZoneOffset(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если смещение зоны не найдено
 		vector <match_t> result;
 		/**
@@ -720,7 +726,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - слово, группа 2 - блок смещения, группа 3 - знак, группа 4 - значение смещения, группы 5 и 6 - часы и минуты при формате с двоеточием)
 	 */
-	static vector <match_t> parseZoneFull(const char * text, const size_t length) noexcept {
+	vector <match_t> parseZoneFull(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если ни слова, ни смещения не нашлось
 		vector <match_t> result;
 		/**
@@ -854,7 +860,7 @@ namespace {
 	 * @param length длина анализируемого текста
 	 * @return       список групп совпадения (группа 0 - всё совпадение, группа 1 - число, группа 2 - единица размерности)
 	 */
-	static vector <match_t> parseSeconds(const char * text, const size_t length) noexcept {
+	vector <match_t> parseSeconds(const char * text, const size_t length) noexcept {
 		// Итоговый список групп: остаётся пустым, если число с единицей не найдено
 		vector <match_t> result;
 		/**
@@ -925,6 +931,18 @@ namespace {
 		return result;
 	}
 };
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Chrono::DateTime::DateTime() noexcept :
+ dst(false), leap(false),
+ h12(h12_t::AM), zone(zone_t::NONE),
+ day(2), date(1), hour(0), month(1),
+ weeks(0), seconds(0), minutes(0),
+ year(1970), days(0), offset(0),
+ milliseconds(0), microseconds(0), nanoseconds(0) {}
 
 /**
  * @brief Метод очистки всех локальных данных

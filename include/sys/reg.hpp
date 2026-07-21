@@ -80,11 +80,11 @@ namespace awh {
 			/**
 			 * Создаём новый тип данных регулярного выражения
 			 */
-			using exp_t = std::shared_ptr <Expression>;
+			using exp_t = shared_ptr <Expression>;
 			/**
 			 * Создаём новый тип данных для статического хранения регулярных выражений
 			 */
-			using exp_weak_t = std::weak_ptr <Expression>;
+			using exp_weak_t = weak_ptr <Expression>;
 		private:
 			/**
 			 * @brief Хэш-функция для ключа кэша регулярных выражений
@@ -97,7 +97,7 @@ namespace awh {
 				 * @param key ключ кэша (пара из набора опций и текста регулярного выражения)
 				 * @return    вычисленное значение хэша
 				 */
-				size_t operator () (const std::pair <int32_t, string> & key) const noexcept;
+				size_t operator () (const pair <int32_t, string> & key) const noexcept;
 			};
 		private:
 			// Текст ошибки последней операции
@@ -107,7 +107,7 @@ namespace awh {
 			mutable lock_state_t <std::mutex> _mtx;
 		private:
 			// Кэш собранных регулярных выражений
-			mutable unordered_map <std::pair <int32_t, string>, exp_weak_t, CacheHash> _cache;
+			mutable unordered_map <pair <int32_t, string>, exp_weak_t, CacheHash> _cache;
 		private:
 			// Объект логирования
 			const Logging * _log;
@@ -169,7 +169,7 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <std::pair <size_t, size_t>> match(string_view text, const exp_t & exp) const noexcept;
+			vector <pair <size_t, size_t>> match(string_view text, const exp_t & exp) const noexcept;
 			/**
 			 * @brief Метод выполнения регулярного выражения
 			 *
@@ -178,7 +178,7 @@ namespace awh {
 			 * @param exp  объект регулярного выражения
 			 * @return     результат обработки регулярного выражения
 			 */
-			vector <std::pair <size_t, size_t>> match(const char * text, const size_t size, const exp_t & exp) const noexcept;
+			vector <pair <size_t, size_t>> match(const char * text, const size_t size, const exp_t & exp) const noexcept;
 		public:
 			/**
 			 * @brief Метод сборки регулярного выражения

@@ -91,7 +91,24 @@ namespace {
 		// Возвращаем полный размер кадра
 		return need;
 	}
-}
+};
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::proto::Socks5::UDP_Header::UDP_Header() noexcept :
+ frag(0x00), size(0), host(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::proto::Socks5::Context::Context() noexcept :
+ state(state_t::NONE),
+ status(status_t::NOSTATUS),
+ command(command_t::NONE),
+ host(nullptr) {}
 
 /**
  * @brief Метод получения сообщения

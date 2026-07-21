@@ -71,7 +71,7 @@ namespace awh {
 				 * @brief Структура проброса порта на маршрутизаторе
 				 *
 				 */
-				typedef struct Forwarding {
+				typedef struct __AWH_SHARED_EXPORT__ Forwarding {
 					// Тип проброса порта
 					type_t type;
 					// Протокол проброса порта
@@ -92,10 +92,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Forwarding() noexcept :
-					 type(type_t::NONE), proto(proto_t::NONE), lifeTime(0),
-					 internalPort(0), externalPort(0), description{0},
-					 internalAddress{nullptr}, externalAddress{nullptr} {}
+					explicit Forwarding() noexcept;
 				} fwd_t;
 			private:
 				// Объект работы с маршрутами

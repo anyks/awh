@@ -28,6 +28,34 @@ using namespace std;
 using namespace placeholders;
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::Server::Domain_Name_System::Domain_Name_System() noexcept :
+ id(0), alive(15000), client(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Server::Identifier::Identifier() noexcept : eid(0), sid(0) {}
+
+/**
+ * @brief Конструктор
+ *
+ */
+awh::Server::TLS::TLS() noexcept : coder(nullptr) {}
+
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Server::Unit::Unit(const fmk_t * fmk, const log_t * log) noexcept :
+ addr(fmk, log), server(fmk, log) {}
+
+/**
  * @brief Метод изменения статуса сервера
  *
  * @param index  индекс обрабатываемого события

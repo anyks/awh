@@ -110,7 +110,7 @@ namespace awh {
 				 * @brief Структура UDP заголовка
 				 *
 				 */
-				typedef struct UDP_Header {
+				typedef struct __AWH_SHARED_EXPORT__ UDP_Header {
 					// Номер фрагмента (0x00 = нет фрагментации)
 					uint8_t frag;
 					// Размер данных UDP пакета
@@ -121,14 +121,13 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit UDP_Header() noexcept :
-					 frag(0x00), size(0), host(nullptr) {}
+					explicit UDP_Header() noexcept;
 				} udp_head_t;
 				/**
 				 * @brief Структура промежуточного контекста
 				 *
 				 */
-				typedef struct Context {
+				typedef struct __AWH_SHARED_EXPORT__ Context {
 					// Текущее состояние
 					state_t state;
 					// Текущее значение статуса
@@ -141,11 +140,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Context() noexcept :
-					 state(state_t::NONE),
-					 status(status_t::NOSTATUS),
-					 command(command_t::NONE),
-					 host(nullptr) {}
+					explicit Context() noexcept;
 				} ctx_t;
 			protected:
 				// Объект фреймворка

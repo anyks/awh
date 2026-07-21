@@ -97,7 +97,7 @@ namespace {
 		 */
 		#if IS_LITTLE_ENDIAN
 			// На little-endian: переворачиваем все T байт
-			std::reverse_copy(src, src + T, dst);
+			::reverse_copy(src, src + T, dst);
 		/**
 		 * Если порядок байт Big Endian
 		 */
@@ -174,13 +174,13 @@ namespace {
 		/**
 		 * Выполняем обрезку пробелов в начале и конце строки
 		 */
-		while((i < j) && ((text[i] == '\0') || std::isspace(static_cast <uint8_t> (text[i]))))
+		while((i < j) && ((text[i] == '\0') || ::isspace(static_cast <uint8_t> (text[i]))))
 			// Увеличиваем позицию начала строки
 			++i;
 		/**
 		 * Обрезаем пробелы в конце строки
 		 */
-		while((j > i) && ((text[j - 1] == '\0') || std::isspace(static_cast <uint8_t> (text[j - 1]))))
+		while((j > i) && ((text[j - 1] == '\0') || ::isspace(static_cast <uint8_t> (text[j - 1]))))
 			// Уменьшаем позицию конца строки
 			--j;
 		// Возвращаем обрезанную строку
@@ -197,7 +197,7 @@ namespace {
 		// Возвращаем результат проверки
 		return (
 			(text.size() >= pfx.size()) &&
-			std::equal(pfx.begin(), pfx.end(), text.begin())
+			::equal(pfx.begin(), pfx.end(), text.begin())
 		);
 	}
 	/**
@@ -211,7 +211,7 @@ namespace {
 		// Возвращаем результат проверки
 		return (
 			(text.size() >= sfx.size()) &&
-			std::equal(text.end() - sfx.size(), text.end(), sfx.begin())
+			::equal(text.end() - sfx.size(), text.end(), sfx.begin())
 		);
 	}
 	/**
@@ -266,7 +266,7 @@ namespace {
 		// Проверяем восьмеричную систему счисления
 		if((token.size() > 1) && (token[0] == '0')){
 			// Если только 0-7 -> oct, иначе decimal
-			if(std::all_of(token.begin() + 1, token.end(), ::isoct))
+			if(::all_of(token.begin() + 1, token.end(), ::isoct))
 				// Возвращаем восьмеричную систему счисления
 				return 8;
 		}
@@ -505,7 +505,7 @@ namespace {
 				// Возвращаем ошибку
 				return false;
 			// Проверяем каждый символ октета строки IP-адреса
-			if(!std::all_of(octet.begin(), octet.end(), ::isdec))
+			if(!::all_of(octet.begin(), octet.end(), ::isdec))
 				// Возвращаем ошибку
 				return false;
 			// Разрешаем ведущие нули, но это всё равно десятичный формат
@@ -1008,6 +1008,17 @@ namespace {
 		return options;
 	}
 };
+
+/**
+ * @brief Конструктор
+ *
+ * @param fmk объект фреймворка
+ * @param log объект для работы с логами
+ */
+awh::Network_Address::LocalNet::LocalNet(const fmk_t * fmk, const log_t * log) noexcept :
+ reserved(false), prefix(0),
+ end(make_unique <Network_Address> (fmk, log)),
+ begin(make_unique <Network_Address> (fmk, log)) {}
 
 /**
  * @brief Метод инициализации списка локальных адресов
@@ -1584,9 +1595,9 @@ awh::Network_Address::type_t awh::Network_Address::host(string_view host) const 
  *
  * @return аппаратный адрес в чистом виде
  */
-std::array <uint8_t, 6> awh::Network_Address::mac() const noexcept {
+array <uint8_t, 6> awh::Network_Address::mac() const noexcept {
 	// Переменная результата
-	std::array <uint8_t, 6> result = {0};
+	array <uint8_t, 6> result = {0};
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 6){
 		/**
@@ -1622,7 +1633,7 @@ std::array <uint8_t, 6> awh::Network_Address::mac() const noexcept {
  *
  * @param addr аппаратный адрес в чистом виде
  */
-void awh::Network_Address::mac(const std::array <uint8_t, 6> & addr) noexcept {
+void awh::Network_Address::mac(const array <uint8_t, 6> & addr) noexcept {
 	// Если MAC адрес передан
 	if(!addr.empty()){
 		/**
@@ -1775,9 +1786,9 @@ void awh::Network_Address::v4(const uint32_t addr, const endian_t endian) noexce
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  * @return       адрес IPv6 в чистом виде
  */
-std::array <uint8_t, 16> awh::Network_Address::v6(const endian_t endian) const noexcept {
+array <uint8_t, 16> awh::Network_Address::v6(const endian_t endian) const noexcept {
 	// Переменная результата
-	std::array <uint8_t, 16> result = {0};
+	array <uint8_t, 16> result = {0};
 	// Если в буфере данных достаточно
 	if(this->_buffer.size() == 16){
 		/**
@@ -1831,7 +1842,7 @@ std::array <uint8_t, 16> awh::Network_Address::v6(const endian_t endian) const n
  * @param addr   адрес IPv6 в чистом виде
  * @param endian флаг формирования адреса в установленном порядке следовании байт
  */
-void awh::Network_Address::v6(const std::array <uint8_t, 16> & addr, const endian_t endian) noexcept {
+void awh::Network_Address::v6(const array <uint8_t, 16> & addr, const endian_t endian) noexcept {
 	/**
 	 * Выполняем отлов ошибок
 	 */
@@ -2152,7 +2163,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
 						// Проверяем является ли суффикс числом
-						if(std::all_of(suffix.begin(), suffix.end(), ::isdigit)){
+						if(::all_of(suffix.begin(), suffix.end(), ::isdigit)){
 							// Получаем префикс сети
 							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 32)
 								// Если префикс сети больше допустимого значения
@@ -2182,7 +2193,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						// Получаем маску переданной сети
 						const string_view suffix = addr.substr(pos + 1);
 						// Проверяем является ли суффикс числом
-						if(std::all_of(suffix.begin(), suffix.end(), ::isdigit)){
+						if(::all_of(suffix.begin(), suffix.end(), ::isdigit)){
 							// Получаем префикс сети
 							if(this->_fmk->atoi <uint8_t> (suffix.data(), suffix.length()) > 128)
 								// Если префикс сети больше допустимого значения
@@ -2255,7 +2266,7 @@ bool awh::Network_Address::check(const string_view addr, const type_t type) cons
 						 */
 						for(char c : label){
 							// Если символ не является допустимым
-							if(!(std::isalnum(c) || (c == '-')))
+							if(!(::isalnum(c) || (c == '-')))
 								// Возвращаем результат проверки
 								return false;
 						}
@@ -2369,7 +2380,7 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									// Получаем нужное нам значение октета
 									::memcpy(&oct, &this->_buffer[0] + num, sizeof(oct));
 									// Переводим октет в бинарный вид
-									std::bitset <8> bits(oct);
+									bitset <8> bits(oct);
 									/**
 									 * Зануляем все лишние элементы
 									 */
@@ -2395,7 +2406,7 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									// Получаем нужное нам значение октета
 									::memcpy(&oct, &this->_buffer[0] + num, sizeof(oct));
 									// Переводим октет в бинарный вид
-									std::bitset <8> bits(oct);
+									bitset <8> bits(oct);
 									/**
 									 * Зануляем все лишние элементы
 									 */
@@ -2434,7 +2445,7 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									// Получаем нужное нам значение хекстета
 									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
 									// Переводим хекстет в бинарный вид
-									std::bitset <16> bits(hex);
+									bitset <16> bits(hex);
 									/**
 									 * Зануляем все лишние элементы
 									 */
@@ -2460,7 +2471,7 @@ void awh::Network_Address::impose(const uint8_t prefix, const addr_t addr, const
 									// Получаем нужное нам значение хекстета
 									::memcpy(&hex, &this->_buffer[0] + (num * 2), sizeof(hex));
 									// Переводим хекстет в бинарный вид
-									std::bitset <16> bits(hex);
+									bitset <16> bits(hex);
 									/**
 									 * Зануляем все лишние элементы
 									 */
@@ -2534,7 +2545,7 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 			// Выполняем парсинг маски
 			if(net.parse(mask) && (type == net.type())){
 				// Бинарный контейнер
-				std::bitset <8> bits;
+				bitset <8> bits;
 				/**
 				 * Определяем тип IP-адреса
 				 */
@@ -2556,7 +2567,7 @@ uint8_t awh::Network_Address::mask2Prefix(string_view mask, const type_t type) c
 					// Если IP-адрес определён как IPv6
 					case static_cast <uint8_t> (type_t::IPV6): {
 						// Получаем значение маски в виде адреса
-						const std::array <uint8_t, 16> num = net.v6();
+						const array <uint8_t, 16> num = net.v6();
 						/**
 						 * Выполняем перебор всего значения буфера
 						 */
@@ -2970,7 +2981,7 @@ bool awh::Network_Address::mapping(string_view network, const type_t type) const
 						// Если IP-адрес определён как IPv4
 						case static_cast <uint8_t> (type_t::IPV4): {
 							// Буфер данных текущего адреса
-							std::array <uint8_t, 4> nwk, addr;
+							array <uint8_t, 4> nwk, addr;
 							// Получаем значение адреса сети
 							const uint32_t ip1 = net.v4();
 							// Получаем значение текущего адреса
@@ -3011,11 +3022,11 @@ bool awh::Network_Address::mapping(string_view network, const type_t type) const
 						// Если IP-адрес определён как IPv6
 						case static_cast <uint8_t> (type_t::IPV6): {
 							// Буфер данных текущего адреса
-							std::array <uint16_t, 8> nwk, addr;
+							array <uint16_t, 8> nwk, addr;
 							// Получаем значение адреса сети
-							const std::array <uint8_t, 16> & ip1 = net.v6();
+							const array <uint8_t, 16> & ip1 = net.v6();
 							// Получаем значение текущего адреса
-							const std::array <uint8_t, 16> & ip2 = this->v6();
+							const array <uint8_t, 16> & ip2 = this->v6();
 							// Выполняем копирование данных текущего адреса в буфер
 							::memcpy(&nwk[0], &ip1[0], sizeof(ip1));
 							// Выполняем копирование данных текущего адреса в буфер
@@ -3360,7 +3371,7 @@ string awh::Network_Address::arpa() const noexcept {
 						// Добавляем разделитель
 						result.append(1, '.');
 					// Добавляем текущий октет в результат
-					result.append(std::to_string(this->_buffer[i]));
+					result.append(::to_string(this->_buffer[i]));
 				}
 				// Добавляем запись ARPA
 				result.append(".in-addr.arpa");
@@ -3437,7 +3448,7 @@ bool awh::Network_Address::arpa(string_view addr) noexcept {
 					// Если мы нашли суффикс IPv4
 					if(this->_fmk->compare(".in-addr.arpa", addr.substr(pos))){
 						// Проверяем, что перед суффиксом ровно 4 метки (3 точки), иначе формат неверен
-						if(std::count(addr.begin(), addr.begin() + pos, '.') != 3)
+						if(::count(addr.begin(), addr.begin() + pos, '.') != 3)
 							// Возвращаем ошибку
 							return false;
 						// Выполняем очистку буфера данных
@@ -4987,13 +4998,13 @@ string awh::Network_Address::print(const format_size_t size, const format_flag_t
 				/**
 				 * Выполняем обрезку пробелов в начале и конце строки
 				 */
-				while((i < j) && ((result[i] == '\0') || std::isspace(static_cast <uint8_t> (result[i]))))
+				while((i < j) && ((result[i] == '\0') || ::isspace(static_cast <uint8_t> (result[i]))))
 					// Увеличиваем позицию начала строки
 					++i;
 				/**
 				 * Обрезаем пробелы в конце строки
 				 */
-				while((j > i) && ((result[j - 1] == '\0') || std::isspace(static_cast <uint8_t> (result[j - 1]))))
+				while((j > i) && ((result[j - 1] == '\0') || ::isspace(static_cast <uint8_t> (result[j - 1]))))
 					// Уменьшаем позицию конца строки
 					--j;
 				// Если необходимо удалить определённое количество символов с конца строки
@@ -5495,7 +5506,7 @@ awh::Network_Address & awh::Network_Address::operator = (const uint32_t addr) no
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
-awh::Network_Address & awh::Network_Address::operator = (const std::array <uint8_t, 6> & addr) noexcept {
+awh::Network_Address & awh::Network_Address::operator = (const array <uint8_t, 6> & addr) noexcept {
 	// Устанавливаем MAC-адрес
 	this->mac(addr);
 	// Возвращаем текущий объект
@@ -5507,7 +5518,7 @@ awh::Network_Address & awh::Network_Address::operator = (const std::array <uint8
  * @param addr адрес для присвоения
  * @return     текущий объект
  */
-awh::Network_Address & awh::Network_Address::operator = (const std::array <uint8_t, 16> & addr) noexcept {
+awh::Network_Address & awh::Network_Address::operator = (const array <uint8_t, 16> & addr) noexcept {
 	// Устанавливаем IPv6
 	this->v6(addr);
 	// Возвращаем текущий объект
