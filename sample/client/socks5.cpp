@@ -185,6 +185,16 @@ int32_t main(int32_t argc, char * argv[]){
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
 	// Регистрируем объект транспортного уровня безопасности TLS
 	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
+	// Устанавливаем хост сервера для подключения клиента
+	const string host = "anyks.com";
+	// Устанавливаем ALPN протоколы TLS
+	tls.alpn(cts, {{0,"http/1.1"}});
+	// Устанавливаем файл центра сертификации TLS
+	tls.ca(cts, "../sh/certificates", "ca.pem");
+	// Включаем проверку имени хоста TLS
+	tls.validateServerNameIndication(cts, true);
+	// Устанавливаем имя хоста TLS
+	tls.serverNameIndication(cts, host);
 	// Создаём объект клиента
 	client::socks5_t client(tls.transport(cts), &tls, &dns, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
@@ -197,16 +207,6 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Successfully set event options!" << endl;
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
-	// Устанавливаем хост сервера для подключения клиента
-	const string host = "anyks.com";
-	// Устанавливаем ALPN протоколы TLS
-	tls.alpn(cts, {{0,"http/1.1"}});
-	// Устанавливаем файл центра сертификации TLS
-	tls.ca(cts, "../sh/certificates", "ca.pem");
-	// Включаем проверку имени хоста TLS
-	tls.validateServerNameIndication(cts, true);
-	// Устанавливаем имя хоста TLS
-	tls.serverNameIndication(cts, host);
 	// Устанавливаем порт и целевой хост для клиента socks5 и добавляем идентификатор события клиента для конечной точки
 	// if(client.setTargetPort(11613) && client.setTarget("217.29.53.105") && client.endpoint(host, 443)){
 	if(client.setTargetPort(2222) && client.setTarget("localhost") && client.endpoint(host, 443)){
