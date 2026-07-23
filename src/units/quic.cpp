@@ -783,14 +783,24 @@ void awh::unit::QuicClient::read([[maybe_unused]] const event::id_t eid, const u
 	if(this->_token.empty())
 		// Сохраняем токен проверки адреса для следующего подключения
 		this->_token = this->_connection->token();
-	// Если удалённый эндпоинт завершил соединение
-	if(this->_connection->state() == quic::connection_t::state_t::DRAINING){
-		// Если приложение было оповещено об установленном соединении
-		if(this->_connected)
-			// Выполняем функцию обратного вызова о завершённом соединении
-			this->_callback.call <void (const event::id_t, const quic::error_t)> ("close", this->_eid, this->_connection->error());
+	// Выполняем оповещение приложения о завершённом соединении
+	this->complete();
+}
+/**
+ * @brief Метод оповещения приложения о завершённом соединении
+ *
+ */
+void awh::unit::QuicClient::complete() noexcept {
+	// Если соединение не создано либо ещё не завершено
+	if((this->_connection == nullptr) || (this->_connection->state() != quic::connection_t::state_t::DRAINING))
+		// Выходим из метода
+		return;
+	// Если приложение было оповещено об установленном соединении
+	if(this->_connected){
 		// Сбрасываем флаг оповещения приложения об установленном соединении
 		this->_connected = false;
+		// Выполняем функцию обратного вызова о завершённом соединении
+		this->_callback.call <void (const event::id_t, const quic::error_t)> ("close", this->_eid, this->_connection->error());
 	}
 }
 /**
@@ -814,6 +824,12 @@ void awh::unit::QuicClient::tick([[maybe_unused]] const event::id_t eid, const e
 		this->_connection->tick(date);
 		// Отправляем все готовые исходящие датаграммы
 		this->flush();
+		/**
+		 * Выполняем оповещение приложения о завершённом соединении: завершение
+		 * наступает и по таймеру - истечением периода завершения либо таймаута
+		 * простоя, когда приходить от удалённого эндпоинта уже нечему
+		 */
+		this->complete();
 	}
 }
 /**

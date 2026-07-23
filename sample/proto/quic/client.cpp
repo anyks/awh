@@ -181,6 +181,11 @@ int32_t main(int32_t argc, char * argv[]){
 	callback.on <void (const event::id_t, const quic::error_t)> ("close", close_t([&client, &log](const event::id_t eid, const quic::error_t error) noexcept -> void {
 		// Записываем в лог сообщение о завершении соединения
 		log.print("Соединение завершено: ID=%u, Ошибка=%s, Билет=%zu байт", log_t::flag_t::INFO, eid, quic::errorName(error).data(), client.session().size());
+		/**
+		 * Останавливаем модуль клиента: соединение завершено окончательно - период
+		 * завершения выдержан, и работать модулю больше не над чем (RFC 9000 §10.2)
+		 */
+		client.stop();
 	}));
 	// Устанавливаем функции обратного вызова модуля клиента
 	client.callback(callback);

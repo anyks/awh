@@ -56,6 +56,30 @@ namespace {
 	 */
 	static constexpr size_t MAX_ACK_RANGES = 32;
 	/**
+	 * @brief Предельный лимит числа потоков фреймов MAX_STREAMS и STREAMS_BLOCKED
+	 *
+	 * @note Идентификаторы потоков кодируются varint, поэтому лимит сверх 2^60
+	 *       разрешал бы открытие потока с некодируемым идентификатором
+	 *       (RFC 9000 §19.11/§19.14)
+	 */
+	static constexpr uint64_t MAX_STREAMS_LIMIT = (static_cast <uint64_t> (1) << 60);
+	/**
+	 * @brief Объём анонсированного лимита приёма потока на один фрагмент сборки
+	 *
+	 * @note Количество фрагментов, буферизируемых до заполнения разрывов, ограничено
+	 *       долей от анонсированного лимита приёма потока. Сами данные лимитом
+	 *       уже ограничены, а вот их дробление - нет: тысячи однооктетных фрагментов
+	 *       занимают на порядки больше памяти, чем несут данных (RFC 9000 §4.1)
+	 */
+	static constexpr uint64_t STREAM_CHUNK_SHARE = 512;
+	/**
+	 * @brief Минимальное количество фрагментов сборки потока
+	 *
+	 * @note Предел не опускается ниже: перестановка пакетов в сети образует разрывы
+	 *       и на потоках с малым лимитом приёма
+	 */
+	static constexpr size_t MIN_STREAM_CHUNKS = 64;
+	/**
 	 * @brief Минимальная длина DCID первого пакета Initial клиента (RFC 9000 §7.2)
 	 *
 	 */
@@ -80,11 +104,6 @@ namespace {
 	 *
 	 */
 	static constexpr uint8_t MAX_PTO_COUNT = 10;
-	/**
-	 * @brief Размер токена проверки адреса пакета Retry
-	 *
-	 */
-	static constexpr size_t RETRY_TOKEN_SIZE = 16;
 	/**
 	 * @brief Срок годности токена проверки адреса в миллисекундах (RFC 9000 §8.1.3)
 	 *
@@ -115,6 +134,15 @@ namespace {
 	 *
 	 */
 	static constexpr size_t RETRY_TOKEN_PREFIX = (1 + 8 + 1);
+	/**
+	 * @brief Длительность периода завершения соединения в интервалах таймера PTO
+	 *
+	 * @note Период выдерживается локальным эндпоинтом после отправки фрейма
+	 *       CONNECTION_CLOSE: за него отставшие пакеты удалённого узла получают
+	 *       повторный фрейм завершения, после чего состояние соединения
+	 *       подлежит освобождению (RFC 9000 §10.2)
+	 */
+	static constexpr uint64_t CLOSING_PERIOD = 3;
 	/**
 	 * @brief Функция получения общего ключа подписи токенов проверки адреса
 	 *
@@ -168,6 +196,14 @@ namespace {
 	 *       а ненадёжность доставки позволяет отбрасывать лишние
 	 */
 	static constexpr size_t MAX_QUEUED_DATAGRAMS = 64;
+	/**
+	 * @brief Предельное количество данных принятых проверок пути в очереди ответов
+	 *
+	 * @note Ответы ретрансмиссии не подлежат, поэтому неограниченная очередь
+	 *       позволяла бы удалённому эндпоинту наращивать её потоком проверок
+	 *       (RFC 9000 §8.2.2)
+	 */
+	static constexpr size_t MAX_QUEUED_RESPONSES = 8;
 	/**
 	 * @brief Начальное окно перегрузки в октетах (RFC 9002 §7.2)
 	 *
@@ -284,7 +320,9 @@ awh::quic::Connection::Chunk::Chunk() noexcept : sid(0), offset(0), fin(false), 
  * @brief Конструктор учётной записи отправленного пакета
  *
  */
-awh::quic::Connection::Sent::Sent() noexcept : pn(0), time(0), size(0), handshakeDone(false), early(false), ecn(false), pmtu(false) {}
+awh::quic::Connection::Sent::Sent() noexcept :
+ pn(0), time(0), size(0), handshakeDone(false), early(false),
+ ecn(false), pmtu(false), stale(false) {}
 
 /**
  * @brief Конструктор идентификатора соединения удалённого эндпоинта
@@ -310,8 +348,8 @@ awh::quic::Connection::Rtt::Rtt() noexcept :
  *
  */
 awh::quic::Connection::Path::Path() noexcept :
- response(false), pending(false), queued(false), validated(false),
- data{0}, probe{0}, address{""}, migrations(0) {}
+ pending(false), queued(false), validated(false),
+ probe{0}, address{""}, migrations(0) {}
 
 /**
  * @brief Конструктор
@@ -319,7 +357,7 @@ awh::quic::Connection::Path::Path() noexcept :
  */
 awh::quic::Connection::Close::Close() noexcept :
  code(0), app(false), queued(false), sent(false), received(0),
- threshold(1), reason{""} {}
+ threshold(1), deadline(0), reason{""} {}
 
 /**
  * @brief Конструктор
@@ -403,7 +441,8 @@ awh::quic::Connection::Streams::Streams() noexcept : cursor(0) {}
  *
  */
 awh::quic::Connection::Pmtu::Pmtu() noexcept :
- size(MAX_DATAGRAM_SIZE), high(MAX_PROBE_SIZE), probe(0), count(0), queued(false) {}
+ size(MAX_DATAGRAM_SIZE), high(MAX_PROBE_SIZE), limit(MAX_PROBE_SIZE),
+ probe(0), count(0), queued(false) {}
 
 /**
  * @brief Конструктор
@@ -630,8 +669,13 @@ void awh::quic::Connection::pull() noexcept {
  * @param error код ошибки транспорта
  */
 void awh::quic::Connection::fail(const error_t error) noexcept {
-	// Если завершение соединения ещё не поставлено в очередь
-	if(!this->_close.queued){
+	/**
+	 * Если завершение соединения ещё не поставлено в очередь и не выполнено удалённым
+	 * эндпоинтом: завершённое им соединение своим завершением не перекрывается -
+	 * отправка пакетов в этом состоянии запрещена, а причина завершения уже
+	 * получена от него самого (RFC 9000 §10.2.2)
+	 */
+	if(!this->_close.queued && (this->_state != state_t::DRAINING)){
 		/**
 		 * Записываем причину в лог: завершение с ошибкой транспорта - это единственная
 		 * точка, где соединение рвётся по нарушению протокола, и без диагностики
@@ -788,11 +832,12 @@ void awh::quic::Connection::requeue(const space_t space, const sent_t & packet) 
 				// Восстанавливаем порядковый номер в очереди вывода из обращения
 				this->_routing.retireQueue.push_back(control.second);
 			break;
-			// Фрейм ответа на проверку достижимости пути PATH_RESPONSE
-			case frame_t::PATH_RESPONSE:
-				// Восстанавливаем флаг необходимости отправки фрейма PATH_RESPONSE
-				this->_path.response = true;
-			break;
+			/**
+			 * Фрейм ответа на проверку достижимости пути PATH_RESPONSE: ретрансмиссии
+			 * не подлежит - при его потере удалённый эндпоинт присылает новую проверку,
+			 * на которую отправляется новый ответ (RFC 9000 §13.3)
+			 */
+			case frame_t::PATH_RESPONSE: break;
 			// Фрейм проверки достижимости пути PATH_CHALLENGE
 			case frame_t::PATH_CHALLENGE: {
 				// Если ответ на проверку пути ещё не получен
@@ -1079,6 +1124,17 @@ void awh::quic::Connection::detect(const space_t space) noexcept {
 			}
 			// Ставим содержимое потерянного пакета в очереди отправки
 			this->requeue(space, * i);
+			/**
+			 * Если потерян пакет прежнего пути: его содержимое переотправляется, но
+			 * событием перегрузки нового пути его потеря не является - потерян он был
+			 * на пути, которого соединение уже не использует (RFC 9000 §9.4)
+			 */
+			if(i->stale){
+				// Удаляем потерянный пакет из списка отправленных
+				i = item.sent.erase(i);
+				// Продолжаем перебор
+				continue;
+			}
 			// Списываем потерянный пакет из октетов в полёте (RFC 9002 §B.8)
 			this->_congestion.inflight -= ::min(this->_congestion.inflight, static_cast <uint64_t> (i->size));
 			// Запоминаем время отправки наиболее позднего потерянного пакета
@@ -1573,6 +1629,14 @@ void awh::quic::Connection::promote() noexcept {
  * @param packet учётная запись подтверждённого пакета
  */
 void awh::quic::Connection::acked(const sent_t & packet) noexcept {
+	/**
+	 * Если подтверждён пакет прежнего пути: октеты в полёте по нему уже списаны
+	 * сменой пути, а ёмкость нового пути его подтверждение не характеризует -
+	 * окно перегрузки нового пути такой пакет наращивать не вправе (RFC 9000 §9.4)
+	 */
+	if(packet.stale)
+		// Выходим из метода
+		return;
 	// Списываем подтверждённый пакет из октетов в полёте
 	this->_congestion.inflight -= ::min(this->_congestion.inflight, static_cast <uint64_t> (packet.size));
 	/**
@@ -1875,10 +1939,37 @@ awh::quic::status_t awh::quic::Connection::inputStream(const frame::stream_t & f
 		if(frame.offset > stream->rxOffset){
 			// Ищем буферизированный фрагмент с тем же смещением
 			auto i = stream->rxBuffer.find(frame.offset);
+			/**
+			 * Если фрагмент с тем же смещением уже буферизирован - сверяем перекрытие:
+			 * октет потока по своему смещению один и тот же сколько бы раз он ни был
+			 * прислан, и расхождение означает неисправный либо злонамеренный удалённый
+			 * эндпоинт. Без сверки собранные данные зависели бы от порядка приёма
+			 * фрагментов, что для потока недопустимо (RFC 9000 §2.2)
+			 */
+			if((i != stream->rxBuffer.end()) &&
+			   (::memcmp(i->second.data(), frame.data.data(), ::min(i->second.size(), frame.data.size())) != 0)){
+				// Ставим завершение соединения с нарушением протокола в очередь
+				this->fail(error_t::PROTOCOL_VIOLATION);
+				// Выводим отрицательный результат
+				return status_t::ERROR;
+			}
 			// Если фрагмент с тем же смещением не буферизирован либо новый фрагмент длиннее
-			if((i == stream->rxBuffer.end()) || (i->second.size() < frame.data.size()))
+			if((i == stream->rxBuffer.end()) || (i->second.size() < frame.data.size())){
+				/**
+				 * Если новый фрагмент образует разрыв сверх предела: удалённый эндпоинт
+				 * дробит поток мельче, чем локальный готов собирать. Данные лимитом приёма
+				 * ограничены, но накладные расходы на хранение каждого фрагмента их
+				 * многократно превышают, поэтому предел нужен и на дробление
+				 */
+				if((i == stream->rxBuffer.end()) && (stream->rxBuffer.size() >= ::max(MIN_STREAM_CHUNKS, static_cast <size_t> (this->rxWindow(frame.streamId) / STREAM_CHUNK_SHARE)))){
+					// Ставим завершение соединения с ошибкой flow control в очередь
+					this->fail(error_t::FLOW_CONTROL_ERROR);
+					// Выводим отрицательный результат
+					return status_t::ERROR;
+				}
 				// Буферизируем фрагмент до заполнения разрыва
 				stream->rxBuffer[frame.offset] = string(frame.data);
+			}
 		// Если данные продолжают непрерывно собранное смещение
 		} else {
 			// Определяем несобранную часть данных фрейма
@@ -2134,6 +2225,18 @@ awh::quic::status_t awh::quic::Connection::input(const level_t level, const uint
 		}
 		// Ищем буферизированный фрагмент с тем же смещением
 		auto i = item.rxBuffer.find(offset);
+		/**
+		 * Если фрагмент с тем же смещением уже буферизирован - сверяем перекрытие:
+		 * поток криптографического хендшейка переписыванию не подлежит, и расхождение
+		 * данных по одному смещению является нарушением протокола (RFC 9000 §2.2)
+		 */
+		if((i != item.rxBuffer.end()) &&
+		   (::memcmp(i->second.data(), data.data(), ::min(i->second.size(), data.size())) != 0)){
+			// Ставим завершение соединения с нарушением протокола в очередь
+			this->fail(error_t::PROTOCOL_VIOLATION);
+			// Выводим отрицательный результат
+			return status_t::ERROR;
+		}
 		// Если фрагмент с тем же смещением не буферизирован либо новый фрагмент длиннее
 		if((i == item.rxBuffer.end()) || (i->second.size() < data.size()))
 			// Буферизируем фрагмент до заполнения разрыва
@@ -2370,8 +2473,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						if(i->pn == frame.ranges.front().high){
 							// Запоминаем время отправки пакета
 							sentTime = i->time;
-							// Устанавливаем флаг подтверждения наибольшего номера
-							largest = true;
+							/**
+							 * Устанавливаем флаг подтверждения наибольшего номера: подтверждение
+							 * пакета прежнего пути измеряет задержку не того пути, по которому
+							 * соединение работает теперь, и образцом для оценки не является
+							 * (RFC 9000 §9.4)
+							 */
+							largest = !i->stale;
 						}
 						// Запоминаем время отправки наиболее позднего подтверждаемого пакета
 						newestAcked = ::max(newestAcked, i->time);
@@ -2620,6 +2728,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 						stream->txResetCode = frame.code;
 						// Отбрасываем неотправленные данные потока
 						stream->txBuffer.clear();
+						/**
+						 * Сбрасываем курсор упакованных данных буфера: завершённость отправки
+						 * определяется совпадением курсора с размером буфера, и оставленный
+						 * ненулевым курсор при опустошённом буфере не совпал бы с ним никогда -
+						 * поток остался бы в списке потоков до конца соединения
+						 */
+						stream->txCursor = 0;
 						// Сбрасываем флаг постановки завершения потока
 						stream->txFin = false;
 					}
@@ -2657,6 +2772,20 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 				status = frame::parser::single(data + offset, size - offset, type, value, consumed, error);
 				// Если фрейм разобран успешно
 				if(status == status_t::OK){
+					/**
+					 * Если фрейм лимита числа потоков разрешает идентификатор сверх
+					 * кодируемого varint предела: открыть такой поток невозможно,
+					 * и лимит сверх него является ошибкой кодирования
+					 * (RFC 9000 §19.11/§19.14)
+					 */
+					if((value > MAX_STREAMS_LIMIT) &&
+					   ((type == frame_t::MAX_STREAMS_BIDI) || (type == frame_t::MAX_STREAMS_UNI) ||
+					    (type == frame_t::STREAMS_BLOCKED_BIDI) || (type == frame_t::STREAMS_BLOCKED_UNI))){
+						// Ставим завершение соединения с ошибкой кодирования фрейма в очередь
+						this->fail(error_t::FRAME_ENCODING_ERROR);
+						// Выводим отрицательный результат
+						return status_t::ERROR;
+					}
 					/**
 					 * Определяем тип фрейма лимита
 					 */
@@ -2874,12 +3003,23 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 			} break;
 			// Фрейм проверки достижимости пути PATH_CHALLENGE
 			case frame_t::PATH_CHALLENGE: {
+				// Данные принятой проверки достижимости пути
+				uint8_t buffer[proto::PATH_DATA_SIZE];
 				// Выполняем разбор фрейма PATH_CHALLENGE
-				status = frame::parser::path(data + offset, size - offset, type, this->_path.data, consumed, error);
+				status = frame::parser::path(data + offset, size - offset, type, buffer, consumed, error);
 				// Если фрейм разобран успешно
-				if(status == status_t::OK)
-					// Устанавливаем флаг необходимости отправки фрейма PATH_RESPONSE
-					this->_path.response = true;
+				if(status == status_t::OK){
+					/**
+					 * Если очередь ответов заполнена: ответы ретрансмиссии не подлежат
+					 * (RFC 9000 §13.3), поэтому очередь ограничена сверху, а поток проверок
+					 * сверх предела обслуживается вытеснением наиболее старой
+					 */
+					if(this->_path.responses.size() >= MAX_QUEUED_RESPONSES)
+						// Отбрасываем данные наиболее старой принятой проверки
+						this->_path.responses.pop_front();
+					// Ставим данные принятой проверки в очередь ответов (RFC 9000 §8.2.2)
+					this->_path.responses.emplace_back(reinterpret_cast <const char *> (buffer), proto::PATH_DATA_SIZE);
+				}
 				// Устанавливаем флаг приёма ack-eliciting фрейма
 				elicit = true;
 			} break;
@@ -2934,6 +3074,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					else this->_error = static_cast <error_t> (frame.code);
 					// Устанавливаем состояние завершения соединения удалённым эндпоинтом
 					this->_state = state_t::DRAINING;
+					/**
+					 * Прекращаем разбор нагрузки: остаток фреймов относится к соединению,
+					 * которое удалённый эндпоинт уже завершил, а ошибка разбора в этом
+					 * остатке поставила бы в очередь собственное завершение - отправлять
+					 * его в состоянии завершения удалённым узлом запрещено (RFC 9000 §10.2.2)
+					 */
+					return status_t::OK;
 				}
 			} break;
 			// Фрейм подтверждения завершения хендшейка HANDSHAKE_DONE
@@ -3107,7 +3254,7 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 	 */
 	if((level == level_t::APPLICATION) || (level == level_t::EARLY_DATA)){
 		// Если требуется отправка фрейма HANDSHAKE_DONE (только сервер, только уровень приложения)
-		if((level == level_t::APPLICATION) && this->_handshakeDone){
+		if((level == level_t::APPLICATION) && this->_handshakeDone && (budget > (output.size() + CONTROL_OVERHEAD))){
 			// Выполняем сборку фрейма HANDSHAKE_DONE
 			frame::serialize::handshakeDone(output);
 			// Запоминаем фрейм HANDSHAKE_DONE в учётной записи пакета
@@ -3143,16 +3290,21 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			// Сбрасываем флаг необходимости отправки фрейма PATH_CHALLENGE
 			this->_path.queued = false;
 		}
-		// Если требуется отправка фрейма PATH_RESPONSE (только уровень приложения)
-		if((level == level_t::APPLICATION) && this->_path.response){
-			// Выполняем сборку фрейма PATH_RESPONSE
-			frame::serialize::path(output, frame_t::PATH_RESPONSE, this->_path.data);
+		/**
+		 * Пока есть принятые проверки пути и в пакете осталось место: на каждую
+		 * принятую проверку отправляется свой ответ с её данными. Ответы допустимы
+		 * только на уровне приложения и ретрансмиссии не подлежат - при потере
+		 * удалённый эндпоинт присылает новую проверку (RFC 9000 §8.2.2/§13.3)
+		 */
+		while((level == level_t::APPLICATION) && !this->_path.responses.empty() && (budget > (output.size() + CONTROL_OVERHEAD))){
+			// Выполняем сборку фрейма PATH_RESPONSE с данными принятой проверки
+			frame::serialize::path(output, frame_t::PATH_RESPONSE, reinterpret_cast <const uint8_t *> (this->_path.responses.front().data()));
 			// Запоминаем управляющий фрейм в учётной записи пакета
 			meta.control.emplace_back(frame_t::PATH_RESPONSE, 0);
 			// Устанавливаем флаг наличия ack-eliciting фреймов
 			elicit = true;
-			// Сбрасываем флаг необходимости отправки фрейма PATH_RESPONSE
-			this->_path.response = false;
+			// Удаляем обслуженную проверку из очереди ответов
+			this->_path.responses.pop_front();
 		}
 		// Если требуется отправка обновлённого лимита данных соединения MAX_DATA
 		if(this->_flow.rxQueued && (budget > (output.size() + CONTROL_OVERHEAD))){
@@ -3476,7 +3628,7 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 		}
 	}
 	// Если требуется отправка зондирующего фрейма PING (RFC 9002 §6.2.4)
-	if(item.pingQueued){
+	if(item.pingQueued && (budget > (output.size() + CONTROL_OVERHEAD))){
 		// Выполняем сборку фрейма PING
 		frame::serialize::ping(output);
 		// Устанавливаем флаг наличия ack-eliciting фреймов
@@ -3862,6 +4014,16 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 	 *  Перебираем коалесцированные пакеты датаграммы (RFC 9000 §12.2)
 	 */
 	while(offset < buffer.size()){
+		/**
+		 * Если удалённый эндпоинт завершил соединение предыдущим пакетом датаграммы:
+		 * остаток коалесцированных пакетов относится к соединению, которого больше
+		 * нет. Разбор их нагрузки не только бессмыслен, но и опасен - ошибка в ней
+		 * поставила бы в очередь собственное завершение, отправлять которое в
+		 * завершённом состоянии запрещено (RFC 9000 §10.2.2)
+		 */
+		if(this->_state == state_t::DRAINING)
+			// Прекращаем разбор датаграммы
+			break;
 		// Указатель на начало очередного пакета
 		const uint8_t * bytes = (reinterpret_cast <const uint8_t *> (buffer.data()) + offset);
 		// Количество доступных октетов пакета
@@ -4393,6 +4555,12 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 			return status_t::ERROR;
 		// Обновляем время последнего принятого и обработанного пакета (RFC 9000 §10.1)
 		this->_idleTime = this->_now;
+		/**
+		 * Разрешаем однократный перезапуск отсчёта отправкой: приём пакета
+		 * подтвердил, что удалённый эндпоинт жив, поэтому начатая после него
+		 * активность вправе продлить соединение (RFC 9000 §10.1)
+		 */
+		this->_idleElicited = false;
 		// Если сервер успешно обработал пакет уровня Handshake
 		if((this->_endpoint == endpoint_t::SERVER) && (level == level_t::HANDSHAKE)){
 			/**
@@ -4543,8 +4711,12 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	this->prepare();
 	// Удаляем завершённые потоки приложения
 	this->collect();
-	// Если завершение соединения поставлено в очередь и ещё не отправлено
-	if(this->_close.queued && !this->_close.sent){
+	/**
+	 * Если завершение соединения поставлено в очередь и ещё не отправлено. Опередивший
+	 * отправку приём завершения от удалённого эндпоинта её отменяет: эндпоинт в
+	 * состоянии завершения удалённым узлом не вправе отправлять пакеты (RFC 9000 §10.2.2)
+	 */
+	if(this->_close.queued && !this->_close.sent && (this->_state != state_t::DRAINING)){
 		// Список уровней шифрования в порядке убывания предпочтения
 		static const level_t levels[] = {level_t::APPLICATION, level_t::HANDSHAKE, level_t::INITIAL};
 		/**
@@ -4582,6 +4754,14 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 				this->_amplify.sent += output.size();
 				// Устанавливаем флаг выполненной отправки фрейма CONNECTION_CLOSE
 				this->_close.sent = true;
+				/**
+				 * Если дедлайн периода завершения ещё не взведён: период отсчитывается
+				 * от первой отправки фрейма завершения, а его повторы, отправляемые
+				 * в ответ на приходящие пакеты, дедлайн не отодвигают (RFC 9000 §10.2)
+				 */
+				if(this->_close.deadline == 0)
+					// Взводим дедлайн периода завершения соединения
+					this->_close.deadline = (now + (CLOSING_PERIOD * this->interval(space_t::APPLICATION)));
 				// Выводим положительный результат
 				return true;
 			}
@@ -4654,6 +4834,13 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		item.sent.push_back(::move(meta));
 		// Учитываем отправленные октеты в контроле анти-амплификации (RFC 9000 §8.1)
 		this->_amplify.sent += output.size();
+		// Если зонд отправлен впервые после последнего принятого пакета
+		if(!this->_idleElicited){
+			// Перезапускаем отсчёт таймаута простоя от момента отправки (RFC 9000 §10.1)
+			this->_idleTime = now;
+			// Устанавливаем флаг выполненного перезапуска отсчёта отправкой
+			this->_idleElicited = true;
+		}
 		// Выводим положительный результат - зонд размера пути собран
 		return true;
 	}
@@ -4725,19 +4912,33 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		// Выводим отрицательный результат
 		return false;
 	// Флаг наличия пакета Initial в датаграмме
-	bool initial = false;
+	// Флаг датаграммы, подлежащей дополнению до минимального размера
+	bool expand = false;
 	/**
 	 * Перебираем список собранных нагрузок
 	 */
-	for(auto & spec : specs)
-		// Определяем наличие пакета Initial в датаграмме
-		initial = (initial || (spec.level == level_t::INITIAL));
+	for(auto & spec : specs){
+		// Датаграмма с пакетом Initial дополняется до минимального размера (RFC 9000 §14.1)
+		expand = (expand || (spec.level == level_t::INITIAL));
+		/**
+		 * Перебираем управляющие фреймы нагрузки пакета
+		 */
+		for(auto & control : spec.meta.control)
+			/**
+			 * Определяем наличие фреймов проверки достижимости пути: датаграммы с ними
+			 * дополняются до того же минимального размера, что и датаграммы с пакетом
+			 * Initial. Проверка подтверждает не сам факт достижимости, а пригодность
+			 * пути к переносу датаграмм минимального размера, поэтому короткая
+			 * датаграмма проверила бы не то (RFC 9000 §8.2.1/§8.2.2)
+			 */
+			expand = (expand || (control.first == frame_t::PATH_CHALLENGE) || (control.first == frame_t::PATH_RESPONSE));
+	}
 	/**
-	 * Если датаграмма содержит пакет Initial и доступного объёма отправки хватает
+	 * Если датаграмма подлежит дополнению и доступного объёма отправки хватает
 	 * на минимальный размер: под лимитом анти-амплификации дополнение не выполняется,
 	 * лимит имеет приоритет над требованием минимального размера (RFC 9000 §14.1)
 	 */
-	if(initial && (capacity >= proto::MIN_INITIAL_SIZE)){
+	if(expand && (capacity >= proto::MIN_INITIAL_SIZE)){
 		// Количество добавленных октетов PADDING
 		size_t added = 0;
 		/**
@@ -4877,6 +5078,18 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 	// Учитываем отправленные октеты в контроле анти-амплификации (RFC 9000 §8.1)
 	this->_amplify.sent += output.size();
 	// Если отправлен зондирующий пакет сверх окна перегрузки (RFC 9002 §7.5)
+	/**
+	 * Если ack-eliciting пакет отправлен впервые после последнего принятого:
+	 * перезапускаем отсчёт таймаута простоя, иначе начатая после долгой паузы
+	 * активность оборвалась бы, не дождавшись ответа удалённого эндпоинта.
+	 * Повторные отправки отсчёт уже не сдвигают (RFC 9000 §10.1)
+	 */
+	if(elicited && !this->_idleElicited){
+		// Перезапускаем отсчёт таймаута простоя от момента отправки
+		this->_idleTime = now;
+		// Устанавливаем флаг выполненного перезапуска отсчёта отправкой
+		this->_idleElicited = true;
+	}
 	if(elicited && (this->_congestion.probes > 0))
 		// Списываем разрешение на зондирующий пакет
 		this->_congestion.probes--;
@@ -4893,6 +5106,14 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
  * @return дедлайн ближайшего события в миллисекундах (0 - таймер не требуется)
  */
 uint64_t awh::quic::Connection::timeout() const noexcept {
+	/**
+	 * Если локальный эндпоинт выдерживает период завершения соединения: до его
+	 * истечения соединение живо ради повтора фрейма CONNECTION_CLOSE, поэтому
+	 * дедлайном таймера является дедлайн периода (RFC 9000 §10.2)
+	 */
+	if(this->_state == state_t::CLOSING)
+		// Выводим дедлайн периода завершения, а до его взведения - немедленный дедлайн
+		return (this->_close.deadline > 0 ? this->_close.deadline : (this->_now + 1));
 	// Если соединение не активно
 	if((this->_state != state_t::HANDSHAKING) && (this->_state != state_t::CONNECTED))
 		// Выводим нулевой дедлайн - таймер не требуется
@@ -4915,6 +5136,19 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
 		if((pto > 0) && ((result == 0) || (pto < result)))
 			// Устанавливаем дедлайн таймера PTO
 			result = pto;
+		// Если подтверждение приёма поставлено в очередь
+		if(item.ackElicited){
+			/**
+			 * Вычисляем дедлайн отправки подтверждения: откладывать его дозволено не
+			 * долее анонсированной локальным эндпоинтом задержки, а подтверждения
+			 * пакетов хендшейка откладывать нельзя вовсе (RFC 9000 §13.2.1)
+			 */
+			const uint64_t ack = (item.ackTime + ((static_cast <space_t> (i) == space_t::APPLICATION) ? this->_params.maxAckDelay : 0));
+			// Если дедлайн подтверждения является ближайшим событием
+			if((result == 0) || (ack < result))
+				// Устанавливаем дедлайн отправки подтверждения
+				result = ack;
+		}
 	}
 	// Получаем дедлайн таймаута простоя соединения (RFC 9000 §10.1)
 	const uint64_t idle = this->idle();
@@ -4931,6 +5165,25 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
  * @param now текущее время в миллисекундах
  */
 void awh::quic::Connection::tick(const uint64_t now) noexcept {
+	/**
+	 * Если локальный эндпоинт выдерживает период завершения соединения: по его
+	 * истечении состояние соединения подлежит освобождению, о чём вызывающий код
+	 * узнаёт по переходу в завершённое состояние (RFC 9000 §10.2)
+	 */
+	if(this->_state == state_t::CLOSING){
+		// Обновляем текущее время последнего вызова
+		this->_now = now;
+		// Если дедлайн периода завершения ещё не взведён
+		if(this->_close.deadline == 0)
+			// Взводим дедлайн периода завершения соединения
+			this->_close.deadline = (now + (CLOSING_PERIOD * this->interval(space_t::APPLICATION)));
+		// Если период завершения соединения истёк
+		else if(now >= this->_close.deadline)
+			// Переводим соединение в завершённое состояние
+			this->_state = state_t::DRAINING;
+		// Выходим из метода
+		return;
+	}
 	// Если соединение не активно
 	if((this->_state != state_t::HANDSHAKING) && (this->_state != state_t::CONNECTED))
 		// Выходим из метода
@@ -5035,6 +5288,25 @@ void awh::quic::Connection::repath() noexcept {
 	 * избыточного объёма данных в неизвестный по ёмкости канал
 	 */
 	this->_congestion.window = INITIAL_WINDOW;
+	/**
+	 * Списываем октеты в полёте: отправленное прежним путём ёмкость нового не
+	 * занимает, а оставленный учёт запер бы отправку по новому пути окном
+	 * перегрузки - в том числе проверку его достижимости (RFC 9000 §9.4)
+	 */
+	this->_congestion.inflight = 0;
+	/**
+	 * Перебираем пространства номеров пакетов
+	 */
+	for(size_t i = 0; i < SPACES; i++){
+		/**
+		 * Помечаем отправленное прежним путём: содержимое таких пакетов при потере
+		 * переотправляется обычным порядком, но контроль перегрузки и оценку задержки
+		 * нового пути их подтверждения и потери не затрагивают
+		 */
+		for(auto & packet : this->_spaces[i].sent)
+			// Устанавливаем флаг отправки пакета по прежнему пути соединения
+			packet.stale = true;
+	}
 	// Восстанавливаем начальный порог замедленного старта
 	this->_congestion.threshold = proto::VARINT_MAX;
 	// Завершаем период восстановления
@@ -5066,35 +5338,22 @@ void awh::quic::Connection::repath() noexcept {
 	this->_path.validated = false;
 	/**
 	 * Проверка поддержки ECN относится к конкретному пути: новый путь маркировку
-	 * стирать не обязан, поэтому проверка выполняется заново вместе со сбросом
-	 * накопленных счётчиков маркировок (RFC 9000 §13.4.2)
+	 * стирать не обязан, поэтому непройденная на прежнем пути проверка выполняется
+	 * заново. Накопленные счётчики маркировок при этом сохраняются: удалённый
+	 * эндпоинт ведёт их нарастающим итогом по пространству номеров за всё
+	 * соединение, а не по пути, и обнуление локального учёта сделало бы первый же
+	 * присланный им счётчик недостоверно большим - проверка провалилась бы сразу
+	 * и навсегда отключила маркировку (RFC 9000 §13.4.2)
 	 */
 	this->_marking.failed = false;
-	/**
-	 * Перебираем пространства номеров пакетов
-	 */
-	for(size_t i = 0; i < SPACES; i++){
-		// Получаем состояние пространства номеров пакетов
-		auto & item = this->_spaces[i];
-		// Обнуляем количество отправленных с маркировкой пакетов пространства
-		item.ecnSent = 0;
-		// Сбрасываем флаг приёма счётчиков маркировок от пира
-		item.hasPeerEcn = false;
-		// Обнуляем счётчик пакетов с маркировкой поддержки ECN
-		item.peerEct0 = 0;
-		// Обнуляем счётчик пакетов с альтернативной маркировкой поддержки ECN
-		item.peerEct1 = 0;
-		// Обнуляем счётчик пакетов с маркировкой перегрузки
-		item.peerCe = 0;
-	}
 	/**
 	 * Размер пути характеризует конкретный путь: на новом пути прежний
 	 * подтверждённый размер неприменим, и поиск начинается заново от размера,
 	 * который обязан пропускать любой путь (RFC 8899 §5.4)
 	 */
 	this->_pmtu.size = MAX_DATAGRAM_SIZE;
-	// Восстанавливаем верхнюю границу поиска размера пути
-	this->_pmtu.high = MAX_PROBE_SIZE;
+	// Восстанавливаем верхнюю границу поиска до заданной вызывающим кодом
+	this->_pmtu.high = this->_pmtu.limit;
 	// Сбрасываем размер собираемого зонда
 	this->_pmtu.probe = 0;
 	// Обнуляем количество отправленных попыток зонда
@@ -5314,12 +5573,23 @@ size_t awh::quic::Connection::pmtu() const noexcept {
  */
 void awh::quic::Connection::pmtu(const size_t limit) noexcept {
 	/**
-	 * Опускаем верхнюю границу поиска до заданной: размер, который обязан
+	 * Опускаем заданную вызывающим кодом границу поиска: размер, который обязан
 	 * пропускать любой путь, границей снизу остаётся в любом случае (RFC 9000 §14.1)
 	 */
-	this->_pmtu.high = ::max(::min(this->_pmtu.high, limit), static_cast <size_t> (MAX_DATAGRAM_SIZE));
+	this->_pmtu.limit = ::max(::min(this->_pmtu.limit, limit), static_cast <size_t> (MAX_DATAGRAM_SIZE));
+	// Опускаем рабочую границу поиска до заданной вызывающим кодом
+	this->_pmtu.high = ::min(this->_pmtu.high, this->_pmtu.limit);
 	// Продвигаем поиск размера пути с учётом новой границы
 	this->discover();
+}
+/**
+ * @brief Метод получения количества обслуживаемых потоков приложения
+ *
+ * @return количество обслуживаемых потоков приложения
+ */
+size_t awh::quic::Connection::streams() const noexcept {
+	// Выводим количество обслуживаемых потоков приложения
+	return this->_stream.list.size();
 }
 /**
  * @brief Метод получения количества выполненных смен пути соединения
@@ -5983,7 +6253,7 @@ const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept
  * @param log      объект для работы с логами
  */
 awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
- _endpoint(endpoint), _state(state_t::NONE), _stateless{""}, _address{""},
+ _endpoint(endpoint), _state(state_t::NONE), _address{""}, _stateless{""},
  _aeadFailures(0), _confirmed(false), _handshakeDone(false), _restored(false),
  _error(error_t::NO_ERROR), _amplify(endpoint), _now(0), _idleTime(0),
- _log(log), _handshake(endpoint, ctx, coder, log) {}
+ _idleElicited(false), _log(log), _handshake(endpoint, ctx, coder, log) {}
