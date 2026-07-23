@@ -335,8 +335,10 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t tls(&fgp, &fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
+	// Регистрируем объект транспортного уровня безопасности
+	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Создаём объект сервера
-	server_t server(&dns, &tls, &fmk, &log);
+	server_t server(cts, &tls, &dns, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие сервера и сохраняем его идентификатор
@@ -354,8 +356,6 @@ int32_t main(int32_t argc, char * argv[]){
 		net::sctp::event_type_t::SEND_FAILED_EVENT,
 		net::sctp::event_type_t::REMOTE_ERROR
 	});
-	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
 	tls.alpn(cts, {
 		{0,"h3"},
@@ -393,8 +393,6 @@ int32_t main(int32_t argc, char * argv[]){
 	tls.certificate(cts, "../sh/certificates/server/cert.pem");
 	// Устанавливаем приватный ключ TLS
 	tls.privateKey(cts, "../sh/certificates/server/key.pem");
-	// Устанавливаем идентификатор TLS для сервера
-	server.setSecurityId(cts);
 	// Устанавливаем порт и хост сервера
 	if(server.setPort(3333) && server.setHost("localhost")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд

@@ -398,7 +398,7 @@ namespace awh {
 				 * @param max максимальное количество входящих соединений
 				 * @return    результат выполнения перевода в режим прослушивания
 				 */
-				bool listen(const event::id_t eid, const uint16_t max) noexcept;
+				bool listen(const event::id_t eid, const uint32_t max) noexcept;
 			public:
 				/**
 				 * @brief Метод получения данных от клиента

@@ -419,6 +419,12 @@ class IoTimerParameterizedFixture : public IoFixture, public ::testing::WithPara
 TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	// Флаг остановки теста
 	bool stop = false;
+	/**
+	 * Количество срабатываний интервала. Счётчик объявлен в области видимости теста:
+	 * функция обратного вызова захватывает его по ссылке и вызывается уже из цикла
+	 * событий, то есть переживает ветку настройки события
+	 */
+	uint8_t count = 0;
 	// Добавляем новое событие таймера
 	awh::event::id_t eid = this->_io->event(this->_parameter.node, awh::event::family_t::TIMER);
 	// Проверяем, что идентификатор события больше нуля
@@ -433,8 +439,6 @@ TEST_P(IoTimerParameterizedFixture, IoTimerTest){
 	this->ts = std::chrono::system_clock::now();
 	// Если таймер является интервалом
 	if(this->_parameter.node == awh::event::node_t::INTERVAL){
-		// Количество срабатываний интервала
-		uint8_t count = 0;
 		// Устанавливаем функцию обратного вызова на событие интервала
 		this->_io->on(eid, [&count, &stop, this](const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
 			// Замеряем время начала работы для интервала времени

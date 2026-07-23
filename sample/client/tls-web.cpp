@@ -179,8 +179,10 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t tls(&fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
+	// Регистрируем объект транспортного уровня безопасности
+	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Создаём объект клиента
-	client_t client(&dns, &tls, &fmk, &log);
+	client_t client(tls.transport(cts), &tls, &dns, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
@@ -191,8 +193,6 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Successfully set event options!" << endl;
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
-	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Устанавливаем хост сервера для подключения клиента
 	const string host = "anyks.com";
 	// Устанавливаем ALPN протоколы TLS
@@ -203,8 +203,6 @@ int32_t main(int32_t argc, char * argv[]){
 	tls.validateServerNameIndication(cts, true);
 	// Устанавливаем имя хоста TLS
 	tls.serverNameIndication(cts, host);
-	// Устанавливаем идентификатор TLS для клиента
-	client.setSecurityId(tls.transport(cts));
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setTarget(host) && client.setTargetPort(443)){
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд

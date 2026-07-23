@@ -22,6 +22,7 @@
  */
 #include <openssl/ssl.h>
 #include <openssl/bio.h>
+#include <openssl/err.h>
 #include <openssl/pem.h>
 #include <openssl/x509.h>
 
@@ -204,18 +205,6 @@ namespace {
 		&flushFlight,
 		&sendAlert
 	};
-	/**
-	 * @brief Функция выбора ALPN-протокола на сервере (RFC 7301 §3.2)
-	 *
-	 * @param ssl    объект TLS-соединения
-	 * @param output выбранный ALPN-протокол
-	 * @param size   размер выбранного ALPN-протокола
-	 * @param data   список ALPN-протоколов предложенных клиентом
-	 * @param count  размер списка ALPN-протоколов клиента
-	 * @param ctx    контекст обратного вызова (не используется)
-	 * @return       результат выбора ALPN-протокола
-	 */
-	static int32_t selectALPN(SSL * ssl, const uint8_t ** output, uint8_t * size, const uint8_t * data, uint32_t count, void * ctx) noexcept;
 };
 
 /**
@@ -223,6 +212,27 @@ namespace {
  *
  */
 class awh::quic::HandshakeHook {
+	public:
+		/**
+		 * @brief Метод сохранения билета возобновления сессии
+		 *
+		 * @param handshake объект хендшейка
+		 * @param session   сессия возобновления
+		 */
+		static void ticket(handshake_t * handshake, SSL_SESSION * session) noexcept {
+			// Данные сериализованной сессии
+			uint8_t * data = nullptr;
+			// Размер сериализованной сессии
+			size_t size = 0;
+			// Если сериализация сессии возобновления не выполнена
+			if(::SSL_SESSION_to_bytes(session, &data, &size) != 1)
+				// Выходим из метода
+				return;
+			// Сохраняем сериализованный билет возобновления
+			handshake->_ticket.assign(reinterpret_cast <const char *> (data), size);
+			// Освобождаем буфер сериализованной сессии
+			::OPENSSL_free(data);
+		}
 	public:
 		/**
 		 * @brief Метод установки секрета уровня шифрования
@@ -287,16 +297,6 @@ class awh::quic::HandshakeHook {
 			// Устанавливаем флаг получения фатального TLS-алерта
 			handshake->_hasAlert = true;
 		}
-		/**
-		 * @brief Метод извлечения списка поддерживаемых ALPN-протоколов
-		 *
-		 * @param handshake объект хендшейка
-		 * @return          список поддерживаемых ALPN-протоколов
-		 */
-		static const vector <string> & protocols(const handshake_t * handshake) noexcept {
-			// Выводим список поддерживаемых ALPN-протоколов
-			return handshake->_protocols;
-		}
 };
 
 /**
@@ -304,6 +304,29 @@ class awh::quic::HandshakeHook {
  *
  */
 namespace {
+	/**
+	 * @brief Функция приёма билета возобновления сессии (RFC 9001 §4.6)
+	 *
+	 * @note Билет присылается сервером уже после завершения хендшейка отдельным
+	 *       сообщением, поэтому доступным он становится не сразу и выдаётся
+	 *       криптографической библиотекой этим обратным вызовом
+	 *
+	 * @param ssl     объект TLS-соединения
+	 * @param session сессия возобновления
+	 * @return        признак принятия владения сессией
+	 */
+	static int32_t newSession(SSL * ssl, SSL_SESSION * session) noexcept {
+		// Извлекаем объект хендшейка из обратного указателя TLS-соединения
+		auto handshake = reinterpret_cast <awh::quic::handshake_t *> (SSL_get_app_data(ssl));
+		// Если объект хендшейка либо сессия не получены
+		if((handshake == nullptr) || (session == nullptr))
+			// Выводим отказ от владения сессией
+			return 0;
+		// Сохраняем билет возобновления в объекте хендшейка
+		awh::quic::HandshakeHook::ticket(handshake, session);
+		// Выводим отказ от владения сессией - её копия сохранена
+		return 0;
+	}
 	/**
 	 * @brief Функция установки секрета чтения уровня шифрования
 	 *
@@ -379,54 +402,6 @@ namespace {
 		// Выводим положительный результат
 		return 1;
 	}
-	/**
-	 * @brief Функция выбора ALPN-протокола на сервере (RFC 7301 §3.2)
-	 *
-	 * @param ssl    объект TLS-соединения
-	 * @param output выбранный ALPN-протокол
-	 * @param size   размер выбранного ALPN-протокола
-	 * @param data   список ALPN-протоколов предложенных клиентом
-	 * @param count  размер списка ALPN-протоколов клиента
-	 * @param ctx    контекст обратного вызова (не используется)
-	 * @return       результат выбора ALPN-протокола
-	 */
-	static int32_t selectALPN(SSL * ssl, const uint8_t ** output, uint8_t * size, const uint8_t * data, uint32_t count, [[maybe_unused]] void * ctx) noexcept {
-		// Получаем объект хендшейка
-		const awh::quic::handshake_t * handshake = reinterpret_cast <const awh::quic::handshake_t *> (SSL_get_app_data(ssl));
-		// Получаем список поддерживаемых ALPN-протоколов
-		const vector <string> & protocols = awh::quic::HandshakeHook::protocols(handshake);
-		/**
-		 * Перебираем список поддерживаемых ALPN-протоколов в порядке предпочтения сервера
-		 */
-		for(auto & protocol : protocols){
-			// Смещение в списке ALPN-протоколов клиента
-			size_t offset = 0;
-			/**
-			 *  Перебираем список ALPN-протоколов клиента (формат: длина + протокол)
-			 */
-			while(offset < static_cast <size_t> (count)){
-				// Получаем длину ALPN-протокола клиента
-				const size_t length = static_cast <size_t> (data[offset]);
-				// Если запись выходит за пределы списка, прекращаем разбор
-				if((offset + 1 + length) > static_cast <size_t> (count))
-					// Выходим из цикла разбора
-					break;
-				// Если ALPN-протокол клиента совпадает с поддерживаемым
-				if((length == protocol.size()) && (::memcmp(data + offset + 1, protocol.data(), length) == 0)){
-					// Устанавливаем выбранный ALPN-протокол
-					(* output) = (data + offset + 1);
-					// Устанавливаем размер выбранного ALPN-протокола
-					(* size) = static_cast <uint8_t> (length);
-					// Выводим результат успешного выбора
-					return SSL_TLSEXT_ERR_OK;
-				}
-				// Переходим к следующей записи списка
-				offset += (1 + length);
-			}
-		}
-		// Общих протоколов нет - завершаем хендшейк алертом no_application_protocol (RFC 9001 §8.1)
-		return SSL_TLSEXT_ERR_ALERT_FATAL;
-	}
 };
 
 /**
@@ -443,61 +418,164 @@ awh::quic::Handshake::Level::Level() noexcept : hasRead(false), hasWrite(false),
 awh::quic::status_t awh::quic::Handshake::process() noexcept {
 	// Выполняем шаг TLS-хендшейка
 	const int32_t result = ::SSL_do_handshake(this->_ssl);
-	// Если хендшейк успешно завершён
+	// Если шаг хендшейка выполнен успешно
 	if(result == 1){
+		/**
+		 * Если хендшейк приостановлен для отправки ранних данных: криптографическая
+		 * библиотека возвращает успех, не завершив хендшейк, чтобы вызывающий код
+		 * успел отправить ранние данные выданными ключами. Завершённым такой
+		 * хендшейк считать нельзя - он продолжится с приходом ответа сервера
+		 */
+		if(::SSL_in_early_data(this->_ssl) == 1)
+			// Выводим положительный результат - хендшейк продолжается
+			return status_t::OK;
 		// Устанавливаем состояние успешного завершения хендшейка
 		this->_state = state_t::COMPLETED;
 		// Выводим положительный результат
 		return status_t::OK;
 	}
+	// Получаем код ошибки шага хендшейка
+	int32_t code = ::SSL_get_error(this->_ssl, result);
+	/**
+	 * Если удалённый узел отказал в ранних данных: отказ отказом хендшейка не
+	 * является - отправленные ранние данные потеряны и подлежат повторной
+	 * отправке, а сам хендшейк продолжается обычным порядком (RFC 9001 §4.6.2)
+	 */
+	if(code == SSL_ERROR_EARLY_DATA_REJECTED){
+		// Устанавливаем флаг отказа удалённого узла в ранних данных
+		this->_rejected = true;
+		// Сбрасываем состояние ранних данных для продолжения хендшейка
+		::SSL_reset_early_data_reject(this->_ssl);
+		// Выполняем повторный шаг TLS-хендшейка
+		const int32_t repeat = ::SSL_do_handshake(this->_ssl);
+		// Если повторный шаг хендшейка выполнен успешно
+		if(repeat == 1){
+			// Если хендшейк приостановлен для отправки ранних данных
+			if(::SSL_in_early_data(this->_ssl) == 1)
+				// Выводим положительный результат - хендшейк продолжается
+				return status_t::OK;
+			// Устанавливаем состояние успешного завершения хендшейка
+			this->_state = state_t::COMPLETED;
+			// Выводим положительный результат
+			return status_t::OK;
+		}
+		// Получаем код ошибки повторного шага хендшейка
+		code = ::SSL_get_error(this->_ssl, repeat);
+	}
 	// Если хендшейк ожидает данных от удалённого узла
-	if(::SSL_get_error(this->_ssl, result) == SSL_ERROR_WANT_READ)
+	if(code == SSL_ERROR_WANT_READ)
 		// Выводим положительный результат - хендшейк продолжается
 		return status_t::OK;
 	// Устанавливаем состояние ошибки хендшейка
 	this->_state = state_t::FAILED;
+	/**
+	 * Извлекаем причину отказа из очереди ошибок криптографической библиотеки:
+	 * без неё отказ хендшейка неотличим от любого другого и неразбираем
+	 */
+	const uint32_t reason = ::ERR_peek_last_error();
+	// Буфер текста ошибки криптографической библиотеки
+	char buffer[256];
+	// Обнуляем буфер текста ошибки
+	buffer[0] = '\0';
+	// Если ошибка криптографической библиотеки зарегистрирована
+	if(reason != 0)
+		// Извлекаем текст ошибки криптографической библиотеки
+		::ERR_error_string_n(reason, buffer, sizeof(buffer));
+	// Записываем ошибку в лог
+	this->_log->print(
+		"QUIC TLS handshake failed: code=%d%s%s", log_t::flag_t::CRITICAL,
+		code, (buffer[0] != '\0' ? ", reason: " : ""), buffer
+	);
 	// Выводим отрицательный результат
 	return status_t::ERROR;
 }
 /**
- * @brief Метод установки списка поддерживаемых ALPN-протоколов
- *
- * @param protocols список поддерживаемых ALPN-протоколов (например "h3")
- */
-void awh::quic::Handshake::alpn(const vector <string> & protocols) noexcept {
-	// Устанавливаем список поддерживаемых ALPN-протоколов
-	this->_protocols = protocols;
-}
-/**
  * @brief Метод извлечения согласованного ALPN-протокола
  *
- * @return согласованный ALPN-протокол (пусто - согласование не выполнено)
+ * @return согласованный ALPN-протокол (пустое название - согласование не выполнено)
  */
-string awh::quic::Handshake::alpn() const noexcept {
-	// Если TLS-соединение создано
-	if(this->_ssl != nullptr){
-		// Данные согласованного ALPN-протокола
-		const uint8_t * data = nullptr;
-		// Размер согласованного ALPN-протокола
-		uint32_t size = 0;
-		// Извлекаем согласованный ALPN-протокол
-		::SSL_get0_alpn_selected(this->_ssl, &data, &size);
-		// Если ALPN-протокол согласован
-		if((data != nullptr) && (size > 0))
-			// Выводим согласованный ALPN-протокол
-			return string(reinterpret_cast <const char *> (data), static_cast <size_t> (size));
+awh::tls::coder_t::alpn_t awh::quic::Handshake::alpn() const noexcept {
+	// Согласованный ALPN-протокол
+	tls::coder_t::alpn_t result;
+	// Если TLS-соединение не создано
+	if(this->_ssl == nullptr)
+		// Выводим пустой результат
+		return result;
+	// Данные согласованного ALPN-протокола
+	const uint8_t * data = nullptr;
+	// Размер согласованного ALPN-протокола
+	uint32_t size = 0;
+	// Извлекаем согласованный ALPN-протокол
+	::SSL_get0_alpn_selected(this->_ssl, &data, &size);
+	// Если ALPN-протокол не согласован
+	if((data == nullptr) || (size == 0))
+		// Выводим пустой результат
+		return result;
+	// Устанавливаем название согласованного протокола
+	result.protocol.assign(reinterpret_cast <const char *> (data), static_cast <size_t> (size));
+	/**
+	 * Восстанавливаем идентификатор протокола по списку контекста: согласование
+	 * возвращает только название, а идентификатор назначается вызывающим кодом
+	 * при настройке списка поддерживаемых протоколов
+	 */
+	for(auto & protocol : this->_protocols){
+		// Если название протокола совпадает с согласованным
+		if(protocol.protocol == result.protocol){
+			// Устанавливаем идентификатор согласованного протокола
+			result.id = protocol.id;
+			// Прекращаем поиск
+			break;
+		}
 	}
-	// Выводим пустой результат
-	return "";
+	// Выводим согласованный ALPN-протокол
+	return result;
 }
 /**
- * @brief Метод установки доменного имени удалённого сервера (SNI)
+ * @brief Метод извлечения возобновляемой сессии хендшейка (RFC 9001 §4.6)
  *
- * @param sni доменное имя удалённого сервера
+ * @return сериализованная сессия (пусто - сессия недоступна)
  */
-void awh::quic::Handshake::serverNameIndication(string_view sni) noexcept {
-	// Устанавливаем доменное имя удалённого сервера
-	this->_sni.assign(sni);
+string awh::quic::Handshake::session() const noexcept {
+	// Выводим принятый от удалённого узла билет возобновления
+	return this->_ticket;
+}
+/**
+ * @brief Метод установки возобновляемой сессии хендшейка (RFC 9001 §4.6)
+ *
+ * @param session сериализованная сессия
+ * @return        результат установки
+ */
+bool awh::quic::Handshake::session(string_view session) noexcept {
+	// Если хендшейк уже начат либо эндпоинт не является клиентом
+	if((this->_state != state_t::NONE) || (this->_endpoint != endpoint_t::CLIENT))
+		// Выводим отрицательный результат
+		return false;
+	// Устанавливаем сериализованную сессию возобновления
+	this->_session.assign(session.begin(), session.end());
+	// Выводим положительный результат
+	return true;
+}
+/**
+ * @brief Метод проверки принятия ранних данных удалённым узлом
+ *
+ * @return результат проверки
+ */
+bool awh::quic::Handshake::early() const noexcept {
+	// Если TLS-соединение не создано либо в ранних данных отказано
+	if((this->_ssl == nullptr) || this->_rejected)
+		// Выводим отрицательный результат
+		return false;
+	// Выводим результат принятия ранних данных удалённым узлом
+	return (::SSL_early_data_accepted(this->_ssl) == 1);
+}
+/**
+ * @brief Метод проверки отказа удалённого узла в ранних данных (RFC 9001 §4.6.2)
+ *
+ * @return результат проверки
+ */
+bool awh::quic::Handshake::rejected() const noexcept {
+	// Выводим флаг отказа удалённого узла в ранних данных
+	return this->_rejected;
 }
 /**
  * @brief Метод установки локальных транспортных параметров (RFC 9000 §7.4)
@@ -508,8 +586,14 @@ void awh::quic::Handshake::serverNameIndication(string_view sni) noexcept {
 bool awh::quic::Handshake::params(const quic::params::params_t & params) noexcept {
 	// Очищаем сериализованные локальные транспортные параметры
 	this->_params.clear();
-	// Выполняем сериализацию транспортных параметров и выводим результат
-	return quic::params::serialize::encode(this->_params, params, this->_endpoint);
+	// Очищаем контекст ранних данных
+	this->_early.clear();
+	// Если сериализация транспортных параметров не выполнена
+	if(!quic::params::serialize::encode(this->_params, params, this->_endpoint))
+		// Выводим отрицательный результат
+		return false;
+	// Выполняем сборку контекста ранних данных и выводим результат
+	return quic::params::serialize::early(this->_early, params);
 }
 /**
  * @brief Метод извлечения транспортных параметров удалённого узла (RFC 9000 §7.4)
@@ -537,27 +621,6 @@ awh::quic::status_t awh::quic::Handshake::peer(quic::params::params_t & params, 
 	const endpoint_t sender = ((this->_endpoint == endpoint_t::CLIENT) ? endpoint_t::SERVER : endpoint_t::CLIENT);
 	// Выполняем разбор транспортных параметров удалённого узла и выводим результат
 	return quic::params::parser::decode(data, size, sender, params, error);
-}
-/**
- * @brief Метод установки сертификата и приватного ключа локального узла
- *
- * @param certificate сертификат в формате PEM
- * @param privateKey  приватный ключ в формате PEM
- */
-void awh::quic::Handshake::certificate(string_view certificate, string_view privateKey) noexcept {
-	// Устанавливаем сертификат локального узла
-	this->_certificate.assign(certificate);
-	// Устанавливаем приватный ключ локального узла
-	this->_privateKey.assign(privateKey);
-}
-/**
- * @brief Метод установки проверки сертификата удалённого узла
- *
- * @param mode режим проверки сертификата удалённого узла
- */
-void awh::quic::Handshake::verify(const bool mode) noexcept {
-	// Устанавливаем флаг проверки сертификата удалённого узла
-	this->_verify = mode;
 }
 /**
  * @brief Метод вывода ключей уровня Initial (RFC 9001 §5.2)
@@ -603,32 +666,30 @@ bool awh::quic::Handshake::initial(const cid_t & dcid) noexcept {
  */
 awh::quic::status_t awh::quic::Handshake::start() noexcept {
 	// Если хендшейк уже начат либо не установлены транспортные параметры
-	if((this->_state != state_t::NONE) || this->_params.empty())
-		// Выводим отрицательный результат
-		return status_t::ERROR;
-	// Создаём контекст TLS
-	this->_ctx = ::SSL_CTX_new(::TLS_method());
-	// Если контекст TLS не создан
-	if(this->_ctx == nullptr){
-		// Устанавливаем состояние ошибки хендшейка
-		this->_state = state_t::FAILED;
+	if((this->_state != state_t::NONE) || this->_params.empty()){
+		// Записываем ошибку в лог
+		this->_log->print("QUIC TLS start rejected: %s", log_t::flag_t::CRITICAL,
+		 (this->_state != state_t::NONE ? "handshake is already started" : "transport parameters are not set"));
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
-	// Устанавливаем минимальную версию протокола TLS 1.3 (RFC 9001 §4.2)
-	::SSL_CTX_set_min_proto_version(this->_ctx, TLS1_3_VERSION);
-	// Устанавливаем максимальную версию протокола TLS 1.3
-	::SSL_CTX_set_max_proto_version(this->_ctx, TLS1_3_VERSION);
-	// Если локальный эндпоинт является сервером и установлен список ALPN-протоколов
-	if((this->_endpoint == endpoint_t::SERVER) && !this->_protocols.empty())
-		// Устанавливаем функцию выбора ALPN-протокола на сервере
-		::SSL_CTX_set_alpn_select_cb(this->_ctx, &::selectALPN, nullptr);
+	// Если контекст TLS не задан
+	if(this->_ctx == nullptr){
+		// Устанавливаем состояние ошибки хендшейка
+		this->_state = state_t::FAILED;
+		// Записываем ошибку в лог
+		this->_log->print("QUIC TLS context is not set", log_t::flag_t::CRITICAL);
+		// Выводим отрицательный результат
+		return status_t::ERROR;
+	}
 	// Создаём TLS-соединение
 	this->_ssl = ::SSL_new(this->_ctx);
 	// Если TLS-соединение не создано
 	if(this->_ssl == nullptr){
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
+		// Записываем ошибку в лог
+		this->_log->print("QUIC TLS connection is not created", log_t::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
@@ -638,6 +699,8 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 	if(::SSL_set_quic_method(this->_ssl, &::quicMethod) != 1){
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
+		// Записываем ошибку в лог
+		this->_log->print("QUIC TLS method is not applied", log_t::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
@@ -645,85 +708,57 @@ awh::quic::status_t awh::quic::Handshake::start() noexcept {
 	if(::SSL_set_quic_transport_params(this->_ssl, reinterpret_cast <const uint8_t *> (this->_params.data()), this->_params.size()) != 1){
 		// Устанавливаем состояние ошибки хендшейка
 		this->_state = state_t::FAILED;
+		// Записываем ошибку в лог
+		this->_log->print("QUIC transport parameters are not applied", log_t::flag_t::CRITICAL);
 		// Выводим отрицательный результат
 		return status_t::ERROR;
 	}
-	// Устанавливаем режим проверки сертификата удалённого узла
-	::SSL_set_verify(this->_ssl, (this->_verify ? SSL_VERIFY_PEER : SSL_VERIFY_NONE), nullptr);
-	// Если установлены сертификат и приватный ключ локального узла
-	if(!this->_certificate.empty() && !this->_privateKey.empty()){
-		// Флаг успешной установки сертификата и приватного ключа
-		bool result = false;
-		// Создаём буфер BIO для чтения сертификата из памяти
-		BIO * cbio = ::BIO_new_mem_buf(this->_certificate.data(), static_cast <int32_t> (this->_certificate.size()));
-		// Создаём буфер BIO для чтения приватного ключа из памяти
-		BIO * kbio = ::BIO_new_mem_buf(this->_privateKey.data(), static_cast <int32_t> (this->_privateKey.size()));
-		// Если буферы BIO созданы
-		if((cbio != nullptr) && (kbio != nullptr)){
-			// Читаем сертификат из буфера BIO
-			X509 * x509 = ::PEM_read_bio_X509(cbio, nullptr, nullptr, nullptr);
-			// Читаем приватный ключ из буфера BIO
-			EVP_PKEY * pkey = ::PEM_read_bio_PrivateKey(kbio, nullptr, nullptr, nullptr);
-			// Если сертификат и приватный ключ прочитаны
-			if((x509 != nullptr) && (pkey != nullptr))
-				// Устанавливаем сертификат и приватный ключ на TLS-соединение
-				result = ((::SSL_use_certificate(this->_ssl, x509) == 1) && (::SSL_use_PrivateKey(this->_ssl, pkey) == 1));
-			// Если сертификат прочитан, освобождаем его
-			if(x509 != nullptr)
-				// Освобождаем объект сертификата
-				::X509_free(x509);
-			// Если приватный ключ прочитан, освобождаем его
-			if(pkey != nullptr)
-				// Освобождаем объект приватного ключа
-				::EVP_PKEY_free(pkey);
-		}
-		// Если буфер BIO сертификата создан, освобождаем его
-		if(cbio != nullptr)
-			// Освобождаем буфер BIO сертификата
-			::BIO_free(cbio);
-		// Если буфер BIO приватного ключа создан, освобождаем его
-		if(kbio != nullptr)
-			// Освобождаем буфер BIO приватного ключа
-			::BIO_free(kbio);
-		// Если сертификат либо приватный ключ не установлены
-		if(!result){
-			// Устанавливаем состояние ошибки хендшейка
-			this->_state = state_t::FAILED;
-			// Выводим отрицательный результат
-			return status_t::ERROR;
-		}
-	}
-	// Если локальный эндпоинт является клиентом
-	if(this->_endpoint == endpoint_t::CLIENT){
-		// Устанавливаем клиентское состояние TLS-соединения
+	/**
+	 * Доменное имя удалённого узла и список ALPN-протоколов настроены на контексте
+	 * кодера и наследуются созданным из него TLS-соединением: повторная настройка
+	 * на уровне соединения не требуется
+	 */
+	if(this->_endpoint == endpoint_t::CLIENT)
 		::SSL_set_connect_state(this->_ssl);
-		// Если установлено доменное имя удалённого сервера
-		if(!this->_sni.empty())
-			// Устанавливаем доменное имя удалённого сервера (SNI)
-			::SSL_set_tlsext_host_name(this->_ssl, this->_sni.c_str());
-		// Если установлен список поддерживаемых ALPN-протоколов
-		if(!this->_protocols.empty()){
-			// Список ALPN-протоколов в проводном формате (длина + протокол)
-			string wire = "";
-			/**
-			 * Перебираем список поддерживаемых ALPN-протоколов
-			 */
-			for(auto & protocol : this->_protocols){
-				// Добавляем длину ALPN-протокола
-				wire.push_back(static_cast <char> (protocol.size()));
-				// Добавляем название ALPN-протокола
-				wire.append(protocol);
-			}
-			// Устанавливаем список ALPN-протоколов клиента
-			if(::SSL_set_alpn_protos(this->_ssl, reinterpret_cast <const uint8_t *> (wire.data()), static_cast <uint32_t> (wire.size())) != 0){
-				// Устанавливаем состояние ошибки хендшейка
-				this->_state = state_t::FAILED;
-				// Выводим отрицательный результат
-				return status_t::ERROR;
-			}
-		}
 	// Если локальный эндпоинт является сервером, устанавливаем серверное состояние TLS-соединения
-	} else ::SSL_set_accept_state(this->_ssl);
+	else ::SSL_set_accept_state(this->_ssl);
+	/**
+	 * Привязываем ранние данные к локальным транспортным параметрам: билет
+	 * возобновления действителен только при совпадении параметров, иначе клиент
+	 * отправил бы ранние данные под лимиты, которых больше нет (RFC 9001 §4.6.1)
+	 */
+	if(::SSL_set_quic_early_data_context(this->_ssl, reinterpret_cast <const uint8_t *> (this->_early.data()), this->_early.size()) != 1){
+		// Устанавливаем состояние ошибки хендшейка
+		this->_state = state_t::FAILED;
+		// Записываем ошибку в лог
+		this->_log->print("QUIC early data context is not applied", log_t::flag_t::CRITICAL);
+		// Выводим отрицательный результат
+		return status_t::ERROR;
+	}
+	// Разрешаем ранние данные соединению
+	::SSL_set_early_data_enabled(this->_ssl, 1);
+	/**
+	 * Подключаем приём билетов возобновления: билет присылается сервером после
+	 * завершения хендшейка и выдаётся обратным вызовом уровня контекста, поэтому
+	 * он и регистрируется здесь. Внутреннее хранилище сессий не используется -
+	 * владение билетом остаётся за вызывающим кодом
+	 */
+	::SSL_CTX_set_session_cache_mode(this->_ctx, SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
+	// Устанавливаем функцию обратного вызова приёма билета возобновления
+	::SSL_CTX_sess_set_new_cb(this->_ctx, &::newSession);
+	// Если локальный эндпоинт является клиентом и сессия возобновления установлена
+	if((this->_endpoint == endpoint_t::CLIENT) && !this->_session.empty()){
+		// Восстанавливаем сессию возобновления из сериализованного представления
+		SSL_SESSION * session = ::SSL_SESSION_from_bytes(reinterpret_cast <const uint8_t *> (this->_session.data()), this->_session.size(), this->_ctx);
+		// Если сессия возобновления восстановлена
+		if(session != nullptr){
+			// Устанавливаем сессию возобновления соединению
+			::SSL_set_session(this->_ssl, session);
+			// Освобождаем восстановленную сессию возобновления
+			::SSL_SESSION_free(session);
+		// Записываем предупреждение в лог - возобновление не состоится
+		} else this->_log->print("QUIC session is not restored", log_t::flag_t::WARNING);
+	}
 	// Устанавливаем состояние выполнения хендшейка
 	this->_state = state_t::PROCESS;
 	// Если локальный эндпоинт является клиентом
@@ -884,11 +919,23 @@ awh::quic::error_t awh::quic::Handshake::error() const noexcept {
  * @brief Конструктор
  *
  * @param endpoint роль локального эндпоинта на соединении
+ * @param ctx      идентификатор шаблона контекста безопасности
+ * @param coder    объект кодера транспортной безопасности
+ * @param log      объект для работы с логами
  */
-awh::quic::Handshake::Handshake(const endpoint_t endpoint) noexcept :
+awh::quic::Handshake::Handshake(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _alert(0), _hasAlert(false),
- _verify(false), _ctx(nullptr), _ssl(nullptr), _sni{""}, _params{""},
- _certificate{""}, _privateKey{""} {}
+ _ctx(coder.native(ctx)), _ssl(nullptr), _params{""}, _early{""}, _session{""}, _ticket{""}, _rejected(false), _protocols(coder.protocols(ctx)), _log(log) {
+	/**
+	 * Удерживаем ссылку на контекст на всё время жизни объекта хендшейка:
+	 * владение остаётся за кодером, а ссылка защищает от освобождения контекста
+	 * раньше созданных из него объектов TLS. Ссылка берётся здесь, а не в
+	 * методе начала хендшейка, поскольку деструктор освобождает её безусловно
+	 */
+	if(this->_ctx != nullptr)
+		// Удерживаем ссылку на контекст TLS
+		::SSL_CTX_up_ref(this->_ctx);
+}
 /**
  * @brief Деструктор
  *

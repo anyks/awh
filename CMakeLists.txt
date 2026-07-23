@@ -536,6 +536,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/sys/signals.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/version.cpp"
     "${CMAKE_SOURCE_DIR}/src/sys/crypto.cpp"
+    "${CMAKE_SOURCE_DIR}/src/float/table.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/net.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/fds.cpp"
     "${CMAKE_SOURCE_DIR}/src/net/uri.cpp"
@@ -548,6 +549,7 @@ SET(SOURCE_FILES
     "${CMAKE_SOURCE_DIR}/src/units/dns.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/ntp.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/icmp.cpp"
+    "${CMAKE_SOURCE_DIR}/src/units/quic.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/unit.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/timer.cpp"
     "${CMAKE_SOURCE_DIR}/src/units/client.cpp"
@@ -4889,9 +4891,8 @@ if (CMAKE_BUILD_TESTS)
         endif()
     endif()
 
-    # СБорка тестов и бенчмарков
+    # Сборка тестов
     add_subdirectory(tests)
-    # add_subdirectory(benchmark)
 
     # Если сбор статистики покрытия кода активирован
     if (CMAKE_BUILD_COVERAGE)
@@ -4946,6 +4947,14 @@ if (CMAKE_BUILD_TESTS)
         endif()
     endif()
 endif (CMAKE_BUILD_TESTS)
+
+# Если необходимо собрать бенчмарки производительности
+if (CMAKE_BUILD_BENCHMARKS)
+    # Бенчмарки собираются отдельно от тестов и линкуются с обычной библиотекой:
+    # сборка тестов инструментирована для сбора статистики покрытия кода, а
+    # инструментирование искажает измерения производительности до бессмысленности
+    add_subdirectory(benchmark)
+endif (CMAKE_BUILD_BENCHMARKS)
 
 # Если сборка производится под операционную систему Windows
 if (${CMAKE_SYSTEM_NAME} STREQUAL "Windows")

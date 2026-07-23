@@ -782,6 +782,15 @@ namespace {
 	 * @param member объект участника обмена защищёнными данными
 	 */
 	Guard_Transport_Layer_Security::Guard_Transport_Layer_Security(::member_t * member) noexcept : _member(member) {
+		/**
+		 * Участник обмена отсутствует, если объект TLS создан не кодером: шаблон
+		 * контекста безопасности допускает создание объектов TLS сторонним модулем,
+		 * а функции обратного вызова устанавливаются на контекст и вызываются
+		 * для любого созданного из него объекта
+		 */
+		if(this->_member == nullptr)
+			// Выходим из конструктора - закреплять нечего
+			return;
 		// Увеличиваем счётчик ссылок участника обмена
 		this->_member->refs.fetch_add(1, std::memory_order_relaxed);
 	}
@@ -790,6 +799,10 @@ namespace {
 	 *
 	 */
 	Guard_Transport_Layer_Security::~Guard_Transport_Layer_Security() noexcept {
+		// Если участник обмена отсутствует
+		if(this->_member == nullptr)
+			// Выходим из деструктора - закрепление не выполнялось
+			return;
 		// Уменьшаем счётчик ссылок участника обмена
 		this->_member->refs.fetch_sub(1, std::memory_order_release);
 		// Если счётчик ссылок участника обмена равен нулю и статус участника обмена установлен как мусорный
@@ -1081,6 +1094,15 @@ namespace ssl {
 			if(type == SSL3_RT_HANDSHAKE){
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				/**
+				 * Объект транспортного уровня отсутствует, если объект TLS-соединения
+				 * создан не кодером, а внешним потребителем шаблона контекста
+				 * безопасности: функция обратного вызова устанавливается на контекст
+				 * и вызывается для любого созданного из него соединения
+				 */
+				if(member == nullptr)
+					// Выходим из функции - отладочный вывод для такого соединения не ведётся
+					return;
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				/**
@@ -1592,6 +1614,17 @@ namespace ssl {
 			if((ssl != nullptr) && (ctx != nullptr)){
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				/**
+				 * Объект транспортного уровня отсутствует, если объект TLS создан
+				 * не кодером: шаблон контекста безопасности допускает создание
+				 * объектов TLS сторонним модулем, а функции обратного вызова
+				 * устанавливаются на контекст и вызываются для любого созданного
+				 * из него объекта. Список протоколов хранится в состоянии
+				 * транспортного уровня, поэтому согласование не выполняется
+				 */
+				if(member == nullptr)
+					// Выводим результат отказа от обработки расширения
+					return SSL_TLSEXT_ERR_NOACK;
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				// Выполняем установку буфера данных
@@ -1622,6 +1655,17 @@ namespace ssl {
 				uint8_t size = 0, index = 0;
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				/**
+				 * Объект транспортного уровня отсутствует, если объект TLS создан
+				 * не кодером: шаблон контекста безопасности допускает создание
+				 * объектов TLS сторонним модулем, а функции обратного вызова
+				 * устанавливаются на контекст и вызываются для любого созданного
+				 * из него объекта. Список протоколов хранится в состоянии
+				 * транспортного уровня, поэтому согласование не выполняется
+				 */
+				if(member == nullptr)
+					// Выводим результат отказа от обработки расширения
+					return SSL_TLSEXT_ERR_NOACK;
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				/**
@@ -1669,18 +1713,35 @@ namespace ssl {
 				uint8_t size = 0, index = 0;
 				// Получаем объект контекста модуля
 				auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+				// Получаем объект шаблона контекста безопасности
+				auto context = reinterpret_cast <::cts_t *> (ctx);
 				// Создаём охранника участника обмена защищёнными данными
 				::local::guard_t guard(member);
 				/**
+				 * Объект транспортного уровня отсутствует, если объект TLS создан
+				 * не кодером: шаблон контекста безопасности допускает создание
+				 * объектов TLS сторонним модулем, а функция обратного вызова
+				 * устанавливается на контекст и вызывается для любого созданного
+				 * из него объекта. Список протоколов в этом случае берётся из
+				 * самого шаблона контекста, на котором функция и установлена
+				 */
+				auto & alpn = ((member != nullptr) ? member->alpn : context->alpn);
+				/**
 				 * Выполняем перебор всех поддерживаемых протоколов
 				 */
-				for(uint8_t i = 0; i < member->alpn.buffer.size(); i++){
+				for(uint8_t i = 0; i < alpn.buffer.size(); i++){
 					// Получаем размер протокола
-					size = member->alpn.buffer[i];
+					size = alpn.buffer[i];
 					// Выполняем выбор протокола из входящего буфера
-					if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, static_cast <uint8_t> (inSize), &member->alpn.buffer[i], size + 1)){
-						// Выполняем переключение на выбранный протокол
-						member->alpn.id = member->alpn.ids[index];
+					if(::ssl::selectProto(const_cast <uint8_t **> (out), outSize, in, static_cast <uint8_t> (inSize), &alpn.buffer[i], size + 1)){
+						/**
+						 * Запоминаем выбранный протокол только в состоянии транспортного
+						 * уровня: шаблон контекста общий для всех соединений, и запись
+						 * результата согласования в него исказила бы соседние
+						 */
+						if(member != nullptr)
+							// Выполняем переключение на выбранный протокол
+							member->alpn.id = member->alpn.ids[index];
 						// Возвращаем результат
 						return SSL_TLSEXT_ERR_OK;
 					}
@@ -2521,6 +2582,14 @@ namespace verify {
 		const char * sni = ::SSL_get_servername(ssl, TLSEXT_NAMETYPE_host_name);
 		// Получаем объект уровня защищённых сокетов
 		auto member = reinterpret_cast <::ctl_t *> (::SSL_get_ex_data(ssl, ::__awh_ssl_index__[0]));
+		/**
+		 * Объект транспортного уровня отсутствует, если объект TLS создан не кодером:
+		 * сопоставление имени хоста с сертификатами опирается на его состояние,
+		 * поэтому для стороннего объекта TLS не выполняется
+		 */
+		if(member == nullptr)
+			// Выводим результат отказа от обработки расширения
+			return SSL_TLSEXT_ERR_NOACK;
 		// Создаём охранника участника обмена защищёнными данными
 		::local::guard_t guard(member);
 		// Если SNI получен
@@ -6095,6 +6164,56 @@ bool awh::tls::Coder::retransmit(const id_t id) noexcept {
 	return result;
 }
 /**
+ * @brief Метод получения нативного контекста криптографической библиотеки
+ *
+ * @param id идентификатор транспортного уровня или шаблона контекста безопасности
+ * @return   нативный контекст криптографической библиотеки либо nullptr
+ */
+ssl_ctx_st * awh::tls::Coder::native(const id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS найден
+		if(pin != nullptr){
+			/**
+			 * Определяем уровень транспортной безопасности
+			 */
+			switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+				// Если уровень является шаблонным контекстом безопасности
+				case static_cast <uint8_t> (layer_t::CTS):
+					// Выводим нативный контекст шаблона контекста безопасности
+					return reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id))->ctx;
+				// Если уровень является транспортным уровнем передачи
+				case static_cast <uint8_t> (layer_t::CTL):
+					// Выводим нативный контекст транспортного уровня передачи
+					return reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id))->ctx;
+			}
+		}
+	/**
+	 * Выполняем перехват ошибки
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим пустой результат
+	return nullptr;
+}
+/**
  * @brief Метод создания идентификатора транспортного уровня
  *
  * @param id идентификатор шаблона контекста безопасности
@@ -6588,6 +6707,13 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					break;
 					// Если протокол подключения TCP
 					case static_cast <uint8_t> (event::protocol_t::TCP):
+					/**
+					 * Если протокол подключения QUIC: транспорт работает поверх UDP,
+					 * но слой записей DTLS не задействует - криптографию хендшейка
+					 * QUIC переносит собственными пакетами (RFC 9001 §4), поэтому
+					 * контекст создаётся методом TLS
+					 */
+					case static_cast <uint8_t> (event::protocol_t::QUIC):
 						// Устанавливаем режим клиента для контекста TLS
 						member->ctx = ::SSL_CTX_new(::TLS_client_method());
 					break;
@@ -6663,6 +6789,17 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					case static_cast <uint8_t> (event::protocol_t::TCP): {
 						// Устанавливаем минимально-возможную версию TLS
 						::SSL_CTX_set_min_proto_version(member->ctx, TLS1_2_VERSION);
+						// Устанавливаем максимально-возможную версию TLS
+						::SSL_CTX_set_max_proto_version(member->ctx, TLS1_3_VERSION);
+					} break;
+					/**
+					 * Если протокол подключения QUIC: транспорт допускает
+					 * исключительно TLS версии 1.3 (RFC 9001 §4.2), поэтому нижняя
+					 * граница диапазона совпадает с верхней
+					 */
+					case static_cast <uint8_t> (event::protocol_t::QUIC): {
+						// Устанавливаем минимально-возможную версию TLS
+						::SSL_CTX_set_min_proto_version(member->ctx, TLS1_3_VERSION);
 						// Устанавливаем максимально-возможную версию TLS
 						::SSL_CTX_set_max_proto_version(member->ctx, TLS1_3_VERSION);
 					} break;
@@ -6812,6 +6949,13 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					break;
 					// Если протокол подключения TCP
 					case static_cast <uint8_t> (event::protocol_t::TCP):
+					/**
+					 * Если протокол подключения QUIC: транспорт работает поверх UDP,
+					 * но слой записей DTLS не задействует - криптографию хендшейка
+					 * QUIC переносит собственными пакетами (RFC 9001 §4), поэтому
+					 * контекст создаётся методом TLS
+					 */
+					case static_cast <uint8_t> (event::protocol_t::QUIC):
 						// Устанавливаем режим клиента для контекста TLS
 						member->ctx = ::SSL_CTX_new(::TLS_server_method());
 					break;
@@ -6898,6 +7042,17 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					case static_cast <uint8_t> (event::protocol_t::TCP): {
 						// Устанавливаем минимально-возможную версию TLS
 						::SSL_CTX_set_min_proto_version(member->ctx, TLS1_2_VERSION);
+						// Устанавливаем максимально-возможную версию TLS
+						::SSL_CTX_set_max_proto_version(member->ctx, TLS1_3_VERSION);
+					} break;
+					/**
+					 * Если протокол подключения QUIC: транспорт допускает
+					 * исключительно TLS версии 1.3 (RFC 9001 §4.2), поэтому нижняя
+					 * граница диапазона совпадает с верхней
+					 */
+					case static_cast <uint8_t> (event::protocol_t::QUIC): {
+						// Устанавливаем минимально-возможную версию TLS
+						::SSL_CTX_set_min_proto_version(member->ctx, TLS1_3_VERSION);
 						// Устанавливаем максимально-возможную версию TLS
 						::SSL_CTX_set_max_proto_version(member->ctx, TLS1_3_VERSION);
 					} break;
@@ -9617,6 +9772,109 @@ void awh::tls::Coder::browser(const id_t id, const fgp_t::id_t fid) noexcept {
 			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
 		#endif
 	}
+}
+/**
+ * @brief Метод получения списка поддерживаемых ALPN-протоколов
+ *
+ * @note Выдаёт настроенный список, а не согласованный протокол:
+ *       согласованный отдаёт alpn() по идентификатору транспортного
+ *       уровня. Предназначен для протоколов, которые ведут собственный
+ *       обмен данными поверх настроенного контекста и применяют список
+ *       к своему объекту TLS самостоятельно
+ *
+ * @param id идентификатор транспортного уровня или шаблона контекста безопасности
+ * @return   список поддерживаемых ALPN-протоколов
+ */
+vector <awh::tls::Coder::alpn_t> awh::tls::Coder::protocols(const id_t id) const noexcept {
+	// Результирующий список поддерживаемых ALPN-протоколов
+	vector <alpn_t> result;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем закрепление участника в глобальном реестре TLS
+		const auto pin = ::ssl::registry::pin(id);
+		// Если идентификатор контекста TLS не найден
+		if(pin == nullptr)
+			// Выводим пустой результат
+			return result;
+		// Список идентификаторов поддерживаемых протоколов
+		const vector <uint8_t> * ids = nullptr;
+		// Буфер поддерживаемых протоколов в проводном формате
+		const vector <uint8_t> * buffer = nullptr;
+		/**
+		 * Определяем уровень транспортной безопасности
+		 */
+		switch(static_cast <uint8_t> (reinterpret_cast <::member_t *> (static_cast <uintptr_t> (id))->layer)){
+			// Если уровень является шаблонным контекстом безопасности
+			case static_cast <uint8_t> (layer_t::CTS): {
+				// Выполняем извлечение объекта шаблона контекста безопасности
+				auto member = reinterpret_cast <::cts_t *> (static_cast <uintptr_t> (id));
+				// Получаем список идентификаторов поддерживаемых протоколов
+				ids = &member->alpn.ids;
+				// Получаем буфер поддерживаемых протоколов
+				buffer = &member->alpn.buffer;
+			} break;
+			// Если уровень является транспортным уровнем передачи
+			case static_cast <uint8_t> (layer_t::CTL): {
+				// Выполняем извлечение объекта транспортного уровня передачи
+				auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
+				// Получаем список идентификаторов поддерживаемых протоколов
+				ids = &member->alpn.ids;
+				// Получаем буфер поддерживаемых протоколов
+				buffer = &member->alpn.buffer;
+			} break;
+		}
+		// Если буфер поддерживаемых протоколов не получен
+		if((buffer == nullptr) || (ids == nullptr))
+			// Выводим пустой результат
+			return result;
+		// Индекс протокола в списке идентификаторов
+		size_t index = 0;
+		/**
+		 * Разбираем буфер протоколов проводного формата: каждая запись состоит
+		 * из октета длины названия и самого названия
+		 */
+		for(size_t offset = 0; offset < buffer->size();){
+			// Получаем длину названия протокола
+			const size_t length = static_cast <size_t> ((* buffer)[offset]);
+			// Если запись выходит за пределы буфера
+			if((length == 0) || ((offset + 1 + length) > buffer->size()))
+				// Прекращаем разбор буфера
+				break;
+			// Формируем запись поддерживаемого протокола
+			alpn_t item;
+			// Устанавливаем идентификатор протокола
+			item.id = ((index < ids->size()) ? (* ids)[index] : 0);
+			// Устанавливаем название протокола
+			item.protocol.assign(reinterpret_cast <const char *> (buffer->data() + offset + 1), length);
+			// Добавляем запись в результирующий список
+			result.push_back(item);
+			// Сдвигаем смещение разбора за записью
+			offset += (1 + length);
+			// Продвигаем индекс протокола
+			index++;
+		}
+	/**
+	 * Выполняем перехват ошибки
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Выводим результат
+	return result;
 }
 /**
  * @brief Метод извлечения активного протокола

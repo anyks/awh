@@ -427,6 +427,32 @@ namespace awh {
 				bool setDifferentiatedServicesCodePoint(const event::id_t id, const event::family_t family, const event::dscp_t dscp) const noexcept;
 			public:
 				/**
+				 * @brief Метод получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+				 *
+				 * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
+				 *       перегрузки принятых пакетов приходит отдельно для каждой
+				 *       датаграммы и извлекается методом getTrafficInfo
+				 *
+				 * @param id     идентификатор события
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @return       значение ECN
+				 */
+				event::ecn_t getExplicitCongestionNotification(const event::id_t id, const event::family_t family) const noexcept;
+				/**
+				 * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+				 *
+				 * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
+				 *       октет заголовка, поэтому установка затрагивает только младшие
+				 *       два бита
+				 *
+				 * @param id     идентификатор события
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @param ecn    значение ECN
+				 * @return       результат работы функции
+				 */
+				bool setExplicitCongestionNotification(const event::id_t id, const event::family_t family, const event::ecn_t ecn) const noexcept;
+			public:
+				/**
 				 * @brief Метод получения обнаружения максимального размера пакета (MTU)
 				 *
 				 * @param id     идентификатор события
@@ -466,6 +492,49 @@ namespace awh {
 				 * @return       результат выполнения установки
 				 */
 				bool membership(const event::id_t id, const event::mode_t mode, const net::addr_t * group, const net::addr_t * source, const uint16_t port = 0) noexcept;
+			public:
+				/**
+				 * @brief Метод привязки дополнительного ключа маршрутизации к сессии
+				 *
+				 * @note Одна сессия адресуется произвольным числом ключей: протоколы,
+				 *       меняющие идентификатор по ходу работы, обращаются к ней по
+				 *       любому из привязанных. Ключи снимаются автоматически при
+				 *       уничтожении сессии
+				 *
+				 * @param id  идентификатор события сессии
+				 * @param key привязываемый ключ сессии
+				 * @return    результат привязки (false - ключ занят другой сессией)
+				 */
+				bool bind(const event::id_t id, const net::origin_key_t & key) noexcept;
+				/**
+				 * @brief Метод снятия ключа маршрутизации с сессии
+				 *
+				 * @param id  идентификатор события сессии
+				 * @param key снимаемый ключ сессии
+				 * @return    результат снятия (false - ключ сессии не принадлежит)
+				 */
+				bool unbind(const event::id_t id, const net::origin_key_t & key) noexcept;
+			public:
+				/**
+				 * @brief Метод получения предельного количества одновременных подключений события
+				 *
+				 * @param id идентификатор события
+				 * @return   предельное количество одновременных подключений
+				 */
+				uint32_t getMaxConnections(const event::id_t id) const noexcept;
+				/**
+				 * @brief Метод установки предельного количества одновременных подключений события
+				 *
+				 * @note Для потоковых событий ограничивает число принятых подключений,
+				 *       для дейтаграммных - число сессий. Достижение предела означает
+				 *       отказ в создании новой сессии, поэтому предел служит защитой
+				 *       от исчерпания памяти потоком датаграмм от чужих отправителей
+				 *
+				 * @param id  идентификатор события
+				 * @param max предельное количество одновременных подключений
+				 * @return    результат установки
+				 */
+				bool setMaxConnections(const event::id_t id, const uint32_t max) noexcept;
 			public:
 				/**
 				 * @brief Метод удаления события
@@ -594,7 +663,7 @@ namespace awh {
 				 * @param max максимальное количество входящих соединений
 				 * @return    результат выполнения перевода в режим прослушивания
 				 */
-				bool listen(const event::id_t id, const uint16_t max) noexcept;
+				bool listen(const event::id_t id, const uint32_t max) noexcept;
 			public:
 				/**
 				 * @brief Метод получения данных события
@@ -971,6 +1040,17 @@ namespace awh {
 				 * @param cb функция обратного вызова
 				 */
 				void on(const event::id_t id, engine::callback::accept_t cb) noexcept;
+				/**
+				 * @brief Метод установки функции обратного вызова для определения сессии дейтаграммного пакета
+				 *
+				 * @note Поддерживается только серверными узлами. Установка функции
+				 *       переводит событие на маршрутизацию датаграмм по ключу
+				 *       приложения вместо адреса отправителя
+				 *
+				 * @param id идентификатор события
+				 * @param cb функция обратного вызова
+				 */
+				void on(const event::id_t id, engine::callback::origin_t cb) noexcept;
 				/**
 				 * @brief Метод установки функции обратного вызова на получение информационных метаданных о дейтаграммном пакете
 				 *

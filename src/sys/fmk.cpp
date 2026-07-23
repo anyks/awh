@@ -33,7 +33,7 @@
 /**
  * Заголовочный файл для работы с быстрыми числами с плавающей точкой
  */
-#include <fast_float/fast_float.h>
+#include <float/float.hpp>
 
 /**
  * Подключаем заголовочные файлы проекта
@@ -4138,7 +4138,7 @@ T awh::Framework::atoi(string_view value) const noexcept {
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
+			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4190,7 +4190,7 @@ T awh::Framework::atoi(const string & value) const noexcept {
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
+			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4247,7 +4247,7 @@ T awh::Framework::atoi(const char * value, const size_t length) const noexcept {
 			// Возвращаем значение по умолчанию
 			result = static_cast <T> (0);
 			// Вызываем метод конвертации
-			auto answer = fast_float::from_chars(value, value + length, result);
+			auto answer = floating_t::fromChars(value, value + length, result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value + length)))
 				// Возвращаем значение по умолчанию
@@ -4708,7 +4708,7 @@ T awh::Framework::atoi(wstring_view value) const noexcept {
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
+			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4760,7 +4760,7 @@ T awh::Framework::atoi(const wstring & value) const noexcept {
 		// Если строка для конвертации не пуста
 		if(!value.empty()){
 			// Вызываем метод конвертации
-			auto answer = fast_float::from_chars(value.data(), value.data() + value.size(), result);
+			auto answer = floating_t::fromChars(value.data(), value.data() + value.size(), result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value.data() + value.size())))
 				// Возвращаем значение по умолчанию
@@ -4817,7 +4817,7 @@ T awh::Framework::atoi(const wchar_t * value, const size_t length) const noexcep
 			// Возвращаем значение по умолчанию
 			result = static_cast <T> (0);
 			// Вызываем метод конвертации
-			auto answer = fast_float::from_chars(value, value + length, result);
+			auto answer = floating_t::fromChars(value, value + length, result);
 			// Если мы получили ошибку или строка разобрана не полностью (в конце остался мусор)
 			if((answer.ec != std::errc()) || (answer.ptr != (value + length)))
 				// Возвращаем значение по умолчанию

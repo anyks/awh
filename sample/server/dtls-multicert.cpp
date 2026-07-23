@@ -197,8 +197,10 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t tls(&fgp, &fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
+	// Регистрируем объект транспортного уровня безопасности для базового шаблона TLS
+	const tls::coder_t::id_t cts1 = tls.context(event::node_t::SERVER, event::protocol_t::UDP);
 	// Создаём объект сервера
-	server_t server(&dns, &tls, &fmk, &log);
+	server_t server(cts1, &tls, &dns, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие сервера и сохраняем его идентификатор
@@ -209,8 +211,6 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Successfully set event options!" << endl;
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
-	// Регистрируем объект транспортного уровня безопасности для базового шаблона TLS
-	const tls::coder_t::id_t cts1 = tls.context(event::node_t::SERVER, event::protocol_t::UDP);
 	// Регистрируем объект транспортного уровня безопасности для шаблона TLS с точным доменным именем
 	const tls::coder_t::id_t cts2 = tls.context(event::node_t::SERVER, event::protocol_t::UDP);
 	// Устанавливаем режим работы TLS для базового шаблона TLS
@@ -294,8 +294,6 @@ int32_t main(int32_t argc, char * argv[]){
 		compressor::method_t::ZSTD,
 		compressor::method_t::BROTLI
 	});
-	// Устанавливаем идентификатор TLS для сервера
-	server.setSecurityId(cts1);
 	// Устанавливаем порт и хост сервера
 	if(server.setPort(2222) && server.setHost("localhost")){
 		// Устанавливаем таймаут сервера на чтение данных 6 секунд

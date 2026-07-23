@@ -56,6 +56,16 @@ namespace awh {
 		 */
 		namespace frame {
 			/**
+			 * @brief Предельное количество диапазонов в принимаемом фрейме ACK (RFC 9000 §19.3)
+			 *
+			 * @details Протокол количество диапазонов не ограничивает - в пакет 1200 октетов
+			 *          их помещается несколько сотен, а сопоставление каждого диапазона
+			 *          с отправленными пакетами стоит процессорного времени. Превышение
+			 *          лимита трактуется как FRAME_ENCODING_ERROR
+			 */
+			static constexpr size_t MAX_ACK_RANGES = 256;
+
+			/**
 			 * @brief Структура диапазона подтверждённых номеров пакетов [low, high]
 			 *
 			 */
@@ -294,6 +304,21 @@ namespace awh {
 				 */
 				__AWH_SHARED_EXPORT__ status_t newToken(const uint8_t * data, const size_t size, string_view & token, size_t & consumed, error_t & error) noexcept;
 				/**
+				 * @brief Функция разбора фрейма DATAGRAM обоих вариантов 0x30-0x31 (RFC 9221 §4)
+				 *
+				 * @note Младший бит типа кодирует наличие поля Length. Без него данные
+				 *       занимают весь остаток пакета, поэтому такой фрейм бывает
+				 *       в пакете только последним
+				 *
+				 * @param data     буфер расшифрованной нагрузки (начало фрейма)
+				 * @param size     доступно байт
+				 * @param output   данные датаграммы приложения (zero-copy в буфер нагрузки)
+				 * @param consumed количество потреблённых октетов
+				 * @param error    код ошибки транспорта
+				 * @return         результат разбора (OK/ERROR)
+				 */
+				__AWH_SHARED_EXPORT__ status_t datagram(const uint8_t * data, const size_t size, string_view & output, size_t & consumed, error_t & error) noexcept;
+				/**
 				 * @brief Функция разбора фрейма STREAM всех вариантов 0x08-0x0F (RFC 9000 §19.8)
 				 *
 				 * @param data     буфер расшифрованной нагрузки (начало фрейма)
@@ -442,6 +467,17 @@ namespace awh {
 				 * @return       результат сборки (false - пустой токен запрещён)
 				 */
 				__AWH_SHARED_EXPORT__ bool newToken(string & output, string_view token) noexcept;
+				/**
+				 * @brief Функция сборки фрейма DATAGRAM с полем Length (фрейм дописывается в output)
+				 *
+				 * @note Собирается вариант 0x31 с явной длиной: без неё фрейм занимает
+				 *       весь остаток пакета и коалесцирование с другими фреймами
+				 *       становится невозможным (RFC 9221 §4)
+				 *
+				 * @param output выходной буфер нагрузки пакета
+				 * @param data   данные датаграммы приложения
+				 */
+				__AWH_SHARED_EXPORT__ void datagram(string & output, string_view data) noexcept;
 				/**
 				 * @brief Функция сборки фрейма STREAM (фрейм дописывается в output)
 				 *

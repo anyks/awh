@@ -22,8 +22,8 @@
 /**
  * Подключаем заголовочные файлы проекта
  */
-#include <net/io.hpp>
-#include <proto/quic/connection.hpp>
+#include <units/quic.hpp>
+#include <net/tls/coder.hpp>
 
 /**
  * Используем пространство имён AWH
@@ -47,14 +47,27 @@ int32_t main(int32_t argc, char * argv[]){
 	fmk_t fmk;
 	// Создаём объект логирования
 	log_t log(&fmk);
-	// Создаём объект асинхронного движка ввода-вывода
-	engine::io_t io(&fmk, &log);
-	// Создаём соединение QUIC клиента
-	quic::connection_t connection(quic::endpoint_t::CLIENT);
-	// Устанавливаем список поддерживаемых ALPN-протоколов
-	connection.alpn({"h3"});
+	// Создаём объект кодера транспортной безопасности
+	tls::Coder coder(&fmk, &log);
+	// Создаём шаблон контекста безопасности протокола QUIC
+	const tls::Coder::id_t context = coder.context(event::node_t::CLIENT, event::protocol_t::QUIC);
+	// Если шаблон контекста безопасности не создан
+	if(context == 0){
+		// Записываем в лог сообщение об ошибке
+		log.print("Контекст безопасности не создан", log_t::flag_t::CRITICAL);
+		// Выходим из приложения с ошибкой
+		return EXIT_FAILURE;
+	}
+	// Устанавливаем список поддерживаемых ALPN-протоколов (RFC 9001 §8.1)
+	coder.alpn(context, {tls::Coder::alpn_t{0, "h3"}});
 	// Устанавливаем доменное имя удалённого сервера
-	connection.serverNameIndication("localhost");
+	coder.serverNameIndication(context, "localhost");
+	// Снимаем проверку сертификата удалённого сервера для тестового прогона
+	coder.validateServerNameIndication(context, false);
+	// Создаём модуль клиента транспортного протокола QUIC
+	unit::quic_client_t client(&fmk, &log);
+	// Устанавливаем шаблон контекста безопасности соединения
+	client.context(coder, context);
 	// Транспортные параметры клиента
 	quic::params::params_t params;
 	// Устанавливаем таймаут простоя соединения в миллисекундах
@@ -71,158 +84,117 @@ int32_t main(int32_t argc, char * argv[]){
 	params.initialMaxStreamsBidi = 100;
 	// Устанавливаем лимит числа однонаправленных потоков
 	params.initialMaxStreamsUni = 100;
-	// Устанавливаем транспортные параметры соединения
-	connection.params(params);
-	// Идентификатор открытого потока приложения
-	uint64_t sid = quic::connection_t::INVALID_STREAM;
+	// Устанавливаем предельный размер принимаемой датаграммы приложения (RFC 9221 §3)
+	params.maxDatagramFrameSize = 1200;
+	// Устанавливаем локальные транспортные параметры соединения
+	client.params(params);
+	// Включаем возобновление сессии сохранённым билетом (RFC 9001 §4.6)
+	client.resume(true);
+	// Включаем уведомление о перегрузке пути (RFC 9000 §13.4)
+	client.ecn(true);
 	/**
-	 * @brief Функция получения текущего времени в миллисекундах
-	 *
-	 * @return текущее время в миллисекундах
+	 * Типы функций обратного вызова модуля клиента: хранилище выбирает перегрузку
+	 * по типу аргумента, поэтому лямбда передаётся уже завёрнутой
 	 */
-	auto now = [&fmk]() noexcept -> uint64_t {
-		// Выводим текущий штамп времени в миллисекундах
-		return fmk.timestamp <uint64_t> (fmk_t::chrono_t::MILLISECONDS);
-	};
+	using open_t = function <void (const event::id_t)>;
+	// Тип функции обратного вызова на собранные данные потока приложения
+	using read_t = function <void (const event::id_t, const uint64_t, const string &, const bool)>;
+	// Тип функции обратного вызова на принятую датаграмму приложения
+	using datagram_t = function <void (const event::id_t, const string &)>;
+	// Тип функции обратного вызова на завершённое соединение
+	using close_t = function <void (const event::id_t, const quic::error_t)>;
+	// Создаём хранилище функций обратного вызова
+	callback_t callback(&fmk, &log);
+	// Флаг полученного эхо-ответа потока приложения
+	bool stream = false;
+	// Флаг полученного эхо-ответа датаграммой приложения
+	bool datagram = false;
 	/**
-	 * @brief Функция отправки всех готовых исходящих датаграмм соединения
+	 * @brief Функция завершения соединения по получении обоих эхо-ответов
 	 *
 	 * @param eid идентификатор события клиента
 	 */
-	auto flush = [&](const event::id_t eid) noexcept -> void {
-		// Буфер исходящей датаграммы
-		string datagram = "";
-		/**
-		 *  Извлекаем исходящие датаграммы соединения
-		 */
-		while(connection.write(datagram, now())){
-			// Отправляем датаграмму серверу
-			if(!io.send(eid, datagram.data(), datagram.size()))
-				// Записываем в лог сообщение об ошибке отправки датаграммы
-				log.print("Ошибка отправки датаграммы: ID=%u", log_t::flag_t::CRITICAL, eid);
+	auto finish = [&client, &log, &stream, &datagram](const event::id_t eid) noexcept -> void {
+		// Если получены оба эхо-ответа
+		if(stream && datagram){
+			// Записываем в лог сообщение о завершении обмена
+			log.print("Оба эхо-ответа получены, завершаем соединение: ID=%u", log_t::flag_t::INFO, eid);
+			// Выполняем завершение соединения приложением
+			client.close(0, "done");
 		}
 	};
-	// Добавляем новое событие клиента UDP
-	event::id_t eid = io.event(event::node_t::CLIENT, event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-	// Добавляем новое событие интервала таймеров соединения
-	event::id_t tid = io.event(event::node_t::INTERVAL, event::family_t::TIMER);
-	// Устанавливаем порт события
-	io.setTargetPort(eid, 2222);
-	// Устанавливаем интервал проверки таймеров соединения
-	io.setTimeout(tid, event::action_t::NONE, 25);
-	// Инициализируем асинхронный движок ввода-вывода
-	if(io.initialize()){
-		// Устананавливаем опции события
-		if(!io.setOptions(eid, event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC))
-			// Записываем ошибку в лог установки опций события
-			cout << " Ошибка установки опций события!" << endl;
-		// Устанавливаем IP-адрес события
-		if(io.setAddress(eid, event::address_t::IPV4, "0.0.0.0")){
-			// Устанавливаем адрес сервера назначения
-			if(io.setTarget(eid, "127.0.0.1")){
-				// Устанавливаем функцию обратного вызова на чтение из события
-				io.on(eid, [&](const event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
-					// Выполняем обработку входящей датаграммы
-					connection.read(data, size, now());
-					// Если соединение установлено и поток приложения ещё не открыт
-					if((connection.state() == quic::connection_t::state_t::CONNECTED) && (sid == quic::connection_t::INVALID_STREAM)){
-						// Записываем в лог сообщение об установленном соединении
-						log.print("Соединение установлено: ID=%u, ALPN=%s", log_t::flag_t::INFO, eid, connection.alpn().c_str());
-						// Выполняем открытие двунаправленного потока приложения
-						sid = connection.open(false);
-						// Если поток приложения открыт
-						if(sid != quic::connection_t::INVALID_STREAM){
-							// Текст исходящего сообщения
-							const string message("Hello from QUIC client!");
-							// Отправляем данные с завершением потока (FIN)
-							if(connection.send(sid, message, true) == quic::status_t::OK)
-								// Записываем в лог сообщение об отправке данных потока
-								log.print("Отправлено: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), message.size(), message.c_str());
-						// Если поток приложения не открыт
-						} else log.print("Ошибка открытия потока приложения: ID=%u", log_t::flag_t::CRITICAL, eid);
-					}
-					/**
-					 * Переходим по всем потокам с собранными данными
-					 */
-					for(auto & item : connection.readable()){
-						// Флаг завершения потока удалённым эндпоинтом
-						bool fin = false;
-						// Собранные данные потока приложения
-						string message = "";
-						// Выполняем выдачу собранных данных потока
-						if(connection.receive(item, message, fin) != quic::status_t::OK)
-							// Пропускаем поток с ошибкой выдачи
-							continue;
-						// Если данные потока получены
-						if(!message.empty())
-							// Записываем в лог сообщение о полученном эхо-ответе
-							log.print("Прочитано: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (item), message.size(), message.c_str());
-						// Если эхо-ответ получен полностью
-						if(fin){
-							// Записываем в лог сообщение о завершении работы
-							log.print("Эхо-ответ получен полностью, завершаем соединение: ID=%u", log_t::flag_t::INFO, eid);
-							// Выполняем завершение соединения приложением
-							connection.close(0, "goodbye");
-						}
-					}
-					// Отправляем все готовые исходящие датаграммы
-					flush(eid);
-					// Если локальный эндпоинт завершил соединение
-					if(connection.state() == quic::connection_t::state_t::CLOSING)
-						// Завершаем работу приложения
-						::exit(EXIT_SUCCESS);
-				});
-				// Устанавливаем функцию обратного вызова на ошибку события
-				io.on(eid, [&](const event::id_t eid, [[maybe_unused]] const event::error_t error, const string & description) noexcept -> void {
-					// Записываем в лог сообщение об ошибке события
-					log.print("Ошибка события: ID=%u, Описание=%s", log_t::flag_t::CRITICAL, eid, description.c_str());
-				});
-				// Устанавливаем функцию обратного вызова на событие интервала таймеров
-				io.on(tid, [&]([[maybe_unused]] const event::id_t tid, const event::status_t status) noexcept -> void {
-					// Если статус события успешен
-					if(status == event::status_t::SUCCESS){
-						// Дедлайн ближайшего события таймера соединения
-						const uint64_t timeout = connection.timeout();
-						// Если дедлайн таймера соединения наступил
-						if((timeout > 0) && (now() >= timeout)){
-							// Выполняем обработку просроченных таймеров соединения
-							connection.tick(now());
-							// Отправляем все готовые исходящие датаграммы
-							flush(eid);
-						}
-						// Если соединение завершено (таймаут простоя либо закрытие сервером)
-						if(connection.state() == quic::connection_t::state_t::DRAINING){
-							// Записываем в лог сообщение о завершении соединения
-							log.print("Соединение завершено: ID=%u", log_t::flag_t::INFO, eid);
-							// Завершаем работу приложения
-							::exit(EXIT_SUCCESS);
-						}
-					}
-				});
-				// Выполняем фиксацию настроек событий клиента и интервала таймеров
-				if(io.commit(eid) && io.commit(tid)){
-					// Выполняем запуск событий клиента и интервала таймеров
-					if(io.launch(eid) && io.launch(tid)){
-						// Записываем в лог сообщение об успешном запуске события
-						cout << " Клиент QUIC успешно запущен!" << endl;
-						// Выполняем начало соединения клиентом
-						if(connection.connect() == quic::status_t::OK){
-							// Отправляем первую датаграмму хендшейка серверу
-							flush(eid);
-							/**
-							 * Запускаем опрос событий
-							 */
-							while(io.poll());
-						// Записываем ошибку в лог начала соединения
-						} else cout << " Ошибка начала соединения QUIC!" << endl;
-					// Записываем ошибку в лог запуска события
-					} else cout << " Ошибка запуска события!" << endl;
-				}
-			// Если адрес назначения не установлен
-			} else cout << " Ошибка установки адреса сервера!" << endl;
-		// Если адрес не установлен
-		} else cout << " Ошибка установки адреса клиента!" << endl;
+	// Устанавливаем функцию обратного вызова на установленное соединение
+	callback.on <void (const event::id_t)> ("open", open_t([&client, &log](const event::id_t eid) noexcept -> void {
+		// Записываем в лог сообщение об установленном соединении
+		log.print("Соединение установлено: ID=%u, ALPN=%s", log_t::flag_t::INFO, eid, client.alpn().protocol.c_str());
+		// Выполняем открытие двунаправленного потока приложения
+		const uint64_t sid = client.open(false);
+		// Если поток приложения не открыт
+		if(sid == quic::connection_t::INVALID_STREAM){
+			// Записываем в лог сообщение об ошибке открытия потока
+			log.print("Поток приложения не открыт: ID=%u", log_t::flag_t::CRITICAL, eid);
+			// Выходим из функции обработки
+			return;
+		}
+		// Текст исходящего сообщения
+		const string message("Hello from QUIC client!");
+		// Отправляем данные с завершением потока (FIN)
+		if(client.send(sid, message, true))
+			// Записываем в лог сообщение об отправке данных потока
+			log.print("Отправлено: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), message.size(), message.c_str());
+		// Текст исходящей датаграммы приложения
+		const string unreliable("Hello from QUIC datagram!");
+		/**
+		 * Отправляем датаграмму приложения: она доставляется вне потоков, ненадёжно
+		 * и без гарантии порядка, зато без ожидания повторной отправки (RFC 9221)
+		 */
+		if(client.datagram(unreliable))
+			// Записываем в лог сообщение об отправке датаграммы приложения
+			log.print("Отправлена датаграмма: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, unreliable.size(), unreliable.c_str());
+		// Записываем в лог сообщение об ошибке отправки датаграммы приложения
+		else log.print("Датаграмма приложения не отправлена: ID=%u", log_t::flag_t::WARNING, eid);
+	}));
+	// Устанавливаем функцию обратного вызова на принятую датаграмму приложения
+	callback.on <void (const event::id_t, const string &)> ("datagram", datagram_t([&log, &datagram, &finish](const event::id_t eid, const string & data) noexcept -> void {
+		// Записываем в лог сообщение о принятой датаграмме приложения
+		log.print("Принята датаграмма: ID=%u, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, data.size(), data.c_str());
+		// Устанавливаем флаг полученного эхо-ответа датаграммой
+		datagram = true;
+		// Выполняем завершение соединения по получении обоих эхо-ответов
+		finish(eid);
+	}));
+	// Устанавливаем функцию обратного вызова на собранные данные потока приложения
+	callback.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", read_t([&log, &stream, &finish](const event::id_t eid, const uint64_t sid, const string & data, const bool fin) noexcept -> void {
+		// Если данные потока получены
+		if(!data.empty())
+			// Записываем в лог сообщение о полученных данных потока
+			log.print("Прочитано: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), data.size(), data.c_str());
+		// Если эхо-ответ потока получен полностью
+		if(fin){
+			// Устанавливаем флаг полученного эхо-ответа потока
+			stream = true;
+			// Выполняем завершение соединения по получении обоих эхо-ответов
+			finish(eid);
+		}
+	}));
+	// Устанавливаем функцию обратного вызова на завершённое соединение
+	callback.on <void (const event::id_t, const quic::error_t)> ("close", close_t([&client, &log](const event::id_t eid, const quic::error_t error) noexcept -> void {
+		// Записываем в лог сообщение о завершении соединения
+		log.print("Соединение завершено: ID=%u, Ошибка=%s, Билет=%zu байт", log_t::flag_t::INFO, eid, quic::errorName(error).data(), client.session().size());
+	}));
+	// Устанавливаем функции обратного вызова модуля клиента
+	client.callback(callback);
+	// Если подключение к удалённому серверу не выполнено
+	if(client.connect(event::family_t::IPV4, "127.0.0.1", 2222) == 0){
+		// Записываем в лог сообщение об ошибке подключения
+		log.print("Клиент QUIC не подключён", log_t::flag_t::CRITICAL);
+		// Выходим из приложения с ошибкой
+		return EXIT_FAILURE;
 	}
+	// Записываем в лог сообщение об успешном запуске клиента
+	cout << " Клиент QUIC успешно запущен!" << endl;
+	// Выполняем запуск модуля клиента
+	client.start();
 	// Возвращаем результат
 	return EXIT_SUCCESS;
 }

@@ -159,6 +159,13 @@ bool awh::quic::frame::parser::type(const uint8_t * data, const size_t size, fra
 		// Определение выполнено успешно
 		return true;
 	}
+	// Если тип фрейма принадлежит диапазону DATAGRAM (0x30-0x31)
+	if((value >= static_cast <uint64_t> (frame_t::DATAGRAM)) && (value <= (static_cast <uint64_t> (frame_t::DATAGRAM) | 0x01))){
+		// Устанавливаем базовый тип фрейма DATAGRAM
+		output = frame_t::DATAGRAM;
+		// Определение выполнено успешно
+		return true;
+	}
 	// Если тип фрейма известен протоколу
 	if(value <= static_cast <uint64_t> (frame_t::HANDSHAKE_DONE))
 		// Устанавливаем определённый тип фрейма
@@ -229,6 +236,8 @@ awh::quic::status_t awh::quic::frame::parser::ping(const uint8_t * data, const s
 awh::quic::status_t awh::quic::frame::parser::ack(const uint8_t * data, const size_t size, ack_t & output, size_t & consumed, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
 	error = error_t::FRAME_ENCODING_ERROR;
+	// Очищаем список диапазонов от результатов предыдущего разбора
+	output.ranges.clear();
 	// Смещение разбора
 	size_t offset = 0;
 	// Прочитанное значение типа фрейма
@@ -259,6 +268,12 @@ awh::quic::status_t awh::quic::frame::parser::ack(const uint8_t * data, const si
 	if(!rdVarint(data, size, offset, count))
 		// Разбор невозможен
 		return status_t::ERROR;
+	// Если количество диапазонов превышает разумный предел обработки
+	if(count >= MAX_ACK_RANGES)
+		// Разбор невозможен
+		return status_t::ERROR;
+	// Резервируем память под диапазоны подтверждаемых пакетов
+	output.ranges.reserve(static_cast <size_t> (count) + 1);
 	// Длина первого диапазона подтверждаемых пакетов
 	uint64_t first = 0;
 	// Читаем длину первого диапазона
@@ -475,6 +490,55 @@ awh::quic::status_t awh::quic::frame::parser::newToken(const uint8_t * data, con
 		return status_t::ERROR;
 	// Извлекаем токен для будущих соединений
 	token = string_view(reinterpret_cast <const char *> (data + offset), static_cast <size_t> (length));
+	// Устанавливаем количество потреблённых октетов
+	consumed = (offset + static_cast <size_t> (length));
+	// Разбор завершён
+	return status_t::OK;
+}
+/**
+ * @brief Функция разбора фрейма DATAGRAM обоих вариантов 0x30-0x31 (RFC 9221 §4)
+ *
+ * @param data     буфер расшифрованной нагрузки (начало фрейма)
+ * @param size     доступно байт
+ * @param output   данные датаграммы приложения (zero-copy в буфер нагрузки)
+ * @param consumed количество потреблённых октетов
+ * @param error    код ошибки транспорта
+ * @return         результат разбора (OK/ERROR)
+ */
+awh::quic::status_t awh::quic::frame::parser::datagram(const uint8_t * data, const size_t size, string_view & output, size_t & consumed, error_t & error) noexcept {
+	// Устанавливаем код ошибки транспорта на случай неудачи разбора
+	error = error_t::FRAME_ENCODING_ERROR;
+	// Смещение разбора
+	size_t offset = 0;
+	// Прочитанное значение типа фрейма
+	uint64_t value = 0;
+	// Читаем тип фрейма
+	if(!rdVarint(data, size, offset, value))
+		// Разбор невозможен
+		return status_t::ERROR;
+	// Если тип фрейма не принадлежит диапазону DATAGRAM (0x30-0x31)
+	if((value < static_cast <uint64_t> (frame_t::DATAGRAM)) || (value > (static_cast <uint64_t> (frame_t::DATAGRAM) | 0x01)))
+		// Разбор невозможен
+		return status_t::ERROR;
+	// Длина данных датаграммы приложения
+	uint64_t length = 0;
+	// Если тип фрейма содержит поле Length
+	if((value & 0x01) != 0){
+		// Читаем длину данных датаграммы приложения
+		if(!rdVarint(data, size, offset, length))
+			// Разбор невозможен
+			return status_t::ERROR;
+		// Если данные датаграммы целиком не помещаются в буфер
+		if(length > (size - offset))
+			// Разбор невозможен
+			return status_t::ERROR;
+	/**
+	 * Если поля Length нет: данные датаграммы занимают весь остаток пакета,
+	 * поэтому такой фрейм бывает в пакете только последним (RFC 9221 §4)
+	 */
+	} else length = (size - offset);
+	// Извлекаем данные датаграммы приложения
+	output = string_view(reinterpret_cast <const char *> (data + offset), static_cast <size_t> (length));
 	// Устанавливаем количество потреблённых октетов
 	consumed = (offset + static_cast <size_t> (length));
 	// Разбор завершён
@@ -936,6 +1000,20 @@ bool awh::quic::frame::serialize::newToken(string & output, string_view token) n
 	output.append(token);
 	// Сборка выполнена успешно
 	return true;
+}
+/**
+ * @brief Функция сборки фрейма DATAGRAM с полем Length (фрейм дописывается в output)
+ *
+ * @param output выходной буфер нагрузки пакета
+ * @param data   данные датаграммы приложения
+ */
+void awh::quic::frame::serialize::datagram(string & output, string_view data) noexcept {
+	// Дописываем тип фрейма с признаком наличия поля Length
+	varint::write(output, static_cast <uint64_t> (frame_t::DATAGRAM) | 0x01);
+	// Дописываем длину данных датаграммы приложения
+	varint::write(output, static_cast <uint64_t> (data.size()));
+	// Дописываем данные датаграммы приложения
+	output.append(data);
 }
 /**
  * @brief Функция сборки фрейма STREAM (фрейм дописывается в output)

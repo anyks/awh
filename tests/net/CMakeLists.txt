@@ -70,6 +70,8 @@ if (${GTest_FOUND})
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_NWT_TEST "Build unit NWT test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с URI
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_URI_TEST "Build unit URI test for ${UNIT_TEST_NAME}" ON)
+        # Указываем что нужно собрать тесты для модуля транспортной безопасности
+        option(CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST "Build unit TLS test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с файловыми дескрипторами
         option(CMAKE_BUILD_${UNIT_TEST_NAME}_FDS_TEST "Build unit FDS test for ${UNIT_TEST_NAME}" ON)
         # Указываем что нужно собрать тесты для работы с Ethernet
@@ -126,6 +128,22 @@ if (${GTest_FOUND})
             # Выводим сообщение о сборке тестов для модуля работы с URI
             message(STATUS "Build tests URI module: No\n")
         endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_URI_TEST})
+
+        # Если нужно собрать тесты для модуля транспортной безопасности
+        if (${CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST})
+            # Выводим сообщение о сборке тестов для модуля транспортной безопасности
+            message(STATUS "Build tests TLS module: Yes\n")
+            # Дополняем список источников тестами для модуля транспортной безопасности
+            list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
+                tls/tls.cpp
+                tls/static.cpp
+                tls/handshake.cpp
+            )
+        # Если не нужно собрать тесты для модуля транспортной безопасности
+        else()
+            # Выводим сообщение о сборке тестов для модуля транспортной безопасности
+            message(STATUS "Build tests TLS module: No\n")
+        endif (${CMAKE_BUILD_${UNIT_TEST_NAME}_TLS_TEST})
 
         # Если нужно собрать тесты для работы с файловыми дескрипторами
         if (${CMAKE_BUILD_${UNIT_TEST_NAME}_FDS_TEST})

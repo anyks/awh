@@ -355,6 +355,13 @@ awh::quic::status_t awh::quic::packet::parser::header(const uint8_t * data, cons
 	}
 	// Устанавливаем тип пакета с коротким заголовком
 	output.type = packet_t::ONE_RTT;
+	// Если длина идентификатора соединения превышает лимит QUIC v1
+	if(dcidSize > proto::MAX_CID_SIZE){
+		// Устанавливаем код ошибки транспорта
+		error = error_t::PROTOCOL_VIOLATION;
+		// Разбор невозможен
+		return status_t::ERROR;
+	}
 	// Если идентификатор соединения не помещается в буфер
 	if(size < (1 + dcidSize))
 		// Данных недостаточно

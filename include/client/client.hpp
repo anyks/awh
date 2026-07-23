@@ -65,8 +65,8 @@ namespace awh {
 			typedef struct __AWH_SHARED_EXPORT__ Identifier {
 				// Идентификатор клиента
 				event::id_t eid;
-				// Идентификатор безопасности
-				tls::coder_t::id_t sid;
+				// Контекст безопасности TLS
+				tls::coder_t::id_t ctl;
 				/**
 				 * @brief Конструктор
 				 *
@@ -749,13 +749,6 @@ namespace awh {
 				// Возвращаем значение по умолчанию
 				return 0;
 			}
-		public:
-			/**
-			 * @brief Метод установки идентификатора TLS
-			 *
-			 * @param sid идентификатор TLS для установки
-			 */
-			virtual void setSecurityId(const tls::coder_t::id_t sid) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -779,14 +772,6 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param tls объект транспортного уровня безопасности
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 */
-			explicit Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
-			/**
-			 * @brief Конструктор
-			 *
 			 * @param dns объект DNS-резолвера
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -795,12 +780,22 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param dns объект DNS-резолвера
-			 * @param tls объект транспортного уровня безопасности
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
+			 * @param ctl   идентификатор контекста безопасности
+			 * @param coder объект транспортного уровня безопасности
+			 * @param fmk   объект фреймворка
+			 * @param log   объект для работы с логами
 			 */
-			explicit Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param ctl   идентификатор контекста безопасности
+			 * @param coder объект транспортного уровня безопасности
+			 * @param dns   объект DNS-резолвера
+			 * @param fmk   объект фреймворка
+			 * @param log   объект для работы с логами
+			 */
+			explicit Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

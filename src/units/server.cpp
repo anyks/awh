@@ -950,7 +950,7 @@ bool awh::unit::Server::setContext(const event::id_t eid, void * ctx) noexcept {
  * @param max максимальное количество входящих соединений
  * @return    результат выполнения перевода в режим прослушивания
  */
-bool awh::unit::Server::listen(const event::id_t eid, const uint16_t max) noexcept {
+bool awh::unit::Server::listen(const event::id_t eid, const uint32_t max) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**

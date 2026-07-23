@@ -1,44 +1,46 @@
-#ifndef FASTFLOAT_FAST_TABLE_H
-#define FASTFLOAT_FAST_TABLE_H
-
-#include <cstdint>
-
-namespace fast_float {
-
 /**
- * When mapping numbers from decimal to binary,
- * we go from w * 10^q to m * 2^p but we have
- * 10^q = 5^q * 2^q, so effectively
- * we are trying to match
- * w * 2^q * 5^q to m * 2^p. Thus the powers of two
- * are not a concern since they can be represented
- * exactly using the binary notation, only the powers of five
- * affect the binary significand.
+ * @file: table.cpp
+ * @date: 2026-07-22
+ * @license: GPL-3.0
+ *
+ * @telegram: @forman
+ * @author: Yuriy Lobarev
+ * @phone: +7 (910) 983-95-90
+ * @email: forman@anyks.com
+ * @site: https://anyks.com
+ *
+ * @copyright: Copyright © 2026
+ *
+ * Адаптировано из fast_float (https://github.com/fastfloat/fast_float)
+ * Copyright 2021 The fast_float authors — MIT License.
  */
 
 /**
- * The smallest non-zero float (binary64) is 2^-1074.
- * We take as input numbers of the form w x 10^q where w < 2^64.
- * We have that w * 10^-343  <  2^(64-344) 5^-343 < 2^-1076.
- * However, we have that
- * (2^64-1) * 10^-342 =  (2^64-1) * 2^-342 * 5^-342 > 2^-1074.
- * Thus it is possible for a number of the form w * 10^-342 where
- * w is a 64-bit value to be a non-zero floating-point number.
- *********
- * Any number of form w * 10^309 where w>= 1 is going to be
- * infinite in binary64 so we never need to worry about powers
- * of 5 greater than 308.
+ * Подключаем заголовочные файлы проекта
  */
-template <class unused = void> struct powers_template {
+#include <float/table.hpp>
 
-  constexpr static int smallest_power_of_five =
-      binary_format<double>::smallest_power_of_ten();
-  constexpr static int largest_power_of_five =
-      binary_format<double>::largest_power_of_ten();
-  constexpr static int number_of_entries =
-      2 * (largest_power_of_five - smallest_power_of_five + 1);
-  // Powers of five from 5^-342 all the way to 5^308 rounded toward one.
-  constexpr static uint64_t power_of_five_128[number_of_entries] = {
+/**
+ * @brief Основное пространство имён
+ *
+ */
+namespace awh {
+	/**
+	 * @brief Пространство имён модуля чисел с плавающей точкой
+	 *
+	 */
+	namespace floating {
+		/**
+		 * @brief Пространство имён таблиц степеней
+		 *
+		 */
+		namespace powers {
+			/**
+			 * @brief Таблица степеней пяти от 5^-342 до 5^308
+			 *
+			 * @details Значения округлены к единице и хранятся парами (high, low).
+			 */
+			const uint64_t powerOfFive128[numberOfEntries] = {
       0xeef453d6923bd65a, 0x113faa2906a13b3f,
       0x9558b4661b6565f8, 0x4ac7ca59a424c507,
       0xbaaee17fa23ebf76, 0x5d79bcf00d2df649,
@@ -690,19 +692,7 @@ template <class unused = void> struct powers_template {
       0xb6472e511c81471d, 0xe0133fe4adf8e952,
       0xe3d8f9e563a198e5, 0x58180fddd97723a6,
       0x8e679c2f5e44ff8f, 0x570f09eaa7ea7648,
-  };
-};
-
-#if FASTFLOAT_DETAIL_MUST_DEFINE_CONSTEXPR_VARIABLE
-
-template <class unused>
-constexpr uint64_t
-    powers_template<unused>::power_of_five_128[number_of_entries];
-
-#endif
-
-using powers = powers_template<>;
-
-} // namespace fast_float
-
-#endif
+			};
+		} // namespace powers
+	} // namespace floating
+} // namespace awh

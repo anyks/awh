@@ -303,8 +303,10 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t tls(&fmk, &log);
 	// Создаём объект DNS-резолвера
 	unit::dns_t dns(event::family_t::IPV4, &fmk, &log);
+	// Регистрируем объект транспортного уровня безопасности
+	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Создаём объект клиента
-	client_t client(&dns, &tls, &fmk, &log);
+	client_t client(tls.transport(cts), &tls, &dns, &fmk, &log);
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	// Создаём событие клиента и сохраняем его идентификатор
@@ -322,8 +324,6 @@ int32_t main(int32_t argc, char * argv[]){
 		net::sctp::event_type_t::SEND_FAILED_EVENT,
 		net::sctp::event_type_t::REMOTE_ERROR
 	});
-	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
 	tls.alpn(cts, {
 		{0,"http/1.1"},
@@ -359,8 +359,6 @@ int32_t main(int32_t argc, char * argv[]){
 	tls.serverNameIndication(cts, "anyks.com");
 	// Включаем проверку имени хоста TLS
 	tls.validateServerNameIndication(cts, false);
-	// Устанавливаем идентификатор TLS для клиента
-	client.setSecurityId(tls.transport(cts));
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setTarget("localhost") && client.setTargetPort(3333)){
 		// Устанавливаем функцию обратного вызова на информацию о сообщении SCTP-сокета

@@ -19,6 +19,7 @@
  * Стандартные заголовочные файлы
  */
 #include <string>
+#include <memory>
 #include <cstdint>
 #include <string_view>
 
@@ -28,6 +29,12 @@
 #include "quic.hpp"
 #include "packet.hpp"
 #include "../../sys/global.hpp"
+
+/**
+ * Предварительные объявления типов BoringSSL (реализация в crypto.cpp)
+ */
+struct aes_key_st;
+struct evp_aead_ctx_st;
 
 /**
  * @brief основное пространство имён
@@ -95,6 +102,17 @@ namespace awh {
 				string iv;
 				// Ключ защиты заголовка ("quic hp")
 				string hp;
+				/**
+				 * Контекст AEAD-шифрования, развёрнутый один раз на время жизни ключей.
+				 * Ключи копируются при установке фазы (install/update), поэтому владение
+				 * разделяемое - контекст неизменяем после инициализации
+				 */
+				shared_ptr <evp_aead_ctx_st> aead;
+				/**
+				 * Развёрнутый ключ защиты заголовка для наборов на основе AES.
+				 * Для ChaCha20 не используется - у потокового шифра нет развёртки ключа
+				 */
+				shared_ptr <aes_key_st> mask;
 				/**
 				 * @brief Конструктор
 				 *

@@ -142,6 +142,32 @@ namespace awh {
 				bool setDifferentiatedServicesCodePoint(const net::socket_t sock, const event::family_t family, const event::dscp_t dscp) const noexcept;
 			public:
 				/**
+				 * @brief Метод получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+				 *
+				 * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
+				 *       перегрузки принятых пакетов приходит отдельно для каждой
+				 *       датаграммы в метаданных дейтаграммного пакета
+				 *
+				 * @param sock   сетевой сокет
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @return       значение ECN
+				 */
+				event::ecn_t getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) const noexcept;
+				/**
+				 * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+				 *
+				 * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
+				 *       октет заголовка, поэтому установка выполняется чтением текущего
+				 *       значения с последующей заменой только младших двух бит
+				 *
+				 * @param sock   сетевой сокет
+				 * @param family семейство протоколов (IPv4 или IPv6)
+				 * @param ecn    значение ECN
+				 * @return       результат работы функции
+				 */
+				bool setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) const noexcept;
+			public:
+				/**
 				 * @brief Метод активации/деактивации генерации информации о трафике
 				 *
 				 * @param sock   сетевой сокет

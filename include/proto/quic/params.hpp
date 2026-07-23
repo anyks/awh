@@ -74,7 +74,8 @@ namespace awh {
 				PREFERRED_ADDRESS                   = 0x0D, // Предпочтительный адрес сервера (только сервер)
 				ACTIVE_CONNECTION_ID_LIMIT          = 0x0E, // Лимит активных идентификаторов соединения (по умолчанию 2, не менее 2)
 				INITIAL_SOURCE_CONNECTION_ID        = 0x0F, // SCID первого пакета эндпоинта
-				RETRY_SOURCE_CONNECTION_ID          = 0x10  // SCID пакета Retry (только сервер)
+				RETRY_SOURCE_CONNECTION_ID          = 0x10, // SCID пакета Retry (только сервер)
+				MAX_DATAGRAM_FRAME_SIZE             = 0x20  // Предельный размер принимаемого фрейма DATAGRAM (RFC 9221 §3)
 			};
 
 			/**
@@ -142,6 +143,12 @@ namespace awh {
 				uint64_t maxAckDelay;
 				// Лимит активных идентификаторов соединения
 				uint64_t activeConnectionIdLimit;
+				/**
+				 * Предельный размер принимаемого фрейма DATAGRAM вместе с заголовком
+				 * фрейма. Нулевое значение означает, что фреймы DATAGRAM эндпоинтом
+				 * не принимаются, и отправлять их ему нельзя (RFC 9221 §3)
+				 */
+				uint64_t maxDatagramFrameSize;
 				// Исходный DCID первого пакета Initial клиента (только сервер)
 				cid_t odcid;
 				// SCID первого пакета эндпоинта
@@ -197,6 +204,20 @@ namespace awh {
 				 * @return       результат сборки (false - некорректные параметры)
 				 */
 				__AWH_SHARED_EXPORT__ bool encode(string & output, const params_t & params, const endpoint_t sender) noexcept;
+				/**
+				 * @brief Функция сборки контекста ранних данных из параметров транспорта (RFC 9001 §4.6.1)
+				 *
+				 * @note Кодируются только параметры, которые клиент запоминает вместе
+				 *       с билетом возобновления и под лимиты которых отправляет ранние
+				 *       данные. Полное представление параметров здесь неприменимо:
+				 *       идентификаторы соединения и токен сброса уникальны для каждого
+				 *       соединения, и совпадение контекста стало бы невозможным
+				 *
+				 * @param output выходной буфер контекста ранних данных
+				 * @param params параметры транспорта
+				 * @return       результат сборки (false - некорректные параметры)
+				 */
+				__AWH_SHARED_EXPORT__ bool early(string & output, const params_t & params) noexcept;
 			};
 		};
 	};

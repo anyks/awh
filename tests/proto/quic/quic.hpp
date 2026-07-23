@@ -26,6 +26,9 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "../../main.hpp"
+#include "../../../include/sys/fmk.hpp"
+#include "../../../include/sys/log.hpp"
+#include "../../../include/net/tls/coder.hpp"
 #include "../../../include/proto/quic/quic.hpp"
 #include "../../../include/proto/quic/frame.hpp"
 #include "../../../include/proto/quic/packet.hpp"
@@ -69,14 +72,102 @@ class QuicFixture : public testing::Test {
 		 * @return     сформированный идентификатор соединения
 		 */
 		awh::quic::cid_t makeCid(const std::string & data) const noexcept;
-		/**
-		 * @brief Метод генерации самоподписанного сертификата в памяти
-		 *
-		 * @param certificate сертификат в формате PEM
-		 * @param privateKey  приватный ключ в формате PEM
-		 * @return            результат генерации
-		 */
-		bool makeCertificate(std::string & certificate, std::string & privateKey) const noexcept;
 };
+
+/**
+ * @brief Класс тестового окружения транспортной безопасности
+ *
+ * @details Криптография соединения QUIC задаётся шаблоном контекста кодера,
+ *          поэтому тесты нуждаются в готовой паре шаблонов - клиентском и
+ *          серверном. Окружение создаётся однократно на весь прогон: генерация
+ *          самоподписанного сертификата и построение контекста стоят заметно
+ *          дороже самих проверок
+ */
+class QuicSecurity {
+	private:
+		// Путь к файлу сертификата тестового узла
+		std::string _certificate;
+		// Путь к файлу приватного ключа тестового узла
+		std::string _privateKey;
+	private:
+		// Идентификатор шаблона контекста безопасности клиента
+		awh::tls::Coder::id_t _client;
+		// Идентификатор шаблона контекста безопасности сервера
+		awh::tls::Coder::id_t _server;
+	private:
+		// Объект кодера транспортной безопасности
+		awh::tls::Coder _coder;
+	public:
+		/**
+		 * @brief Метод доступа к объекту кодера транспортной безопасности
+		 *
+		 * @return объект кодера транспортной безопасности
+		 */
+		awh::tls::Coder & coder() noexcept;
+		/**
+		 * @brief Метод извлечения шаблона контекста безопасности роли эндпоинта
+		 *
+		 * @param endpoint роль эндпоинта
+		 * @return         идентификатор шаблона контекста безопасности
+		 */
+		awh::tls::Coder::id_t context(const awh::quic::endpoint_t endpoint) const noexcept;
+		/**
+		 * @brief Метод создания отдельного шаблона контекста безопасности
+		 *
+		 * @note Требуется тестам, которым нужна настройка, отличная от общей:
+		 *       несовпадающий список ALPN-протоколов либо включённая проверка
+		 *       сертификата удалённого узла
+		 *
+		 * @param endpoint  роль эндпоинта
+		 * @param protocols список поддерживаемых ALPN-протоколов
+		 * @param validate  режим проверки сертификата удалённого узла
+		 * @return          идентификатор созданного шаблона контекста безопасности
+		 */
+		awh::tls::Coder::id_t make(const awh::quic::endpoint_t endpoint, const std::vector <awh::tls::Coder::alpn_t> & protocols, const bool validate = false) noexcept;
+	public:
+		/**
+		 * Запрещаем копирование и перемещение (окружение владеет контекстами кодера)
+		 */
+		QuicSecurity(const QuicSecurity &) = delete;
+		QuicSecurity(QuicSecurity &&) = delete;
+		QuicSecurity & operator = (const QuicSecurity &) = delete;
+		QuicSecurity & operator = (QuicSecurity &&) = delete;
+	public:
+		/**
+		 * @brief Конструктор
+		 *
+		 * @param fmk объект фреймворка
+		 * @param log объект для работы с логами
+		 */
+		explicit QuicSecurity(const awh::fmk_t * fmk, const awh::log_t * log) noexcept;
+		/**
+		 * @brief Деструктор
+		 *
+		 */
+		~QuicSecurity() noexcept;
+};
+
+/**
+ * @brief Функция получения объекта фреймворка
+ *
+ * @note Объект создаётся при первом обращении: инициализация на уровне
+ *       пространства имён зависела бы от порядка инициализации статических
+ *       объектов между единицами трансляции, который не определён
+ *
+ * @return объект фреймворка
+ */
+awh::fmk_t & framework() noexcept;
+/**
+ * @brief Функция получения объекта логирования
+ *
+ * @return объект логирования
+ */
+awh::log_t & logger() noexcept;
+/**
+ * @brief Функция получения тестового окружения транспортной безопасности
+ *
+ * @return тестовое окружение транспортной безопасности
+ */
+QuicSecurity & security() noexcept;
 
 #endif // __AWH_PROTO_QUIC_TESTS__

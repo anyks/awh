@@ -114,6 +114,10 @@ namespace {
 	 * @return       результат чтения (false - значение закодировано некорректно)
 	 */
 	inline bool rdValue(const uint8_t * data, const size_t length, uint64_t & value) noexcept {
+		// Если значение параметра пустое (целочисленный параметр обязан содержать число)
+		if(length == 0)
+			// Чтение невозможно
+			return false;
 		// Читаем целое число переменной длины и проверяем что оно занимает значение целиком
 		return (varint::read(data, length, value) == length);
 	}
@@ -170,7 +174,7 @@ awh::quic::params::Params::Params() noexcept :
  initialMaxStreamDataBidiRemote(0), initialMaxStreamDataUni(0),
  initialMaxStreamsBidi(0), initialMaxStreamsUni(0),
  ackDelayExponent(DEFAULT_ACK_DELAY_EXPONENT), maxAckDelay(DEFAULT_MAX_ACK_DELAY),
- activeConnectionIdLimit(DEFAULT_ACTIVE_CID_LIMIT), resetToken{0} {}
+ activeConnectionIdLimit(DEFAULT_ACTIVE_CID_LIMIT), maxDatagramFrameSize(0), resetToken{0} {}
 
 /**
  * @brief Функция разбора параметров транспорта из TLS-расширения
@@ -185,8 +189,12 @@ awh::quic::params::Params::Params() noexcept :
 awh::quic::status_t awh::quic::params::parser::decode(const uint8_t * data, const size_t size, const endpoint_t sender, params_t & output, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи разбора
 	error = error_t::TRANSPORT_PARAMETER_ERROR;
-	// Битовая маска встреченных известных параметров (для контроля дубликатов)
-	uint32_t seen = 0;
+	/**
+	 * Битовая маска встреченных известных параметров (для контроля дубликатов).
+	 * Разрядность выбрана по наибольшему известному идентификатору: идентификаторы
+	 * не сплошные, и маска покрывает диапазон целиком
+	 */
+	uint64_t seen = 0;
 	// Смещение разбора
 	size_t offset = 0;
 	/**
@@ -221,10 +229,15 @@ awh::quic::status_t awh::quic::params::parser::decode(const uint8_t * data, cons
 		const uint8_t * value = (data + offset);
 		// Сдвигаем смещение разбора за значением
 		offset += static_cast <size_t> (length);
-		// Если параметр известен протоколу
-		if(id <= static_cast <uint64_t> (id_t::RETRY_SOURCE_CONNECTION_ID)){
+		/**
+		 * Если параметр известен протоколу: идентификаторы сплошным диапазоном
+		 * не идут, поэтому предельный размер фрейма DATAGRAM проверяется отдельно -
+		 * иначе неизвестные параметры промежутка перестали бы игнорироваться
+		 * (RFC 9000 §7.4.2)
+		 */
+		if((id <= static_cast <uint64_t> (id_t::RETRY_SOURCE_CONNECTION_ID)) || (id == static_cast <uint64_t> (id_t::MAX_DATAGRAM_FRAME_SIZE))){
 			// Битовый флаг параметра
-			const uint32_t flag = (static_cast <uint32_t> (1) << id);
+			const uint64_t flag = (static_cast <uint64_t> (1) << id);
 			// Если параметр уже встречался (RFC 9000 §7.4)
 			if((seen & flag) != 0)
 				// Разбор невозможен
@@ -415,6 +428,13 @@ awh::quic::status_t awh::quic::params::parser::decode(const uint8_t * data, cons
 				// Устанавливаем флаг наличия параметра
 				output.hasPreferredAddress = true;
 			} break;
+			// Предельный размер принимаемого фрейма DATAGRAM (RFC 9221 §3)
+			case static_cast <uint64_t> (id_t::MAX_DATAGRAM_FRAME_SIZE): {
+				// Читаем значение параметра
+				if(!rdValue(value, static_cast <size_t> (length), output.maxDatagramFrameSize))
+					// Разбор невозможен
+					return status_t::ERROR;
+			} break;
 			// Лимит активных идентификаторов соединения
 			case static_cast <uint64_t> (id_t::ACTIVE_CONNECTION_ID_LIMIT): {
 				// Читаем значение параметра
@@ -571,6 +591,13 @@ bool awh::quic::params::serialize::encode(string & output, const params_t & para
 		// Дописываем токен сброса без сохранения состояния
 		output.append(reinterpret_cast <const char *> (params.preferredAddress.resetToken), proto::RESET_TOKEN_SIZE);
 	}
+	/**
+	 * Если приём фреймов DATAGRAM поддерживается: нулевое значение равносильно
+	 * отсутствию параметра, поэтому не кодируется (RFC 9221 §3)
+	 */
+	if(params.maxDatagramFrameSize > 0)
+		// Дописываем параметр предельного размера принимаемого фрейма DATAGRAM
+		wrScalar(output, id_t::MAX_DATAGRAM_FRAME_SIZE, params.maxDatagramFrameSize);
 	// Если лимит активных идентификаторов отличается от значения по умолчанию
 	if(params.activeConnectionIdLimit != DEFAULT_ACTIVE_CID_LIMIT)
 		// Дописываем параметр лимита активных идентификаторов
@@ -583,6 +610,39 @@ bool awh::quic::params::serialize::encode(string & output, const params_t & para
 	if(params.hasRetryScid)
 		// Дописываем параметр SCID пакета Retry
 		wrCid(output, id_t::RETRY_SOURCE_CONNECTION_ID, params.retryScid);
+	// Сборка выполнена успешно
+	return true;
+}
+/**
+ * @brief Функция сборки контекста ранних данных из параметров транспорта (RFC 9001 §4.6.1)
+ *
+ * @param output выходной буфер контекста ранних данных
+ * @param params параметры транспорта
+ * @return       результат сборки (false - некорректные параметры)
+ */
+bool awh::quic::params::serialize::early(string & output, const params_t & params) noexcept {
+	/**
+	 * Список лимитов, запоминаемых клиентом вместе с билетом возобновления
+	 * в порядке кодирования (RFC 9000 §7.4.1)
+	 */
+	const uint64_t values[] = {
+		params.initialMaxData,
+		params.initialMaxStreamDataBidiLocal,
+		params.initialMaxStreamDataBidiRemote,
+		params.initialMaxStreamDataUni,
+		params.initialMaxStreamsBidi,
+		params.initialMaxStreamsUni,
+		params.activeConnectionIdLimit
+	};
+	/**
+	 * Перебираем список запоминаемых лимитов
+	 */
+	for(auto & value : values){
+		// Если запись очередного лимита не выполнена
+		if(varint::write(output, value) == 0)
+			// Выводим отрицательный результат - лимит не кодируется
+			return false;
+	}
 	// Сборка выполнена успешно
 	return true;
 }

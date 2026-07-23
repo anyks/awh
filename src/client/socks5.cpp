@@ -340,9 +340,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				// Если идентификатор клиента соответствует идентификатору socks5 клиента
 				if(eid == this->_id.eid){
 					// Если объект транспортного уровня безопасности установлен
-					if((this->_coder != nullptr) && (this->_id.sid > 0)){
+					if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 						// Если данные не расшифрованы
-						if(!this->_coder->decrypt(this->_id.sid, buffer, size)){
+						if(!this->_coder->decrypt(this->_id.ctl, buffer, size)){
 							// Если функция обратного вызова не установлена
 							if(!this->_callback.is("error_tls")){
 								/**
@@ -369,9 +369,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 						// Если установлен хост клиента, которому адресован UDP-пакет
 						if(this->_endpoint.udp.ctx.host != nullptr){
 							// Если объект транспортного уровня безопасности установлен
-							if((this->_coder != nullptr) && (this->_id.sid > 0)){
+							if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 								// Если данные не расшифрованы
-								if(!this->_coder->decrypt(this->_id.sid, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size)){
+								if(!this->_coder->decrypt(this->_id.ctl, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size)){
 									// Если функция обратного вызова не установлена
 									if(!this->_callback.is("error_tls")){
 										/**
@@ -775,9 +775,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", eid, target, port);
 								// Если объект транспортного уровня безопасности установлен
-								if((this->_coder != nullptr) && (this->_id.sid > 0)){
+								if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 									// Если рукопожатие TLS не выполнено
-									if(!this->_coder->handshake(this->_id.sid)){
+									if(!this->_coder->handshake(this->_id.ctl)){
 										// Если функция обратного вызова не установлена
 										if(!this->_callback.is("error_tls")){
 											/**
@@ -951,9 +951,9 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 								// Выполняем функцию обратного вызова
 								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, target, port);
 								// Если объект транспортного уровня безопасности установлен
-								if((this->_coder != nullptr) && (this->_id.sid > 0)){
+								if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 									// Если рукопожатие TLS не выполнено
-									if(!this->_coder->handshake(this->_id.sid)){
+									if(!this->_coder->handshake(this->_id.ctl)){
 										// Если функция обратного вызова не установлена
 										if(!this->_callback.is("error_tls")){
 											/**
@@ -1474,9 +1474,9 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 			// Если клиент для работы с UDP протоколом не инициализирован
 			if(this->_endpoint.udp.eid == 0){
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_coder != nullptr)){
+				if((this->_id.ctl > 0) && (this->_coder != nullptr)){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_coder->encrypt(this->_id.sid, buffer, size))
+					if(this->_coder->encrypt(this->_id.ctl, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 					// Возвращаем значение по умолчанию
@@ -1487,9 +1487,9 @@ size_t awh::client::Socks5::send(const void * buffer, const size_t size) noexcep
 			// Если клиент для работы с UDP протоколом инициализирован
 			} else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_coder != nullptr)){
+				if((this->_id.ctl > 0) && (this->_coder != nullptr)){
 					// Если шифрование данных TLS выполнено успешно
-					if(this->_coder->encrypt(this->_id.sid, buffer, size))
+					if(this->_coder->encrypt(this->_id.ctl, buffer, size))
 						// Возвращаем размер отправленных данных
 						return size;
 					// Возвращаем значение по умолчанию
@@ -2226,15 +2226,6 @@ awh::client::Socks5::Socks5(const fmk_t * fmk, const log_t * log) noexcept :
 /**
  * @brief Конструктор
  *
- * @param tls объект транспортного уровня безопасности
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::client::Socks5::Socks5(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(tls, fmk, log), _socks5(fmk, log) {}
-/**
- * @brief Конструктор
- *
  * @param dns объект DNS-резолвера
  * @param fmk объект фреймворка
  * @param log объект для работы с логами
@@ -2244,13 +2235,24 @@ awh::client::Socks5::Socks5(unit::dns_t * dns, const fmk_t * fmk, const log_t * 
 /**
  * @brief Конструктор
  *
- * @param dns объект DNS-резолвера
- * @param tls объект транспортного уровня безопасности
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
+ * @param ctl   идентификатор контекста безопасности
+ * @param coder объект транспортного уровня безопасности
+ * @param fmk   объект фреймворка
+ * @param log   объект для работы с логами
  */
-awh::client::Socks5::Socks5(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- client_t(dns, tls, fmk, log), _socks5(fmk, log) {}
+awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+ client_t(ctl, coder, fmk, log), _socks5(fmk, log) {}
+/**
+ * @brief Конструктор
+ *
+ * @param ctl   идентификатор контекста безопасности
+ * @param coder объект транспортного уровня безопасности
+ * @param dns   объект DNS-резолвера
+ * @param fmk   объект фреймворка
+ * @param log   объект для работы с логами
+ */
+awh::client::Socks5::Socks5(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+ client_t(ctl, coder, dns, fmk, log), _socks5(fmk, log) {}
 /**
  * @brief Деструктор
  *

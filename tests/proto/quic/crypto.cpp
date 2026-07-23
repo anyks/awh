@@ -23,6 +23,7 @@
  * Подключаем заголовочный файлы проекта
  */
 #include "quic.hpp"
+#include "../../../include/proto/quic/packet.hpp"
 #include "../../../include/proto/quic/crypto.hpp"
 
 /**
@@ -363,4 +364,148 @@ TEST_F(QuicFixture, CryptoOpenTamperedTest){
 	ASSERT_EQ(packet::parser::header(reinterpret_cast <const uint8_t *> (original.data()), original.size(), 0, header, error), status_t::OK);
 	// Проверяем что серверные ключи не подходят к клиентскому пакету
 	ASSERT_EQ(crypto::open(reinterpret_cast <uint8_t *> (&original[0]), header.size, header.pnOffset, 0, server, pn, payload, error), status_t::ERROR);
+}
+
+/**
+ * @brief Тест обнаружения ненулевых зарезервированных битов заголовка (RFC 9000 §17.2)
+ *
+ * @details Зарезервированные биты первого октета проверяются только после снятия
+ *          обеих защит, поэтому пакет собирается с ненулевым битом и защищается
+ *          штатно. Снятие защиты обязано дать нарушение протокола, а не ошибку AEAD
+ */
+TEST_F(QuicFixture, CryptoReservedBitsTest){
+	// Ключи защиты пакетов обоих направлений
+	crypto::keys_t client, server;
+	// Выводим ключи Initial из DCID клиента
+	ASSERT_TRUE(crypto::initial(this->makeCid(this->unhex(CLIENT_DCID)), client, server));
+	// Незащищённый заголовок пакета Initial
+	std::string header = this->unhex(CLIENT_INITIAL_HEADER);
+	// Устанавливаем зарезервированный бит длинного заголовка (RFC 9000 §17.2)
+	header[0] = static_cast <char> (static_cast <uint8_t> (header[0]) | 0x08);
+	// Формируем незащищённую нагрузку достаточной длины для выборки защиты заголовка
+	std::string payload = this->unhex(CLIENT_INITIAL_CRYPTO);
+	// Дополняем нагрузку заполнением PADDING
+	payload.append(1162 - payload.size(), '\0');
+	// Выходной буфер защищённого пакета
+	std::string output;
+	// Защищаем пакет ключами клиента
+	ASSERT_TRUE(crypto::seal(output, client, 2, header, payload));
+	// Восстановленный полный номер пакета
+	uint64_t pn = 0;
+	// Расшифрованная нагрузка пакета
+	std::string plain;
+	// Код ошибки транспорта
+	error_t error = error_t::NO_ERROR;
+	// Смещение поля Packet Number соответствует длине заголовка без номера пакета
+	const size_t pnOffset = (header.size() - 4);
+	// Выполняем снятие защиты пакета ключами клиента
+	const status_t status = crypto::open(reinterpret_cast <uint8_t *> (&output[0]), output.size(), pnOffset, 0, client, pn, plain, error);
+	// Проверяем что снятие защиты отвергнуто
+	ASSERT_EQ(status, status_t::ERROR);
+	// Проверяем что причиной отказа названо нарушение протокола, а не ошибка расшифровки
+	ASSERT_EQ(error, error_t::PROTOCOL_VIOLATION);
+}
+
+/**
+ * @brief Тест отката выходного буфера при отказе защиты пакета
+ *
+ * @details При невозможности собрать пакет выходной буфер обязан остаться
+ *          нетронутым: иначе в датаграмме оставался бы обрывок пакета
+ */
+TEST_F(QuicFixture, CryptoSealRollbackTest){
+	// Ключи защиты пакетов обоих направлений
+	crypto::keys_t client, server;
+	// Выводим ключи Initial из DCID клиента
+	ASSERT_TRUE(crypto::initial(this->makeCid(this->unhex(CLIENT_DCID)), client, server));
+	// Незащищённый заголовок пакета Initial
+	const std::string header = this->unhex(CLIENT_INITIAL_HEADER);
+	// Выходной буфер с ранее собранным содержимым датаграммы
+	std::string output = "previously assembled packet";
+	// Запоминаем исходное содержимое выходного буфера
+	const std::string original = output;
+	/**
+	 * Собираем короткий заголовок с однооктетным номером пакета: выборка защиты
+	 * заголовка берётся с фиксированным отступом в четыре октета от поля Packet
+	 * Number, поэтому при коротком номере она выходит за тег AEAD и требует
+	 * не менее трёх октетов нагрузки (RFC 9001 §5.4.2)
+	 */
+	std::string shortHeader = "";
+	// Выполняем сборку короткого заголовка с однооктетным номером пакета
+	ASSERT_TRUE(packet::serialize::shortHeader(shortHeader, this->makeCid(this->unhex(CLIENT_DCID)), 2, 1, false, false));
+	// Проверяем отказ при нагрузке короче минимума выборки
+	ASSERT_FALSE(crypto::seal(output, client, 2, shortHeader, "ab"));
+	// Проверяем что выходной буфер не изменился
+	ASSERT_EQ(output, original);
+	// Проверяем что нагрузка на границе минимума принимается
+	ASSERT_TRUE(crypto::seal(output, client, 2, shortHeader, "abc"));
+	// Восстанавливаем исходное содержимое выходного буфера
+	output = original;
+	// Проверяем отказ при пустом заголовке
+	ASSERT_FALSE(crypto::seal(output, client, 2, "", "payload"));
+	// Проверяем что выходной буфер не изменился
+	ASSERT_EQ(output, original);
+	// Проверяем отказ при незаполненных ключах защиты пакетов
+	ASSERT_FALSE(crypto::seal(output, crypto::keys_t(), 2, header, std::string(64, 'x')));
+	// Проверяем что выходной буфер не изменился
+	ASSERT_EQ(output, original);
+}
+
+/**
+ * @brief Тест отказа снятия защиты при незаполненных ключах
+ *
+ * @details Ключи без выведенного AEAD-контекста обязаны отвергаться до обращения
+ *          к криптографической библиотеке
+ */
+TEST_F(QuicFixture, CryptoOpenWithoutKeysTest){
+	// Буфер пакета достаточной длины для выборки защиты заголовка
+	std::string packet(128, '\0');
+	// Восстановленный полный номер пакета
+	uint64_t pn = 0;
+	// Расшифрованная нагрузка пакета
+	std::string plain;
+	// Код ошибки транспорта
+	error_t error = error_t::NO_ERROR;
+	// Выполняем снятие защиты пакета незаполненными ключами
+	const status_t status = crypto::open(reinterpret_cast <uint8_t *> (&packet[0]), packet.size(), 18, 0, crypto::keys_t(), pn, plain, error);
+	// Проверяем что снятие защиты отвергнуто
+	ASSERT_EQ(status, status_t::ERROR);
+}
+
+/**
+ * @brief Тест переноса ключа защиты заголовка при обновлении ключей (RFC 9001 §6)
+ *
+ * @details Ключ защиты заголовка при смене фазы не меняется, поэтому маска,
+ *          вычисленная новыми и прежними ключами, обязана совпадать
+ */
+TEST_F(QuicFixture, CryptoUpdateHeaderKeyTest){
+	// Ключи защиты пакетов обоих направлений
+	crypto::keys_t client, server;
+	// Выводим ключи Initial из DCID клиента
+	ASSERT_TRUE(crypto::initial(this->makeCid(this->unhex(CLIENT_DCID)), client, server));
+	// Ключи защиты пакетов следующей фазы
+	crypto::keys_t next;
+	// Выполняем обновление ключей на следующую фазу
+	ASSERT_TRUE(crypto::update(client, next));
+	// Проверяем что ключ защиты заголовка не изменился
+	ASSERT_EQ(next.hp, client.hp);
+	// Проверяем что ключ AEAD-шифрования сменился
+	ASSERT_NE(next.key, client.key);
+	// Выборка защищённой нагрузки для защиты заголовка
+	uint8_t sample[crypto::HP_SAMPLE_SIZE];
+	/**
+	 * Заполняем выборку произвольными данными
+	 */
+	for(size_t i = 0; i < crypto::HP_SAMPLE_SIZE; i++)
+		// Записываем очередной октет выборки
+		sample[i] = static_cast <uint8_t> (i * 7 + 3);
+	// Маска защиты заголовка прежней фазы
+	uint8_t before[crypto::HP_MASK_SIZE];
+	// Маска защиты заголовка следующей фазы
+	uint8_t after[crypto::HP_MASK_SIZE];
+	// Вычисляем маску защиты заголовка прежними ключами
+	ASSERT_TRUE(crypto::hpMask(client, sample, before));
+	// Вычисляем маску защиты заголовка ключами следующей фазы
+	ASSERT_TRUE(crypto::hpMask(next, sample, after));
+	// Проверяем совпадение масок обеих фаз
+	ASSERT_EQ(::memcmp(before, after, crypto::HP_MASK_SIZE), 0);
 }

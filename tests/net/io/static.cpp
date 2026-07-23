@@ -1141,6 +1141,12 @@ TEST_F(IoFixture, IoTCPTest){
 TEST_F(IoFixture, IoUDPTest){
 	// Флаг остановки теста
 	bool stop = false;
+	/**
+	 * Количество прочитанных сообщений. Счётчик объявлен в области видимости теста:
+	 * функция обратного вызова захватывает его по ссылке и вызывается уже из цикла
+	 * событий, то есть переживает блок настройки события
+	 */
+	uint8_t count = 0;
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
@@ -1689,8 +1695,6 @@ TEST_F(IoFixture, IoUDPTest){
 			// Записываем в лог сообщение о переподключении события
 			this->_log->print("Записано: ID=%u, %zu байт", awh::log_t::flag_t::INFO, eid, size);
 		}));
-		// Количество прочитанных сообщений
-		uint8_t count = 0;
 		// Устанавливаем функцию обратного вызова на чтение из события
 		this->_io->on(events[0], [&count, &stop, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Текст входящего сообщения
@@ -6951,6 +6955,12 @@ TEST_F(IoFixture, IoMulticast3Test){
 	 */
 	// Флаг остановки теста
 	bool stop = false;
+	/**
+	 * Количество прочитанных сообщений. Счётчик объявлен в области видимости теста:
+	 * функция обратного вызова захватывает его по ссылке и вызывается уже из цикла
+	 * событий, то есть переживает блок настройки события
+	 */
+	uint8_t count = 0;
 	// Выполняем генерацию порта
 	const uint16_t port = ::port();
 	// Добавляем новое событие клиента и сервера UDP
@@ -7514,8 +7524,6 @@ TEST_F(IoFixture, IoMulticast3Test){
 				break;
 			}
 		});
-		// Количество прочитанных сообщений
-		uint8_t count = 0;
 		// Устанавливаем функцию обратного вызова на чтение из события
 		this->_io->on(events[0], [&count, &stop, this](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
 			// Текст входящего сообщения
@@ -14803,3 +14811,551 @@ TEST_F(IoFixture, IoDTLSTest){
 		ASSERT_TRUE(this->_io->deinitialize());
 	}
 #endif
+
+/**
+ * @brief Тест маршрутизации дейтаграмм по ключу приложения
+ *
+ * @details Протоколы с собственной адресацией сессий внутри датаграммы
+ *          маршрутизируются не четвёркой сокета, а ключом. Тест проверяет три
+ *          свойства такой маршрутизации: две четвёрки с одним ключом попадают
+ *          в одну сессию, ответ уходит на адрес последней принятой датаграммы,
+ *          а датаграмма без ключа отбрасывается без создания сессии
+ */
+TEST_F(IoFixture, IoOriginKeyedRoutingTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Количество созданных сессий
+	size_t sessions = 0;
+	// Количество отброшенных датаграмм
+	size_t dropped = 0;
+	// Идентификатор события созданной сессии
+	awh::event::id_t session = 0;
+	// Буфер принятых сессией датаграмм
+	std::vector <std::string> received;
+	// Буфер ответов с идентификаторами принявших их клиентов
+	std::vector <std::pair <awh::event::id_t, std::string>> answers;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем событие сервера UDP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что событие сервера создано
+	ASSERT_GT(server, 0u);
+	// Добавляем первое событие клиента UDP
+	const awh::event::id_t first = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Добавляем второе событие клиента UDP
+	const awh::event::id_t second = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Добавляем событие таймера принудительной остановки теста
+	const awh::event::id_t timer = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем что события клиентов и таймера созданы
+	ASSERT_GT(first, 0u);
+	ASSERT_GT(second, 0u);
+	ASSERT_GT(timer, 0u);
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	// Устанавливаем порт назначения событий клиентов
+	ASSERT_TRUE(this->_io->setTargetPort(first, port));
+	ASSERT_TRUE(this->_io->setTargetPort(second, port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	/**
+	 * Устанавливаем функцию обратного вызова определения сессии: ключом служат
+	 * первые четыре октета датаграммы, а датаграмма короче ключа объявляется
+	 * посторонней
+	 */
+	this->_io->on(server, static_cast <awh::engine::callback::origin_t> ([&dropped](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size, awh::net::origin_key_t & key
+	) noexcept -> bool {
+		// Если датаграмма короче ключа сессии
+		if(size < 4){
+			// Увеличиваем количество отброшенных датаграмм
+			dropped++;
+			// Выводим отрицательный результат - датаграмма посторонняя
+			return false;
+		}
+		// Формируем ключ сессии из первых октетов датаграммы
+		key = awh::net::origin_key_t(data, 4);
+		// Выводим положительный результат
+		return true;
+	}));
+	// Устанавливаем функцию обратного вызова на создание сессии
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&](
+		[[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t oid
+	) noexcept -> void {
+		// Увеличиваем количество созданных сессий
+		sessions++;
+		// Запоминаем идентификатор события созданной сессии
+		session = oid;
+		// Устанавливаем функцию обратного вызова на чтение из сессии
+		this->_io->on(oid, [&](const awh::event::id_t oid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Накапливаем принятую сессией датаграмму
+			received.emplace_back(reinterpret_cast <const char *> (data), size);
+			// Отправляем ответ по адресу последней принятой датаграммы
+			this->_io->send(oid, data, size);
+		});
+	}));
+	/**
+	 * Устанавливаем функции обратного вызова на чтение ответов клиентами
+	 */
+	for(auto & client : {first, second}){
+		/**
+		 * Устанавливаем функцию обратного вызова на подключение события клиента:
+		 * до завершения подключения событие к отправке не готово
+		 */
+		this->_io->on(client, static_cast <awh::engine::callback::connect_t> ([&, client](const awh::event::id_t eid, const bool ok) noexcept -> void {
+			// Если подключение не выполнено
+			if(!ok)
+				// Выходим из функции обработки
+				return;
+			// Если подключено первое событие клиента
+			if(client == first){
+				// Отправляем посторонную датаграмму короче ключа сессии
+				this->_io->send(eid, "xx", 2);
+				// Отправляем датаграмму с ключом сессии первым клиентом
+				this->_io->send(eid, "KEY0first", 9);
+			// Отправляем датаграмму с тем же ключом сессии вторым клиентом
+			} else this->_io->send(eid, "KEY0second", 10);
+		}));
+		// Устанавливаем функцию обратного вызова на чтение из события клиента
+		this->_io->on(client, [&](const awh::event::id_t eid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Накапливаем принятый клиентом ответ вместе с идентификатором клиента
+			answers.emplace_back(eid, std::string(reinterpret_cast <const char *> (data), size));
+			// Останавливаем тест после ответа второму клиенту
+			stop = (answers.size() >= 2);
+		});
+		// Устанавливаем опции события клиента
+		ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем локальный адрес события клиента
+		ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+		// Устанавливаем адрес назначения события клиента
+		ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+	}
+	// Устанавливаем таймаут принудительной остановки теста
+	this->_io->setTimeout(timer, awh::event::action_t::NONE, 3000);
+	// Устанавливаем функцию обратного вызова на событие таймера
+	this->_io->on(timer, [&stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Останавливаем тест по истечении таймаута
+		stop = (stop || (status == awh::event::status_t::SUCCESS));
+	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->commit(timer));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(server));
+	ASSERT_TRUE(this->_io->launch(timer));
+	/**
+	 * Выполняем подготовку и запуск событий клиентов
+	 */
+	for(auto & client : {first, second}){
+		// Выполняем фиксацию настроек события клиента
+		ASSERT_TRUE(this->_io->commit(client));
+		// Выполняем подключение события клиента к серверу
+		ASSERT_TRUE(this->_io->connect(client));
+		// Выполняем запуск события клиента
+		ASSERT_TRUE(this->_io->launch(client));
+	}
+	// Запускаем опрос событий
+	while(!stop && this->_io->poll());
+	// Проверяем что посторонняя датаграмма отброшена
+	ASSERT_EQ(dropped, 1u);
+	/**
+	 * Проверяем что две четвёрки с одним ключом попали в одну сессию: посторонняя
+	 * датаграмма сессии не создала, а вторая четвёрка не создала новой
+	 */
+	ASSERT_EQ(sessions, 1u);
+	// Проверяем что идентификатор события сессии получен
+	ASSERT_GT(session, 0u);
+	// Проверяем что сессия приняла обе датаграммы
+	ASSERT_EQ(received.size(), 2u);
+	// Проверяем содержимое принятых сессией датаграмм
+	ASSERT_EQ(received[0], "KEY0first");
+	ASSERT_EQ(received[1], "KEY0second");
+	// Проверяем что оба ответа доставлены
+	ASSERT_EQ(answers.size(), 2u);
+	/**
+	 * Проверяем что ответы ушли по адресам отправителей: сессия следует за
+	 * последней принятой датаграммой, поэтому второй ответ получил второй
+	 * клиент, а не первый, от которого сессия была заведена
+	 */
+	ASSERT_EQ(answers[0].first, first);
+	ASSERT_EQ(answers[0].second, "KEY0first");
+	ASSERT_EQ(answers[1].first, second);
+	ASSERT_EQ(answers[1].second, "KEY0second");
+}
+
+/**
+ * @brief Тест предела количества сессий дейтаграммного события
+ *
+ * @details Предел защищает от исчерпания памяти потоком датаграмм с разными
+ *          ключами: по его достижении новые сессии не создаются
+ */
+TEST_F(IoFixture, IoOriginLimitTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Количество созданных сессий
+	size_t sessions = 0;
+	// Количество отказов в создании сессии
+	size_t cancelled = 0;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем событие сервера UDP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Добавляем событие клиента UDP
+	const awh::event::id_t client = this->_io->event(awh::event::node_t::CLIENT, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Добавляем событие таймера принудительной остановки теста
+	const awh::event::id_t timer = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем что события созданы
+	ASSERT_GT(server, 0u);
+	ASSERT_GT(client, 0u);
+	ASSERT_GT(timer, 0u);
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	// Устанавливаем порт назначения события клиента
+	ASSERT_TRUE(this->_io->setTargetPort(client, port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Проверяем предельное количество сессий по умолчанию
+	ASSERT_EQ(this->_io->getMaxConnections(server), 100u);
+	// Устанавливаем предельное количество сессий события
+	ASSERT_TRUE(this->_io->setMaxConnections(server, 1));
+	// Проверяем что предельное количество сессий установлено
+	ASSERT_EQ(this->_io->getMaxConnections(server), 1u);
+	// Проверяем отказ установки нулевого предела
+	ASSERT_FALSE(this->_io->setMaxConnections(server, 0));
+	// Устанавливаем функцию обратного вызова определения сессии
+	this->_io->on(server, static_cast <awh::engine::callback::origin_t> ([](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size, awh::net::origin_key_t & key
+	) noexcept -> bool {
+		// Если датаграмма короче ключа сессии
+		if(size < 4)
+			// Выводим отрицательный результат - датаграмма посторонняя
+			return false;
+		// Формируем ключ сессии из первых октетов датаграммы
+		key = awh::net::origin_key_t(data, 4);
+		// Выводим положительный результат
+		return true;
+	}));
+	// Устанавливаем функцию обратного вызова на создание сессии
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&sessions](
+		[[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::id_t oid
+	) noexcept -> void {
+		// Увеличиваем количество созданных сессий
+		sessions++;
+	}));
+	// Устанавливаем функцию обратного вызова на изменение статуса события сервера
+	this->_io->on(server, static_cast <awh::engine::callback::status_t> ([&cancelled](
+		[[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status
+	) noexcept -> void {
+		// Если получен отказ в создании сессии
+		if(status == awh::event::status_t::CANCELLED)
+			// Увеличиваем количество отказов в создании сессии
+			cancelled++;
+	}));
+	// Устанавливаем опции события клиента
+	ASSERT_TRUE(this->_io->setOptions(client, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Устанавливаем локальный адрес события клиента
+	ASSERT_TRUE(this->_io->setAddress(client, awh::event::address_t::IPV4, "0.0.0.0"));
+	// Устанавливаем адрес назначения события клиента
+	ASSERT_TRUE(this->_io->setTarget(client, "127.0.0.1"));
+	/**
+	 * Устанавливаем функцию обратного вызова на подключение события клиента:
+	 * до завершения подключения событие к отправке не готово
+	 */
+	this->_io->on(client, static_cast <awh::engine::callback::connect_t> ([this](const awh::event::id_t eid, const bool ok) noexcept -> void {
+		// Если подключение не выполнено
+		if(!ok)
+			// Выходим из функции обработки
+			return;
+		// Отправляем датаграмму с первым ключом сессии
+		this->_io->send(eid, "AAAApayload", 11);
+		// Отправляем датаграмму со вторым ключом сессии
+		this->_io->send(eid, "BBBBpayload", 11);
+	}));
+	// Устанавливаем таймаут принудительной остановки теста
+	this->_io->setTimeout(timer, awh::event::action_t::NONE, 1000);
+	// Устанавливаем функцию обратного вызова на событие таймера
+	this->_io->on(timer, [&stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Останавливаем тест по истечении таймаута
+		stop = (stop || (status == awh::event::status_t::SUCCESS));
+	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->commit(timer));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(server));
+	ASSERT_TRUE(this->_io->launch(timer));
+	// Выполняем фиксацию настроек события клиента
+	ASSERT_TRUE(this->_io->commit(client));
+	// Выполняем подключение события клиента к серверу
+	ASSERT_TRUE(this->_io->connect(client));
+	// Выполняем запуск события клиента
+	ASSERT_TRUE(this->_io->launch(client));
+	// Запускаем опрос событий
+	while(!stop && this->_io->poll());
+	// Проверяем что создана только одна сессия
+	ASSERT_EQ(sessions, 1u);
+	// Проверяем что в создании второй сессии отказано
+	ASSERT_GE(cancelled, 1u);
+}
+
+/**
+ * @brief Тест разделения сессий между дейтаграммными событиями
+ *
+ * @details Ключ сессии закреплён за событием, поэтому один и тот же отправитель,
+ *          обратившийся к двум серверам, порождает две независимые сессии,
+ *          а не одну общую. Датаграммы отправляются одним сокетом, чтобы
+ *          четвёрка источника у обоих серверов совпадала
+ */
+TEST_F(IoFixture, IoOriginNamespaceTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Количество созданных сессий первого сервера
+	size_t first = 0;
+	// Количество созданных сессий второго сервера
+	size_t second = 0;
+	// Выполняем генерацию порта первого сервера
+	const uint16_t primary = ::port();
+	// Выполняем генерацию порта второго сервера
+	const uint16_t secondary = static_cast <uint16_t> ((primary > 49152) ? (primary - 1) : (primary + 1));
+	// Добавляем событие первого сервера UDP
+	const awh::event::id_t alpha = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Добавляем событие второго сервера UDP
+	const awh::event::id_t beta = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Добавляем событие таймера принудительной остановки теста
+	const awh::event::id_t timer = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем что события созданы
+	ASSERT_GT(alpha, 0u);
+	ASSERT_GT(beta, 0u);
+	ASSERT_GT(timer, 0u);
+	// Устанавливаем порты событий серверов
+	ASSERT_TRUE(this->_io->setSourcePort(alpha, primary));
+	ASSERT_TRUE(this->_io->setSourcePort(beta, secondary));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	/**
+	 * Выполняем настройку событий серверов
+	 */
+	for(auto & server : {alpha, beta}){
+		// Устанавливаем опции события сервера
+		ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+		// Устанавливаем адрес события сервера
+		ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+		// Устанавливаем функцию обратного вызова на создание сессии
+		this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&, server](
+			[[maybe_unused]] const awh::event::id_t eid, [[maybe_unused]] const awh::event::id_t oid
+		) noexcept -> void {
+			// Увеличиваем счётчик сессий соответствующего сервера
+			(server == alpha ? first : second)++;
+			// Останавливаем тест после создания сессий обоими серверами
+			stop = ((first > 0) && (second > 0));
+		}));
+		// Выполняем фиксацию настроек события сервера
+		ASSERT_TRUE(this->_io->commit(server));
+		// Выполняем запуск события сервера
+		ASSERT_TRUE(this->_io->launch(server));
+	}
+	// Устанавливаем таймаут принудительной остановки теста
+	this->_io->setTimeout(timer, awh::event::action_t::NONE, 2000);
+	// Устанавливаем функцию обратного вызова на событие таймера
+	this->_io->on(timer, [&stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Останавливаем тест по истечении таймаута
+		stop = (stop || (status == awh::event::status_t::SUCCESS));
+	});
+	// Выполняем фиксацию настроек события таймера
+	ASSERT_TRUE(this->_io->commit(timer));
+	// Выполняем запуск события таймера
+	ASSERT_TRUE(this->_io->launch(timer));
+	/**
+	 * Отправляем датаграммы обоим серверам одним сокетом: разные сокеты дали бы
+	 * разные порты источника, и совпадения четвёрок, ради которого ставится
+	 * проверка, не возникло бы
+	 */
+	const int32_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+	// Проверяем что сокет отправителя создан
+	ASSERT_GE(sock, 0);
+	// Объект адреса назначения датаграммы
+	struct sockaddr_in target{};
+	// Устанавливаем семейство адреса назначения
+	target.sin_family = AF_INET;
+	// Устанавливаем адрес назначения датаграммы
+	target.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+	/**
+	 * Перебираем порты серверов
+	 */
+	for(auto & port : {primary, secondary}){
+		// Устанавливаем порт назначения датаграммы
+		target.sin_port = htons(port);
+		// Отправляем датаграмму серверу
+		ASSERT_GT(::sendto(sock, "SAMEpayload", 11, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
+	}
+	// Закрываем сокет отправителя
+	::close(sock);
+	// Запускаем опрос событий
+	while(!stop && this->_io->poll());
+	/**
+	 * Проверяем что каждый сервер завёл собственную сессию: ключ закреплён за
+	 * событием, поэтому общего пространства у них нет, хотя четвёрка источника
+	 * у обеих датаграмм одна
+	 */
+	ASSERT_EQ(first, 1u);
+	ASSERT_EQ(second, 1u);
+}
+
+/**
+ * @brief Тест привязки дополнительных ключей маршрутизации к сессии
+ *
+ * @details Протоколы со сменой идентификатора на лету адресуют одну сессию
+ *          произвольным числом ключей: датаграмма с любым привязанным ключом
+ *          обязана попасть в неё, а снятый ключ маршрутизироваться перестаёт
+ */
+TEST_F(IoFixture, IoOriginBindTest){
+	// Флаг остановки теста
+	bool stop = false;
+	// Количество созданных сессий
+	size_t sessions = 0;
+	// Идентификатор события созданной сессии
+	awh::event::id_t session = 0;
+	// Буфер принятых датаграмм с идентификаторами принявших их сессий
+	std::vector <std::pair <awh::event::id_t, std::string>> received;
+	// Выполняем генерацию порта
+	const uint16_t port = ::port();
+	// Добавляем событие сервера UDP
+	const awh::event::id_t server = this->_io->event(awh::event::node_t::SERVER, awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Добавляем событие таймера принудительной остановки теста
+	const awh::event::id_t timer = this->_io->event(awh::event::node_t::TIMEOUT, awh::event::family_t::TIMER);
+	// Проверяем что события созданы
+	ASSERT_GT(server, 0u);
+	ASSERT_GT(timer, 0u);
+	// Устанавливаем порт события сервера
+	ASSERT_TRUE(this->_io->setSourcePort(server, port));
+	// Инициализируем асинхронный движок ввода-вывода
+	ASSERT_TRUE(this->_io->initialize());
+	// Устанавливаем опции события сервера
+	ASSERT_TRUE(this->_io->setOptions(server, awh::event::options::NO_SIGILL | awh::event::options::NO_SIGPIPE | awh::event::options::REUSE_ADDR | awh::event::options::REUSE_PORT | awh::event::options::NO_IO_BLOCK | awh::event::options::CLOSE_ON_EXEC));
+	// Устанавливаем адрес события сервера
+	ASSERT_TRUE(this->_io->setAddress(server, awh::event::address_t::IPV4, "127.0.0.1"));
+	// Устанавливаем функцию обратного вызова определения сессии
+	this->_io->on(server, static_cast <awh::engine::callback::origin_t> ([](
+		[[maybe_unused]] const awh::event::id_t eid, const uint8_t * data, const size_t size, awh::net::origin_key_t & key
+	) noexcept -> bool {
+		// Если датаграмма короче ключа сессии
+		if(size < 4)
+			// Выводим отрицательный результат - датаграмма посторонняя
+			return false;
+		// Формируем ключ сессии из первых октетов датаграммы
+		key = awh::net::origin_key_t(data, 4);
+		// Выводим положительный результат
+		return true;
+	}));
+	// Устанавливаем функцию обратного вызова на создание сессии
+	this->_io->on(server, static_cast <awh::engine::callback::accept_t> ([&](
+		[[maybe_unused]] const awh::event::id_t eid, const awh::event::id_t oid
+	) noexcept -> void {
+		// Увеличиваем количество созданных сессий
+		sessions++;
+		// Запоминаем идентификатор события созданной сессии
+		session = oid;
+		// Устанавливаем функцию обратного вызова на чтение из сессии
+		this->_io->on(oid, [&](const awh::event::id_t oid, const uint8_t * data, const size_t size) noexcept -> void {
+			// Накапливаем принятую датаграмму вместе с идентификатором принявшей сессии
+			received.emplace_back(oid, std::string(reinterpret_cast <const char *> (data), size));
+			// Останавливаем тест после приёма всех ожидаемых датаграмм
+			stop = (received.size() >= 2);
+		});
+	}));
+	// Устанавливаем таймаут принудительной остановки теста
+	this->_io->setTimeout(timer, awh::event::action_t::NONE, 2000);
+	// Устанавливаем функцию обратного вызова на событие таймера
+	this->_io->on(timer, [&stop]([[maybe_unused]] const awh::event::id_t eid, const awh::event::status_t status) noexcept -> void {
+		// Останавливаем тест по истечении таймаута
+		stop = (stop || (status == awh::event::status_t::SUCCESS));
+	});
+	// Выполняем фиксацию настроек событий
+	ASSERT_TRUE(this->_io->commit(server));
+	ASSERT_TRUE(this->_io->commit(timer));
+	// Выполняем запуск событий
+	ASSERT_TRUE(this->_io->launch(server));
+	ASSERT_TRUE(this->_io->launch(timer));
+	// Создаём сокет отправителя датаграмм
+	const int32_t sock = ::socket(AF_INET, SOCK_DGRAM, 0);
+	// Проверяем что сокет отправителя создан
+	ASSERT_GE(sock, 0);
+	// Объект адреса назначения датаграммы
+	struct sockaddr_in target{};
+	// Устанавливаем семейство адреса назначения
+	target.sin_family = AF_INET;
+	// Устанавливаем порт назначения датаграммы
+	target.sin_port = htons(port);
+	// Устанавливаем адрес назначения датаграммы
+	target.sin_addr.s_addr = ::inet_addr("127.0.0.1");
+	// Отправляем датаграмму с исходным ключом сессии
+	ASSERT_GT(::sendto(sock, "AAAAfirst", 9, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
+	// Выполняем опрос событий до создания сессии
+	while(!stop && (sessions == 0) && this->_io->poll());
+	// Проверяем что сессия создана
+	ASSERT_EQ(sessions, 1u);
+	// Проверяем что идентификатор события сессии получен
+	ASSERT_GT(session, 0u);
+	/**
+	 * Запоминаем идентификатор первой сессии отдельно: обработчик создания
+	 * сессии перезаписывает его при каждом принятии
+	 */
+	const awh::event::id_t primary = session;
+	// Формируем дополнительный ключ маршрутизации сессии
+	const awh::net::origin_key_t extra(reinterpret_cast <const uint8_t *> ("BBBB"), 4);
+	// Привязываем дополнительный ключ к созданной сессии
+	ASSERT_TRUE(this->_io->bind(primary, extra));
+	// Проверяем что повторная привязка того же ключа к той же сессии допустима
+	ASSERT_TRUE(this->_io->bind(primary, extra));
+	// Проверяем отказ привязки пустого ключа
+	ASSERT_FALSE(this->_io->bind(session, awh::net::origin_key_t()));
+	// Проверяем отказ привязки ключа к несуществующей сессии
+	ASSERT_FALSE(this->_io->bind(0, extra));
+	// Отправляем датаграмму с дополнительным ключом маршрутизации
+	ASSERT_GT(::sendto(sock, "BBBBsecond", 10, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
+	// Выполняем опрос событий до приёма датаграммы
+	while(!stop && this->_io->poll());
+	/**
+	 * Проверяем что датаграмма с дополнительным ключом попала в ту же сессию:
+	 * новая сессия под неё создаваться не должна
+	 */
+	ASSERT_EQ(sessions, 1u);
+	// Проверяем что принято две датаграммы
+	ASSERT_EQ(received.size(), 2u);
+	// Проверяем что обе датаграммы приняты одной и той же сессией
+	ASSERT_EQ(received[0].first, primary);
+	ASSERT_EQ(received[1].first, primary);
+	// Проверяем содержимое принятых сессией датаграмм
+	ASSERT_EQ(received[0].second, "AAAAfirst");
+	ASSERT_EQ(received[1].second, "BBBBsecond");
+	// Снимаем дополнительный ключ с сессии
+	ASSERT_TRUE(this->_io->unbind(primary, extra));
+	// Проверяем что повторное снятие того же ключа отвергается
+	ASSERT_FALSE(this->_io->unbind(primary, extra));
+	// Сбрасываем флаг остановки теста
+	stop = false;
+	// Отправляем датаграмму со снятым с маршрутизации ключом
+	ASSERT_GT(::sendto(sock, "BBBBthird", 9, 0, reinterpret_cast <struct sockaddr *> (&target), sizeof(target)), 0);
+	// Выполняем опрос событий до создания новой сессии
+	while(!stop && (sessions < 2) && this->_io->poll());
+	// Закрываем сокет отправителя
+	::close(sock);
+	/**
+	 * Проверяем что снятый ключ маршрутизироваться перестал: датаграмма с ним
+	 * образовала новую сессию, а не попала в прежнюю
+	 */
+	ASSERT_EQ(sessions, 2u);
+	// Проверяем что датаграмма со снятым ключом принята
+	ASSERT_EQ(received.size(), 3u);
+	// Проверяем что приняла её другая сессия, а не прежняя
+	ASSERT_NE(received[2].first, primary);
+	// Проверяем содержимое датаграммы со снятым ключом
+	ASSERT_EQ(received[2].second, "BBBBthird");
+}

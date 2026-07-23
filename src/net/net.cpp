@@ -107,9 +107,31 @@ awh::net::Attributes_Unix_Domain_Socket::Attributes_Unix_Domain_Socket() noexcep
  * @brief Конструктор
  *
  */
+awh::net::Origin_Key::Origin_Key() noexcept : size(0), data{0} {}
+/**
+ * @brief Конструктор
+ *
+ * @param data данные ключа сессии
+ * @param size размер ключа сессии
+ */
+awh::net::Origin_Key::Origin_Key(const uint8_t * data, const uint8_t size) noexcept : size(0), data{0} {
+	// Если данные ключа сессии переданы и укладываются в размер ключа
+	if((data != nullptr) && (size > 0) && (size <= MAX_ORIGIN_KEY_SIZE)){
+		// Устанавливаем размер ключа сессии
+		this->size = size;
+		// Копируем данные ключа сессии
+		::memcpy(this->data, data, size);
+	}
+}
+
+/**
+ * @brief Конструктор
+ *
+ */
 awh::net::Datagram_Info::Datagram_Info() noexcept :
  hops(0), ifaceIndex(0),
  family(event::family_t::NONE),
+ congestion(event::ecn_t::NOT_ECT),
  protocol(event::protocol_t::NONE),
  trafficClass(event::dscp_t::CS0) {}
 

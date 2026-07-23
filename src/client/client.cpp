@@ -38,7 +38,7 @@ awh::Client::Domain_Name_System::Domain_Name_System() noexcept :
  * @brief Конструктор
  *
  */
-awh::Client::Identifier::Identifier() noexcept : eid(0), sid(0) {}
+awh::Client::Identifier::Identifier() noexcept : eid(0), ctl(0) {}
 
 /**
  * @brief Конструктор
@@ -163,11 +163,11 @@ void awh::Client::connect(const event::id_t eid, const bool ok) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_coder != nullptr) && (this->_id.sid > 0)){
+		if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 			// Если подключение успешно
 			if(ok){
 				// Если рукопожатие TLS не выполнено
-				if(!this->_coder->handshake(this->_id.sid)){
+				if(!this->_coder->handshake(this->_id.ctl)){
 					// Если функция обратного вызова не установлена
 					if(!this->_callback.is("error_tls")){
 						/**
@@ -268,9 +268,9 @@ void awh::Client::read(const event::id_t eid, const uint8_t * buffer, const size
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_coder != nullptr) && (this->_id.sid > 0)){
+		if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 			// Если данные не расшифрованы
-			if(!this->_coder->decrypt(this->_id.sid, buffer, size)){
+			if(!this->_coder->decrypt(this->_id.ctl, buffer, size)){
 				// Если функция обратного вызова не установлена
 				if(!this->_callback.is("error_tls")){
 					/**
@@ -834,9 +834,9 @@ size_t awh::Client::send(const void * buffer, const size_t size) noexcept {
 		// Если идентификатор клиента установлен
 		if(this->_id.eid > 0){
 			// Если идентификатор TLS и объект TLS установлены
-			if((this->_id.sid > 0) && (this->_coder != nullptr)){
+			if((this->_id.ctl > 0) && (this->_coder != nullptr)){
 				// Если шифрование данных TLS выполнено успешно
-				if(this->_coder->encrypt(this->_id.sid, buffer, size))
+				if(this->_coder->encrypt(this->_id.ctl, buffer, size))
 					// Возвращаем размер отправленных данных
 					return size;
 				// Возвращаем значение по умолчанию
@@ -2186,27 +2186,6 @@ awh::event::id_t awh::Client::init(const event::family_t family, const event::ty
 	return this->_id.eid;
 }
 /**
- * @brief Метод установки идентификатора TLS
- *
- * @param sid идентификатор TLS для установки
- */
-void awh::Client::setSecurityId(const tls::coder_t::id_t sid) noexcept {
-	// Если DNS-резолвер или клиент находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->client.working()){
-		// Если идентификатор TLS для установки передан и объект транспортного уровня безопасности установлен
-		if((sid > 0) && (this->_coder != nullptr)){
-			// Устанавливаем идентификатор TLS для клиента
-			this->_id.sid = sid;
-			// Устанавливаем функцию обратного вызова на событие состояния TLS
-			this->_coder->on(this->_id.sid, std::bind(&client_t::stateTLS, this, _1, _2));
-			// Устанавливаем функцию обратного вызова на событие ошибок TLS
-			this->_coder->on(this->_id.sid, std::bind(&client_t::errorTLS, this, _1, _2, _3));
-			// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
-			this->_coder->on(this->_id.sid, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
-		}
-	}
-}
-/**
  * @brief Конструктор
  *
  * @param fmk объект фреймворка
@@ -2214,58 +2193,6 @@ void awh::Client::setSecurityId(const tls::coder_t::id_t sid) noexcept {
  */
 awh::Client::Client(const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _callback(fmk, log), _unit(nullptr), _coder(nullptr), _fmk(fmk), _log(log) {
-	// Создаём объект юнита клиента
-	this->_unit = make_unique <unit_t> (fmk, log);
-	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
-	this->_unit->client.on <void (const event::status_t)> ("status", &client_t::status, this, 0, _1);
-	// Устанавливаем функцию обратного вызова на событие записи данных
-	this->_unit->client.on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
-	this->_unit->client.on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
-	this->_unit->client.on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
-	this->_unit->client.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &client_t::traffic, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
-	this->_unit->client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие ошибок клиента
-	this->_unit->client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
-	this->_unit->client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
-	this->_unit->client.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
-	this->_unit->client.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
-	this->_unit->client.on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
-}
-/**
- * @brief Конструктор
- *
- * @param tls объект транспортного уровня безопасности
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Client::Client(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _coder(tls), _fmk(fmk), _log(log) {
-	// Если объект транспортного уровня безопасности не установлен
-	if(this->_coder == nullptr){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("TLS object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
-		#endif
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
-	}
 	// Создаём объект юнита клиента
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
@@ -2360,13 +2287,97 @@ awh::Client::Client(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 /**
  * @brief Конструктор
  *
- * @param dns объект DNS-резолвера
- * @param tls объект транспортного уровня безопасности
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
+ * @param ctl   идентификатор контекста безопасности
+ * @param coder объект транспортного уровня безопасности
+ * @param fmk   объект фреймворка
+ * @param log   объект для работы с логами
  */
-awh::Client::Client(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _coder(tls), _fmk(fmk), _log(log) {
+awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder), _fmk(fmk), _log(log) {
+	/**
+	 * Устанавливаем идентификатор контекста безопасности и подписываемся
+	 * на события транспортного уровня: до запуска клиента менять их некому,
+	 * поэтому проверок рабочего состояния здесь не требуется
+	 */
+	if((ctl > 0) && (coder != nullptr)){
+		// Устанавливаем идентификатор контекста безопасности
+		this->_id.ctl = ctl;
+		// Устанавливаем функцию обратного вызова на событие состояния TLS
+		coder->on(this->_id.ctl, std::bind(&client_t::stateTLS, this, _1, _2));
+		// Устанавливаем функцию обратного вызова на событие ошибок TLS
+		coder->on(this->_id.ctl, std::bind(&client_t::errorTLS, this, _1, _2, _3));
+		// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+		coder->on(this->_id.ctl, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
+	}
+	// Если объект транспортного уровня безопасности не установлен
+	if(this->_coder == nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("TLS object is not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("TLS object is not set", log_t::flag_t::CRITICAL);
+		#endif
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	}
+	// Создаём объект юнита клиента
+	this->_unit = make_unique <unit_t> (fmk, log);
+	// Устанавливаем функцию обратного вызова на событие изменения статуса клиента
+	this->_unit->client.on <void (const event::status_t)> ("status", &client_t::status, this, 0, _1);
+	// Устанавливаем функцию обратного вызова на событие записи данных
+	this->_unit->client.on <void (const event::id_t, const size_t)> ("write", &client_t::write, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие изменения состояния клиента
+	this->_unit->client.on <void (const event::id_t, const event::status_t)> ("state", &client_t::state, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие обработки действий клиента
+	this->_unit->client.on <void (const event::id_t, const event::action_t)> ("action", &client_t::action, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->client.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &client_t::traffic, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения данных клиентом
+	this->_unit->client.on <void (const event::id_t, const uint8_t *, const size_t)> ("read", &client_t::read, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие ошибок клиента
+	this->_unit->client.on <void (const event::id_t, const event::error_t, const string &)> ("error", &client_t::error, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие истечения таймаута клиента
+	this->_unit->client.on <bool (const event::id_t, const event::action_t, const uint32_t)> ("timeout", &client_t::timeout, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных клиента
+	this->_unit->client.on <void (const event::id_t, const event::status_t, const size_t)> ("available", &client_t::available, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие неотправленных данных клиента
+	this->_unit->client.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t)> ("spool", &client_t::spool, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие подключения клиента к удалённому серверу
+	this->_unit->client.on <void (const event::id_t, const bool)> ("connect", static_cast <void (client_t::*)(const event::id_t, const bool)>(&client_t::connect), this, _1, _2);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param ctl   идентификатор контекста безопасности
+ * @param coder объект транспортного уровня безопасности
+ * @param dns   объект DNS-резолвера
+ * @param fmk   объект фреймворка
+ * @param log   объект для работы с логами
+ */
+awh::Client::Client(const tls::coder_t::id_t ctl, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _callback(fmk, log), _unit(nullptr), _coder(coder), _fmk(fmk), _log(log) {
+	/**
+	 * Устанавливаем идентификатор контекста безопасности и подписываемся
+	 * на события транспортного уровня: до запуска клиента менять их некому,
+	 * поэтому проверок рабочего состояния здесь не требуется
+	 */
+	if((ctl > 0) && (coder != nullptr)){
+		// Устанавливаем идентификатор контекста безопасности
+		this->_id.ctl = ctl;
+		// Устанавливаем функцию обратного вызова на событие состояния TLS
+		coder->on(this->_id.ctl, std::bind(&client_t::stateTLS, this, _1, _2));
+		// Устанавливаем функцию обратного вызова на событие ошибок TLS
+		coder->on(this->_id.ctl, std::bind(&client_t::errorTLS, this, _1, _2, _3));
+		// Устанавливаем функцию обратного вызова на событие шифрования/дешифрования данных TLS
+		coder->on(this->_id.ctl, std::bind(&client_t::processTLS, this, _1, _2, _3, _4));
+	}
 	// Если объект транспортного уровня безопасности не установлен
 	if(this->_coder == nullptr){
 		/**

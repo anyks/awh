@@ -67,8 +67,8 @@ namespace awh {
 			typedef struct __AWH_SHARED_EXPORT__ Identifier {
 				// Идентификатор клиента
 				event::id_t eid;
-				// Идентификатор безопасности
-				tls::coder_t::id_t sid;
+				// Контекст шаблона безопасности TLS
+				tls::coder_t::id_t cts;
 				/**
 				 * @brief Конструктор
 				 *
@@ -1106,13 +1106,6 @@ namespace awh {
 				// Возвращаем значение по умолчанию
 				return 0;
 			}
-		public:
-			/**
-			 * @brief Метод установки идентификатора TLS шаблона
-			 *
-			 * @param sid идентификатор TLS шаблона для установки
-			 */
-			virtual void setSecurityId(const tls::coder_t::id_t sid) noexcept;
 		private:
 			/**
 			 * @brief Конструктор копирования (запрещаем)
@@ -1136,14 +1129,6 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param tls объект транспортного уровня безопасности
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
-			 */
-			explicit Server(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
-			/**
-			 * @brief Конструктор
-			 *
 			 * @param dns объект DNS-резолвера
 			 * @param fmk объект фреймворка
 			 * @param log объект для работы с логами
@@ -1152,12 +1137,22 @@ namespace awh {
 			/**
 			 * @brief Конструктор
 			 *
-			 * @param dns объект DNS-резолвера
-			 * @param tls объект транспортного уровня безопасности
-			 * @param fmk объект фреймворка
-			 * @param log объект для работы с логами
+			 * @param cts   идентификатор шаблона контекста безопасности
+			 * @param coder объект транспортного уровня безопасности
+			 * @param fmk   объект фреймворка
+			 * @param log   объект для работы с логами
 			 */
-			explicit Server(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept;
+			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept;
+			/**
+			 * @brief Конструктор
+			 *
+			 * @param cts   идентификатор шаблона контекста безопасности
+			 * @param coder объект транспортного уровня безопасности
+			 * @param dns   объект DNS-резолвера
+			 * @param fmk   объект фреймворка
+			 * @param log   объект для работы с логами
+			 */
+			explicit Server(const tls::coder_t::id_t cts, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept;
 		public:
 			/**
 			 * @brief Деструктор

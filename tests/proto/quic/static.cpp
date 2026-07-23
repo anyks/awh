@@ -664,3 +664,95 @@ TEST_F(QuicFixture, FrameSequenceTest){
 	// Проверяем что нагрузка разобрана целиком
 	ASSERT_EQ(offset, size);
 }
+
+/**
+ * @brief Тест извлечения идентификатора соединения из пакета с длинным заголовком
+ *
+ * @details Пакеты с длинным заголовком несут длину идентификатора получателя
+ *          явным октетом, поэтому разбираются без знания локальной политики
+ */
+TEST_F(QuicFixture, RouteLongHeaderTest){
+	// Ключ маршрутизации датаграммы
+	awh::net::origin_key_t key;
+	// Формируем пакет Initial с восьмиоктетным идентификатором получателя
+	const std::string datagram = this->unhex("c000000001080011223344556677051122334455");
+	// Проверяем что идентификатор соединения извлечён
+	ASSERT_TRUE(awh::quic::route(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), 8, key));
+	// Проверяем длину извлечённого идентификатора соединения
+	ASSERT_EQ(key.size, 8u);
+	// Проверяем содержимое извлечённого идентификатора соединения
+	ASSERT_EQ(this->hex(std::string(reinterpret_cast <const char *> (key.data), key.size)), "0011223344556677");
+	/**
+	 * Длина идентификатора берётся из заголовка, а не из локальной политики:
+	 * при иной политике результат обязан остаться прежним
+	 */
+	awh::net::origin_key_t other;
+	// Проверяем что идентификатор соединения извлечён при иной локальной политике
+	ASSERT_TRUE(awh::quic::route(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), 20, other));
+	// Проверяем что извлечённый идентификатор соединения не изменился
+	ASSERT_EQ(this->hex(std::string(reinterpret_cast <const char *> (other.data), other.size)), "0011223344556677");
+}
+
+/**
+ * @brief Тест извлечения идентификатора соединения из пакета с коротким заголовком
+ *
+ * @details Пакеты с коротким заголовком длины идентификатора не несут, и она
+ *          берётся из политики выдачи идентификаторов локальным эндпоинтом
+ */
+TEST_F(QuicFixture, RouteShortHeaderTest){
+	// Ключ маршрутизации датаграммы
+	awh::net::origin_key_t key;
+	// Формируем пакет с коротким заголовком и восьмиоктетным идентификатором получателя
+	const std::string datagram = this->unhex("4100112233445566770a0b0c0d");
+	// Проверяем что идентификатор соединения извлечён
+	ASSERT_TRUE(awh::quic::route(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), 8, key));
+	// Проверяем длину извлечённого идентификатора соединения
+	ASSERT_EQ(key.size, 8u);
+	// Проверяем содержимое извлечённого идентификатора соединения
+	ASSERT_EQ(this->hex(std::string(reinterpret_cast <const char *> (key.data), key.size)), "0011223344556677");
+	// Ключ маршрутизации при иной локальной политике
+	awh::net::origin_key_t other;
+	// Проверяем что идентификатор соединения извлечён при длине в четыре октета
+	ASSERT_TRUE(awh::quic::route(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), 4, other));
+	// Проверяем что длина извлечённого идентификатора соответствует политике
+	ASSERT_EQ(this->hex(std::string(reinterpret_cast <const char *> (other.data), other.size)), "00112233");
+}
+
+/**
+ * @brief Тест отказа извлечения идентификатора соединения из недопустимых датаграмм
+ *
+ * @details Отказ означает, что датаграмма протоколу не принадлежит: сессия под
+ *          неё заводиться не должна, иначе поток мусора исчерпает память
+ */
+TEST_F(QuicFixture, RouteMalformedTest){
+	// Ключ маршрутизации датаграммы
+	awh::net::origin_key_t key;
+	// Проверяем отказ извлечения из непереданной датаграммы
+	ASSERT_FALSE(awh::quic::route(nullptr, 16, 8, key));
+	// Формируем пустую датаграмму
+	const std::string empty = "";
+	// Проверяем отказ извлечения из пустой датаграммы
+	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (empty.data()), empty.size(), 8, key));
+	// Формируем усечённый длинный заголовок
+	const std::string truncated = this->unhex("c0000000");
+	// Проверяем отказ извлечения из усечённого длинного заголовка
+	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (truncated.data()), truncated.size(), 8, key));
+	// Формируем длинный заголовок с длиной идентификатора сверх допустимой (RFC 9000 §17.2)
+	const std::string oversized = this->unhex("c0000000011500112233445566778899aabbccddeeff0011223344");
+	// Проверяем отказ извлечения при недопустимой длине идентификатора
+	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (oversized.data()), oversized.size(), 8, key));
+	// Формируем длинный заголовок с длиной идентификатора сверх размера датаграммы
+	const std::string overflow = this->unhex("c000000001100011223344556677");
+	// Проверяем отказ извлечения при выходе идентификатора за границы датаграммы
+	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (overflow.data()), overflow.size(), 8, key));
+	// Формируем длинный заголовок с нулевой длиной идентификатора получателя
+	const std::string anonymous = this->unhex("c00000000100051122334455");
+	// Проверяем отказ извлечения при нулевом идентификаторе - маршрутизировать нечего
+	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (anonymous.data()), anonymous.size(), 8, key));
+	// Формируем короткий заголовок, усечённый до длины идентификатора
+	const std::string cropped = this->unhex("41001122");
+	// Проверяем отказ извлечения из усечённого короткого заголовка
+	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (cropped.data()), cropped.size(), 8, key));
+	// Проверяем отказ извлечения короткого заголовка при нулевой локальной политике
+	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (cropped.data()), cropped.size(), 0, key));
+}

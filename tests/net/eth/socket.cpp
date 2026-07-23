@@ -15,9 +15,11 @@
 /**
  * Подключаем системные заголовочные файлы
  */
+#include <cstring>
 #include <unistd.h>
 #include <arpa/inet.h>
 #include <sys/types.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
 
 /**
@@ -399,6 +401,139 @@ TEST_F(EthFixture, SocketDscpTest){
 	ASSERT_EQ(awh::event::dscp_t::CS5, this->_eth->socket.getDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6));
 	// Закрываем сокет
 	::close(sock6);
+}
+
+/**
+ * @brief Тест установки и получения значения ECN
+ *
+ * @details Класс обслуживания (DSCP) и признак перегрузки (ECN) занимают один
+ *          октет заголовка IP-пакета, поэтому проверяется не только круговой
+ *          обход каждого поля, но и их взаимная независимость: установка одного
+ *          не должна сбрасывать другое
+ */
+TEST_F(EthFixture, SocketEcnTest){
+	// Создаём UDP сокет IPv4
+	auto sock4 = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокет создан успешно
+	ASSERT_NE(sock4, awh::net::invalid_socket_t);
+	// Проверяем что по умолчанию признак перегрузки не установлен
+	ASSERT_EQ(awh::event::ecn_t::NOT_ECT, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	// Устанавливаем и проверяем признак поддержки ECN для IPv4
+	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock4, awh::event::family_t::IPV4, awh::event::ecn_t::ECT0));
+	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	// Устанавливаем класс обслуживания поверх установленного признака перегрузки
+	ASSERT_TRUE(this->_eth->socket.setDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4, awh::event::dscp_t::CS3));
+	// Проверяем что признак перегрузки установкой класса обслуживания не сброшен
+	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	// Проверяем что класс обслуживания установлен
+	ASSERT_EQ(awh::event::dscp_t::CS3, this->_eth->socket.getDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4));
+	// Меняем признак перегрузки поверх установленного класса обслуживания
+	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock4, awh::event::family_t::IPV4, awh::event::ecn_t::ECT1));
+	// Проверяем что класс обслуживания сменой признака перегрузки не сброшен
+	ASSERT_EQ(awh::event::dscp_t::CS3, this->_eth->socket.getDifferentiatedServicesCodePoint(sock4, awh::event::family_t::IPV4));
+	// Проверяем что признак перегрузки сменён
+	ASSERT_EQ(awh::event::ecn_t::ECT1, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	// Снимаем признак поддержки ECN
+	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock4, awh::event::family_t::IPV4, awh::event::ecn_t::NOT_ECT));
+	ASSERT_EQ(awh::event::ecn_t::NOT_ECT, this->_eth->socket.getExplicitCongestionNotification(sock4, awh::event::family_t::IPV4));
+	// Закрываем сокет
+	::close(sock4);
+
+	// Создаём UDP сокет IPv6
+	auto sock6 = this->_eth->socket.issue(awh::event::family_t::IPV6, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокет создан успешно
+	ASSERT_NE(sock6, awh::net::invalid_socket_t);
+	// Устанавливаем и проверяем признак поддержки ECN для IPv6
+	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(sock6, awh::event::family_t::IPV6, awh::event::ecn_t::ECT0));
+	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock6, awh::event::family_t::IPV6));
+	// Устанавливаем класс обслуживания поверх установленного признака перегрузки
+	ASSERT_TRUE(this->_eth->socket.setDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6, awh::event::dscp_t::CS5));
+	// Проверяем что оба поля октета сохранены независимо
+	ASSERT_EQ(awh::event::ecn_t::ECT0, this->_eth->socket.getExplicitCongestionNotification(sock6, awh::event::family_t::IPV6));
+	ASSERT_EQ(awh::event::dscp_t::CS5, this->_eth->socket.getDifferentiatedServicesCodePoint(sock6, awh::event::family_t::IPV6));
+	// Закрываем сокет
+	::close(sock6);
+}
+
+/**
+ * @brief Тест доставки маркировки ECN принятой датаграммы (RFC 3168 §5)
+ *
+ * @details Маркировка накладывается на заголовок IP-пакета и приложению
+ *          доступна только служебным сообщением сокета. Без включённой
+ *          генерации метаданных трафика датаграмма приходит без неё,
+ *          и определить перегрузку пути невозможно
+ */
+TEST_F(EthFixture, SocketEcnDeliveryTest){
+	// Создаём UDP сокет получателя
+	auto rx = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Создаём UDP сокет отправителя
+	auto tx = this->_eth->socket.issue(awh::event::family_t::IPV4, awh::event::type_t::DATAGRAM, awh::event::protocol_t::UDP);
+	// Проверяем что сокеты созданы успешно
+	ASSERT_NE(rx, awh::net::invalid_socket_t);
+	ASSERT_NE(tx, awh::net::invalid_socket_t);
+	/**
+	 * Включаем генерацию метаданных трафика на сокете получателя: без неё
+	 * служебных сообщений с классом обслуживания сокет не выдаёт
+	 */
+	ASSERT_TRUE(this->_eth->socket.trafficInfoGeneration(rx, awh::event::family_t::IPV4, awh::net::socket_mode_t::ENABLED));
+	// Формируем адрес получателя на петлевом интерфейсе
+	struct sockaddr_in addr;
+	// Зануляем структуру адреса получателя
+	::memset(&addr, 0, sizeof(addr));
+	// Устанавливаем семейство адреса получателя
+	addr.sin_family = AF_INET;
+	// Устанавливаем адрес петлевого интерфейса
+	addr.sin_addr.s_addr = htonl(INADDR_LOOPBACK);
+	// Устанавливаем произвольный порт получателя
+	addr.sin_port = htons(43219);
+	// Если привязка сокета получателя не выполнена
+	if(::bind(rx, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)) != 0){
+		// Закрываем сокеты
+		::close(rx);
+		::close(tx);
+		// Пропускаем тест - порт занят
+		GTEST_SKIP() << "loopback port is not available";
+	}
+	// Помечаем исходящие датаграммы отправителя поддержкой ECN
+	ASSERT_TRUE(this->_eth->socket.setExplicitCongestionNotification(tx, awh::event::family_t::IPV4, awh::event::ecn_t::ECT0));
+	// Отправляем датаграмму получателю
+	ASSERT_EQ(::sendto(tx, "e", 1, 0, reinterpret_cast <struct sockaddr *> (&addr), sizeof(addr)), 1);
+	// Буфер принимаемых данных
+	char buffer[64];
+	// Буфер принимаемых служебных сообщений
+	char control[256];
+	// Описание буфера принимаемых данных
+	struct iovec io = {buffer, sizeof(buffer)};
+	// Описание принимаемого сообщения
+	struct msghdr message;
+	// Зануляем описание принимаемого сообщения
+	::memset(&message, 0, sizeof(message));
+	// Устанавливаем буфер принимаемых данных
+	message.msg_iov = &io;
+	// Устанавливаем количество буферов принимаемых данных
+	message.msg_iovlen = 1;
+	// Устанавливаем буфер принимаемых служебных сообщений
+	message.msg_control = control;
+	// Устанавливаем размер буфера принимаемых служебных сообщений
+	message.msg_controllen = sizeof(control);
+	// Проверяем что датаграмма принята
+	ASSERT_EQ(::recvmsg(rx, &message, 0), 1);
+	// Маркировка ECN принятой датаграммы
+	uint8_t congestion = 0xFF;
+	/**
+	 * Перебираем служебные сообщения принятой датаграммы
+	 */
+	for(struct cmsghdr * cmsg = CMSG_FIRSTHDR(&message); cmsg != nullptr; cmsg = CMSG_NXTHDR(&message, cmsg)){
+		// Если служебное сообщение несёт класс обслуживания заголовка IPv4-пакета
+		if((cmsg->cmsg_level == IPPROTO_IP) && ((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)))
+			// Извлекаем признак перегрузки пути из младших двух бит октета
+			congestion = static_cast <uint8_t> ((* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg))) & 0x03);
+	}
+	// Закрываем сокеты
+	::close(rx);
+	::close(tx);
+	// Проверяем что маркировка доставлена в неизменном виде
+	ASSERT_EQ(congestion, static_cast <uint8_t> (awh::event::ecn_t::ECT0));
 }
 
 /**

@@ -337,6 +337,24 @@ namespace {
 			event::family_t family;
 		public:
 			/**
+			 * Признак опакового ключа сессии. Протоколы с собственной адресацией
+			 * сессий внутри датаграммы маршрутизируются не по четвёрке сокета, а по
+			 * ключу, заданному приложением, поэтому такие идентификаторы образуют
+			 * отдельное пространство и с адресными никогда не совпадают
+			 */
+			bool keyed;
+			/**
+			 * Идентификатор события, которому принадлежит ключ. Сессии сервера
+			 * образуют пространство ключей своего события, поэтому один и тот же
+			 * отправитель на разных серверах даёт разные сессии. Нулевое значение
+			 * означает общее пространство: по нему адресуются посредники, которых
+			 * туннель ищет по адресу назначения, не зная владельца
+			 */
+			event::id_t event;
+			// Опаковый ключ сессии, заданный приложением
+			net::origin_key_t key;
+		public:
+			/**
 			 * @brief Универсальная структура для хранения различных типов адресов
 			 *
 			 */
@@ -408,6 +426,35 @@ namespace {
 				return (* this);
 			}
 			/**
+			 * @brief Метод установки события-владельца идентификатора инициатора запроса
+			 *
+			 * @param event идентификатор события-владельца
+			 * @return      идентификатор инициатора запроса
+			 */
+			Origin_Identifier & owner(const event::id_t event) noexcept {
+				// Устанавливаем идентификатор события-владельца
+				this->event = event;
+				// Возвращаем идентификатор инициатора запроса
+				return (* this);
+			}
+			/**
+			 * @brief Фабричный метод создания идентификатора инициатора запроса из опакового ключа
+			 *
+			 * @param event идентификатор события сервера
+			 * @param key   опаковый ключ сессии
+			 * @return      идентификатор инициатора запроса
+			 */
+			Origin_Identifier & from(const event::id_t event, const net::origin_key_t & key) noexcept {
+				// Копируем опаковый ключ сессии
+				this->key = key;
+				// Устанавливаем идентификатор события сервера
+				this->event = event;
+				// Устанавливаем признак опакового ключа сессии
+				this->keyed = true;
+				// Возвращаем идентификатор инициатора запроса
+				return (* this);
+			}
+			/**
 			 * @brief Фабричный метод создания идентификатора инициатора запроса из sockaddr_un
 			 *
 			 * @param addr структура параметров подключения инициатора запроса
@@ -438,8 +485,20 @@ namespace {
 			 * @return      результат сравнения
 			 */
 			bool operator == (const Origin_Identifier & other) const noexcept {
-				// Сравниваем семейство адресов
-				if(this->family != other.family)
+				// Если признак опакового ключа сессии различается
+				if(this->keyed != other.keyed)
+					// Возвращаем отрицательный результат - пространства ключей не пересекаются
+					return false;
+				// Если идентификатор задан опаковым ключом сессии
+				if(this->keyed)
+					// Выполняем сравнение опаковых ключей сессии в пределах одного события
+					return (
+						(this->event == other.event) &&
+						(this->key.size == other.key.size) &&
+						(::memcmp(this->key.data, other.key.data, this->key.size) == 0)
+					);
+				// Сравниваем событие-владельца и семейство адресов
+				if((this->event != other.event) || (this->family != other.family))
 					// Возвращаем отрицательный результат
 					return false;
 				/**
@@ -474,7 +533,8 @@ namespace {
 			 * @brief Конструктор
 			 *
 			 */
-			explicit Origin_Identifier() noexcept : family(event::family_t::NONE) {};
+			explicit Origin_Identifier() noexcept :
+			 family(event::family_t::NONE), keyed(false), event(0) {};
 	} origin_id_t;
 	/**
 	 * @brief Шаблон функции выполнения приведения типа B к типу A
@@ -529,8 +589,23 @@ namespace std {
 			 * @return   хеш-код объекта
 			 */
 			size_t operator()(const origin_id_t & id) const noexcept {
-				// Вычисляем начальный хеш-код по семейству адресов
-				size_t result = hash <uint8_t> {}(static_cast <uint8_t> (id.family));
+				// Если идентификатор задан опаковым ключом сессии
+				if(id.keyed){
+					// Вычисляем начальный хеш-код по идентификатору события сервера
+					size_t result = hash <event::id_t> {}(id.event);
+					/**
+					 * Перебираем октеты опакового ключа сессии
+					 */
+					for(uint8_t i = 0; i < id.key.size; i++)
+						// Комбинируем хеш-код октета опакового ключа сессии
+						this->combine(result, hash <uint8_t> {}(id.key.data[i]));
+					// Выводим хеш-код опакового ключа сессии
+					return result;
+				}
+				// Вычисляем начальный хеш-код по событию-владельцу
+				size_t result = hash <event::id_t> {}(id.event);
+				// Комбинируем хеш-код семейства адресов
+				this->combine(result, hash <uint8_t> {}(static_cast <uint8_t> (id.family)));
 				/**
 				 * Сравниваем данные в зависимости от семейства адресов
 				 */
@@ -557,14 +632,20 @@ namespace std {
 					} break;
 					// Если адрес установлен как UNIX-сокет
 					case static_cast <uint8_t> (event::family_t::UDS): {
-						// Безопасное чтение 108 байт пути сокета как массива uint64_t
-						const uint64_t * words = reinterpret_cast <const uint64_t *> (id.un.path);
 						/**
-						 * Хэш по всем 108 байтам, включая нули
+						 * Хэш по всем 108 байтам пути сокета, включая нули. Октеты
+						 * вычитываются копированием: путь лежит в упакованной структуре
+						 * по произвольному смещению, и чтение его как массива слов
+						 * было бы обращением по невыровненному адресу
 						 */
-						for(uint8_t i = 0; i < static_cast <uint8_t> (sizeof(id.un.path) / sizeof(uint64_t)); ++i)
+						for(uint8_t i = 0; i < static_cast <uint8_t> (sizeof(id.un.path) / sizeof(uint64_t)); ++i){
+							// Очередная часть пути сокета
+							uint64_t word = 0;
+							// Копируем очередную часть пути сокета
+							::memcpy(&word, id.un.path + (i * sizeof(uint64_t)), sizeof(word));
 							// Комбинируем хеш-код части пути сокета
-							this->combine(result, hash <uint64_t> {}(words[i]));
+							this->combine(result, hash <uint64_t> {}(word));
+						}
 						// Добавляем остаток, если нужно (но 108 % 8 == 4) (Для Linux первые 4 байта зарезервированы под служебные нужды)
 						// const uint32_t tail = (* reinterpret_cast <const uint32_t *> (id.un.path + 104));
 						// Комбинируем хеш-код остатка пути сокета
@@ -712,10 +793,15 @@ namespace io {
 	typedef struct Backlog {
 		// Адаптивный режим очереди ожидания подключения
 		bool adaptive;
-		// Максимальное количество подключений
-		uint16_t max;
+		/**
+		 * Максимальное количество подключений и счётчик уже установленных.
+		 * Разрядность выбрана с запасом: у дейтаграммных событий счётчик считает
+		 * не принятые подключения, а сессии протоколов с собственной адресацией,
+		 * которых на одном событии бывает существенно больше
+		 */
+		uint32_t max;
 		// Количество уже подключённых клиентов
-		uint16_t count;
+		uint32_t count;
 		// Размер очереди ожидания подключения
 		uint16_t depth;
 		/**
@@ -724,7 +810,7 @@ namespace io {
 		 */
 		explicit Backlog() noexcept :
 		 adaptive(false), max(100), count(0), depth(SOMAXCONN) {}
-	} __attribute__((packed)) backlog_t;
+	} backlog_t;
 
 	/**
 	 * @brief Структура состояния события
@@ -929,6 +1015,8 @@ namespace io {
 		engine::callback::event_t event;
 		// Функция обратного вызова при приёме входящего подключения
 		engine::callback::accept_t accept;
+		// Функция обратного вызова при определении сессии дейтаграммного пакета
+		engine::callback::origin_t origin;
 		// Функция обратного вызова при получении информационных метаданных о дейтаграммном пакете
 		engine::callback::traffic_t traffic;
 		/**
@@ -937,7 +1025,8 @@ namespace io {
 		 */
 		explicit Server_Callbacks() noexcept :
 		 write(nullptr), event(nullptr),
-		 accept(nullptr), traffic(nullptr) {}
+		 accept(nullptr), origin(nullptr),
+		 traffic(nullptr) {}
 	} server_callbacks_t;
 
 	/**
@@ -1258,7 +1347,7 @@ namespace io {
 		// Пропускная способность события подключённого клиента
 		bandwidth_t bandwidth;
 		// Общее количество подключений сервера
-		uint16_t & peers;
+		uint32_t & peers;
 		/**
 		 * @brief Конструктор
 		 *
@@ -1266,7 +1355,7 @@ namespace io {
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Peer(uint16_t & num, const fmk_t * fmk, const log_t * log) noexcept :
+		explicit Peer(uint32_t & num, const fmk_t * fmk, const log_t * log) noexcept :
 		 activity(::activity::NONE), transfer(fmk, log), peers(num) {}
 	} peer_t;
 
@@ -1282,7 +1371,16 @@ namespace io {
 		// Объект параметров конечной точки
 		endpoint_t endpoint;
 		// Общее количество подключений сервера
-		uint16_t & origins;
+		uint32_t & origins;
+		// Идентификатор события сервера, породившего сессию
+		event::id_t server;
+		/**
+		 * Ключи, по которым маршрутизируется сессия. Протоколы со сменой
+		 * идентификатора на лету адресуют одну сессию произвольным их числом,
+		 * поэтому список хранится на самой сессии: её уничтожение снимает
+		 * с маршрутизации все ключи разом, а не пересчитанный по адресу один
+		 */
+		vector <origin_id_t> keys;
 		/**
 		 * @brief Конструктор
 		 *
@@ -1290,8 +1388,8 @@ namespace io {
 		 * @param fmk объект фреймворка
 		 * @param log объект работы с логами
 		 */
-		explicit Origin(uint16_t & num, const fmk_t * fmk, const log_t * log) noexcept :
-		 wrate(5), transfer(fmk, log), origins(num) {}
+		explicit Origin(uint32_t & num, const fmk_t * fmk, const log_t * log) noexcept :
+		 wrate(5), transfer(fmk, log), origins(num), server(0) {}
 	} origin_t;
 
 	/**
@@ -1824,34 +1922,21 @@ namespace {
 						if(origin->transfer.fd != net::invalid_socket_t)
 							// Сбрасываем значение дескриптора сокета
 							origin->transfer.fd = net::invalid_socket_t;
-						// Идентификатор сессии источника
-						origin_id_t sid;
 						/**
-						 * Определяем семейство адресов
+						 * Снимаем с маршрутизации все ключи сессии: адресный ключ у
+						 * неё всегда один, а опаковых может быть произвольное число,
+						 * и пересчитать их по адресу невозможно
 						 */
-						switch(static_cast <uint8_t> (origin->state.family)){
-							// Для семейства UNIX-доменных сокетов
-							case static_cast <uint8_t> (event::family_t::UDS):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_un> (origin->endpoint.client));
-							break;
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_in> (origin->endpoint.client));
-							break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_in6> (origin->endpoint.client));
-							break;
+						for(auto & sid : origin->keys){
+							// Ищем сессию по ключу маршрутизации
+							auto i = ::__awh_origin_sessions__.find(sid);
+							// Если сессия найдена
+							if(i != ::__awh_origin_sessions__.end())
+								// Снимаем ключ с маршрутизации
+								::__awh_origin_sessions__.erase(i);
 						}
-						// Ищем сессию по идентификатору источника
-						auto i = ::__awh_origin_sessions__.find(sid);
-						// Если сессия найдена
-						if(i != ::__awh_origin_sessions__.end())
-							// Удаляем сессию
-							::__awh_origin_sessions__.erase(i);
+						// Очищаем список ключей маршрутизации сессии
+						origin->keys.clear();
 						// Если установлена функция обратного вызова
 						if(origin->callbacks.status != nullptr)
 							// Вызываем функцию обратного вызова при уничтожении события
@@ -8588,9 +8673,18 @@ namespace io {
 													// Сохраняем сырое значение TTL (IPv4)
 													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
-												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													/**
+													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+													 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+													 */
+													client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+													// Сохраняем признак перегрузки пути принятого пакета
+													client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+												}
 											} break;
 											// Если уровень control message соответствует IPv6
 											case IPPROTO_IPV6: {
@@ -8627,15 +8721,31 @@ namespace io {
 													 */
 													switch(cmsg->cmsg_type){
 														// Если тип control message соответствует TCLASS
-														case IPV6_TCLASS:
+														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-														break;
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															/**
+															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+															 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+															 */
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+															// Сохраняем признак перегрузки пути принятого пакета
+															client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+														} break;
 														// Если тип control message соответствует RECVTCLASS
-														case IPV6_RECVTCLASS:
+														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-														break;
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															/**
+															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+															 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+															 */
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+															// Сохраняем признак перегрузки пути принятого пакета
+															client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+														} break;
 														/**
 														 * Если тип control message соответствует PKTINFO,
 														 * извлекаем индекс сетевого интерфейса источника из control message
@@ -8811,9 +8921,18 @@ namespace io {
 												// Сохраняем сырое значение TTL (IPv4)
 												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
-											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												/**
+												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+												 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+												 */
+												client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+												// Сохраняем признак перегрузки пути принятого пакета
+												client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+											}
 										} break;
 										// Если уровень control message соответствует IPv6
 										case IPPROTO_IPV6: {
@@ -8850,15 +8969,31 @@ namespace io {
 												 */
 												switch(cmsg->cmsg_type){
 													// Если тип control message соответствует TCLASS
-													case IPV6_TCLASS:
+													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-													break;
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														/**
+														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+														 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+														 */
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+														// Сохраняем признак перегрузки пути принятого пакета
+														client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+													} break;
 													// Если тип control message соответствует RECVTCLASS
-													case IPV6_RECVTCLASS:
+													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-													break;
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														/**
+														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+														 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+														 */
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+														// Сохраняем признак перегрузки пути принятого пакета
+														client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+													} break;
 													/**
 													 * Если тип control message соответствует PKTINFO,
 													 * извлекаем индекс сетевого интерфейса источника из control message
@@ -9004,9 +9139,18 @@ namespace io {
 													// Сохраняем сырое значение TTL (IPv4)
 													client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
-												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													/**
+													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+													 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+													 */
+													client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+													// Сохраняем признак перегрузки пути принятого пакета
+													client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+												}
 											} break;
 											// Если уровень control message соответствует IPv6
 											case IPPROTO_IPV6: {
@@ -9043,15 +9187,31 @@ namespace io {
 													 */
 													switch(cmsg->cmsg_type){
 														// Если тип control message соответствует TCLASS
-														case IPV6_TCLASS:
+														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-														break;
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															/**
+															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+															 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+															 */
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+															// Сохраняем признак перегрузки пути принятого пакета
+															client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+														} break;
 														// Если тип control message соответствует RECVTCLASS
-														case IPV6_RECVTCLASS:
+														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-														break;
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															/**
+															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+															 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+															 */
+															client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+															// Сохраняем признак перегрузки пути принятого пакета
+															client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+														} break;
 														/**
 														 * Если тип control message соответствует PKTINFO,
 														 * извлекаем индекс сетевого интерфейса источника из control message
@@ -9240,9 +9400,18 @@ namespace io {
 												// Сохраняем сырое значение TTL (IPv4)
 												client->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
-											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												/**
+												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+												 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+												 */
+												client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+												// Сохраняем признак перегрузки пути принятого пакета
+												client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+											}
 										} break;
 										// Если уровень control message соответствует IPv6
 										case IPPROTO_IPV6: {
@@ -9279,15 +9448,31 @@ namespace io {
 												 */
 												switch(cmsg->cmsg_type){
 													// Если тип control message соответствует TCLASS
-													case IPV6_TCLASS:
+													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-													break;
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														/**
+														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+														 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+														 */
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+														// Сохраняем признак перегрузки пути принятого пакета
+														client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+													} break;
 													// Если тип control message соответствует RECVTCLASS
-													case IPV6_RECVTCLASS:
+													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														client->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-													break;
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														/**
+														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+														 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+														 */
+														client->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+														// Сохраняем признак перегрузки пути принятого пакета
+														client->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+													} break;
 													/**
 													 * Если тип control message соответствует PKTINFO,
 													 * извлекаем индекс сетевого интерфейса источника из control message
@@ -10147,9 +10332,18 @@ namespace io {
 													// Сохраняем сырое значение TTL (IPv4)
 													server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 												// Если тип control message соответствует TOS или RECVTOS
-												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+												else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
 													// Сохраняем класс трафика IPv4 (TOS)
-													server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+													/**
+													 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+													 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+													 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+													 */
+													server->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+													// Сохраняем признак перегрузки пути принятого пакета
+													server->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+												}
 											} break;
 											// Если уровень control message соответствует IPv6
 											case IPPROTO_IPV6: {
@@ -10186,15 +10380,31 @@ namespace io {
 													 */
 													switch(cmsg->cmsg_type){
 														// Если тип control message соответствует TCLASS
-														case IPV6_TCLASS:
+														case IPV6_TCLASS: {
 															// Сохраняем класс трафика IPv6 (TCLASS)
-															server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-														break;
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															/**
+															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+															 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+															 */
+															server->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+															// Сохраняем признак перегрузки пути принятого пакета
+															server->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+														} break;
 														// Если тип control message соответствует RECVTCLASS
-														case IPV6_RECVTCLASS:
+														case IPV6_RECVTCLASS: {
 															// Сохраняем класс трафика IPv6 (RECVTCLASS)
-															server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-														break;
+															const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+															/**
+															 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+															 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+															 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+															 */
+															server->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+															// Сохраняем признак перегрузки пути принятого пакета
+															server->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+														} break;
 														/**
 														 * Если тип control message соответствует PKTINFO,
 														 * извлекаем индекс сетевого интерфейса источника из control message
@@ -10414,9 +10624,18 @@ namespace io {
 												// Сохраняем сырое значение TTL (IPv4)
 												server->raw.info.hops = static_cast <uint8_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
 											// Если тип control message соответствует TOS или RECVTOS
-											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS))
+											else if((cmsg->cmsg_type == IP_TOS) || (cmsg->cmsg_type == IP_RECVTOS)) {
 												// Сохраняем класс трафика IPv4 (TOS)
-												server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+												/**
+												 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+												 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+												 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+												 */
+												server->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+												// Сохраняем признак перегрузки пути принятого пакета
+												server->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+											}
 										} break;
 										// Если уровень control message соответствует IPv6
 										case IPPROTO_IPV6: {
@@ -10453,15 +10672,31 @@ namespace io {
 												 */
 												switch(cmsg->cmsg_type){
 													// Если тип control message соответствует TCLASS
-													case IPV6_TCLASS:
+													case IPV6_TCLASS: {
 														// Сохраняем класс трафика IPv6 (TCLASS)
-														server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-													break;
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														/**
+														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+														 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+														 */
+														server->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+														// Сохраняем признак перегрузки пути принятого пакета
+														server->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+													} break;
 													// Если тип control message соответствует RECVTCLASS
-													case IPV6_RECVTCLASS:
+													case IPV6_RECVTCLASS: {
 														// Сохраняем класс трафика IPv6 (RECVTCLASS)
-														server->raw.info.trafficClass = static_cast <event::dscp_t> (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
-													break;
+														const uint8_t tclass = (* reinterpret_cast <const uint8_t *> (CMSG_DATA(cmsg)));
+														/**
+														 * Разделяем байт на два независимых поля: старшие шесть бит несут класс
+														 * обслуживания (DSCP), младшие два - признак перегрузки пути (ECN),
+														 * которым маршрутизаторы сигнализируют о заторе (RFC 3168 §5)
+														 */
+														server->raw.info.trafficClass = static_cast <event::dscp_t> (tclass & 0xFC);
+														// Сохраняем признак перегрузки пути принятого пакета
+														server->raw.info.congestion = static_cast <event::ecn_t> (tclass & 0x03);
+													} break;
 													/**
 													 * Если тип control message соответствует PKTINFO,
 													 * извлекаем индекс сетевого интерфейса источника из control message
@@ -26623,24 +26858,58 @@ namespace io {
 		// Идентификатор сессии источника
 		origin_id_t sid;
 		/**
-		 * Определяем семейство адресов
+		 * Если установлена функция обратного вызова определения сессии, ключ
+		 * маршрутизации задаёт приложение: протоколы с собственной адресацией
+		 * сессий внутри датаграммы четвёркой сокета не адресуются
 		 */
-		switch(static_cast <uint8_t> (server->state.family)){
-			// Для семейства UNIX-доменных сокетов
-			case static_cast <uint8_t> (event::family_t::UDS):
-				// Формируем идентификатор источника
-				sid.from(::trust_cast <struct sockaddr_un> (server->endpoint.client));
-			break;
-			// Для семейства IPv4
-			case static_cast <uint8_t> (event::family_t::IPV4):
-				// Формируем идентификатор источника
-				sid.from(::trust_cast <struct sockaddr_in> (server->endpoint.client));
-			break;
-			// Для семейства IPv6
-			case static_cast <uint8_t> (event::family_t::IPV6):
-				// Формируем идентификатор источника
-				sid.from(::trust_cast <struct sockaddr_in6> (server->endpoint.client));
-			break;
+		if(server->callbacks.origin != nullptr){
+			// Ключ сессии, заданный приложением
+			net::origin_key_t key;
+			// Если ключ сессии извлечь не удалось либо он пустой
+			if(!server->callbacks.origin(server->id, buffer, size, key) || (key.size == 0)){
+				// Если установлена функция обратного вызова
+				if(server->callbacks.status != nullptr)
+					// Вызываем функцию обратного вызова об отбрасывании датаграммы
+					server->callbacks.status(server->id, event::status_t::GARBAGE);
+				/**
+				 * Выводим отрицательный результат: датаграмма протоколу не
+				 * принадлежит, и сессия под неё не заводится - иначе поток
+				 * мусорных датаграмм исчерпал бы память сессиями
+				 */
+				return false;
+			}
+			// Формируем идентификатор источника из ключа сессии
+			sid.from(server->id, key);
+		/**
+		 * Если функция обратного вызова определения сессии не установлена
+		 */
+		} else {
+			/**
+			 * Определяем семейство адресов
+			 */
+			switch(static_cast <uint8_t> (server->state.family)){
+				// Для семейства UNIX-доменных сокетов
+				case static_cast <uint8_t> (event::family_t::UDS):
+					// Формируем идентификатор источника
+					sid.from(::trust_cast <struct sockaddr_un> (server->endpoint.client));
+				break;
+				// Для семейства IPv4
+				case static_cast <uint8_t> (event::family_t::IPV4):
+					// Формируем идентификатор источника
+					sid.from(::trust_cast <struct sockaddr_in> (server->endpoint.client));
+				break;
+				// Для семейства IPv6
+				case static_cast <uint8_t> (event::family_t::IPV6):
+					// Формируем идентификатор источника
+					sid.from(::trust_cast <struct sockaddr_in6> (server->endpoint.client));
+				break;
+			}
+			/**
+			 * Закрепляем ключ за событием сервера: сессии разных серверов не
+			 * должны сходиться на одном отправителе, а без владельца один и тот же
+			 * адрес источника дал бы им общую сессию
+			 */
+			sid.owner(server->id);
 		}
 		// Ищем сессию по идентификатору источника
 		auto i = ::__awh_origin_sessions__.find(sid);
@@ -26648,6 +26917,45 @@ namespace io {
 		if(i != ::__awh_origin_sessions__.end()){
 			// Получаем текущее значение объекта однорангового узла-источника
 			::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second);
+			/**
+			 * Если адрес отправителя изменился, соединение перешло на новый путь:
+			 * сессия адресуется ключом, а не четвёркой сокета, поэтому она следует
+			 * за отправителем. Ответы обязаны уйти на новый адрес, иначе они
+			 * попадут по прежнему пути, которого уже нет
+			 */
+			if(sid.keyed && ((origin->endpoint.size != server->endpoint.size) ||
+			   (::memcmp(&origin->endpoint.client, &server->endpoint.client, server->endpoint.size) != 0))){
+				// Перепривязываем сессию на адрес нового пути
+				::memcpy(&origin->endpoint.client, &server->endpoint.client, server->endpoint.size);
+				// Устанавливаем размер объекта подключения нового пути
+				origin->endpoint.size = server->endpoint.size;
+				// Если объект адреса удалённого узла создан
+				if(origin->remote != nullptr){
+					/**
+					 * Определяем семейство адресов
+					 */
+					switch(static_cast <uint8_t> (server->state.family)){
+						// Для семейства IPv4
+						case static_cast <uint8_t> (event::family_t::IPV4): {
+							// Получаем объект хоста IPv4-адреса
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+							// Устанавливаем порт нового пути
+							remote->port = ntohs(::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_port);
+							// Устанавливаем IP-адрес нового пути
+							awh_cast <net::addr_net_ipv4_t *> (remote->ip.get())->address = ::trust_cast <struct sockaddr_in> (origin->endpoint.client).sin_addr.s_addr;
+						} break;
+						// Для семейства IPv6
+						case static_cast <uint8_t> (event::family_t::IPV6): {
+							// Получаем объект хоста IPv6-адреса
+							net::attr_net_t * remote = awh_cast <net::attr_net_t *> (origin->remote.get());
+							// Устанавливаем порт нового пути
+							remote->port = ntohs(::trust_cast <struct sockaddr_in6> (origin->endpoint.client).sin6_port);
+							// Устанавливаем IP-адрес нового пути
+							::memcpy(&awh_cast <net::addr_net_ipv6_t *> (remote->ip.get())->address[0], &::trust_cast <struct sockaddr_in6> (origin->endpoint.client).sin6_addr, 16);
+						} break;
+					}
+				}
+			}
 			// Если событие находится не в состоянии паузы
 			if(origin->state.status != event::status_t::PAUSED){
 				// Создаём охранника узла события
@@ -27125,8 +27433,12 @@ namespace io {
 					::io::origin_t * origin = awh_cast <::io::origin_t *> (ret.first->second.get());
 					// Устанавливаем идентификатор объекта однорангового узла-источника
 					origin->id = ret.first->first;
+					// Устанавливаем идентификатор события сервера, породившего сессию
+					origin->server = server->id;
 					// Регистрируем сессию источника по идентификатору источника
 					::__awh_origin_sessions__.emplace(sid, origin);
+					// Запоминаем ключ маршрутизации на самой сессии
+					origin->keys.push_back(sid);
 					// Создаём охранника узла события
 					::local::guard_t guard(origin);
 					// Если установлена функция обратного вызова
@@ -45300,6 +45612,162 @@ bool awh::engine::IO::setDifferentiatedServicesCodePoint(const event::id_t id, c
 	return false;
 }
 /**
+ * @brief Метод получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+ *
+ * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
+ *       перегрузки принятых пакетов приходит отдельно для каждой
+ *       датаграммы и извлекается методом getTrafficInfo
+ *
+ * @param id     идентификатор события
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @return       значение ECN
+ */
+awh::event::ecn_t awh::engine::IO::getExplicitCongestionNotification(const event::id_t id, const event::family_t family) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Извлекаем значение поля Explicit Congestion Notification (ECN) связанного события
+						return this->getExplicitCongestionNotification(mediator->dest, family);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Извлекаем значение поля Explicit Congestion Notification (ECN) клиента
+					return this->_eth.socket.getExplicitCongestionNotification(client->transfer.fd, family);
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Извлекаем значение поля Explicit Congestion Notification (ECN) сервера
+					return this->_eth.socket.getExplicitCongestionNotification(server->fd, family);
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				make_tuple(
+					id, static_cast <uint16_t> (family)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return event::ecn_t::NOT_ECT;
+}
+/**
+ * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+ *
+ * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
+ *       октет заголовка, поэтому установка затрагивает только младшие
+ *       два бита
+ *
+ * @param id     идентификатор события
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param ecn    значение ECN
+ * @return       результат работы функции
+ */
+bool awh::engine::IO::setExplicitCongestionNotification(const event::id_t id, const event::family_t family, const event::ecn_t ecn) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			/**
+			 * Определяем чем является текущий узел
+			 */
+			switch(static_cast <uint8_t> (i->second->state.node)){
+				// Если узел является посредником
+				case static_cast <uint8_t> (event::node_t::MEDIATOR): {
+					// Получаем объект посредника
+					::io::mediator_t * mediator = awh_cast <::io::mediator_t *> (i->second.get());
+					// Если идентификатор связанного события установлен
+					if(mediator->dest != 0)
+						// Устанавливаем значение поля Explicit Congestion Notification (ECN) связанного события
+						return this->setExplicitCongestionNotification(mediator->dest, family, ecn);
+				} break;
+				// Если узел является клиентом
+				case static_cast <uint8_t> (event::node_t::CLIENT): {
+					// Получаем текущее значение объекта клиента
+					::io::client_t * client = awh_cast <::io::client_t *> (i->second.get());
+					// Устанавливаем значение поля Explicit Congestion Notification (ECN) клиента
+					return this->_eth.socket.setExplicitCongestionNotification(client->transfer.fd, family, ecn);
+				}
+				// Если узел является сервером
+				case static_cast <uint8_t> (event::node_t::SERVER): {
+					// Получаем текущее значение объекта сервера
+					::io::server_t * server = awh_cast <::io::server_t *> (i->second.get());
+					// Устанавливаем значение поля Explicit Congestion Notification (ECN) сервера
+					return this->_eth.socket.setExplicitCongestionNotification(server->fd, family, ecn);
+				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				make_tuple(
+					id, static_cast <uint16_t> (family),
+					static_cast <uint16_t> (ecn)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return false;
+}
+/**
  * @brief Метод получения обнаружения максимального размера пакета (MTU)
  *
  * @param id     идентификатор события
@@ -46456,6 +46924,282 @@ bool awh::engine::IO::membership(const event::id_t id, const event::mode_t mode,
 		#if DEBUG_MODE
 			// Записываем ошибку в лог
 			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (mode)), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return false;
+}
+/**
+ * @brief Метод привязки дополнительного ключа маршрутизации к сессии
+ *
+ * @note Одна сессия адресуется произвольным числом ключей: протоколы,
+ *       меняющие идентификатор по ходу работы, обращаются к ней по
+ *       любому из привязанных. Ключи снимаются автоматически при
+ *       уничтожении сессии
+ *
+ * @param id  идентификатор события сессии
+ * @param key привязываемый ключ сессии
+ * @return    результат привязки (false - ключ занят другой сессией)
+ */
+bool awh::engine::IO::bind(const event::id_t id, const net::origin_key_t & key) noexcept {
+	// Если ключ сессии пустой
+	if(key.size == 0)
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Если узел не является одноранговым узлом-источником
+			if(i->second->state.node != event::node_t::ORIGIN)
+				// Выводим отрицательный результат - ключи маршрутизации есть только у сессий
+				return false;
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			// Получаем текущее значение объекта однорангового узла-источника
+			::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+			// Идентификатор сессии источника
+			::origin_id_t sid;
+			// Формируем идентификатор источника из ключа сессии
+			sid.from(origin->server, key);
+			// Выполняем поиск ключа маршрутизации
+			auto j = ::__awh_origin_sessions__.find(sid);
+			// Если ключ маршрутизации уже занят
+			if(j != ::__awh_origin_sessions__.end())
+				// Выводим результат по принадлежности ключа этой же сессии
+				return (j->second == origin);
+			// Регистрируем сессию источника по ключу маршрутизации
+			::__awh_origin_sessions__.emplace(sid, origin);
+			// Запоминаем ключ маршрутизации на самой сессии
+			origin->keys.push_back(sid);
+			// Выводим положительный результат
+			return true;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				make_tuple(
+					id, static_cast <uint16_t> (key.size)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return false;
+}
+/**
+ * @brief Метод снятия ключа маршрутизации с сессии
+ *
+ * @param id  идентификатор события сессии
+ * @param key снимаемый ключ сессии
+ * @return    результат снятия
+ */
+bool awh::engine::IO::unbind(const event::id_t id, const net::origin_key_t & key) noexcept {
+	// Если ключ сессии пустой
+	if(key.size == 0)
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден
+		if(i != ::__awh_nodes__.end()){
+			// Если узел не является одноранговым узлом-источником
+			if(i->second->state.node != event::node_t::ORIGIN)
+				// Выводим отрицательный результат - ключи маршрутизации есть только у сессий
+				return false;
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			// Получаем текущее значение объекта однорангового узла-источника
+			::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
+			// Идентификатор сессии источника
+			::origin_id_t sid;
+			// Формируем идентификатор источника из ключа сессии
+			sid.from(origin->server, key);
+			// Выполняем поиск ключа маршрутизации
+			auto j = ::__awh_origin_sessions__.find(sid);
+			// Если ключ маршрутизации не найден либо принадлежит другой сессии
+			if((j == ::__awh_origin_sessions__.end()) || (j->second != origin))
+				// Выводим отрицательный результат
+				return false;
+			// Снимаем ключ с маршрутизации
+			::__awh_origin_sessions__.erase(j);
+			/**
+			 * Перебираем список ключей маршрутизации сессии
+			 */
+			for(auto k = origin->keys.begin(); k != origin->keys.end(); ++k){
+				// Если ключ маршрутизации найден
+				if((* k) == sid){
+					// Удаляем ключ из списка ключей маршрутизации сессии
+					origin->keys.erase(k);
+					// Прекращаем поиск
+					break;
+				}
+			}
+			/**
+			 * Сессия без ключей маршрутизации не уничтожается: у протоколов есть
+			 * период завершения, когда соединение уже не маршрутизируется, но
+			 * объект приложению ещё нужен. Уничтожение выполняется явно
+			 */
+			return true;
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug(
+				"%s", __PRETTY_FUNCTION__,
+				make_tuple(
+					id, static_cast <uint16_t> (key.size)
+				), log_t::flag_t::CRITICAL, error.what()
+			);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return false;
+}
+/**
+ * @brief Метод получения предельного количества одновременных подключений события
+ *
+ * @param id идентификатор события
+ * @return   предельное количество одновременных подключений
+ */
+uint32_t awh::engine::IO::getMaxConnections(const event::id_t id) const noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Если узел является сервером
+			if(i->second->state.node == event::node_t::SERVER){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				// Выводим предельное количество одновременных подключений сервера
+				return awh_cast <::io::server_t *> (i->second.get())->backlog.max;
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+	// Возвращаем значение по умолчанию
+	return 0;
+}
+/**
+ * @brief Метод установки предельного количества одновременных подключений события
+ *
+ * @note Для потоковых событий ограничивает число принятых подключений,
+ *       для дейтаграммных - число сессий. Достижение предела означает
+ *       отказ в создании новой сессии, поэтому предел служит защитой
+ *       от исчерпания памяти потоком датаграмм от чужих отправителей
+ *
+ * @param id  идентификатор события
+ * @param max предельное количество одновременных подключений
+ * @return    результат установки
+ */
+bool awh::engine::IO::setMaxConnections(const event::id_t id, const uint32_t max) noexcept {
+	// Если предел одновременных подключений не задан
+	if(max == 0)
+		// Выводим отрицательный результат - предел в ноль подключений лишает событие смысла
+		return false;
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Если узел является сервером
+			if(i->second->state.node == event::node_t::SERVER){
+				// Создаём охранника узла события
+				::local::guard_t guard(i->second.get());
+				// Устанавливаем предельное количество одновременных подключений сервера
+				awh_cast <::io::server_t *> (i->second.get())->backlog.max = max;
+				// Выводим положительный результат
+				return true;
+			}
+			// Устанавливаем текст ошибки
+			const string error = "Maximum connections limit is only supported for server nodes";
+			/**
+			 * Если включён режим отладки
+			 */
+			#if DEBUG_MODE
+				// Записываем ошибку в лог
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::WARNING, error.c_str());
+			/**
+			 * Если режим отладки не включён
+			 */
+			#else
+				// Записываем ошибку в лог
+				this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+			#endif
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, max), log_t::flag_t::CRITICAL, error.what());
 		/**
 		 * Если режим отладки не включён
 		 */
@@ -51979,7 +52723,7 @@ bool awh::engine::IO::connect(const vector <event::id_t> & ids) noexcept {
  * @param max максимальное количество входящих соединений
  * @return    результат выполнения перевода в режим прослушивания
  */
-bool awh::engine::IO::listen(const event::id_t id, const uint16_t max) noexcept {
+bool awh::engine::IO::listen(const event::id_t id, const uint32_t max) noexcept {
 	// Переменная результата
 	bool result = false;
 	/**
@@ -58332,30 +59076,13 @@ bool awh::engine::IO::isAlive(const event::id_t id) const noexcept {
 					if(i->second->state.status == event::status_t::SUCCESS){
 						// Получаем текущее значение объекта однорангового узла-источника
 						::io::origin_t * origin = awh_cast <::io::origin_t *> (i->second.get());
-						// Идентификатор сессии источника
-						origin_id_t sid;
 						/**
-						 * Определяем семейство адресов
+						 * Проверяем наличие ключей маршрутизации: сессия жива, пока по
+						 * ней можно доставить датаграмму. Пересчёт ключа по адресу здесь
+						 * непригоден - сессии протоколов с собственной адресацией
+						 * адресным ключом не обладают вовсе
 						 */
-						switch(static_cast <uint8_t> (origin->state.family)){
-							// Для семейства UNIX-доменных сокетов
-							case static_cast <uint8_t> (event::family_t::UDS):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_un> (origin->endpoint.client));
-							break;
-							// Для семейства IPv4
-							case static_cast <uint8_t> (event::family_t::IPV4):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_in> (origin->endpoint.client));
-							break;
-							// Для семейства IPv6
-							case static_cast <uint8_t> (event::family_t::IPV6):
-								// Формируем идентификатор источника
-								sid.from(::trust_cast <struct sockaddr_in6> (origin->endpoint.client));
-							break;
-						}
-						// Проверяем наличие сессии в списке активных сессий
-						return (::__awh_origin_sessions__.find(sid) != ::__awh_origin_sessions__.end());
+						return !origin->keys.empty();
 					}
 				} break;
 				// Если узел является туннелем
@@ -61273,6 +62000,69 @@ void awh::engine::IO::on(const event::id_t id, engine::callback::accept_t cb) no
 						this->_log->print("A accept callback cannot be set for this event type", log_t::flag_t::WARNING);
 					#endif
 				}
+			}
+		}
+	/**
+	 * Если возникает ошибка
+	 */
+	} catch(const exception & error) {
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::CRITICAL, error.what());
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("%s", log_t::flag_t::CRITICAL, error.what());
+		#endif
+	}
+}
+/**
+ * @brief Метод установки функции обратного вызова для определения сессии дейтаграммного пакета
+ *
+ * @note Поддерживается только серверными узлами. Установка функции
+ *       переводит событие на маршрутизацию датаграмм по ключу
+ *       приложения вместо адреса отправителя
+ *
+ * @param id идентификатор события
+ * @param cb функция обратного вызова
+ */
+void awh::engine::IO::on(const event::id_t id, engine::callback::origin_t cb) noexcept {
+	/**
+	 * Выполняем перехват ошибок
+	 */
+	try {
+		// Выполняем поиск идентификатора события
+		auto i = ::__awh_nodes__.find(id);
+		// Если идентификатор события найден и событие не подлежит уничтожению
+		if((i != ::__awh_nodes__.end()) && (i->second->state.status != event::status_t::DESTROYED)){
+			// Создаём охранника узла события
+			::local::guard_t guard(i->second.get());
+			// Если узел является сервером
+			if(i->second->state.node == event::node_t::SERVER)
+				// Устанавливаем функцию обратного вызова для определения сессии дейтаграммного пакета
+				awh_cast <::io::server_t *> (i->second.get())->callbacks.origin = ::move(cb);
+			// Если узел сервером не является
+			else {
+				// Устанавливаем текст ошибки
+				const string error = "Origin callback is only supported for server nodes";
+				/**
+				 * Если включён режим отладки
+				 */
+				#if DEBUG_MODE
+					// Записываем ошибку в лог
+					this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id), log_t::flag_t::WARNING, error.c_str());
+				/**
+				 * Если режим отладки не включён
+				 */
+				#else
+					// Записываем ошибку в лог
+					this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
+				#endif
 			}
 		}
 	/**

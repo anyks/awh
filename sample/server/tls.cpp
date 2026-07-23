@@ -210,8 +210,10 @@ int32_t main(int32_t argc, char * argv[]){
 	// Устанавливаем список поддерживаемых DNS-серверов
 	dns.setServers({"77.88.8.8", "77.88.8.1"});
 	*/
+	// Регистрируем объект транспортного уровня безопасности
+	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Создаём объект сервера
-	server_t server(&tls, &fmk, &log);
+	server_t server(cts, &tls, &fmk, &log);
 	// Создаём событие сервера и сохраняем его идентификатор
 	const event::id_t eid = server.init(event::family_t::IPV4, event::type_t::STREAM, event::protocol_t::TCP);
 	// Устананавливаем опции события
@@ -220,8 +222,6 @@ int32_t main(int32_t argc, char * argv[]){
 		cout << " Successfully set event options!" << endl;
 	// Записываем ошибку в лог установки опций события
 	else cout << " Failed to set event options!" << endl;
-	// Регистрируем объект транспортного уровня безопасности
-	const tls::coder_t::id_t cts = tls.context(event::node_t::SERVER, event::protocol_t::TCP);
 	// Устанавливаем ALPN протоколы TLS
 	tls.alpn(cts, {
 		{0,"h3"},
@@ -259,8 +259,6 @@ int32_t main(int32_t argc, char * argv[]){
 	tls.certificate(cts, "../sh/certificates/server/cert.pem");
 	// Устанавливаем приватный ключ TLS
 	tls.privateKey(cts, "../sh/certificates/server/key.pem");
-	// Устанавливаем идентификатор TLS для сервера
-	server.setSecurityId(cts);
 	// Устанавливаем порт и хост сервера
 	// if(server.setPort(2222) && server.setHost("localhost")){
 	if(server.setPort(2222) && server.setHost("127.0.0.1")){

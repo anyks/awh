@@ -1144,8 +1144,13 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 	bool result = false;
 	// Если сокет корректен
 	if(sock != net::invalid_socket_t){
-		// Преобразуем значение DSCP в тип int32_t для установки параметра сокета
-		const int32_t tclass = static_cast <int32_t> (dscp);
+		/**
+		 * Класс обслуживания (DSCP) и признак перегрузки (ECN) занимают один октет
+		 * заголовка, поэтому установка выполняется чтением текущего значения с
+		 * заменой только старших шести бит: запись целого октета сбросила бы
+		 * установленный признак перегрузки
+		 */
+		const int32_t tclass = (static_cast <int32_t> (dscp) | static_cast <int32_t> (this->getExplicitCongestionNotification(sock, family)));
 		/**
 		 * Определяем семейство события
 		 */
@@ -1192,6 +1197,176 @@ bool awh::eth::Socket::setDifferentiatedServicesCodePoint(const net::socket_t so
 								sock,
 								static_cast <uint16_t> (family),
 								static_cast <uint16_t> (dscp)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод получения значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+ *
+ * @note Выдаёт значение, устанавливаемое на исходящих пакетах. Признак
+ *       перегрузки принятых пакетов приходит отдельно для каждой
+ *       датаграммы в метаданных дейтаграммного пакета
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @return       значение ECN
+ */
+awh::event::ecn_t awh::eth::Socket::getExplicitCongestionNotification(const net::socket_t sock, const event::family_t family) const noexcept {
+	// Переменная результата
+	event::ecn_t result = event::ecn_t::NOT_ECT;
+	// Если сокет корректен
+	if(sock != net::invalid_socket_t){
+		// Прочитать текущее значение
+		int32_t tclass = 0;
+		// Получаем размер прочитанного значения
+		socklen_t length = sizeof(tclass);
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Считываем значение поля Type Of Service (TOS) заголовка IPv4-пакета
+				if(::getsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, &length) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family)
+							), log_t::flag_t::CRITICAL,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Считываем значение поля Traffic Class (TC) заголовка IPv6-пакета
+				if(::getsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, &tclass, &length) != 0){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family)
+							), log_t::flag_t::CRITICAL,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
+					#endif
+				}
+			} break;
+		}
+		// Маскируем значение поля Traffic Class (TC) для получения только ECN
+		result = static_cast <event::ecn_t> (tclass & 0x03);
+	}
+	// Возвращаем результат
+	return result;
+}
+/**
+ * @brief Метод установки значения поля Explicit Congestion Notification (ECN) в заголовке IP-пакета
+ *
+ * @note Класс обслуживания (DSCP) сохраняется: оба поля занимают один
+ *       октет заголовка, поэтому установка выполняется чтением текущего
+ *       значения с последующей заменой только младших двух бит
+ *
+ * @param sock   сетевой сокет
+ * @param family семейство протоколов (IPv4 или IPv6)
+ * @param ecn    значение ECN
+ * @return       результат работы функции
+ */
+bool awh::eth::Socket::setExplicitCongestionNotification(const net::socket_t sock, const event::family_t family, const event::ecn_t ecn) const noexcept {
+	// Переменная результата
+	bool result = false;
+	// Если сокет корректен
+	if(sock != net::invalid_socket_t){
+		/**
+		 * Класс обслуживания (DSCP) и признак перегрузки (ECN) занимают один октет
+		 * заголовка, поэтому установка выполняется чтением текущего значения с
+		 * заменой только младших двух бит: запись целого октета сбросила бы
+		 * настроенный класс обслуживания
+		 */
+		const int32_t tclass = (static_cast <int32_t> (this->getDifferentiatedServicesCodePoint(sock, family)) | static_cast <int32_t> (ecn));
+		/**
+		 * Определяем семейство события
+		 */
+		switch(static_cast <uint8_t> (family)){
+			// Для семейства IPv4
+			case static_cast <uint8_t> (event::family_t::IPV4): {
+				// Устанавливаем значение поля Type Of Service (TOS) заголовка IPv4-пакета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_TOS, &tclass, sizeof(tclass))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (ecn)
+							), log_t::flag_t::WARNING,
+							::strerror(errno)
+						);
+					/**
+					 * Если режим отладки не включён
+					 */
+					#else
+						// Записываем ошибку в лог
+						this->_log->print("%s", log_t::flag_t::WARNING, ::strerror(errno));
+					#endif
+				}
+			} break;
+			// Для семейства IPv6
+			case static_cast <uint8_t> (event::family_t::IPV6): {
+				// Устанавливаем значение поля Traffic Class (TC) заголовка IPv6-пакета
+				if(!(result = !static_cast <bool> (::setsockopt(sock, IPPROTO_IPV6, IPV6_TCLASS, &tclass, sizeof(tclass))))){
+					/**
+					 * Если включён режим отладки
+					 */
+					#if DEBUG_MODE
+						// Записываем ошибку в лог
+						this->_log->debug(
+							"%s", __PRETTY_FUNCTION__,
+							make_tuple(
+								sock,
+								static_cast <uint16_t> (family),
+								static_cast <uint16_t> (ecn)
 							), log_t::flag_t::WARNING,
 							::strerror(errno)
 						);
@@ -1299,8 +1474,13 @@ bool awh::eth::Socket::trafficInfoGeneration(const net::socket_t sock, const eve
 						this->_log->print("%s", log_t::flag_t::CRITICAL, ::strerror(errno));
 					#endif
 				}
-				// Если сокет является RAW-сокетом
-				if(ok2 && (socktype == SOCK_RAW)){
+				/**
+				 * Если сокет является дейтаграммным либо RAW-сокетом: класс обслуживания
+				 * принятого пакета выдаётся служебным сообщением только для них, а
+				 * потоковым сокетам он и не нужен - разбирать заголовки IP-пакетов
+				 * потока приложению не приходится
+				 */
+				if(ok2 && ((socktype == SOCK_RAW) || (socktype == SOCK_DGRAM))){
 					// Активируем/деактивируем генерацию информации о типе сервиса (TOS) в сокете
 					if(!(ok2 = !static_cast <bool> (::setsockopt(sock, IPPROTO_IP, IP_RECVTOS, &flags, sizeof(flags))))){
 						/**

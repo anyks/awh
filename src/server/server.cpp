@@ -38,7 +38,7 @@ awh::Server::Domain_Name_System::Domain_Name_System() noexcept :
  * @brief Конструктор
  *
  */
-awh::Server::Identifier::Identifier() noexcept : eid(0), sid(0) {}
+awh::Server::Identifier::Identifier() noexcept : eid(0), cts(0) {}
 
 /**
  * @brief Конструктор
@@ -203,7 +203,7 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
 					// Если сервер ещё живой
 					if(this->_unit != nullptr){
 						// Если идентификатор TLS и объект TLS установлены
-						if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+						if((this->_id.cts > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
 							// Временный список идентификаторов TLS, которые нужно удалить
 							vector <tls::coder_t::id_t> garbage;
 							/**
@@ -241,9 +241,9 @@ void awh::Server::status(const uint8_t index, const event::status_t status) noex
  */
 void awh::Server::accept(const event::id_t eid, const event::id_t cid) noexcept {
 	// Если объект транспортного уровня безопасности установлен
-	if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.sid > 0)){
+	if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.cts > 0)){
 		// Создаём идентификатор транспортного уровня TLS/DTLS
-		tls::coder_t::id_t ctl = this->_tls.coder->transport(this->_id.sid);
+		tls::coder_t::id_t ctl = this->_tls.coder->transport(this->_id.cts);
 		// Добавляем сопоставление идентификатора клиента с идентификатором TLS
 		if(this->_tls.safety.emplace(cid, ctl).second){
 			/**
@@ -413,7 +413,7 @@ void awh::Server::state(const event::id_t eid, const event::status_t status, voi
 				// Обнуляем идентификатор сервера
 				this->_id.eid = 0;
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_unit != nullptr) && (this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+				if((this->_unit != nullptr) && (this->_id.cts > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
 					// Временный список идентификаторов TLS, которые нужно удалить
 					vector <tls::coder_t::id_t> garbage;
 					/**
@@ -438,17 +438,17 @@ void awh::Server::state(const event::id_t eid, const event::status_t status, voi
 			// Если производится завершение работы клиента подключенного к текущему серверу
 			} else {
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_unit != nullptr) && (this->_id.sid > 0) && (this->_tls.coder != nullptr)){
+				if((this->_unit != nullptr) && (this->_id.cts > 0) && (this->_tls.coder != nullptr)){
 					// Выполняем поиск идентификатора TLS по идентификатору события клиента
 					auto i = this->_tls.safety.find(eid);
 					// Если для данного идентификатора события клиента найден идентификатор TLS
 					if(i != this->_tls.safety.end()){
 						// Запоминаем идентификатор TLS для удаления
-						const tls::coder_t::id_t sid = i->second;
+						const tls::coder_t::id_t ctx = i->second;
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
 						// Уничтожаем объект TLS по найденному идентификатору TLS
-						this->_tls.coder->destroy(sid);
+						this->_tls.coder->destroy(ctx);
 					}
 				}
 			}
@@ -480,7 +480,7 @@ void awh::Server::read(const event::id_t eid, const uint8_t * buffer, const size
 	// Если DNS-резолвер находится в рабочем состоянии или сервер находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->server.working() : false)){
 		// Если объект транспортного уровня безопасности установлен
-		if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.sid > 0)){
+		if((this->_unit != nullptr) && (this->_tls.coder != nullptr) && (this->_id.cts > 0)){
 			// Выполняем поиск идентификатора TLS по идентификатору события клиента
 			auto i = this->_tls.safety.find(eid);
 			// Если для данного идентификатора события клиента найден идентификатор TLS
@@ -914,7 +914,7 @@ void awh::Server::stop() noexcept {
 				// Если сервер ещё живой
 				if(this->_unit != nullptr){
 					// Если идентификатор TLS и объект TLS установлены
-					if((this->_id.sid > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
+					if((this->_id.cts > 0) && (this->_tls.coder != nullptr) && !this->_tls.safety.empty()){
 						// Временный список идентификаторов TLS, которые нужно удалить
 						vector <tls::coder_t::id_t> garbage;
 						/**
@@ -1112,17 +1112,17 @@ void awh::Server::destroy(const event::id_t eid) noexcept {
 			// Если сервер ещё живой
 			if(this->_unit != nullptr){
 				// Если идентификатор TLS и объект TLS установлены
-				if((this->_id.sid > 0) && (this->_tls.coder != nullptr)){
+				if((this->_id.cts > 0) && (this->_tls.coder != nullptr)){
 					// Выполняем поиск идентификатора TLS по идентификатору события клиента
 					auto i = this->_tls.safety.find(eid);
 					// Если для данного идентификатора события клиента найден идентификатор TLS
 					if(i != this->_tls.safety.end()){
 						// Запоминаем идентификатор TLS для удаления
-						const tls::coder_t::id_t sid = i->second;
+						const tls::coder_t::id_t ctx = i->second;
 						// Удаляем сопоставление идентификатора клиента с идентификатором TLS
 						this->_tls.safety.erase(i);
 						// Уничтожаем объект TLS по найденному идентификатору TLS
-						this->_tls.coder->destroy(sid);
+						this->_tls.coder->destroy(ctx);
 					}
 				}
 				// Уничтожаем событие клиента
@@ -1323,7 +1323,7 @@ size_t awh::Server::send(const event::id_t eid, const void * buffer, const size_
 		// Если идентификатор клиента найден в списке обслуживаемых клиентов
 		if((this->_unit != nullptr) && (eid != this->_id.eid) && this->_unit->server.isActual(eid)){
 			// Если идентификатор TLS и объект TLS установлены
-			if((this->_id.sid > 0) && (this->_tls.coder != nullptr)){
+			if((this->_id.cts > 0) && (this->_tls.coder != nullptr)){
 				// Выполняем поиск идентификатора TLS по идентификатору события клиента
 				auto i = this->_tls.safety.find(eid);
 				// Если для данного идентификатора события клиента найден идентификатор TLS
@@ -3142,17 +3142,6 @@ bool awh::Server::clusterSetBufferSize(const pid_t pid, const event::action_t ac
 	return this->_unit->server.clusterSetBufferSize(pid, action, size);
 }
 /**
- * @brief Метод установки идентификатора TLS шаблона
- *
- * @param sid идентификатор TLS шаблона для установки
- */
-void awh::Server::setSecurityId(const tls::coder_t::id_t sid) noexcept {
-	// Если DNS-резолвер или сервер находятся в нерабочем состоянии
-	if(this->_dns.client != nullptr ? !this->_dns.client->working() : !this->_unit->server.working())
-		// Устанавливаем идентификатор TLS шаблона для сервера
-		this->_id.sid = sid;
-}
-/**
  * @brief Конструктор
  *
  * @param fmk объект фреймворка
@@ -3160,76 +3149,6 @@ void awh::Server::setSecurityId(const tls::coder_t::id_t sid) noexcept {
  */
 awh::Server::Server(const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
-	// Создаём объект юнита сервера
-	this->_unit = make_unique <unit_t> (fmk, log);
-	// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
-	this->_unit->server.on <void (const event::status_t)> ("status", &server_t::status, this, 0, _1);
-	// Устанавливаем функцию обратного вызова на событие принятия нового соединения сервером
-	this->_unit->server.on <void (const event::id_t, const event::id_t)> ("accept", &server_t::accept, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
-	this->_unit->server.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &server_t::traffic, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие записи данных!
-	this->_unit->server.on <void (const event::id_t, const size_t, void *)> ("write", &server_t::write, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие изменения состояния сервера
-	this->_unit->server.on <void (const event::id_t, const event::status_t, void *)> ("state", &server_t::state, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие обработки действий сервера
-	this->_unit->server.on <void (const event::id_t, const event::action_t, void *)> ("action", &server_t::action, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие получения данных сервером
-	this->_unit->server.on <void (const event::id_t, const uint8_t *, const size_t, void *)> ("read", &server_t::read, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на событие ошибок сервера
-	this->_unit->server.on <void (const event::id_t, const event::error_t, const string &, void *)> ("error", &server_t::error, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на событие истечения таймаута сервера
-	this->_unit->server.on <bool (const event::id_t, const event::action_t, const uint32_t, void *)> ("timeout", &server_t::timeout, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных сервера
-	this->_unit->server.on <void (const event::id_t, const event::status_t, const size_t, void *)> ("available", &server_t::available, this, _1, _2, _3, _4);
-	// Устанавливаем функцию обратного вызова на событие невозможности отправки данных сервером
-	this->_unit->server.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t, void *)> ("spool", &server_t::spool, this, _1, _2, _3, _4, _5);
-	// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
-	this->_unit->server.on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие пересоздания процесса кластера
-	this->_unit->server.on <void (const pid_t, const pid_t)> ("cluster_rebase", &server_t::rebaseCluster, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие отправки сообщения процессу кластера
-	this->_unit->server.on <void (const pid_t, const size_t)> ("cluster_sending", &server_t::sendingCluster, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие изменения статуса процесса кластера
-	this->_unit->server.on <void (const pid_t, const event::status_t)> ("cluster_state", &server_t::stateCluster, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие активации/деактивации процесса кластера
-	this->_unit->server.on <void (const pid_t, const unit::cluster_t::event_t)> ("cluster_events", &server_t::eventsCluster, this, _1, _2);
-	// Устанавливаем функцию обратного вызова на событие получения сообщения от процесса кластера
-	this->_unit->server.on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server_t::messageCluster, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие ошибки процесса кластера
-	this->_unit->server.on <void (const pid_t, const event::error_t, const string &)> ("cluster_error", &server_t::errorCluster, this, _1, _2, _3);
-	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих сообщений кластера
-	this->_unit->server.on <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", &server_t::availableCluster, this, _1, _2, _3);
-}
-/**
- * @brief Конструктор
- *
- * @param tls объект транспортного уровня безопасности
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
- */
-awh::Server::Server(tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
- _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
-	// Устанавливаем объект транспортного уровня безопасности для сервера
-	this->_tls.coder = tls;
-	// Если объект транспортного уровня безопасности не установлен
-	if(this->_tls.coder == nullptr){
-		/**
-		 * Если включён режим отладки
-		 */
-		#if DEBUG_MODE
-			// Записываем ошибку в лог
-			this->_log->debug("TLS object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
-		/**
-		 * Если режим отладки не включён
-		 */
-		#else
-			// Записываем ошибку в лог
-			this->_log->print("TLS object not set", log_t::flag_t::CRITICAL);
-		#endif
-		// Выходим из приложения
-		::exit(EXIT_FAILURE);
-	}
 	// Создаём объект юнита сервера
 	this->_unit = make_unique <unit_t> (fmk, log);
 	// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
@@ -3356,15 +3275,91 @@ awh::Server::Server(unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noe
 /**
  * @brief Конструктор
  *
- * @param dns объект DNS-резолвера
- * @param tls объект транспортного уровня безопасности
- * @param fmk объект фреймворка
- * @param log объект для работы с логами
+ * @param cts   идентификатор шаблона контекста безопасности
+ * @param coder объект транспортного уровня безопасности
+ * @param fmk   объект фреймворка
+ * @param log   объект для работы с логами
  */
-awh::Server::Server(unit::dns_t * dns, tls::coder_t * tls, const fmk_t * fmk, const log_t * log) noexcept :
+awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder, const fmk_t * fmk, const log_t * log) noexcept :
  _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
+	// Устанавливаем идентификатор шаблона контекста безопасности
+	this->_id.cts = cts;
 	// Устанавливаем объект транспортного уровня безопасности для сервера
-	this->_tls.coder = tls;
+	this->_tls.coder = coder;
+	// Если объект транспортного уровня безопасности не установлен
+	if(this->_tls.coder == nullptr){
+		/**
+		 * Если включён режим отладки
+		 */
+		#if DEBUG_MODE
+			// Записываем ошибку в лог
+			this->_log->debug("TLS object not set", __PRETTY_FUNCTION__, {}, log_t::flag_t::CRITICAL);
+		/**
+		 * Если режим отладки не включён
+		 */
+		#else
+			// Записываем ошибку в лог
+			this->_log->print("TLS object not set", log_t::flag_t::CRITICAL);
+		#endif
+		// Выходим из приложения
+		::exit(EXIT_FAILURE);
+	}
+	// Создаём объект юнита сервера
+	this->_unit = make_unique <unit_t> (fmk, log);
+	// Устанавливаем функцию обратного вызова на событие изменения статуса сервера
+	this->_unit->server.on <void (const event::status_t)> ("status", &server_t::status, this, 0, _1);
+	// Устанавливаем функцию обратного вызова на событие принятия нового соединения сервером
+	this->_unit->server.on <void (const event::id_t, const event::id_t)> ("accept", &server_t::accept, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие информационных метаданных о дейтаграммном пакете
+	this->_unit->server.on <void (const event::id_t, const net::dgram_info_t &)> ("traffic", &server_t::traffic, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие записи данных!
+	this->_unit->server.on <void (const event::id_t, const size_t, void *)> ("write", &server_t::write, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие изменения состояния сервера
+	this->_unit->server.on <void (const event::id_t, const event::status_t, void *)> ("state", &server_t::state, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие обработки действий сервера
+	this->_unit->server.on <void (const event::id_t, const event::action_t, void *)> ("action", &server_t::action, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие получения данных сервером
+	this->_unit->server.on <void (const event::id_t, const uint8_t *, const size_t, void *)> ("read", &server_t::read, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие ошибок сервера
+	this->_unit->server.on <void (const event::id_t, const event::error_t, const string &, void *)> ("error", &server_t::error, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие истечения таймаута сервера
+	this->_unit->server.on <bool (const event::id_t, const event::action_t, const uint32_t, void *)> ("timeout", &server_t::timeout, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих данных сервера
+	this->_unit->server.on <void (const event::id_t, const event::status_t, const size_t, void *)> ("available", &server_t::available, this, _1, _2, _3, _4);
+	// Устанавливаем функцию обратного вызова на событие невозможности отправки данных сервером
+	this->_unit->server.on <void (const event::id_t, const event::send_error_t, const uint8_t *, const size_t, void *)> ("spool", &server_t::spool, this, _1, _2, _3, _4, _5);
+	// Устанавливаем функцию обратного вызова на событие завершения работы процесса кластера
+	this->_unit->server.on <void (const pid_t, const int32_t)> ("cluster_exit", &server_t::exitCluster, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие пересоздания процесса кластера
+	this->_unit->server.on <void (const pid_t, const pid_t)> ("cluster_rebase", &server_t::rebaseCluster, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие отправки сообщения процессу кластера
+	this->_unit->server.on <void (const pid_t, const size_t)> ("cluster_sending", &server_t::sendingCluster, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие изменения статуса процесса кластера
+	this->_unit->server.on <void (const pid_t, const event::status_t)> ("cluster_state", &server_t::stateCluster, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие активации/деактивации процесса кластера
+	this->_unit->server.on <void (const pid_t, const unit::cluster_t::event_t)> ("cluster_events", &server_t::eventsCluster, this, _1, _2);
+	// Устанавливаем функцию обратного вызова на событие получения сообщения от процесса кластера
+	this->_unit->server.on <void (const pid_t, const uint8_t *, const size_t)> ("cluster_message", &server_t::messageCluster, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие ошибки процесса кластера
+	this->_unit->server.on <void (const pid_t, const event::error_t, const string &)> ("cluster_error", &server_t::errorCluster, this, _1, _2, _3);
+	// Устанавливаем функцию обратного вызова на событие доступности/недоступности очереди исходящих сообщений кластера
+	this->_unit->server.on <void (const pid_t, const event::status_t, const size_t)> ("cluster_available", &server_t::availableCluster, this, _1, _2, _3);
+}
+/**
+ * @brief Конструктор
+ *
+ * @param cts   идентификатор шаблона контекста безопасности
+ * @param coder объект транспортного уровня безопасности
+ * @param dns   объект DNS-резолвера
+ * @param fmk   объект фреймворка
+ * @param log   объект для работы с логами
+ */
+awh::Server::Server(const tls::coder_t::id_t cts, tls::coder_t * coder, unit::dns_t * dns, const fmk_t * fmk, const log_t * log) noexcept :
+ _host{""}, _callback(fmk, log), _unit(nullptr), _fmk(fmk), _log(log) {
+	// Устанавливаем идентификатор шаблона контекста безопасности
+	this->_id.cts = cts;
+	// Устанавливаем объект транспортного уровня безопасности для сервера
+	this->_tls.coder = coder;
 	// Если объект транспортного уровня безопасности не установлен
 	if(this->_tls.coder == nullptr){
 		/**

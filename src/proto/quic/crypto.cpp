@@ -15,6 +15,7 @@
 /**
  * Стандартные заголовочные файлы
  */
+#include <new>
 #include <cstring>
 
 /**
@@ -114,6 +115,17 @@ namespace {
 	inline size_t keySize(const crypto::suite_t suite) noexcept {
 		// Набор AES_128_GCM использует 16-октетный ключ, остальные - 32-октетный
 		return ((suite == crypto::suite_t::AES_128_GCM_SHA256) ? 16 : 32);
+	}
+	/**
+	 * @brief Функция освобождения AEAD-контекста
+	 *
+	 * @param ctx освобождаемый AEAD-контекст
+	 */
+	inline void freeAead(EVP_AEAD_CTX * ctx) noexcept {
+		// Если контекст создан
+		if(ctx != nullptr)
+			// Освобождаем AEAD-контекст
+			EVP_AEAD_CTX_free(ctx);
 	}
 	/**
 	 * @brief Функция формирования нонса AEAD из вектора инициализации и номера пакета (RFC 9001 §5.3)
@@ -221,6 +233,10 @@ bool awh::quic::crypto::hkdfExpandLabel(const suite_t suite, string_view secret,
 bool awh::quic::crypto::derive(keys_t & keys) noexcept {
 	// Длина ключа AEAD криптографического набора
 	const size_t length = keySize(keys.suite);
+	// Сбрасываем кэш контекстов предыдущего ключевого материала
+	keys.aead.reset();
+	// Сбрасываем кэш развёрнутого ключа защиты заголовка
+	keys.mask.reset();
 	// Выводим ключ AEAD-шифрования нагрузки
 	if(!hkdfExpandLabel(keys.suite, keys.secret, "quic key", length, keys.key))
 		// Вывод невозможен
@@ -230,7 +246,35 @@ bool awh::quic::crypto::derive(keys_t & keys) noexcept {
 		// Вывод невозможен
 		return false;
 	// Выводим ключ защиты заголовка
-	return hkdfExpandLabel(keys.suite, keys.secret, "quic hp", length, keys.hp);
+	if(!hkdfExpandLabel(keys.suite, keys.secret, "quic hp", length, keys.hp))
+		// Вывод невозможен
+		return false;
+	// Создаём AEAD-контекст один раз на время жизни ключей (RFC 9001 §5.3)
+	EVP_AEAD_CTX * ctx = EVP_AEAD_CTX_new(aead(keys.suite), reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size(), EVP_AEAD_DEFAULT_TAG_LENGTH);
+	// Если AEAD-контекст не создан
+	if(ctx == nullptr)
+		// Вывод невозможен
+		return false;
+	// Передаём AEAD-контекст во владение ключам направления
+	keys.aead = shared_ptr <evp_aead_ctx_st> (ctx, &freeAead);
+	// Если набор использует ChaCha20 - развёртка ключа защиты заголовка не требуется (RFC 9001 §5.4.4)
+	if(keys.suite == suite_t::CHACHA20_POLY1305_SHA256)
+		// Вывод ключей выполнен успешно
+		return true;
+	// Создаём развёрнутый ключ защиты заголовка
+	shared_ptr <aes_key_st> key(new (std::nothrow) AES_KEY());
+	// Если память под развёрнутый ключ не выделена
+	if(!key)
+		// Вывод невозможен
+		return false;
+	// Выполняем развёртку ключа защиты заголовка (RFC 9001 §5.4.3)
+	if(AES_set_encrypt_key(reinterpret_cast <const uint8_t *> (keys.hp.data()), static_cast <uint32_t> (keys.hp.size() * 8), key.get()) != 0)
+		// Вывод невозможен
+		return false;
+	// Передаём развёрнутый ключ во владение ключам направления
+	keys.mask = ::move(key);
+	// Вывод ключей выполнен успешно
+	return true;
 }
 /**
  * @brief Функция вывода ключей Initial обоих направлений (RFC 9001 §5.2)
@@ -287,6 +331,8 @@ bool awh::quic::crypto::update(const keys_t & current, keys_t & next) noexcept {
 		return false;
 	// Ключ защиты заголовка при обновлении не меняется (RFC 9001 §6)
 	next.hp = current.hp;
+	// Переносим развёрнутый ключ защиты заголовка вместе с самим ключом
+	next.mask = current.mask;
 	// Обновление выполнено успешно
 	return true;
 }
@@ -311,16 +357,14 @@ bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMP
 		// Вычисление выполнено успешно
 		return true;
 	}
-	// Ключ шифрования AES
-	AES_KEY key;
-	// Устанавливаем ключ защиты заголовка (RFC 9001 §5.4.3)
-	if(AES_set_encrypt_key(reinterpret_cast <const uint8_t *> (keys.hp.data()), static_cast <uint32_t> (keys.hp.size() * 8), &key) != 0)
+	// Если развёрнутый ключ защиты заголовка не подготовлен выводом ключей
+	if(!keys.mask)
 		// Вычисление невозможно
 		return false;
 	// Блок результата шифрования AES-ECB
 	uint8_t block[16];
-	// Шифруем выборку одним блоком AES-ECB
-	AES_encrypt(sample, block, &key);
+	// Шифруем выборку одним блоком AES-ECB развёрнутым ключом (RFC 9001 §5.4.3)
+	AES_encrypt(sample, block, keys.mask.get());
 	// Маска - первые пять октетов зашифрованного блока
 	::memcpy(mask, block, HP_MASK_SIZE);
 	// Вычисление выполнено успешно
@@ -337,14 +381,25 @@ bool awh::quic::crypto::hpMask(const keys_t & keys, const uint8_t sample[HP_SAMP
  * @return        результат защиты (false - ошибка криптографической библиотеки)
  */
 bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_t pn, string_view header, string_view payload) noexcept {
-	// Если заголовок пуст
-	if(header.empty())
+	// Если заголовок пуст либо AEAD-контекст не подготовлен выводом ключей
+	if(header.empty() || !keys.aead || (keys.iv.size() < 12))
 		// Защита невозможна
 		return false;
 	// Размер номера пакета из битов первого октета заголовка
 	const size_t pnSize = (static_cast <size_t> (static_cast <uint8_t> (header[0]) & 0x03) + 1);
+	// Если заголовок короче объявленного размера номера пакета
+	if(header.size() < pnSize)
+		// Защита невозможна
+		return false;
 	// Смещение поля Packet Number от начала заголовка
 	const size_t pnOffset = (header.size() - pnSize);
+	/**
+	 * Если выборка защиты заголовка выходит за пределы собираемого пакета (RFC 9001 §5.4.2):
+	 * нагрузка обязана содержать не менее 4 - pnSize октетов сверх тега AEAD
+	 */
+	if((pnOffset + proto::MAX_PKT_NUM_SIZE + HP_SAMPLE_SIZE) > (header.size() + payload.size() + AEAD_TAG_SIZE))
+		// Защита невозможна
+		return false;
 	// Нонс AEAD-шифрования
 	uint8_t nonce[12];
 	// Формируем нонс из вектора инициализации и номера пакета
@@ -357,34 +412,32 @@ bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_
 	const size_t sealed = output.size();
 	// Выделяем память под зашифрованную нагрузку с тегом AEAD
 	output.resize(sealed + payload.size() + AEAD_TAG_SIZE);
-	// Создаём AEAD-контекст с ключом направления
-	EVP_AEAD_CTX * ctx = EVP_AEAD_CTX_new(aead(keys.suite), reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size(), EVP_AEAD_DEFAULT_TAG_LENGTH);
-	// Если контекст не создан
-	if(ctx == nullptr)
-		// Защита невозможна
-		return false;
 	// Длина результата шифрования
 	size_t length = 0;
 	// Шифруем нагрузку с заголовком в качестве дополнительных данных
 	const bool result = (EVP_AEAD_CTX_seal(
-		ctx, reinterpret_cast <uint8_t *> (&output[sealed]), &length, payload.size() + AEAD_TAG_SIZE,
+		keys.aead.get(), reinterpret_cast <uint8_t *> (&output[sealed]), &length, payload.size() + AEAD_TAG_SIZE,
 		nonce, sizeof(nonce), reinterpret_cast <const uint8_t *> (payload.data()), payload.size(),
 		reinterpret_cast <const uint8_t *> (header.data()), header.size()
 	) == 1);
-	// Освобождаем AEAD-контекст
-	EVP_AEAD_CTX_free(ctx);
 	// Если шифрование не выполнено или длина результата некорректна
-	if(!result || (length != (payload.size() + AEAD_TAG_SIZE)))
+	if(!result || (length != (payload.size() + AEAD_TAG_SIZE))){
+		// Откатываем выходной буфер к состоянию до сборки пакета
+		output.resize(start);
 		// Защита невозможна
 		return false;
+	}
 	// Выборка защищённой нагрузки для защиты заголовка (RFC 9001 §5.4.2)
 	const uint8_t * sample = reinterpret_cast <const uint8_t *> (output.data() + start + pnOffset + proto::MAX_PKT_NUM_SIZE);
 	// Маска защиты заголовка
 	uint8_t mask[HP_MASK_SIZE];
 	// Вычисляем маску защиты заголовка
-	if(!hpMask(keys, sample, mask))
+	if(!hpMask(keys, sample, mask)){
+		// Откатываем выходной буфер к состоянию до сборки пакета
+		output.resize(start);
 		// Защита невозможна
 		return false;
+	}
 	// Если пакет с длинным заголовком - маскируем четыре младших бита первого октета
 	if((static_cast <uint8_t> (output[start]) & 0x80) != 0)
 		// Накладываем маску на биты номера пакета длинного заголовка
@@ -416,6 +469,10 @@ bool awh::quic::crypto::seal(string & output, const keys_t & keys, const uint64_
 awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size, const size_t pnOffset, const uint64_t largestPn, const keys_t & keys, uint64_t & pn, string & output, error_t & error) noexcept {
 	// Устанавливаем код ошибки транспорта на случай неудачи снятия защиты
 	error = static_cast <error_t> (static_cast <uint64_t> (error_t::CRYPTO_ERROR));
+	// Если AEAD-контекст не подготовлен выводом ключей
+	if(!keys.aead || (keys.iv.size() < 12))
+		// Снятие защиты невозможно
+		return status_t::ERROR;
 	// Если выборка защиты заголовка не помещается в пакет
 	if(size < (pnOffset + proto::MAX_PKT_NUM_SIZE + HP_SAMPLE_SIZE))
 		// Снятие защиты невозможно
@@ -462,25 +519,30 @@ awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size,
 		return status_t::ERROR;
 	// Выделяем память под расшифрованную нагрузку
 	output.resize(size - sealed);
-	// Создаём AEAD-контекст с ключом направления
-	EVP_AEAD_CTX * ctx = EVP_AEAD_CTX_new(aead(keys.suite), reinterpret_cast <const uint8_t *> (keys.key.data()), keys.key.size(), EVP_AEAD_DEFAULT_TAG_LENGTH);
-	// Если контекст не создан
-	if(ctx == nullptr)
-		// Снятие защиты невозможно
-		return status_t::ERROR;
 	// Длина результата расшифровки
 	size_t length = 0;
 	// Расшифровываем нагрузку с расшифрованным заголовком в качестве дополнительных данных
 	const bool result = (EVP_AEAD_CTX_open(
-		ctx, reinterpret_cast <uint8_t *> (&output[0]), &length, output.size(),
+		keys.aead.get(), reinterpret_cast <uint8_t *> (&output[0]), &length, output.size(),
 		nonce, sizeof(nonce), packet + sealed, size - sealed, packet, sealed
 	) == 1);
-	// Освобождаем AEAD-контекст
-	EVP_AEAD_CTX_free(ctx);
 	// Если расшифровка не выполнена (тег AEAD не сошёлся)
 	if(!result)
 		// Снятие защиты невозможно
 		return status_t::ERROR;
+	/**
+	 * Проверяем зарезервированные биты первого октета: они проверяются только после
+	 * снятия обеих защит, иначе неверные ключи давали бы ложное нарушение протокола
+	 * (RFC 9000 §17.2/§17.3)
+	 */
+	const uint8_t reserved = ((packet[0] & 0x80) != 0 ? 0x0C : 0x18);
+	// Если зарезервированные биты ненулевые
+	if((packet[0] & reserved) != 0){
+		// Устанавливаем код ошибки транспорта
+		error = error_t::PROTOCOL_VIOLATION;
+		// Снятие защиты невозможно
+		return status_t::ERROR;
+	}
 	// Устанавливаем фактическую длину расшифрованной нагрузки
 	output.resize(length);
 	// Снятие защиты выполнено успешно

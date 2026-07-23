@@ -98,13 +98,13 @@ namespace {
 	/**
 	 * @brief Функция подготовки эндпоинта хендшейка со стандартными настройками
 	 *
-	 * @param handshake   эндпоинт хендшейка
-	 * @param certificate сертификат сервера в формате PEM
-	 * @param privateKey  приватный ключ сервера в формате PEM
-	 * @param endpoint    роль эндпоинта
-	 * @return            результат подготовки
+	 * @note Криптография задана шаблоном контекста кодера, из которого создан
+	 *       эндпоинт, поэтому подготовка сводится к транспортным параметрам
+	 *
+	 * @param handshake эндпоинт хендшейка
+	 * @return          результат подготовки
 	 */
-	static bool setup(handshake_t & handshake, const std::string & certificate, const std::string & privateKey, const endpoint_t endpoint) noexcept {
+	static bool setup(handshake_t & handshake) noexcept {
 		// Транспортные параметры эндпоинта
 		params::params_t params;
 		// Устанавливаем лимит данных соединения
@@ -115,16 +115,6 @@ namespace {
 		params.initialMaxStreamDataBidiRemote = 262144;
 		// Устанавливаем лимит числа двунаправленных потоков
 		params.initialMaxStreamsBidi = 100;
-		// Устанавливаем список поддерживаемых ALPN-протоколов
-		handshake.alpn({"h3"});
-		// Если эндпоинт является сервером
-		if(endpoint == endpoint_t::SERVER)
-			// Устанавливаем сертификат и приватный ключ сервера
-			handshake.certificate(certificate, privateKey);
-		// Если эндпоинт является клиентом
-		else
-			// Устанавливаем доменное имя удалённого сервера
-			handshake.serverNameIndication("localhost");
 		// Устанавливаем транспортные параметры и выводим результат
 		return handshake.params(params);
 	}
@@ -135,20 +125,14 @@ namespace {
  *
  */
 TEST_F(QuicFixture, HandshakeCompleteTest){
-	// Сертификат сервера в формате PEM
-	std::string certificate = "";
-	// Приватный ключ сервера в формате PEM
-	std::string privateKey = "";
-	// Выполняем генерацию самоподписанного сертификата
-	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT);
+	handshake_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER);
+	handshake_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
 	// Выполняем подготовку эндпоинта клиента
-	ASSERT_TRUE(::setup(client, certificate, privateKey, endpoint_t::CLIENT));
+	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
-	ASSERT_TRUE(::setup(server, certificate, privateKey, endpoint_t::SERVER));
+	ASSERT_TRUE(::setup(server));
 	// Выполняем начало хендшейка на сервере
 	ASSERT_EQ(server.start(), status_t::OK);
 	// Выполняем начало хендшейка на клиенте
@@ -172,29 +156,23 @@ TEST_F(QuicFixture, HandshakeCompleteTest){
  *
  */
 TEST_F(QuicFixture, HandshakeAlpnTest){
-	// Сертификат сервера в формате PEM
-	std::string certificate = "";
-	// Приватный ключ сервера в формате PEM
-	std::string privateKey = "";
-	// Выполняем генерацию самоподписанного сертификата
-	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT);
+	handshake_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER);
+	handshake_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
 	// Выполняем подготовку эндпоинта клиента
-	ASSERT_TRUE(::setup(client, certificate, privateKey, endpoint_t::CLIENT));
+	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
-	ASSERT_TRUE(::setup(server, certificate, privateKey, endpoint_t::SERVER));
+	ASSERT_TRUE(::setup(server));
 	// Выполняем начало хендшейка на обоих эндпоинтах
 	ASSERT_EQ(server.start(), status_t::OK);
 	ASSERT_EQ(client.start(), status_t::OK);
 	// Выполняем полный хендшейк
 	ASSERT_TRUE(::complete(client, server));
 	// Проверяем согласованный ALPN-протокол на клиенте
-	ASSERT_EQ(client.alpn(), "h3");
+	ASSERT_EQ(client.alpn().protocol, "h3");
 	// Проверяем согласованный ALPN-протокол на сервере
-	ASSERT_EQ(server.alpn(), "h3");
+	ASSERT_EQ(server.alpn().protocol, "h3");
 }
 
 /**
@@ -202,20 +180,14 @@ TEST_F(QuicFixture, HandshakeAlpnTest){
  *
  */
 TEST_F(QuicFixture, HandshakeTransportParamsTest){
-	// Сертификат сервера в формате PEM
-	std::string certificate = "";
-	// Приватный ключ сервера в формате PEM
-	std::string privateKey = "";
-	// Выполняем генерацию самоподписанного сертификата
-	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT);
+	handshake_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER);
+	handshake_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
 	// Выполняем подготовку эндпоинта клиента
-	ASSERT_TRUE(::setup(client, certificate, privateKey, endpoint_t::CLIENT));
+	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
-	ASSERT_TRUE(::setup(server, certificate, privateKey, endpoint_t::SERVER));
+	ASSERT_TRUE(::setup(server));
 	// Транспортные параметры удалённого узла
 	params::params_t params;
 	// Код ошибки транспорта
@@ -246,20 +218,14 @@ TEST_F(QuicFixture, HandshakeTransportParamsTest){
  *
  */
 TEST_F(QuicFixture, HandshakeKeysTest){
-	// Сертификат сервера в формате PEM
-	std::string certificate = "";
-	// Приватный ключ сервера в формате PEM
-	std::string privateKey = "";
-	// Выполняем генерацию самоподписанного сертификата
-	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT);
+	handshake_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER);
+	handshake_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
 	// Выполняем подготовку эндпоинта клиента
-	ASSERT_TRUE(::setup(client, certificate, privateKey, endpoint_t::CLIENT));
+	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
-	ASSERT_TRUE(::setup(server, certificate, privateKey, endpoint_t::SERVER));
+	ASSERT_TRUE(::setup(server));
 	// Формируем DCID первого пакета Initial клиента (RFC 9001 §A)
 	const cid_t dcid = this->makeCid(this->unhex("8394c8f03e515708"));
 	// Выполняем вывод ключей уровня Initial на клиенте
@@ -316,22 +282,18 @@ TEST_F(QuicFixture, HandshakeKeysTest){
  *
  */
 TEST_F(QuicFixture, HandshakeAlpnMismatchTest){
-	// Сертификат сервера в формате PEM
-	std::string certificate = "";
-	// Приватный ключ сервера в формате PEM
-	std::string privateKey = "";
-	// Выполняем генерацию самоподписанного сертификата
-	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Создаём шаблон контекста клиента с несовместимым списком ALPN-протоколов
+	const awh::tls::Coder::id_t context = ::security().make(endpoint_t::CLIENT, {awh::tls::Coder::alpn_t{0, "hq-interop"}});
+	// Проверяем что шаблон контекста создан
+	ASSERT_NE(context, 0u);
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT);
+	handshake_t client(endpoint_t::CLIENT, context, ::security().coder(), &::logger());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER);
+	handshake_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
 	// Выполняем подготовку эндпоинта клиента
-	ASSERT_TRUE(::setup(client, certificate, privateKey, endpoint_t::CLIENT));
+	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
-	ASSERT_TRUE(::setup(server, certificate, privateKey, endpoint_t::SERVER));
-	// Устанавливаем несовместимый ALPN-протокол на клиенте
-	client.alpn({"hq-interop"});
+	ASSERT_TRUE(::setup(server));
 	// Выполняем начало хендшейка на обоих эндпоинтах
 	ASSERT_EQ(server.start(), status_t::OK);
 	ASSERT_EQ(client.start(), status_t::OK);
@@ -344,6 +306,8 @@ TEST_F(QuicFixture, HandshakeAlpnMismatchTest){
 	// Проверяем что код ошибки транспорта находится в диапазоне CRYPTO_ERROR (RFC 9001 §4.8)
 	ASSERT_GE(static_cast <uint64_t> (server.error()), static_cast <uint64_t> (error_t::CRYPTO_ERROR));
 	ASSERT_LE(static_cast <uint64_t> (server.error()), (static_cast <uint64_t> (error_t::CRYPTO_ERROR) + 0xFF));
+	// Удаляем созданный шаблон контекста безопасности
+	ASSERT_TRUE(::security().coder().destroy(context));
 }
 
 /**
@@ -351,22 +315,30 @@ TEST_F(QuicFixture, HandshakeAlpnMismatchTest){
  *
  */
 TEST_F(QuicFixture, HandshakeVerifyFailedTest){
-	// Сертификат сервера в формате PEM
-	std::string certificate = "";
-	// Приватный ключ сервера в формате PEM
-	std::string privateKey = "";
-	// Выполняем генерацию самоподписанного сертификата
-	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
+	// Получаем объект кодера транспортной безопасности
+	awh::tls::Coder & coder = ::security().coder();
+	/**
+	 * Создаём шаблон контекста клиента вручную: общий шаблон окружения содержит
+	 * тестовый сертификат в качестве доверенного якоря, а здесь проверяется
+	 * отказ проверки самоподписанного сертификата без него
+	 */
+	const awh::tls::Coder::id_t context = coder.context(awh::event::node_t::CLIENT, awh::event::protocol_t::QUIC);
+	// Проверяем что шаблон контекста создан
+	ASSERT_NE(context, 0u);
+	// Устанавливаем список поддерживаемых ALPN-протоколов
+	coder.alpn(context, {awh::tls::Coder::alpn_t{0, "h3"}});
+	// Устанавливаем доменное имя удалённого сервера
+	coder.serverNameIndication(context, "localhost");
+	// Включаем проверку сертификата удалённого узла без доверенных центров
+	coder.validateServerNameIndication(context, true);
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT);
+	handshake_t client(endpoint_t::CLIENT, context, coder, &::logger());
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER);
+	handshake_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), coder, &::logger());
 	// Выполняем подготовку эндпоинта клиента
-	ASSERT_TRUE(::setup(client, certificate, privateKey, endpoint_t::CLIENT));
+	ASSERT_TRUE(::setup(client));
 	// Выполняем подготовку эндпоинта сервера
-	ASSERT_TRUE(::setup(server, certificate, privateKey, endpoint_t::SERVER));
-	// Включаем проверку сертификата удалённого узла на клиенте
-	client.verify(true);
+	ASSERT_TRUE(::setup(server));
 	// Выполняем начало хендшейка на обоих эндпоинтах
 	ASSERT_EQ(server.start(), status_t::OK);
 	ASSERT_EQ(client.start(), status_t::OK);
@@ -376,6 +348,8 @@ TEST_F(QuicFixture, HandshakeVerifyFailedTest){
 	ASSERT_EQ(client.state(), handshake_t::state_t::FAILED);
 	// Проверяем что клиент зарегистрировал ошибку транспорта
 	ASSERT_NE(client.error(), error_t::NO_ERROR);
+	// Удаляем созданный шаблон контекста безопасности
+	ASSERT_TRUE(coder.destroy(context));
 }
 
 /**
@@ -383,20 +357,14 @@ TEST_F(QuicFixture, HandshakeVerifyFailedTest){
  *
  */
 TEST_F(QuicFixture, HandshakeMisuseTest){
-	// Сертификат сервера в формате PEM
-	std::string certificate = "";
-	// Приватный ключ сервера в формате PEM
-	std::string privateKey = "";
-	// Выполняем генерацию самоподписанного сертификата
-	ASSERT_TRUE(this->makeCertificate(certificate, privateKey));
 	// Создаём эндпоинт клиента без транспортных параметров
-	handshake_t empty(endpoint_t::CLIENT);
+	handshake_t empty(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
 	// Проверяем что начало хендшейка без транспортных параметров невозможно
 	ASSERT_EQ(empty.start(), status_t::ERROR);
 	// Создаём эндпоинт клиента
-	handshake_t client(endpoint_t::CLIENT);
+	handshake_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
 	// Выполняем подготовку эндпоинта клиента
-	ASSERT_TRUE(::setup(client, certificate, privateKey, endpoint_t::CLIENT));
+	ASSERT_TRUE(::setup(client));
 	// Тестовые данные CRYPTO-фрейма (несуществующий тип сообщения хендшейка TLS)
 	const uint8_t data[4] = {0xFF, 0x00, 0x00, 0x00};
 	// Проверяем что обработка CRYPTO-данных до начала хендшейка невозможна
@@ -406,9 +374,9 @@ TEST_F(QuicFixture, HandshakeMisuseTest){
 	// Проверяем что повторное начало хендшейка невозможно
 	ASSERT_EQ(client.start(), status_t::ERROR);
 	// Создаём эндпоинт сервера
-	handshake_t server(endpoint_t::SERVER);
+	handshake_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
 	// Выполняем подготовку эндпоинта сервера
-	ASSERT_TRUE(::setup(server, certificate, privateKey, endpoint_t::SERVER));
+	ASSERT_TRUE(::setup(server));
 	// Выполняем начало хендшейка на сервере
 	ASSERT_EQ(server.start(), status_t::OK);
 	// Передаём серверу мусорные данные вместо ClientHello

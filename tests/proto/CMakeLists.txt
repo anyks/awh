@@ -183,6 +183,7 @@ if (${GTest_FOUND})
             # Дополняем список источников тестами для подмодуля протокола QUIC
             list(APPEND ${PROJECT_NAME}_UNITTEST_SOURCES
                 quic/quic.cpp
+                quic/fuzz.cpp
                 quic/static.cpp
                 quic/params.cpp
                 quic/crypto.cpp
