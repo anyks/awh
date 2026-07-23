@@ -28,6 +28,7 @@
 #include <openssl/ssl.h>
 #include <openssl/rand.h>
 #include <openssl/err.h>
+#include <openssl/nid.h>
 
 /* Параметры запуска, задаются аргументами командной строки */
 static const char * remote_host = "127.0.0.1";
@@ -42,6 +43,8 @@ static int idle_probe = 0;
 static int use_key_update = 0;
 static int use_migration = 0;
 static size_t payload_size = 0;
+static const char * state_file = "";
+static const char * force_group = "";
 static uint32_t proto_version = NGTCP2_PROTO_VER_V1;
 static uint64_t deadline_ms = 5000;
 
@@ -61,6 +64,9 @@ static struct {
 	int keyupdate;
 	int migrated;
 	int vneg;
+	int resumed;
+	int early;
+	int rejected;
 	char alpn[64];
 	size_t echolen;
 } report;
@@ -76,6 +82,36 @@ static uint64_t timestamp(void){
 
 static uint64_t millis(void){
 	return timestamp() / NGTCP2_MILLISECONDS;
+}
+
+/* Чтение файла состояния возобновления целиком */
+static size_t state_load(const char * suffix, uint8_t * out, size_t outlen){
+	char path[512];
+	FILE * file;
+	size_t got;
+	if(!state_file[0])
+		return 0;
+	snprintf(path, sizeof(path), "%s%s", state_file, suffix);
+	file = fopen(path, "rb");
+	if(file == NULL)
+		return 0;
+	got = fread(out, 1, outlen, file);
+	fclose(file);
+	return got;
+}
+
+/* Запись файла состояния возобновления */
+static void state_save(const char * suffix, const uint8_t * data, size_t datalen){
+	char path[512];
+	FILE * file;
+	if(!state_file[0])
+		return;
+	snprintf(path, sizeof(path), "%s%s", state_file, suffix);
+	file = fopen(path, "wb");
+	if(file == NULL)
+		return;
+	fwrite(data, 1, datalen, file);
+	fclose(file);
 }
 
 struct client {
@@ -149,6 +185,9 @@ static int numeric_host(const char * hostname){
 	return numeric_host_family(hostname, AF_INET) || numeric_host_family(hostname, AF_INET6);
 }
 
+/* Определён ниже: приём билета возобновления сессии */
+static int new_session_cb(SSL * ssl, SSL_SESSION * session);
+
 static int client_ssl_init(struct client * c){
 	c->ssl_ctx = SSL_CTX_new(TLS_client_method());
 	if(!c->ssl_ctx){
@@ -166,11 +205,67 @@ static int client_ssl_init(struct client * c){
 		fprintf(stderr, "SSL_new: %s\n", ERR_error_string(ERR_get_error(), NULL));
 		return -1;
 	}
+	/* Приём билетов возобновления и разрешение ранних данных (RFC 9001 §4.6) */
+	SSL_CTX_set_session_cache_mode(c->ssl_ctx, SSL_SESS_CACHE_CLIENT | SSL_SESS_CACHE_NO_INTERNAL_STORE);
+	SSL_CTX_sess_set_new_cb(c->ssl_ctx, new_session_cb);
 	SSL_set_app_data(c->ssl, &c->conn_ref);
 	SSL_set_connect_state(c->ssl);
+	/* Подставляем сохранённый билет возобновления, если он есть */
+	{
+		static uint8_t der[8192];
+		const size_t len = state_load("", der, sizeof(der));
+		if(len > 0){
+			const uint8_t * p = der;
+			SSL_SESSION * session = d2i_SSL_SESSION(NULL, &p, (long) len);
+			if(session != NULL){
+				if(SSL_set_session(c->ssl, session) == 1){
+					report.resumed = 1;
+					printf("[ngtcp2] подставлен билет возобновления: %zu байт, ранние данные билетом %s\n",
+						len, SSL_SESSION_early_data_capable(session) ? "разрешены" : "НЕ РАЗРЕШЕНЫ");
+				}
+				SSL_SESSION_free(session);
+			}
+		}
+	}
+	SSL_set_early_data_enabled(c->ssl, 1);
+	/* Сужение списка групп для проверки совместимости со старыми клиентами */
+	if(force_group[0]){
+		int nid = (!strcmp(force_group, "p256") ? NID_X9_62_prime256v1 : (!strcmp(force_group, "p384") ? NID_secp384r1 : NID_X25519));
+		if(SSL_set1_groups(c->ssl, &nid, 1) != 1){
+			fprintf(stderr, "SSL_set1_groups failed\n");
+			return -1;
+		}
+		printf("[ngtcp2] клиент предлагает только группу %s\n", force_group);
+	}
 	SSL_set_alpn_protos(c->ssl, (const unsigned char *) alpn, (unsigned int) alpnlen);
 	if(!numeric_host(remote_host))
 		SSL_set_tlsext_host_name(c->ssl, remote_host);
+	return 0;
+}
+
+/*
+ * Приём билета возобновления сессии: билет присылается сервером после
+ * рукопожатия и сохраняется для следующего запуска (RFC 9001 §4.6)
+ */
+static int new_session_cb(SSL * ssl, SSL_SESSION * session){
+	uint8_t * der = NULL;
+	int len;
+	(void) ssl;
+	len = i2d_SSL_SESSION(session, &der);
+	if(len > 0){
+		state_save("", der, (size_t) len);
+		printf("[ngtcp2] сохранён билет возобновления: %d байт\n", len);
+	}
+	OPENSSL_free(der);
+	return 0;
+}
+
+/* Отказ сервера в ранних данных (RFC 9001 §4.6.2) */
+static int early_data_rejected_cb(ngtcp2_conn * conn, void * user_data){
+	(void) conn;
+	(void) user_data;
+	report.rejected = 1;
+	printf("[ngtcp2] сервер отказал в ранних данных\n");
 	return 0;
 }
 
@@ -204,7 +299,16 @@ static int handshake_completed_cb(ngtcp2_conn * conn, void * user_data){
 		report.alpn[protolen] = 0;
 	}
 	report.handshake = 1;
-	printf("[ngtcp2] рукопожатие завершено, ALPN=%s, шифр=%s\n", report.alpn, SSL_get_cipher_name(c->ssl));
+	/* Сохраняем транспортные параметры сервера для ранних данных следующего входа */
+	{
+		uint8_t tp[2048];
+		const ngtcp2_ssize len = ngtcp2_conn_encode_0rtt_transport_params2(conn, tp, sizeof(tp));
+		if(len > 0)
+			state_save(".tp", tp, (size_t) len);
+	}
+	printf("[ngtcp2] рукопожатие завершено, ALPN=%s, шифр=%s, группа=%s, HelloRetryRequest=%s\n",
+		report.alpn, SSL_get_cipher_name(c->ssl), SSL_get_group_name(SSL_get_group_id(c->ssl)),
+		SSL_used_hello_retry_request(c->ssl) ? "да" : "нет");
 	return 0;
 }
 
@@ -361,6 +465,7 @@ static int client_quic_init(struct client * c, const struct sockaddr * remote_ad
 		.recv_datagram = recv_datagram_cb,
 		.path_validation = path_validation_cb,
 		.recv_version_negotiation = recv_version_negotiation_cb,
+		.tls_early_data_rejected = early_data_rejected_cb,
 	};
 	ngtcp2_cid dcid, scid;
 	ngtcp2_settings settings;
@@ -393,6 +498,35 @@ static int client_quic_init(struct client * c, const struct sockaddr * remote_ad
 		return -1;
 	}
 	ngtcp2_conn_set_tls_native_handle(c->conn, c->ssl);
+	/*
+	 * Восстанавливаем транспортные параметры прошлого соединения: под ними
+	 * отправляются ранние данные, пока сервер не назовёт новые (RFC 9001 §4.6.1)
+	 */
+	if(report.resumed){
+		static uint8_t tp[2048];
+		const size_t len = state_load(".tp", tp, sizeof(tp));
+		if(len > 0){
+			rv = ngtcp2_conn_decode_and_set_0rtt_transport_params(c->conn, tp, len);
+			if(rv != 0){
+				fprintf(stderr, "[ngtcp2] ngtcp2_conn_decode_and_set_0rtt_transport_params: %s\n", ngtcp2_strerror(rv));
+				report.resumed = 0;
+			}
+		} else report.resumed = 0;
+	}
+	/*
+	 * Открываем поток и ставим данные в очередь до рукопожатия: лимиты взяты
+	 * из прошлого соединения, поэтому запрос уходит ранними данными
+	 */
+	if(report.resumed && !idle_probe){
+		int64_t stream_id;
+		if(ngtcp2_conn_open_bidi_stream(c->conn, &stream_id, NULL) == 0){
+			c->stream.stream_id = stream_id;
+			c->stream.data = payload;
+			c->stream.datalen = payloadlen;
+			report.early = 1;
+			printf("[ngtcp2] поток %lld открыт ранними данными\n", (long long) stream_id);
+		}
+	}
 	return 0;
 }
 
@@ -642,6 +776,7 @@ static void usage(const char * name){
 		"  --key-update       обновить ключи в середине передачи\n"
 		"  --migrate          мигрировать на новый локальный порт в середине передачи\n"
 		"  --version <число>  версия протокола, по умолчанию 1\n"
+		"  --state <файл>     файл билета возобновления и ранних данных\n"
 		"  --deadline <мс>    предельное время сеанса, по умолчанию 5000\n"
 		"  --verbose          подробный журнал ngtcp2\n", name);
 }
@@ -677,6 +812,10 @@ int main(int argc, char * argv[]){
 			payload_size = (size_t) strtoull(argv[++i], NULL, 10);
 		else if(!strcmp(argv[i], "--version") && (i + 1) < argc)
 			proto_version = (uint32_t) strtoul(argv[++i], NULL, 0);
+		else if(!strcmp(argv[i], "--state") && (i + 1) < argc)
+			state_file = argv[++i];
+		else if(!strcmp(argv[i], "--group") && (i + 1) < argc)
+			force_group = argv[++i];
 		else if(!strcmp(argv[i], "--datagram"))
 			use_datagram = 1;
 		else if(!strcmp(argv[i], "--key-update"))
@@ -796,6 +935,10 @@ int main(int argc, char * argv[]){
 		printf("миграция:         %s\n", report.migrated == 2 ? "путь подтверждён" : (report.migrated ? "не подтверждена" : "нет"));
 	if(proto_version != NGTCP2_PROTO_VER_V1)
 		printf("согласование:     %s\n", report.vneg == 2 ? "получено, предложена версия 1" : (report.vneg ? "получено без версии 1" : "нет"));
+	if(state_file[0]){
+		printf("возобновление:    %s\n", report.resumed ? "да" : "нет");
+		printf("ранние данные:    %s\n", report.rejected ? "ОТКЛОНЕНЫ" : (report.early ? "приняты" : "нет"));
+	}
 	printf("завершение:       %s\n", report.closed ? "да" : "нет");
 	printf("ошибки:           %s\n", report.failed ? "да" : "нет");
 	if(report.corrupt || (!idle_probe && (report.echolen != payloadlen)))

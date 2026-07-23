@@ -6804,40 +6804,18 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 						::SSL_CTX_set_max_proto_version(member->ctx, TLS1_3_VERSION);
 					} break;
 				}
-				// Выполняем создание объекта кривой prime256v1, доступны также (P-384 и P-521)
-				EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-				// Если кривые не получилось установить
-				if(ecdh == nullptr){
-					// Получаем текст ошибки
-					const string error = ::ssl::error(result, "Set new CURVE name failed");
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug(
-							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
-								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto)
-							), log_t::flag_t::CRITICAL, error.c_str()
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-					#endif
-					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					member->erase(::__awh_ssl_members__);
-					// Выходим
-					return 0;
-				}
-				// Выполняем установку кривых P-256
-				::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh);
-				// Выполняем очистку объекта кривой
-				::EC_KEY_free(ecdh);
+				/**
+				 * Список групп обмена ключами не сужаем: в TLS 1.3 группа
+				 * согласуется расширением supported_groups, и список библиотеки
+				 * по умолчанию и шире, и современнее любого заданного здесь.
+				 * Наследие OpenSSL 1.0 в виде SSL_CTX_set_tmp_ecdh здесь не
+				 * годится: оно не "разрешает ECDH", а заменяет весь список
+				 * единственной кривой, из-за чего клиенту, приславшему долю
+				 * ключа другой группы, приходится отвечать HelloRetryRequest.
+				 * Это лишний круговой обход на каждом соединении, а на стороне
+				 * QUIC ещё и запрет ранних данных (RFC 8446 §4.2.10).
+				 * Сузить список при необходимости позволяет метод groups()
+				 */
 				/**
 				 * Если включён режим отладки
 				 */
@@ -7066,40 +7044,18 @@ awh::tls::Coder::id_t awh::tls::Coder::context(const event::node_t node, const e
 					// Устанавливаем аргумент функции обратного вызова для обработки сообщений TLS
 					::SSL_CTX_set_msg_callback_arg(member->ctx, (* ret).get());
 				#endif
-				// Выполняем создание объекта кривой prime256v1, доступны также (P-384 и P-521)
-				EC_KEY * ecdh = ::EC_KEY_new_by_curve_name(NID_X9_62_prime256v1);
-				// Если кривые не получилось установить
-				if(ecdh == nullptr){
-					// Получаем текст ошибки
-					const string error = ::ssl::error(result, "Set new CURVE name failed");
-					/**
-					 * Если включён режим отладки
-					 */
-					#if DEBUG_MODE
-						// Записываем ошибку в лог
-						this->_log->debug(
-							"%s", __PRETTY_FUNCTION__,
-							make_tuple(
-								static_cast <uint16_t> (node),
-								static_cast <uint16_t> (proto)
-							), log_t::flag_t::CRITICAL, error.c_str()
-						);
-					/**
-					 * Если режим отладки не включён
-					 */
-					#else
-						// Записываем ошибку в лог
-						this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-					#endif
-					// Удаляем контекст TLS из контейнера уровней защищённых сокетов
-					member->erase(::__awh_ssl_members__);
-					// Выходим
-					return 0;
-				}
-				// Выполняем установку кривых P-256
-				::SSL_CTX_set_tmp_ecdh(member->ctx, ecdh);
-				// Выполняем очистку объекта кривой
-				::EC_KEY_free(ecdh);
+				/**
+				 * Список групп обмена ключами не сужаем: в TLS 1.3 группа
+				 * согласуется расширением supported_groups, и список библиотеки
+				 * по умолчанию и шире, и современнее любого заданного здесь.
+				 * Наследие OpenSSL 1.0 в виде SSL_CTX_set_tmp_ecdh здесь не
+				 * годится: оно не "разрешает ECDH", а заменяет весь список
+				 * единственной кривой, из-за чего клиенту, приславшему долю
+				 * ключа другой группы, приходится отвечать HelloRetryRequest.
+				 * Это лишний круговой обход на каждом соединении, а на стороне
+				 * QUIC ещё и запрет ранних данных (RFC 8446 §4.2.10).
+				 * Сузить список при необходимости позволяет метод groups()
+				 */
 				// Выполняем установку идентификатора сессии
 				if(::SSL_CTX_set_session_id_context(member->ctx, reinterpret_cast <const uint8_t *> (&result), sizeof(result)) != 1){
 					// Получаем текст ошибки
