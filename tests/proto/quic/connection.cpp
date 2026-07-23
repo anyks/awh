@@ -2773,6 +2773,259 @@ TEST_F(QuicFixture, ConnectionLostHandshakeFlightTest){
 }
 
 /**
+ * @brief Тест переотправки вывода идентификаторов из обращения при потере (RFC 9000 §19.16)
+ *
+ * @details Вывод идентификатора из обращения сообщается фреймом RETIRE_CONNECTION_ID.
+ *          Потерянный, он обязан отправляться заново: иначе выдавшая сторона считает
+ *          идентификатор действующим, держит его в обороте и не выдаёт замену -
+ *          стороны молча расходятся в представлении о наборе идентификаторов
+ */
+TEST_F(QuicFixture, ConnectionRetireRetransmitTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры эндпоинтов
+	params::params_t params;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	params.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	params.initialMaxStreamsUni = 100;
+	// Поднимаем лимит активных идентификаторов соединения для их выдачи сервером
+	params.activeConnectionIdLimit = 5;
+	// Выполняем подготовку соединения клиента
+	::configure(client, params);
+	// Выполняем подготовку соединения сервера
+	::configure(server, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Идентификаторы, введённые сервером в обращение
+	std::vector <cid_t> added;
+	// Идентификаторы, выведенные сервером из обращения
+	std::vector <cid_t> removed;
+	// Снимаем накопленные сервером изменения набора идентификаторов
+	server.issued(added, removed);
+	// Проверяем что сервер идентификаторы выдал
+	ASSERT_FALSE(added.empty());
+	// Формируемый фрейм анонса нового идентификатора соединения
+	frame::new_connection_id_t announce;
+	// Устанавливаем порядковый номер выдаваемого идентификатора соединения
+	announce.seq = 9;
+	/**
+	 * Выводим из обращения все прежние идентификаторы: клиент обязан сообщить
+	 * об этом отдельным фреймом на каждый выведенный
+	 */
+	announce.retirePriorTo = 9;
+	// Устанавливаем длину выдаваемого идентификатора соединения
+	announce.cid.size = connection_t::LOCAL_CID_SIZE;
+	/**
+	 * Заполняем выдаваемый идентификатор соединения
+	 */
+	for(uint8_t i = 0; i < connection_t::LOCAL_CID_SIZE; i++)
+		// Устанавливаем очередной октет идентификатора соединения
+		announce.cid.data[i] = static_cast <uint8_t> (0xE0 + i);
+	/**
+	 * Заполняем токен сброса без сохранения состояния выдаваемого идентификатора
+	 */
+	for(uint8_t i = 0; i < awh::quic::proto::RESET_TOKEN_SIZE; i++)
+		// Устанавливаем очередной октет токена сброса
+		announce.resetToken[i] = static_cast <uint8_t> (0xF0 + i);
+	// Нагрузка пакета сервера
+	std::string payload = "";
+	// Выполняем сборку фрейма NEW_CONNECTION_ID (RFC 9000 §19.15)
+	frame::serialize::newConnectionId(payload, announce);
+	// Доставляем нагрузку клиенту пакетом 1-RTT
+	ASSERT_EQ(::inject(server, client, 7000, payload, now), status_t::OK);
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	// Количество отброшенных датаграмм с выводом идентификаторов
+	size_t dropped = 0;
+	/**
+	 * Отбрасываем датаграммы клиента с выводом идентификаторов из обращения:
+	 * сервер о выводе не узнаёт и продолжает держать их в обороте
+	 */
+	while(client.write(datagram, now)){
+		// Считаем отброшенную датаграмму
+		dropped++;
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	// Проверяем что вывод идентификаторов действительно отброшен
+	ASSERT_GT(dropped, static_cast <size_t> (0));
+	// Снимаем изменения набора идентификаторов сервера
+	server.issued(added, removed);
+	// Проверяем что сервер о выводе идентификаторов не узнал
+	ASSERT_TRUE(removed.empty());
+	/**
+	 * Прогоняем обмен по исправному пути: потерянный вывод обязан быть отправлен
+	 * заново по детекту потерь
+	 */
+	for(size_t i = 0; i < 20; i++){
+		// Продвигаем тестовые часы
+		now += 100;
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Выполняем обработку просроченных таймеров сервера
+		server.tick(now);
+		// Выполняем обмен датаграммами до полного затишья
+		::pump(client, server, now);
+	}
+	// Снимаем изменения набора идентификаторов сервера после восстановления
+	server.issued(added, removed);
+	/**
+	 * Проверяем что сервер о выводе идентификаторов узнал: без переотправки
+	 * потерянного фрейма он держал бы их в обороте до конца соединения
+	 */
+	ASSERT_FALSE(removed.empty());
+	// Проверяем что соединение потерю вывода идентификаторов пережило
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест достоверности собираемых подтверждений при произвольных разрывах
+ *
+ * @details Подтверждение не вправе объявлять принятым пакет, которого не было:
+ *          отправитель по такому подтверждению спишет данные из очереди повторной
+ *          отправки, и потерянное не будет отправлено уже никогда. Учёт принятых
+ *          номеров ведётся диапазонами со слиянием и вытеснением, поэтому проверяется
+ *          не отдельный узор, а множество случайных
+ */
+TEST_F(QuicFixture, ConnectionAckIntegrityTest){
+	// Состояние генератора псевдослучайных чисел с фиксированным зерном
+	uint64_t seed = 0x8FB21EE7A2D5C1F3ull;
+	/**
+	 * @brief Функция получения очередного псевдослучайного числа
+	 *
+	 * @return псевдослучайное число
+	 */
+	auto random = [&seed]() noexcept -> uint64_t {
+		// Перемешиваем состояние генератора сдвигами
+		seed ^= (seed << 13);
+		seed ^= (seed >> 7);
+		seed ^= (seed << 17);
+		// Выводим состояние генератора
+		return seed;
+	};
+	// Нижняя граница проверяемого окна номеров пакетов
+	static constexpr uint64_t BASE = 100000;
+	// Ширина проверяемого окна номеров пакетов
+	static constexpr uint64_t WIDTH = 48;
+	/**
+	 * Перебираем испытания: каждое начинается со свежего соединения, поскольку
+	 * учёт принятых номеров накапливается
+	 */
+	for(size_t trial = 0; trial < 24; trial++){
+		// Создаём соединение клиента
+		connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+		// Создаём соединение сервера
+		connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+		// Выполняем подготовку соединения клиента
+		::setup(client);
+		// Выполняем подготовку соединения сервера
+		::setup(server);
+		// Выполняем начало соединения клиентом
+		ASSERT_EQ(client.connect(), status_t::OK);
+		// Тестовые часы в миллисекундах
+		uint64_t now = 1000;
+		// Выполняем полное установление соединения
+		ASSERT_TRUE(::establish(client, server, now));
+		// Нагрузка пакета с ack-eliciting фреймом
+		std::string payload = "";
+		// Выполняем сборку фрейма PING (RFC 9000 §19.2)
+		frame::serialize::ping(payload);
+		// Список номеров пакетов испытания
+		std::vector <uint64_t> numbers;
+		/**
+		 * Отбираем произвольное подмножество номеров окна: разрывы между ними
+		 * и образуют диапазоны подтверждения
+		 */
+		for(uint64_t i = 0; i < WIDTH; i++){
+			// Если номер попадает в подмножество испытания
+			if((random() % 3) != 0)
+				// Запоминаем номер пакета испытания
+				numbers.push_back(BASE + i);
+		}
+		// Если подмножество испытания пустое
+		if(numbers.empty())
+			// Переходим к следующему испытанию
+			continue;
+		// Список доставляемых номеров в произвольном порядке
+		std::vector <uint64_t> order(numbers);
+		/**
+		 * Перемешиваем порядок доставки: учёт принятых номеров обязан давать
+		 * один и тот же итог при любом порядке поступления
+		 */
+		for(size_t i = order.size(); i > 1; i--)
+			// Меняем местами очередную пару номеров
+			std::swap(order[i - 1], order[random() % i]);
+		/**
+		 * Доставляем пакеты испытания клиенту
+		 */
+		for(auto & pn : order)
+			// Доставляем нагрузку клиенту пакетом 1-RTT с заданным номером
+			ASSERT_EQ(::inject(server, client, pn, payload, now), status_t::OK);
+		// Буфер исходящей датаграммы клиента
+		std::string datagram = "";
+		// Извлекаем датаграмму клиента с подтверждением
+		ASSERT_TRUE(client.write(datagram, now));
+		// Расшифрованная нагрузка пакета клиента
+		std::string plain = "";
+		// Выполняем снятие защиты с пакета клиента
+		ASSERT_TRUE(::unseal(server, datagram, plain));
+		// Разобранный фрейм подтверждения
+		frame::ack_t frame;
+		// Количество потреблённых октетов фрейма
+		size_t consumed = 0;
+		// Код ошибки транспорта
+		error_t error = error_t::NO_ERROR;
+		// Выполняем разбор фрейма подтверждения
+		ASSERT_EQ(frame::parser::ack(reinterpret_cast <const uint8_t *> (plain.data()), plain.size(), frame, consumed, error), status_t::OK);
+		/**
+		 * Перебираем номера проверяемого окна
+		 */
+		for(uint64_t pn = BASE; pn < (BASE + WIDTH); pn++){
+			// Флаг доставки номера клиенту
+			const bool delivered = (std::find(numbers.begin(), numbers.end(), pn) != numbers.end());
+			// Флаг объявления номера принятым в подтверждении
+			bool acknowledged = false;
+			/**
+			 * Перебираем диапазоны разобранного подтверждения
+			 */
+			for(auto & range : frame.ranges)
+				// Определяем вхождение номера в диапазон подтверждения
+				acknowledged = (acknowledged || ((pn >= range.low) && (pn <= range.high)));
+			/**
+			 * Проверяем что недоставленный номер принятым не объявлен: ложное
+			 * подтверждение списало бы у отправителя данные, которых он не доставил
+			 */
+			if(!delivered)
+				// Проверяем что номер принятым не объявлен
+				ASSERT_FALSE(acknowledged);
+		}
+		// Проверяем что соединение обработкой разрывов не затронуто
+		ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+		// Проверяем отсутствие ошибки транспорта на клиенте
+		ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	}
+}
+
+/**
  * @brief Тест слияния диапазонов подтверждений при заполнении разрывов (RFC 9000 §19.3)
  *
  * @details Потерянные и переставленные пакеты образуют разрывы в номерах принятых,
