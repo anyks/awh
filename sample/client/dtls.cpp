@@ -179,16 +179,6 @@ int32_t main(int32_t argc, char * argv[]){
 	tls::coder_t tls(&fmk, &log);
 	// Регистрируем объект транспортного уровня безопасности
 	const tls::coder_t::id_t cts = tls.context(event::node_t::CLIENT, event::protocol_t::UDP);
-	// Создаём объект клиента
-	client_t client(tls.transport(cts), &tls, &fmk, &log);
-	// Создаём событие клиента и сохраняем его идентификатор
-	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
-	// Устананавливаем опции события
-	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
-		// Записываем в лог сообщение об успешной установке опций события
-		cout << " Successfully set event options!" << endl;
-	// Записываем ошибку в лог установки опций события
-	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем ALPN протоколы TLS
 	tls.alpn(cts, {
 		{0,"http/1.1"},
@@ -224,6 +214,16 @@ int32_t main(int32_t argc, char * argv[]){
 	tls.serverNameIndication(cts, "anyks.com");
 	// Включаем проверку имени хоста TLS
 	tls.validateServerNameIndication(cts, false);
+	// Создаём объект клиента
+	client_t client(tls.transport(cts), &tls, &fmk, &log);
+	// Создаём событие клиента и сохраняем его идентификатор
+	const event::id_t eid = client.init(event::family_t::IPV4, event::type_t::DATAGRAM, event::protocol_t::UDP);
+	// Устананавливаем опции события
+	if(client.setOptions(event::options::NO_SIGILL | event::options::NO_SIGPIPE | event::options::REUSE_ADDR | event::options::NO_IO_BLOCK | event::options::CLOSE_ON_EXEC | event::options::TCP_NO_DELAY))
+		// Записываем в лог сообщение об успешной установке опций события
+		cout << " Successfully set event options!" << endl;
+	// Записываем ошибку в лог установки опций события
+	else cout << " Failed to set event options!" << endl;
 	// Устанавливаем порт и целевой хост для клиента
 	if(client.setTarget("127.0.0.1") && client.setTargetPort(2222)){
 		// Устанавливаем таймаут клиента на чтение данных 6 секунд

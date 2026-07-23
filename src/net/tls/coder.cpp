@@ -2584,11 +2584,12 @@ namespace verify {
 				// Fallback на Common Name (устаревшее, но иногда нужно)
 				X509_NAME * subject = ::X509_get_subject_name(x509);
 				// Если удалось получить Common Name
-				if(::X509_NAME_get_text_by_NID(subject, NID_commonName, buffer, sizeof(buffer)) == 1)
+				if(::X509_NAME_get_text_by_NID(subject, NID_commonName, buffer, sizeof(buffer)) > 0){
 					// Если размер имени и dns имя совпадает
 					if(::verify::certHostcheck(host, buffer))
 						// Запоминаем результат что домен найден
 						result = status_t::MatchFound;
+				}
 			}
 		}
 		// Возвращаем результат
@@ -2730,14 +2731,64 @@ namespace verify {
 						return 1;
 				}
 			}
-			// Если проверка сертификата прошла удачно
-			if((result = ::X509_verify_cert(store)) != 1){
-				// Если произошла ошибка несоответствия имени хоста
-				if(::X509_STORE_CTX_get_error(store) == X509_V_ERR_HOSTNAME_MISMATCH){
-					// Запрашиваем данные сертификата
-					X509 * x509 = ::X509_STORE_CTX_get_current_cert(store);
-					// Если данные сертификата не получены
-					if(x509 == nullptr){
+			/**
+			 * Если проверка цепочки доверия сертификата прошла удачно и задано
+			 * ожидаемое имя хоста, проверяем его. Пустое имя означает, что
+			 * вызывающий код запросил только проверку цепочки, без привязки к
+			 * конкретному хосту, поэтому проверка имени пропускается
+			 */
+			if(((result = ::X509_verify_cert(store)) == 1) && !member->host.empty()){
+				/**
+				 * Имя хоста проверяем собственной валидацией, а не встроенной в
+				 * BoringSSL: встроенная опирается на заданное на параметре имя, а оно
+				 * к моменту проверки может быть не установлено (SNI задаётся после
+				 * создания транспорта) либо отравлено пустым именем. validateHostname
+				 * авторитетна и разбирает SAN и wildcard-имена
+				 */
+				// Запрашиваем данные сертификата
+				X509 * x509 = ::X509_STORE_CTX_get0_cert(store);
+				// Если данные сертификата не получены
+				if(x509 == nullptr){
+					// Отклоняем: цепочка валидна, но сертификат неполноценен
+					result = 0;
+					// Выполняем получение идентификатора контекста TLS
+					const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+					// Если функция обратного вызова состояния установлена
+					if(member->callback.state != nullptr)
+						// Вызываем функцию обратного вызова состояния
+						member->callback.state(id, ::tls::coder_t::state_t::FAILED);
+					// Получаем текст ошибки
+					const string error = ::ssl::error(id, "Certificate is not found in store");
+					// Если функция обратного вызова ошибки установлена
+					if(member->callback.error != nullptr)
+						// Вызываем функцию обратного вызова ошибки
+						member->callback.error(id, ::tls::coder_t::error_t::CERT_FAILED, error);
+					// Если функция обратного вызова ошибки не установлена
+					else {
+						// Получаем объект логирования
+						log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
+						/**
+						 * Если включён режим отладки
+						 */
+						#if DEBUG_MODE
+							// Записываем ошибку в лог
+							log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.c_str());
+						/**
+						 * Если режим отладки не включён
+						 */
+						#else
+							// Записываем ошибку в лог
+							log->print("%s", log_t::flag_t::WARNING, error.c_str());
+						#endif
+					}
+				// Если данные сертификата получены
+				} else {
+					// Получаем имя эмитента выпустившего сертификат
+					X509_NAME * name = ::X509_get_issuer_name(x509);
+					// Если имя эмитента не получено
+					if(name == nullptr){
+						// Отклоняем: цепочка валидна, но сертификат неполноценен
+						result = 0;
 						// Выполняем получение идентификатора контекста TLS
 						const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
 						// Если функция обратного вызова состояния установлена
@@ -2745,7 +2796,7 @@ namespace verify {
 							// Вызываем функцию обратного вызова состояния
 							member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 						// Получаем текст ошибки
-						const string error = ::ssl::error(id, "Certificate is not found in store");
+						const string error = ::ssl::error(id, "Certificate issuer name is not found");
 						// Если функция обратного вызова ошибки установлена
 						if(member->callback.error != nullptr)
 							// Вызываем функцию обратного вызова ошибки
@@ -2768,24 +2819,79 @@ namespace verify {
 								log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						}
-					// Если данные сертификата получены
+					// Если имя эмитента получено
 					} else {
-						// Получаем имя эмитента выпустившего сертификат
-						X509_NAME * name = ::X509_get_issuer_name(x509);
-						// Если имя эмитента не получено
-						if(name == nullptr){
+						// Буфер доменного имени
+						char fqdn[0xFF];
+						// Заполняем буфер нулями
+						::memset(fqdn, 0, sizeof(fqdn));
+						// Запрашиваем имя домена
+						::X509_NAME_oneline(name, fqdn, sizeof(fqdn));
+						// Выполняем проверку на соответствие хоста с данными хостов у сертификата
+						const status_t status = ::verify::validateHostname(member->host, x509);
+						// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
+						if((result = static_cast <int32_t> (status == status_t::MatchFound))){
+							/**
+							 * Если включён режим отладки
+							 */
+							#if DEBUG_MODE
+								// Получаем объект логирования
+								log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
+								// Записываем в лог сообщение
+								log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, member->host.c_str(), fqdn);
+							#endif
+						// Если ресурс не найден тогда выводим сообщение об ошибке
+						} else {
+							// Буфер под результат
+							char result[31];
+							// Устанавливаем результат ошибки по умолчанию
+							::snprintf(result, 31, "%s", "X509 Verify certificate failed");
+							/**
+							 * Определяем полученную ошибку
+							 */
+							switch(static_cast <uint8_t> (status)){
+								// Если домен найден в записях сертификата
+								case static_cast <uint8_t> (status_t::MatchFound):
+									// Устанавливаем статус проверки
+									::snprintf(result, 14, "%s", "Found a match");
+								break;
+								// Если домен не найден в записях сертификата
+								case static_cast <uint8_t> (status_t::MatchNotFound):
+									// Устанавливаем статус проверки
+									::snprintf(result, 15, "%s", "No match found");
+								break;
+								// Если в сертификате отсутствует SAN
+								case static_cast <uint8_t> (status_t::NoSANPresent):
+									// Устанавливаем статус проверки
+									::snprintf(result, 18, "%s", "Present is no SAN");
+								break;
+								// Если сертификат имеет неверный формат
+								case static_cast <uint8_t> (status_t::MalformedCertificate):
+									// Устанавливаем статус проверки
+									::snprintf(result, 22, "%s", "Malformed certificate");
+								break;
+								// Если произошла ошибка при проверке
+								case static_cast <uint8_t> (status_t::Error):
+									// Устанавливаем статус проверки
+									::snprintf(result, 6, "%s", "Error");
+								break;
+								// В иных случаях
+								default: ::snprintf(result, 4, "%s", "WTF");
+							}
 							// Выполняем получение идентификатора контекста TLS
 							const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
+							// Получаем объект фреймворка
+							fmk_t * fmk = reinterpret_cast <fmk_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[5]));
 							// Если функция обратного вызова состояния установлена
 							if(member->callback.state != nullptr)
 								// Вызываем функцию обратного вызова состояния
 								member->callback.state(id, ::tls::coder_t::state_t::FAILED);
 							// Получаем текст ошибки
-							const string error = ::ssl::error(id, "Certificate issuer name is not found");
+							const string error = ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", result, member->host.c_str(), fqdn));
 							// Если функция обратного вызова ошибки установлена
 							if(member->callback.error != nullptr)
 								// Вызываем функцию обратного вызова ошибки
-								member->callback.error(id, ::tls::coder_t::error_t::CERT_FAILED, error);
+								member->callback.error(id, ::tls::coder_t::error_t::HOSTNAME_BAD, error);
 							// Если функция обратного вызова ошибки не установлена
 							else {
 								// Получаем объект логирования
@@ -2803,98 +2909,6 @@ namespace verify {
 									// Записываем ошибку в лог
 									log->print("%s", log_t::flag_t::WARNING, error.c_str());
 								#endif
-							}
-						// Если имя эмитента получено
-						} else {
-							// Буфер доменного имени
-							char fqdn[0xFF];
-							// Заполняем буфер нулями
-							::memset(fqdn, 0, sizeof(fqdn));
-							// Запрашиваем имя домена
-							::X509_NAME_oneline(name, fqdn, sizeof(fqdn));
-							// Выполняем проверку на соответствие хоста с данными хостов у сертификата
-							const status_t status = ::verify::validateHostname(member->host, x509);
-							// Если домен найден в записях сертификата (т.е. сертификат соответствует данному домену)
-							if((result = static_cast <int32_t> (status == status_t::MatchFound))){
-								/**
-								 * Если включён режим отладки
-								 */
-								#if DEBUG_MODE
-									// Получаем объект логирования
-									log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
-									// Записываем в лог сообщение
-									log->print("HTTPS server [%s] has this certificate, which looks good to me: %s", log_t::flag_t::INFO, member->host.c_str(), fqdn);
-								#endif
-							// Если ресурс не найден тогда выводим сообщение об ошибке
-							} else {
-								// Буфер под результат
-								char result[31];
-								// Устанавливаем результат ошибки по умолчанию
-								::snprintf(result, 31, "%s", "X509 Verify certificate failed");
-								/**
-								 * Определяем полученную ошибку
-								 */
-								switch(static_cast <uint8_t> (status)){
-									// Если домен найден в записях сертификата
-									case static_cast <uint8_t> (status_t::MatchFound):
-										// Устанавливаем статус проверки
-										::snprintf(result, 14, "%s", "Found a match");
-									break;
-									// Если домен не найден в записях сертификата
-									case static_cast <uint8_t> (status_t::MatchNotFound):
-										// Устанавливаем статус проверки
-										::snprintf(result, 15, "%s", "No match found");
-									break;
-									// Если в сертификате отсутствует SAN
-									case static_cast <uint8_t> (status_t::NoSANPresent):
-										// Устанавливаем статус проверки
-										::snprintf(result, 18, "%s", "Present is no SAN");
-									break;
-									// Если сертификат имеет неверный формат
-									case static_cast <uint8_t> (status_t::MalformedCertificate):
-										// Устанавливаем статус проверки
-										::snprintf(result, 22, "%s", "Malformed certificate");
-									break;
-									// Если произошла ошибка при проверке
-									case static_cast <uint8_t> (status_t::Error):
-										// Устанавливаем статус проверки
-										::snprintf(result, 6, "%s", "Error");
-									break;
-									// В иных случаях
-									default: ::snprintf(result, 4, "%s", "WTF");
-								}
-								// Выполняем получение идентификатора контекста TLS
-								const ::tls::coder_t::id_t id = static_cast <::tls::coder_t::id_t> (reinterpret_cast <uintptr_t> (member));
-								// Получаем объект фреймворка
-								fmk_t * fmk = reinterpret_cast <fmk_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[5]));
-								// Если функция обратного вызова состояния установлена
-								if(member->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, ::tls::coder_t::state_t::FAILED);
-								// Получаем текст ошибки
-								const string error = ::ssl::error(id, fmk->format("%s for hostname '%s' [%s]", result, member->host.c_str(), fqdn));
-								// Если функция обратного вызова ошибки установлена
-								if(member->callback.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, ::tls::coder_t::error_t::HOSTNAME_BAD, error);
-								// Если функция обратного вызова ошибки не установлена
-								else {
-									// Получаем объект логирования
-									log_t * log = reinterpret_cast <log_t *> (::SSL_CTX_get_ex_data(member->ctx, ::__awh_ssl_index__[6]));
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										log->debug("%s", __PRETTY_FUNCTION__, {}, log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
 							}
 						}
 					}
@@ -4824,7 +4838,7 @@ bool awh::tls::Coder::validateCertificate(const id_t id) const noexcept {
 						// Fallback на Common Name (устаревшее, но иногда нужно)
 						X509_NAME * subject = ::X509_get_subject_name(x509);
 						// Если удалось получить Common Name
-						if(::X509_NAME_get_text_by_NID(subject, NID_commonName, buffer, sizeof(buffer)) == 1)
+						if(::X509_NAME_get_text_by_NID(subject, NID_commonName, buffer, sizeof(buffer)) > 0)
 							// Если размер имени и dns имя совпадает
 							ok = ::verify::certHostcheck(member->host.name, buffer);
 					}
@@ -5210,43 +5224,9 @@ void awh::tls::Coder::serverNameIndication(const id_t id, string_view sni) noexc
 						// Выполняем извлечение объекта транспортного уровня передачи
 						auto member = reinterpret_cast <::ctl_t *> (static_cast <uintptr_t> (id));
 						// Если узел является клиентом
-						if(member->node == event::node_t::CLIENT){
+						if(member->node == event::node_t::CLIENT)
 							// Устанавливаем имя хоста для SNI расширения
 							::SSL_set_tlsext_host_name(member->ssl, sni.data());
-							// Устанавливаем имя хоста для проверки
-							::SSL_set1_host(member->ssl, sni.data());
-							// Активируем верификацию доменного имени
-							if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), sni.data(), 0) != 1){
-								// Если функция обратного вызова состояния установлена
-								if(member->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
-									member->callback.state(id, state_t::FAILED);
-								// Получаем текст ошибки
-								const string error = ::ssl::error(id, "Host verification failed");
-								// Если функция обратного вызова ошибки установлена
-								if(member->callback.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки
-									member->callback.error(id, error_t::HOSTNAME_VERIFY, error);
-								// Если функция обратного вызова ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, sni), log_t::flag_t::CRITICAL, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::CRITICAL, error.c_str());
-									#endif
-								}
-								// Выходим из функции
-								return;
-							}
-						}
 						// Устанавливаем хост для уровня защищённых сокетов
 						member->host.name = sni;
 					} break;
@@ -6231,19 +6211,9 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 							break;
 						}
 						// Если узел является клиентом
-						if(member->node == event::node_t::CLIENT){
+						if(member->node == event::node_t::CLIENT)
 							// Устанавливаем имя хоста для SNI расширения
 							::SSL_set_tlsext_host_name(member->ssl, cts->host.c_str());
-							// Устанавливаем имя хоста для проверки
-							::SSL_set1_host(member->ssl, cts->host.c_str());
-							/**
-							 * SSL_set1_host выше уже вызвал X509_VERIFY_PARAM_set1_host
-							 * с корректным strlen(host). Повторный вызов с namelen=0 в BoringSSL
-							 * интерпретируется как пустое имя (не как strlen!) и устанавливает
-							 * param->poison=1, что приводит к X509_V_ERR_INVALID_CALL при верификации,
-							 * поэтому здесь он не повторяется
-							 */
-						}
 						// Копируем список ECHConfig из шаблона контекста безопасности
 						member->ech = cts->ech;
 						// Если узел является клиентом и список ECHConfig не пустой — применяем для шифрования SNI
@@ -6399,41 +6369,9 @@ awh::tls::Coder::id_t awh::tls::Coder::transport(const id_t id) noexcept {
 							break;
 						}
 						// Если узел является клиентом
-						if(member->node == event::node_t::CLIENT){
+						if(member->node == event::node_t::CLIENT)
 							// Устанавливаем имя хоста для SNI расширения
 							::SSL_set_tlsext_host_name(member->ssl, cts->host.name.c_str());
-							// Устанавливаем имя хоста для проверки
-							::SSL_set1_host(member->ssl, cts->host.name.c_str());
-							// Активируем верификацию доменного имени
-							if(::X509_VERIFY_PARAM_set1_host(::SSL_get0_param(member->ssl), cts->host.name.c_str(), 0) != 1){
-								// Если функция обратного вызова состояния установлена
-								if(cts->callback.state != nullptr)
-									// Вызываем функцию обратного вызова состояния
-									cts->callback.state(id, state_t::FAILED);
-								// Получаем текст ошибки
-								const string error = ::ssl::error(id, "Host verification failed");
-								// Если функция обратного вызова ошибки установлена
-								if(cts->callback.error != nullptr)
-									// Вызываем функцию обратного вызова ошибки
-									cts->callback.error(id, error_t::HOSTNAME_VERIFY, error);
-								// Если функция обратного вызова ошибки не установлена
-								else {
-									/**
-									 * Если включён режим отладки
-									 */
-									#if DEBUG_MODE
-										// Записываем ошибку в лог
-										this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, cts->host.name), log_t::flag_t::WARNING, error.c_str());
-									/**
-									 * Если режим отладки не включён
-									 */
-									#else
-										// Записываем ошибку в лог
-										this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
-									#endif
-								}
-							}
-						}
 						// Копируем список ECHConfig из транспортного уровня
 						member->ech = cts->ech;
 						// Если узел является клиентом и список ECHConfig не пустой — применяем для шифрования SNI
