@@ -348,8 +348,9 @@ awh::quic::Connection::Rtt::Rtt() noexcept :
  *
  */
 awh::quic::Connection::Path::Path() noexcept :
- pending(false), queued(false), validated(false),
- probe{0}, address{""}, migrations(0) {}
+ pending(false), queued(false), validated(false), probe{0},
+ relocating(false), alternate(false), deadline(0), address{""},
+ previous{""}, migrations(0) {}
 
 /**
  * @brief Конструктор
@@ -1018,7 +1019,7 @@ void awh::quic::Connection::discover() noexcept {
 	 * его у проверки достижимости пути (RFC 9000 §8.1)
 	 */
 	if(!this->_confirmed || (this->_state != state_t::CONNECTED) ||
-	   (!this->_amplify.validated && (this->_endpoint == endpoint_t::SERVER))){
+	   !this->_amplify.validated){
 		// Сбрасываем размер собираемого зонда
 		this->_pmtu.probe = 0;
 		// Сбрасываем флаг необходимости отправки зонда
@@ -1494,8 +1495,12 @@ bool awh::quic::Connection::validate(string_view token, cid_t & odcid, bool & re
  * @return доступный к отправке объём данных в октетах
  */
 size_t awh::quic::Connection::allowance() const noexcept {
-	// Если адрес удалённого эндпоинта подтверждён либо лимит к роли не применяется
-	if(this->_amplify.validated || (this->_endpoint != endpoint_t::SERVER))
+	/**
+	 * Если адрес удалённого эндпоинта подтверждён: лимит относится к адресу, а не
+	 * к роли эндпоинта - усилителем трафика на чужой адрес соединение становится
+	 * с любой стороны (RFC 9000 §8.1/§9.3.1)
+	 */
+	if(this->_amplify.validated)
 		// Выводим подтверждённый размер датаграммы целиком
 		return this->_pmtu.size;
 	// Вычисляем трёхкратный объём принятых от удалённого эндпоинта октетов
@@ -1506,6 +1511,23 @@ size_t awh::quic::Connection::allowance() const noexcept {
 		return 0;
 	// Выводим остаток лимита, ограниченный размером датаграммы
 	return static_cast <size_t> (::min(limit - this->_amplify.sent, static_cast <uint64_t> (this->_pmtu.size)));
+}
+/**
+ * @brief Метод проверки невозможности отправки под лимитом анти-амплификации (RFC 9002 §6.2.2.1)
+ *
+ * @return результат проверки
+ */
+bool awh::quic::Connection::stalled() const noexcept {
+	// Если адрес удалённого эндпоинта подтверждён - лимит отправку не ограничивает
+	if(this->_amplify.validated)
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * Сравниваем остаток лимита с минимальным размером защищённого пакета: остаток
+	 * меньше него не вмещает ни одного пакета, то есть отправка запрещена не менее
+	 * надёжно, чем при исчерпанном нацело лимите
+	 */
+	return (this->allowance() < (CONTROL_OVERHEAD + MIN_PAYLOAD_SIZE + crypto::AEAD_TAG_SIZE));
 }
 /**
  * @brief Метод удаления завершённых потоков приложения
@@ -1524,10 +1546,19 @@ void awh::quic::Connection::collect() noexcept {
 	for(auto i = this->_stream.list.begin(); i != this->_stream.list.end();){
 		// Получаем состояние потока
 		const auto & stream = i->second;
-		// Определяем завершённость отправки: передан FIN либо аварийное завершение
-		const bool sent = ((stream.txFinSent || stream.txResetSent) && (stream.txBuffer.size() == stream.txCursor));
-		// Определяем завершённость приёма: поток сброшен, прекращён либо выдан приложению
-		const bool received = (stream.rxReset || stream.stopSent || (stream.rxFin && stream.rxFinDelivered));
+		/**
+		 * Определяем завершённость отправки: передан FIN либо аварийное завершение.
+		 * Сторона, которой у потока нет, завершена всегда: в однонаправленный поток
+		 * отправляет только его инициатор, и ждать от прочих завершения отправки
+		 * значило бы не освободить такой поток никогда (RFC 9000 §2.1)
+		 */
+		const bool sent = (!this->sendable(i->first) || ((stream.txFinSent || stream.txResetSent) && (stream.txBuffer.size() == stream.txCursor)));
+		/**
+		 * Определяем завершённость приёма: поток сброшен, прекращён либо выдан
+		 * приложению. Сторона, которой у потока нет, завершена всегда - из
+		 * однонаправленного потока принимает кто угодно, кроме его инициатора
+		 */
+		const bool received = (!this->receivable(i->first) || stream.rxReset || stream.stopSent || (stream.rxFin && stream.rxFinDelivered));
 		// Если хотя бы одна сторона потока не завершена
 		if(!sent || !received){
 			// Переходим к следующему потоку
@@ -1729,6 +1760,16 @@ void awh::quic::Connection::issue() noexcept {
 		// Продвигаем порядковый номер следующего выдаваемого идентификатора
 		this->_routing.issuedSeq++;
 	}
+}
+/**
+ * @brief Метод проверки закреплённости идентификатора за предпочтительным адресом (RFC 9000 §5.1.1)
+ *
+ * @param seq порядковый номер идентификатора соединения
+ * @return    результат проверки
+ */
+bool awh::quic::Connection::reserved(const uint64_t seq) const noexcept {
+	// Выводим результат проверки закреплённости идентификатора за предпочтительным адресом
+	return ((seq == 1) && this->_remote.hasPreferredAddress && !this->_cid.relocated);
 }
 /**
  * @brief Метод проверки возможности отправки данных в поток локальным эндпоинтом
@@ -2980,20 +3021,34 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					}
 					// Если текущий идентификатор выведен из обращения
 					if(this->_routing.sequence < this->_routing.retirePrior){
+						// Флаг выполненного переключения идентификатора
+						bool switched = false;
 						/**
-						 * Перебираем список идентификаторов удалённого эндпоинта
+						 * Перебираем список идентификаторов удалённого эндпоинта дважды:
+						 * сперва в обход закреплённого за предпочтительным адресом, а затем
+						 * и с ним. Продолжать пользоваться выведенным из обращения
+						 * идентификатором нельзя, поэтому при отсутствии прочих берётся
+						 * и закреплённый - переезд без идентификатора хуже неотправляемых
+						 * пакетов не бывает (RFC 9000 §5.1.1/§5.1.2)
 						 */
-						for(auto & item : this->_routing.remote){
-							// Если идентификатор ещё не использовался
-							if(!item.used){
-								// Переключаем идентификатор соединения удалённого эндпоинта
-								this->_cid.destination = item.cid;
-								// Обновляем порядковый номер текущего идентификатора
-								this->_routing.sequence = item.seq;
-								// Устанавливаем флаг использования идентификатора
-								item.used = true;
-								// Прекращаем перебор
-								break;
+						for(uint8_t pass = 0; (pass < 2) && !switched; pass++){
+							/**
+							 * Перебираем список идентификаторов удалённого эндпоинта
+							 */
+							for(auto & item : this->_routing.remote){
+								// Если идентификатор ещё не использовался и допустим на текущем проходе
+								if(!item.used && ((pass > 0) || !this->reserved(item.seq))){
+									// Переключаем идентификатор соединения удалённого эндпоинта
+									this->_cid.destination = item.cid;
+									// Обновляем порядковый номер текущего идентификатора
+									this->_routing.sequence = item.seq;
+									// Устанавливаем флаг использования идентификатора
+									item.used = true;
+									// Устанавливаем флаг выполненного переключения
+									switched = true;
+									// Прекращаем перебор
+									break;
+								}
 							}
 						}
 					}
@@ -3044,6 +3099,15 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					}
 					// Сбрасываем флаг ожидания ответа на проверку пути
 					this->_path.pending = false;
+					// Сбрасываем дедлайн отказа от проверки достижимости пути
+					this->_path.deadline = 0;
+					/**
+					 * Запоминаем адрес последним проверенным: на него возвращается соединение,
+					 * если проверка следующего адреса не пройдёт (RFC 9000 §9.3.2)
+					 */
+					if(!this->_path.relocating)
+						// Запоминаем адрес текущего пути последним проверенным
+						this->_path.previous = this->_path.address;
 					// Устанавливаем флаг подтверждённой достижимости пути
 					this->_path.validated = true;
 					/**
@@ -3051,6 +3115,13 @@ awh::quic::status_t awh::quic::Connection::frames(const level_t level, const uin
 					 * адрес удалённого эндпоинта на этом пути проверен (RFC 9000 §9.3)
 					 */
 					this->_amplify.validated = true;
+					/**
+					 * Если подтверждена достижимость предпочтительного адреса: проверка
+					 * пройдена, и переезд на него становится дозволенным (RFC 9000 §9.6.2)
+					 */
+					if(this->_path.relocating)
+						// Выполняем завершение переезда на предпочтительный адрес
+						this->settle();
 					// Возобновляем поиск размера пути после подтверждения адреса (RFC 8899)
 					this->discover();
 				}
@@ -3279,8 +3350,12 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			// Сбрасываем флаг необходимости отправки фрейма NEW_TOKEN
 			this->_token.queued = false;
 		}
-		// Если требуется отправка фрейма PATH_CHALLENGE
-		if(this->_path.queued && (budget > (output.size() + CONTROL_OVERHEAD))){
+		/**
+		 * Если требуется отправка фрейма PATH_CHALLENGE: проверка предпочтительного
+		 * адреса сюда не попадает - она уходит отдельной датаграммой на сам
+		 * предпочтительный адрес, а не по текущему пути (RFC 9000 §9.6.2)
+		 */
+		if(this->_path.queued && !this->_path.relocating && (budget > (output.size() + CONTROL_OVERHEAD))){
 			// Выполняем сборку фрейма PATH_CHALLENGE (RFC 9000 §19.17)
 			frame::serialize::path(output, frame_t::PATH_CHALLENGE, this->_path.probe);
 			// Запоминаем управляющий фрейм в учётной записи пакета
@@ -3649,15 +3724,16 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
  * @param level  уровень шифрования пакета
  * @param length значение поля Length (номер пакета + нагрузка + тег AEAD)
  * @param pnSize размер кодирования номера пакета в октетах
+ * @param dcid   идентификатор соединения получателя пакета
  * @return       размер заголовка пакета в октетах
  */
-size_t awh::quic::Connection::headerSize(const level_t level, const uint64_t length, const size_t pnSize) const noexcept {
+size_t awh::quic::Connection::headerSize(const level_t level, const uint64_t length, const size_t pnSize, const cid_t & dcid) const noexcept {
 	// Если пакет уровня приложения (короткий заголовок)
 	if(level == level_t::APPLICATION)
 		// Выводим размер короткого заголовка: первый октет + DCID + номер пакета
-		return (1 + this->_cid.destination.size + pnSize);
+		return (1 + dcid.size + pnSize);
 	// Размер длинного заголовка: первый октет + версия + длины и данные идентификаторов
-	size_t result = (1 + 4 + 1 + this->_cid.destination.size + 1 + this->_cid.source.size);
+	size_t result = (1 + 4 + 1 + dcid.size + 1 + this->_cid.source.size);
 	// Если пакет уровня Initial
 	if(level == level_t::INITIAL)
 		// Дописываем размер поля длины токена и токена проверки адреса (RFC 9000 §17.2.2)
@@ -3673,9 +3749,10 @@ size_t awh::quic::Connection::headerSize(const level_t level, const uint64_t len
  * @param output  выходной буфер датаграммы (пакет дописывается)
  * @param level   уровень шифрования пакета
  * @param payload нагрузка пакета (фреймы)
+ * @param dcid    идентификатор соединения получателя пакета
  * @return        результат сборки (false - ошибка криптографической библиотеки)
  */
-bool awh::quic::Connection::seal(string & output, const level_t level, string_view payload) noexcept {
+bool awh::quic::Connection::seal(string & output, const level_t level, string_view payload, const cid_t & dcid) noexcept {
 	// Получаем ключи защиты исходящих пакетов уровня
 	const crypto::keys_t * keys = this->_handshake.encryption(level);
 	// Если ключи защиты пакетов уровня не выведены
@@ -3701,14 +3778,14 @@ bool awh::quic::Connection::seal(string & output, const level_t level, string_vi
 		// Пакет уровня Initial
 		case level_t::INITIAL: {
 			// Выполняем сборку длинного заголовка пакета Initial с токеном проверки адреса
-			if(!packet::serialize::longHeader(header, packet_t::INITIAL, proto::VERSION_1, this->_cid.destination, this->_cid.source, this->_token.initial, length, pn, pnSize))
+			if(!packet::serialize::longHeader(header, packet_t::INITIAL, proto::VERSION_1, dcid, this->_cid.source, this->_token.initial, length, pn, pnSize))
 				// Выводим отрицательный результат
 				return false;
 		} break;
 		// Пакет уровня Handshake
 		case level_t::HANDSHAKE: {
 			// Выполняем сборку длинного заголовка пакета Handshake
-			if(!packet::serialize::longHeader(header, packet_t::HANDSHAKE, proto::VERSION_1, this->_cid.destination, this->_cid.source, "", length, pn, pnSize))
+			if(!packet::serialize::longHeader(header, packet_t::HANDSHAKE, proto::VERSION_1, dcid, this->_cid.source, "", length, pn, pnSize))
 				// Выводим отрицательный результат
 				return false;
 		} break;
@@ -3718,14 +3795,14 @@ bool awh::quic::Connection::seal(string & output, const level_t level, string_vi
 		 */
 		case level_t::EARLY_DATA: {
 			// Выполняем сборку длинного заголовка пакета ранних данных
-			if(!packet::serialize::longHeader(header, packet_t::ZERO_RTT, proto::VERSION_1, this->_cid.destination, this->_cid.source, "", length, pn, pnSize))
+			if(!packet::serialize::longHeader(header, packet_t::ZERO_RTT, proto::VERSION_1, dcid, this->_cid.source, "", length, pn, pnSize))
 				// Выводим отрицательный результат
 				return false;
 		} break;
 		// Пакет уровня приложения (1-RTT)
 		case level_t::APPLICATION: {
 			// Выполняем сборку короткого заголовка пакета 1-RTT с битом фазы ключей (RFC 9001 §6)
-			if(!packet::serialize::shortHeader(header, this->_cid.destination, pn, pnSize, this->_phase.current, false))
+			if(!packet::serialize::shortHeader(header, dcid, pn, pnSize, this->_phase.current, false))
 				// Выводим отрицательный результат
 				return false;
 		} break;
@@ -3967,11 +4044,26 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 	 */
 	if((this->_state == state_t::CONNECTED) && !this->_address.empty()){
 		// Если путь соединения ещё не зафиксирован
-		if(this->_path.address.empty())
+		if(this->_path.address.empty()){
 			// Запоминаем адрес первичного пути соединения
 			this->_path.address = this->_address;
+			/**
+			 * Запоминаем адрес последним проверенным: достижимость первичного пути
+			 * подтверждена самим хендшейком, а после переезда - проверкой пути
+			 */
+			this->_path.previous = this->_address;
+		}
 		// Если адрес удалённого эндпоинта сменился
 		else if(this->_address != this->_path.address) {
+			/**
+			 * Если выполняется проверка достижимости другого адреса: отказываемся от неё
+			 * до записи нового адреса и без возврата на проверенный. Сменив адрес отправки,
+			 * эндпоинт вправе бросить проверки прочих адресов, а возврат затёр бы адрес,
+			 * на который соединение как раз переходит (RFC 9000 §9.3.1)
+			 */
+			if(this->_path.pending)
+				// Выполняем отказ от проверки достижимости прежнего адреса
+				this->abandon(false);
 			// Запоминаем адрес нового пути соединения
 			this->_path.address = this->_address;
 			// Записываем в лог сообщение о миграции соединения на новый путь
@@ -3979,8 +4071,8 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 				"QUIC connection migrated to a new path: %s", log_t::flag_t::INFO,
 				this->_path.address.c_str()
 			);
-			// Выполняем сброс состояния пути соединения
-			this->repath();
+			// Выполняем сброс состояния пути соединения со сменой адреса удалённого эндпоинта
+			this->repath(true);
 			// Начинаем проверку достижимости нового пути
 			this->probe();
 		}
@@ -4674,6 +4766,8 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept {
 	// Очищаем буфер исходящей датаграммы
 	output.clear();
+	// Сбрасываем признак адресации датаграммы предпочтительному адресу
+	this->_path.alternate = false;
 	// Если подготовлена датаграмма без состояния (Version Negotiation либо Retry)
 	if(!this->_stateless.empty()){
 		// Передаём датаграмму без состояния вызывающему коду
@@ -4740,7 +4834,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 					// Дополняем нагрузку фреймами PADDING
 					frame::serialize::padding(payload, MIN_PAYLOAD_SIZE - payload.size());
 				// Выполняем сборку и защиту пакета завершения соединения
-				if(!this->seal(output, level, payload))
+				if(!this->seal(output, level, payload, this->_cid.destination))
 					// Выводим отрицательный результат
 					return false;
 				// Если пакет завершения не помещается в доступный объём отправки
@@ -4774,6 +4868,85 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		// Выводим отрицательный результат
 		return false;
 	/**
+	 * Если требуется проверка достижимости предпочтительного адреса: она уходит
+	 * отдельной датаграммой на сам предпочтительный адрес, а не по текущему пути,
+	 * и несёт одни пробирующие фреймы. Соединение при этом продолжает работать
+	 * по текущему пути - переезжать дозволено лишь на проверенный адрес
+	 * (RFC 9000 §9.1/§9.6.2)
+	 */
+	if(this->_path.relocating && this->_path.queued && (this->_handshake.encryption(level_t::APPLICATION) != nullptr)){
+		// Сбрасываем флаг необходимости отправки фрейма PATH_CHALLENGE
+		this->_path.queued = false;
+		// Получаем состояние пространства номеров пакетов приложения
+		auto & item = this->_spaces[static_cast <size_t> (space_t::APPLICATION)];
+		// Получаем переиспользуемый буфер нагрузки уровня приложения
+		string & buffer = this->_buffer.payload[static_cast <size_t> (level_t::APPLICATION)];
+		// Очищаем буфер от результатов предыдущей сборки
+		buffer.clear();
+		// Выполняем сборку фрейма PATH_CHALLENGE (RFC 9000 §19.17)
+		frame::serialize::path(buffer, frame_t::PATH_CHALLENGE, this->_path.probe);
+		// Вычисляем размер кодирования номера отправляемого пакета
+		const size_t pnSize = packet::packetNumberSize(item.txPn, (item.hasAcked ? item.largestAcked : item.txPn));
+		/**
+		 * Вычисляем точные накладные расходы пакета: заголовок с номером пакета
+		 * и тег AEAD. Оценка с запасом здесь неприменима - датаграмма обязана
+		 * достичь минимального размера ровно (RFC 9000 §8.2.1)
+		 */
+		const size_t reserve = (this->headerSize(level_t::APPLICATION, proto::MIN_INITIAL_SIZE, pnSize, this->_path.relocation) + crypto::AEAD_TAG_SIZE);
+		/**
+		 * Если датаграмма не достигает минимального размера: датаграмма с фреймом
+		 * проверки дополняется до него - проверка подтверждает пригодность пути
+		 * к переносу датаграмм именно такого размера (RFC 9000 §8.2.1)
+		 */
+		if((reserve + buffer.size()) < proto::MIN_INITIAL_SIZE)
+			// Дополняем нагрузку фреймами PADDING до минимального размера датаграммы
+			frame::serialize::padding(buffer, proto::MIN_INITIAL_SIZE - reserve - buffer.size());
+		// Учётная запись пробирующего пакета
+		sent_t meta;
+		// Устанавливаем номер отправляемого пакета
+		meta.pn = item.txPn;
+		/**
+		 * Устанавливаем флаг отправки пакета вне текущего пути: контроль перегрузки
+		 * и оценка задержки текущего пути к пробирующему пакету на другой адрес
+		 * отношения не имеют
+		 */
+		meta.stale = true;
+		// Запоминаем управляющий фрейм в учётной записи пакета для повтора при потере
+		meta.control.emplace_back(frame_t::PATH_CHALLENGE, 0);
+		/**
+		 * Выполняем сборку и защиту пакета идентификатором предпочтительного адреса:
+		 * прежний идентификатор на новом пути позволил бы наблюдателю связать
+		 * пути между собой (RFC 9000 §9.5)
+		 */
+		if(!this->seal(output, level_t::APPLICATION, buffer, this->_path.relocation)){
+			// Очищаем буфер исходящей датаграммы
+			output.clear();
+			// Выводим отрицательный результат - собрать проверку не удалось
+			return false;
+		}
+		// Устанавливаем время отправки пробирующего пакета
+		meta.time = now;
+		// Устанавливаем размер пробирующего пакета
+		meta.size = output.size();
+		// Устанавливаем время отправки последнего ack-eliciting пакета
+		item.lastElicited = now;
+		// Устанавливаем флаг наличия отправленных ack-eliciting пакетов
+		item.hasElicited = true;
+		// Добавляем учётную запись пробирующего пакета в список отправленных
+		item.sent.push_back(::move(meta));
+		/**
+		 * Устанавливаем признак адресации датаграммы предпочтительному адресу: в учёт
+		 * анти-амплификации текущего пути она не входит намеренно - уходит она не по
+		 * нему. Лимит же самого предпочтительного адреса неприменим: адрес анонсирован
+		 * удалённым эндпоинтом в заверенных хендшейком параметрах, подделать его
+		 * посторонний не может, а поток проверок ограничен сроком отказа от них
+		 * (RFC 9000 §8.1/§8.2.4/§9.6.2)
+		 */
+		this->_path.alternate = true;
+		// Выводим положительный результат - проверка предпочтительного адреса собрана
+		return true;
+	}
+	/**
 	 * Если требуется отправка зонда размера пути: зонд собирается отдельной
 	 * датаграммой увеличенного размера с фреймом PING и дополнением. Полезных
 	 * данных он не несёт намеренно - путь может его не пропустить, а повторная
@@ -4794,7 +4967,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		 * Вычисляем накладные расходы пакета: заголовок с номером пакета
 		 * максимальной длины и тег AEAD
 		 */
-		const size_t reserve = (this->headerSize(level_t::APPLICATION, this->_pmtu.probe, proto::MAX_PKT_NUM_SIZE) + crypto::AEAD_TAG_SIZE);
+		const size_t reserve = (this->headerSize(level_t::APPLICATION, this->_pmtu.probe, proto::MAX_PKT_NUM_SIZE, this->_cid.destination) + crypto::AEAD_TAG_SIZE);
 		// Если зонд вместе с накладными расходами в датаграмму не помещается
 		if((reserve + buffer.size()) < this->_pmtu.probe)
 			// Дополняем нагрузку фреймами PADDING до размера зонда
@@ -4810,7 +4983,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		// Очищаем буфер исходящей датаграммы
 		output.clear();
 		// Выполняем сборку и защиту пакета зонда
-		if(!this->seal(output, level_t::APPLICATION, buffer)){
+		if(!this->seal(output, level_t::APPLICATION, buffer, this->_cid.destination)){
 			// Очищаем буфер исходящей датаграммы
 			output.clear();
 			// Выводим отрицательный результат - собрать зонд не удалось
@@ -4883,7 +5056,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		 * токен проверки адреса, который бывает длиннее сотни октетов, поэтому
 		 * фиксированный запас здесь неприменим
 		 */
-		const size_t reserve = (this->headerSize(level, capacity, proto::MAX_PKT_NUM_SIZE) + crypto::AEAD_TAG_SIZE);
+		const size_t reserve = (this->headerSize(level, capacity, proto::MAX_PKT_NUM_SIZE, this->_cid.destination) + crypto::AEAD_TAG_SIZE);
 		// Если в датаграмме не осталось места на пакет уровня
 		if((used + reserve) >= capacity)
 			// Прекращаем сборку датаграммы
@@ -4958,7 +5131,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 				// Вычисляем размер кодирования номера пакета
 				const size_t pnSize = packet::packetNumberSize(item.txPn, (item.hasAcked ? item.largestAcked : item.txPn));
 				// Суммируем точный размер пакета: заголовок + номер + нагрузка + тег AEAD
-				total += (this->headerSize(spec.level, pnSize + length + crypto::AEAD_TAG_SIZE, pnSize) + length + crypto::AEAD_TAG_SIZE);
+				total += (this->headerSize(spec.level, pnSize + length + crypto::AEAD_TAG_SIZE, pnSize, this->_cid.destination) + length + crypto::AEAD_TAG_SIZE);
 			}
 			// Если датаграмма меньше минимального размера
 			if(total < proto::MIN_INITIAL_SIZE){
@@ -4994,7 +5167,7 @@ bool awh::quic::Connection::write(string & output, const uint64_t now) noexcept 
 		// Смещение начала пакета в буфере датаграммы
 		const size_t start = output.size();
 		// Выполняем сборку и защиту пакета уровня
-		if(!this->seal(output, spec.level, this->_buffer.payload[static_cast <size_t> (spec.level)]))
+		if(!this->seal(output, spec.level, this->_buffer.payload[static_cast <size_t> (spec.level)], this->_cid.destination))
 			// Прекращаем сборку - содержимое оставшихся пакетов будет возвращено в очереди
 			break;
 		// Устанавливаем время отправки пакета
@@ -5121,6 +5294,13 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
 	// Дедлайн ближайшего события таймера
 	uint64_t result = 0;
 	/**
+	 * Флаг запрета отправки лимитом анти-амплификации: зондировать нечем, поэтому
+	 * таймер PTO не взводится - его срабатывания лишь наращивали бы экспоненциальную
+	 * выдержку вхолостую, а разблокирует отправку приём датаграммы, а не таймер
+	 * (RFC 9002 §6.2.2.1)
+	 */
+	const bool blocked = this->stalled();
+	/**
 	 * Перебираем пространства номеров пакетов
 	 */
 	for(size_t i = 0; i < SPACES; i++){
@@ -5131,7 +5311,7 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
 			// Устанавливаем дедлайн детекта потерь
 			result = item.lossTime;
 		// Получаем дедлайн таймера PTO пространства
-		const uint64_t pto = this->deadline(static_cast <space_t> (i));
+		const uint64_t pto = (blocked ? 0 : this->deadline(static_cast <space_t> (i)));
 		// Если таймер PTO пространства взведён
 		if((pto > 0) && ((result == 0) || (pto < result)))
 			// Устанавливаем дедлайн таймера PTO
@@ -5150,6 +5330,14 @@ uint64_t awh::quic::Connection::timeout() const noexcept {
 				result = ack;
 		}
 	}
+	/**
+	 * Если выполняется проверка достижимости пути: по истечении её дедлайна путь
+	 * признаётся непригодным, поэтому дедлайн является событием таймера
+	 * (RFC 9000 §8.2.4)
+	 */
+	if(this->_path.pending && (this->_path.deadline > 0) && ((result == 0) || (this->_path.deadline < result)))
+		// Устанавливаем дедлайн отказа от проверки достижимости пути
+		result = this->_path.deadline;
 	// Получаем дедлайн таймаута простоя соединения (RFC 9000 §10.1)
 	const uint64_t idle = this->idle();
 	// Если таймаут простоя согласован и является ближайшим событием
@@ -5199,6 +5387,14 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
 		// Выходим из метода
 		return;
 	}
+	/**
+	 * Если дедлайн проверки достижимости пути истёк: ответа не дождались, и
+	 * переотправлять проверку далее незачем - путь признаётся непригодным
+	 * (RFC 9000 §8.2.4)
+	 */
+	if(this->_path.pending && (this->_path.deadline > 0) && (now >= this->_path.deadline))
+		// Выполняем отказ от проверки достижимости пути с возвратом на проверенный адрес
+		this->abandon(true);
 	// Флаг выполненного детекта потерь
 	bool detected = false;
 	/**
@@ -5215,6 +5411,14 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
 	}
 	// Если детект потерь выполнен - таймер PTO не обрабатывается (RFC 9002 §6.2)
 	if(detected)
+		// Выходим из метода
+		return;
+	/**
+	 * Если отправка запрещена лимитом анти-амплификации: зондирование невозможно,
+	 * а счётчик срабатываний таймера PTO наращивал бы выдержку вхолостую
+	 * (RFC 9002 §6.2.2.1)
+	 */
+	if(this->stalled())
 		// Выходим из метода
 		return;
 	// Пространство с просроченным таймером PTO
@@ -5245,6 +5449,14 @@ void awh::quic::Connection::tick(const uint64_t now) noexcept {
 		this->_congestion.probes = PTO_PROBES;
 		// Ставим зондирующие данные пространства в очередь отправки
 		this->probe(expired);
+		/**
+		 * Если выполняется проверка достижимости пути: повторяем её отправку. Ответа
+		 * на неё нет, а ретрансмиссии фрейм проверки не подлежит - вместо потерянного
+		 * отправляется новый, и так до истечения срока отказа (RFC 9000 §8.2/§13.3)
+		 */
+		if(this->_path.pending)
+			// Ставим отправку фрейма PATH_CHALLENGE в очередь
+			this->_path.queued = true;
 	}
 }
 /**
@@ -5281,7 +5493,7 @@ bool awh::quic::Connection::phase() const noexcept {
  * @brief Метод сброса состояния пути соединения (RFC 9000 §9.4)
  *
  */
-void awh::quic::Connection::repath() noexcept {
+void awh::quic::Connection::repath(const bool remote) noexcept {
 	/**
 	 * Окно перегрузки и оценка задержки характеризуют конкретный сетевой путь:
 	 * на новом пути прежние значения неприменимы и приводят к отправке заведомо
@@ -5326,14 +5538,21 @@ void awh::quic::Connection::repath() noexcept {
 	// Сбрасываем счётчик срабатываний таймера PTO
 	this->_rtt.ptoCount = 0;
 	/**
-	 * Новый путь достижимости не подтвердил, поэтому лимит анти-амплификации
-	 * применяется к нему заново со своими счётчиками (RFC 9000 §9.3)
+	 * Если сменился адрес удалённого эндпоинта: достижимости нового адреса ничто
+	 * не подтверждало, а сменить его мог и посторонний, подделавший адрес
+	 * отправителя - до проверки пути объём отправки на него ограничен трёхкратным
+	 * объёмом принятого, иначе соединение стало бы усилителем трафика на чужой
+	 * адрес. Смена лишь собственного адреса лимита не возвращает: адрес удалённого
+	 * эндпоинта остаётся прежним и проверенным (RFC 9000 §8.1/§9.3.1)
 	 */
-	this->_amplify.validated = false;
-	// Обнуляем счётчик принятых от удалённого эндпоинта октетов
-	this->_amplify.received = 0;
-	// Обнуляем счётчик отправленных удалённому эндпоинту октетов
-	this->_amplify.sent = 0;
+	if(remote){
+		// Сбрасываем флаг подтверждённого адреса удалённого эндпоинта
+		this->_amplify.validated = false;
+		// Обнуляем счётчик принятых от удалённого эндпоинта октетов
+		this->_amplify.received = 0;
+		// Обнуляем счётчик отправленных удалённому эндпоинту октетов
+		this->_amplify.sent = 0;
+	}
 	// Сбрасываем флаг подтверждённой достижимости пути
 	this->_path.validated = false;
 	/**
@@ -5385,8 +5604,73 @@ bool awh::quic::Connection::probe() noexcept {
 	this->_path.validated = false;
 	// Ставим отправку фрейма PATH_CHALLENGE в очередь
 	this->_path.queued = true;
+	/**
+	 * Взводим дедлайн отказа от проверки: новый путь бывает длиннее прежнего,
+	 * поэтому отводится троекратный интервал PTO, но не меньше троекратного
+	 * интервала по начальной оценке задержки - иначе быстрый прежний путь
+	 * задал бы заведомо недостижимый срок (RFC 9000 §8.2.4)
+	 */
+	this->_path.deadline = (this->_now + (3 * ::max(this->interval(space_t::APPLICATION), (3 * INITIAL_RTT))));
 	// Выводим положительный результат
 	return true;
+}
+/**
+ * @brief Метод отказа от проверки достижимости пути (RFC 9000 §8.2.4)
+ *
+ * @param revert признак возврата на последний проверенный адрес
+ */
+void awh::quic::Connection::abandon(const bool revert) noexcept {
+	// Сбрасываем флаг ожидания ответа на проверку пути
+	this->_path.pending = false;
+	// Сбрасываем флаг необходимости отправки фрейма PATH_CHALLENGE
+	this->_path.queued = false;
+	// Сбрасываем дедлайн отказа от проверки достижимости пути
+	this->_path.deadline = 0;
+	/**
+	 * Если проверялась достижимость предпочтительного адреса: переезд на него
+	 * отменяется, а соединение остаётся на текущем пути - переезжать дозволено
+	 * лишь на проверенный адрес (RFC 9000 §9.6.2)
+	 */
+	if(this->_path.relocating){
+		// Сбрасываем флаг выполняемой проверки предпочтительного адреса
+		this->_path.relocating = false;
+		// Записываем в лог сообщение об отмене переезда на предпочтительный адрес
+		this->_log->print("QUIC preferred address is unreachable, connection stays on the current path", log_t::flag_t::WARNING);
+	/**
+	 * Если проверялась достижимость текущего пути: путь признаётся непригодным,
+	 * но соединение не завершается - непригодность пути его разрывом не является.
+	 * Адрес удалённого эндпоинта остаётся неподтверждённым, поэтому объём отправки
+	 * на него ограничен лимитом анти-амплификации (RFC 9000 §8.2.4/§9.3.1)
+	 */
+	/**
+	 * Если проверялась достижимость нового адреса удалённого эндпоинта, а прежний
+	 * проверенный адрес известен: возвращаем соединение на него. Смену адреса
+	 * способен подделать находящийся на пути посторонний, и без возврата одна
+	 * поддельная датаграмма уводила бы соединение на недостижимый адрес насовсем
+	 * (RFC 9000 §9.3.2)
+	 */
+	} else if(revert && !this->_path.previous.empty() && (this->_path.previous != this->_path.address)) {
+		// Возвращаем соединение на последний проверенный адрес
+		this->_path.address = this->_path.previous;
+		// Восстанавливаем флаг подтверждённой достижимости пути
+		this->_path.validated = true;
+		/**
+		 * Восстанавливаем флаг подтверждённого адреса удалённого эндпоинта: прежний
+		 * адрес проверку уже проходил, повторять её незачем (RFC 9000 §9.3)
+		 */
+		this->_amplify.validated = true;
+		// Записываем в лог сообщение о возврате на последний проверенный адрес
+		this->_log->print(
+			"QUIC path validation failed, connection reverted to the last validated address: %s",
+			log_t::flag_t::WARNING, this->_path.address.c_str()
+		);
+	/**
+	 * Если возвращаться некуда: путь признаётся непригодным, но соединение не
+	 * завершается - непригодность пути его разрывом не является. Адрес удалённого
+	 * эндпоинта остаётся неподтверждённым, поэтому объём отправки на него ограничен
+	 * лимитом анти-амплификации (RFC 9000 §8.2.4/§9.3.1)
+	 */
+	} else this->_log->print("QUIC path validation failed, path is considered unusable", log_t::flag_t::WARNING);
 }
 /**
  * @brief Метод получения состояния проверки достижимости пути (RFC 9000 §8.2)
@@ -5405,6 +5689,15 @@ bool awh::quic::Connection::validated() const noexcept {
 bool awh::quic::Connection::migrate() noexcept {
 	// Если соединение не установлено
 	if(this->_state != state_t::CONNECTED)
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * Если проверка достижимости пути уже выполняется: выходим до поворота
+	 * идентификатора и сброса состояния пути. Иначе неудача запуска новой проверки
+	 * оставила бы соединение с повёрнутым идентификатором на сброшенном пути,
+	 * достижимость которого никто не проверяет
+	 */
+	if(this->_path.pending)
 		// Выводим отрицательный результат
 		return false;
 	/**
@@ -5427,8 +5720,12 @@ bool awh::quic::Connection::migrate() noexcept {
 	if(!this->rotate())
 		// Выводим отрицательный результат - неиспользованных идентификаторов нет
 		return false;
-	// Выполняем сброс состояния пути соединения
-	this->repath();
+	/**
+	 * Выполняем сброс состояния пути соединения: сменился лишь собственный адрес,
+	 * поэтому проверенный адрес удалённого эндпоинта лимита анти-амплификации
+	 * не возвращает (RFC 9000 §9.2)
+	 */
+	this->repath(false);
 	// Начинаем проверку достижимости нового пути
 	return this->probe();
 }
@@ -5506,20 +5803,62 @@ bool awh::quic::Connection::relocate() noexcept {
 	if(!this->relocatable())
 		// Выводим отрицательный результат
 		return false;
+	// Если проверка достижимости пути уже выполняется
+	if(this->_path.pending)
+		// Выводим отрицательный результат
+		return false;
 	// Флаг наличия идентификатора предпочтительного адреса
 	bool found = false;
 	/**
-	 * Проверяем наличие неиспользованного идентификатора предпочтительного адреса:
-	 * он введён в обращение с порядковым номером 1 при применении транспортных
-	 * параметров сервера (RFC 9000 §5.1.1)
+	 * Ищем неиспользованный идентификатор предпочтительного адреса: он введён
+	 * в обращение с порядковым номером 1 при применении транспортных параметров
+	 * сервера (RFC 9000 §5.1.1)
 	 */
-	for(auto & item : this->_routing.remote)
-		// Определяем наличие неиспользованного идентификатора предпочтительного адреса
-		found = (found || (!item.used && (item.seq == 1)));
+	for(auto & item : this->_routing.remote){
+		// Если найден неиспользованный идентификатор предпочтительного адреса
+		if(!item.used && (item.seq == 1)){
+			// Запоминаем идентификатор соединения предпочтительного адреса
+			this->_path.relocation = item.cid;
+			// Устанавливаем флаг наличия идентификатора предпочтительного адреса
+			found = true;
+			// Прекращаем перебор
+			break;
+		}
+	}
 	// Если идентификатор предпочтительного адреса недоступен
 	if(!found)
 		// Выводим отрицательный результат
 		return false;
+	/**
+	 * Начинаем проверку достижимости предпочтительного адреса, не переключая на него
+	 * соединение: переезжать дозволено лишь на проверенный адрес, поэтому до ответа
+	 * удалённого эндпоинта соединение продолжает работать по текущему пути, а на
+	 * предпочтительный адрес уходят одни пробирующие датаграммы (RFC 9000 §9.6.2)
+	 */
+	// Запоминаем состояние подтверждения достижимости текущего пути
+	const bool validated = this->_path.validated;
+	if(!this->probe())
+		// Выводим отрицательный результат
+		return false;
+	/**
+	 * Восстанавливаем подтверждение достижимости текущего пути: проверяется другой
+	 * адрес - предпочтительный, - а текущий путь остаётся прежним и проверку уже
+	 * проходил. Снятое подтверждение осталось бы снятым и при отказе от переезда,
+	 * выставляя исправный путь непроверенным
+	 */
+	this->_path.validated = validated;
+	// Устанавливаем флаг выполняемой проверки предпочтительного адреса
+	this->_path.relocating = true;
+	// Выводим положительный результат
+	return true;
+}
+/**
+ * @brief Метод завершения переезда на предпочтительный адрес (RFC 9000 §9.6.2)
+ *
+ */
+void awh::quic::Connection::settle() noexcept {
+	// Сбрасываем флаг выполняемой проверки предпочтительного адреса
+	this->_path.relocating = false;
 	// Ставим прежний идентификатор в очередь вывода из обращения (RFC 9000 §5.1.2)
 	this->_routing.retireQueue.push_back(this->_routing.sequence);
 	/**
@@ -5552,10 +5891,44 @@ bool awh::quic::Connection::relocate() noexcept {
 	}
 	// Устанавливаем флаг выполненного переезда на предпочтительный адрес
 	this->_cid.relocated = true;
-	// Выполняем сброс состояния пути соединения
-	this->repath();
-	// Начинаем проверку достижимости предпочтительного адреса
-	return this->probe();
+	/**
+	 * Выполняем сброс состояния пути соединения: предпочтительный адрес анонсирован
+	 * самим удалённым эндпоинтом в заверенных хендшейком параметрах, подделать его
+	 * посторонний не может, поэтому лимит анти-амплификации к нему неприменим
+	 */
+	this->repath(false);
+	/**
+	 * Восстанавливаем флаг подтверждённой достижимости пути: сброс состояния снял
+	 * его наравне с прочим состоянием прежнего пути, но достижимость нового адреса
+	 * только что подтверждена ответом на проверку - повторять её незачем
+	 */
+	this->_path.validated = true;
+	/**
+	 * Освобождаем адрес пути: соединение переезжает на предпочтительный адрес, и
+	 * первая пришедшая с него датаграмма станет первичным путём, а не поводом
+	 * счесть переезд подделанной сменой адреса
+	 */
+	this->_path.address.clear();
+	// Записываем в лог сообщение о переезде на предпочтительный адрес
+	this->_log->print("QUIC connection relocated to the server preferred address", log_t::flag_t::INFO);
+}
+/**
+ * @brief Метод получения адреса удалённого эндпоинта текущего пути (RFC 9000 §9.3)
+ *
+ * @return адрес удалённого эндпоинта в заданном вызывающим кодом представлении
+ */
+const awh::string & awh::quic::Connection::path() const noexcept {
+	// Выводим адрес удалённого эндпоинта текущего пути
+	return this->_path.address;
+}
+/**
+ * @brief Метод получения адресата собранной датаграммы (RFC 9000 §9.6.2)
+ *
+ * @return результат проверки (true - датаграмма адресована предпочтительному адресу)
+ */
+bool awh::quic::Connection::alternate() const noexcept {
+	// Выводим признак адресации собранной датаграммы предпочтительному адресу
+	return this->_path.alternate;
 }
 /**
  * @brief Метод получения подтверждённого размера исходящей датаграммы (RFC 8899)
@@ -5618,8 +5991,13 @@ bool awh::quic::Connection::rotate() noexcept {
 	 * Перебираем список идентификаторов удалённого эндпоинта
 	 */
 	for(auto & item : this->_routing.remote){
-		// Если найден первый неиспользованный идентификатор
-		if(!item.used && !found){
+		/**
+		 * Если найден первый неиспользованный идентификатор: идентификатор с порядковым
+		 * номером 1 закреплён за предпочтительным адресом сервера и для обычной смены
+		 * пути непригоден - забрав его, соединение сделало бы переезд невозможным
+		 * (RFC 9000 §5.1.1/§9.6.1)
+		 */
+		if(!item.used && !found && !this->reserved(item.seq)){
 			// Запоминаем порядковый номер неиспользованного идентификатора
 			next = item.seq;
 			// Устанавливаем флаг наличия неиспользованного идентификатора

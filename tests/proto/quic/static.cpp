@@ -756,3 +756,110 @@ TEST_F(QuicFixture, RouteMalformedTest){
 	// Проверяем отказ извлечения короткого заголовка при нулевой локальной политике
 	ASSERT_FALSE(awh::quic::route(reinterpret_cast <const uint8_t *> (cropped.data()), cropped.size(), 0, key));
 }
+
+/**
+ * @brief Тест таблиц диагностических названий протокола
+ *
+ * @details Названия типов фреймов, пакетов и кодов ошибок применяются в диагностике,
+ *          по которой разбирают причины разрыва соединения. Пропуск в таблице
+ *          обнаруживается только глазами в логе, поэтому проверяется полнота:
+ *          каждый известный тип обязан иметь собственное название
+ */
+TEST_F(QuicFixture, DiagnosticNamesTest){
+	/**
+	 * Перебираем известные типы фреймов, включая базовые типы диапазонов
+	 */
+	const awh::quic::frame_t frames[] = {
+		awh::quic::frame_t::PADDING, awh::quic::frame_t::PING,
+		awh::quic::frame_t::ACK, awh::quic::frame_t::ACK_ECN,
+		awh::quic::frame_t::RESET_STREAM, awh::quic::frame_t::STOP_SENDING,
+		awh::quic::frame_t::CRYPTO, awh::quic::frame_t::NEW_TOKEN,
+		awh::quic::frame_t::STREAM, awh::quic::frame_t::MAX_DATA,
+		awh::quic::frame_t::MAX_STREAM_DATA, awh::quic::frame_t::MAX_STREAMS_BIDI,
+		awh::quic::frame_t::MAX_STREAMS_UNI, awh::quic::frame_t::DATA_BLOCKED,
+		awh::quic::frame_t::STREAM_DATA_BLOCKED, awh::quic::frame_t::STREAMS_BLOCKED_BIDI,
+		awh::quic::frame_t::STREAMS_BLOCKED_UNI, awh::quic::frame_t::NEW_CONNECTION_ID,
+		awh::quic::frame_t::RETIRE_CONNECTION_ID, awh::quic::frame_t::PATH_CHALLENGE,
+		awh::quic::frame_t::PATH_RESPONSE, awh::quic::frame_t::CONNECTION_CLOSE,
+		awh::quic::frame_t::CONNECTION_CLOSE_APP, awh::quic::frame_t::HANDSHAKE_DONE,
+		awh::quic::frame_t::DATAGRAM
+	};
+	// Список уже встреченных названий типов фреймов
+	std::vector <std::string> names;
+	/**
+	 * Перебираем список известных типов фреймов
+	 */
+	for(auto & frame : frames){
+		// Извлекаем название типа фрейма
+		const std::string name(awh::quic::frameName(frame));
+		// Проверяем что известный тип фрейма в таблице присутствует
+		ASSERT_NE(name, "UNKNOWN");
+		// Проверяем что название типа фрейма уникально
+		ASSERT_EQ(std::count(names.begin(), names.end(), name), 0);
+		// Запоминаем встреченное название типа фрейма
+		names.push_back(name);
+	}
+	// Проверяем что старший тип диапазона STREAM опознаётся наравне с базовым
+	ASSERT_EQ(awh::quic::frameName(static_cast <awh::quic::frame_t> (0x0F)), "STREAM");
+	/**
+	 * Проверяем что старший тип диапазона DATAGRAM опознаётся наравне с базовым:
+	 * фрейм с полем длины несёт тип 0x31 и в логе обязан быть различим (RFC 9221 §4)
+	 */
+	ASSERT_EQ(awh::quic::frameName(static_cast <awh::quic::frame_t> (0x31)), "DATAGRAM");
+	// Проверяем что неизвестный тип фрейма опознаётся как неизвестный
+	ASSERT_EQ(awh::quic::frameName(static_cast <awh::quic::frame_t> (0x7F)), "UNKNOWN");
+	/**
+	 * Перебираем известные типы пакетов
+	 */
+	const awh::quic::packet_t packets[] = {
+		awh::quic::packet_t::INITIAL, awh::quic::packet_t::ZERO_RTT,
+		awh::quic::packet_t::HANDSHAKE, awh::quic::packet_t::RETRY,
+		awh::quic::packet_t::VERSION_NEGOTIATION, awh::quic::packet_t::ONE_RTT
+	};
+	// Очищаем список встреченных названий
+	names.clear();
+	/**
+	 * Перебираем список известных типов пакетов
+	 */
+	for(auto & packet : packets){
+		// Извлекаем название типа пакета
+		const std::string name(awh::quic::packetName(packet));
+		// Проверяем что известный тип пакета в таблице присутствует
+		ASSERT_NE(name, "UNKNOWN");
+		// Проверяем что название типа пакета уникально
+		ASSERT_EQ(std::count(names.begin(), names.end(), name), 0);
+		// Запоминаем встреченное название типа пакета
+		names.push_back(name);
+	}
+	/**
+	 * Перебираем известные коды ошибок транспорта
+	 */
+	const awh::quic::error_t errors[] = {
+		awh::quic::error_t::NO_ERROR, awh::quic::error_t::INTERNAL_ERROR,
+		awh::quic::error_t::CONNECTION_REFUSED, awh::quic::error_t::FLOW_CONTROL_ERROR,
+		awh::quic::error_t::STREAM_LIMIT_ERROR, awh::quic::error_t::STREAM_STATE_ERROR,
+		awh::quic::error_t::FINAL_SIZE_ERROR, awh::quic::error_t::FRAME_ENCODING_ERROR,
+		awh::quic::error_t::TRANSPORT_PARAMETER_ERROR, awh::quic::error_t::CONNECTION_ID_LIMIT_ERROR,
+		awh::quic::error_t::PROTOCOL_VIOLATION, awh::quic::error_t::INVALID_TOKEN,
+		awh::quic::error_t::APPLICATION_ERROR, awh::quic::error_t::CRYPTO_BUFFER_EXCEEDED,
+		awh::quic::error_t::KEY_UPDATE_ERROR, awh::quic::error_t::AEAD_LIMIT_REACHED,
+		awh::quic::error_t::NO_VIABLE_PATH, awh::quic::error_t::VERSION_NEGOTIATION_ERROR
+	};
+	// Очищаем список встреченных названий
+	names.clear();
+	/**
+	 * Перебираем список известных кодов ошибок транспорта
+	 */
+	for(auto & error : errors){
+		// Извлекаем название кода ошибки транспорта
+		const std::string name(awh::quic::errorName(error));
+		// Проверяем что известный код ошибки в таблице присутствует
+		ASSERT_NE(name, "UNKNOWN_ERROR");
+		// Проверяем что название кода ошибки уникально
+		ASSERT_EQ(std::count(names.begin(), names.end(), name), 0);
+		// Запоминаем встреченное название кода ошибки
+		names.push_back(name);
+	}
+	// Проверяем что неизвестный код ошибки опознаётся как неизвестный
+	ASSERT_EQ(awh::quic::errorName(static_cast <awh::quic::error_t> (0x7FFF)), "UNKNOWN_ERROR");
+}

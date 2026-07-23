@@ -121,12 +121,13 @@ namespace {
 	 * @param client эндпоинт клиента
 	 * @param server эндпоинт сервера
 	 * @param now    текущее время тестовых часов в миллисекундах
+	 * @param ecn    маркировка ECN, с которой датаграммы клиента доставляются серверу
 	 */
-	static void pump(connection_t & client, connection_t & server, uint64_t & now) noexcept {
+	static void pump(connection_t & client, connection_t & server, uint64_t & now, const awh::event::ecn_t ecn = awh::event::ecn_t::NOT_ECT) noexcept {
 		// Выполняем обмен датаграммами (с запасом итераций)
 		for(size_t i = 0; i < 10; i++){
 			// Передаём датаграммы клиента серверу
-			const size_t sent = ::transfer(client, server, now);
+			const size_t sent = ::transfer(client, server, now, nullptr, ecn);
 			// Передаём датаграммы сервера клиенту
 			const size_t received = ::transfer(server, client, now);
 			// Если обмен датаграммами завершён
@@ -620,6 +621,361 @@ TEST_F(QuicFixture, ConnectionStopSendingCollectTest){
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест лимита анти-амплификации при смене адреса пира на клиенте (RFC 9000 §9.3.1)
+ *
+ * @details Лимит относится к адресу удалённого эндпоинта, а не к роли: подделав
+ *          адрес отправителя, посторонний способен увести отправку на чужой адрес
+ *          с любой стороны соединения, поэтому до проверки нового пути объём
+ *          отправки ограничен трёхкратным объёмом принятого
+ */
+TEST_F(QuicFixture, ConnectionClientAmplificationTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Устанавливаем исходный адрес удалённого сервера на клиенте
+	client.address("198.51.100.9:443");
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим объёмные данные потока в очередь отправки
+	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), status_t::OK);
+	// Нагрузка пакета сервера с ack-eliciting фреймом
+	std::string payload = "";
+	// Выполняем сборку фрейма PING (RFC 9000 §19.2)
+	frame::serialize::ping(payload);
+	/**
+	 * Сообщаем клиенту о смене адреса удалённого эндпоинта: следующая датаграмма
+	 * приходит уже с нового адреса, что клиент трактует как смену пути
+	 */
+	client.address("203.0.113.5:443");
+	// Доставляем нагрузку клиенту пакетом 1-RTT с нового адреса
+	ASSERT_EQ(::inject(server, client, 4000, payload, now), status_t::OK);
+	// Суммарный объём отправленного клиентом после смены адреса
+	size_t sent = 0;
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Извлекаем датаграммы клиента: данных в очереди на порядок больше лимита,
+	 * поэтому отправка обязана упереться именно в лимит анти-амплификации
+	 */
+	while(client.write(datagram, now)){
+		// Суммируем объём отправленного клиентом
+		sent += datagram.size();
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	/**
+	 * Проверяем что отправка не превысила трёхкратного объёма принятого с нового
+	 * адреса: без лимита клиент вылил бы на него всю очередь потока
+	 */
+	ASSERT_GT(sent, static_cast <size_t> (0));
+	ASSERT_LE(sent, (3 * static_cast <size_t> (1200)));
+	ASSERT_LT(sent, static_cast <size_t> (60000));
+	// Проверяем отсутствие ошибки транспорта на клиенте
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест возврата на последний проверенный адрес (RFC 9000 §9.3.2)
+ *
+ * @details Смену адреса удалённого эндпоинта способен подделать находящийся на пути
+ *          посторонний. Непройденная проверка подделанного адреса обязана возвращать
+ *          соединение на последний проверенный: иначе одна поддельная датаграмма
+ *          уводила бы соединение на недостижимый адрес насовсем
+ */
+TEST_F(QuicFixture, ConnectionPathRevertTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Адрес удалённого сервера, подтверждённый хендшейком
+	static const std::string ORIGIN = "198.51.100.9:443";
+	// Подделанный посторонним адрес удалённого сервера
+	static const std::string SPOOFED = "203.0.113.5:443";
+	// Устанавливаем исходный адрес удалённого сервера на клиенте
+	client.address(ORIGIN);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что путь соединения проложен по исходному адресу
+	ASSERT_EQ(client.path(), ORIGIN);
+	// Нагрузка пакета сервера из одних фреймов PADDING
+	std::string payload = "";
+	// Выполняем сборку серии фреймов PADDING
+	frame::serialize::padding(payload, 64);
+	/**
+	 * Сообщаем клиенту о смене адреса удалённого эндпоинта: посторонний подделал
+	 * адрес отправителя, и клиент трактует это как смену пути
+	 */
+	client.address(SPOOFED);
+	// Доставляем нагрузку клиенту пакетом 1-RTT с подделанного адреса
+	ASSERT_EQ(::inject(server, client, 4000, payload, now), status_t::OK);
+	// Проверяем что соединение перешло на подделанный адрес
+	ASSERT_EQ(client.path(), SPOOFED);
+	// Проверяем что достижимость подделанного адреса не подтверждена
+	ASSERT_FALSE(client.validated());
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Прогоняем часы без ответа на проверку достижимости: подделанный адрес
+	 * не отвечает, и по истечении срока от проверки отказываются
+	 */
+	for(size_t i = 0; i < 40; i++){
+		// Продвигаем тестовые часы
+		now += 200;
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+		// Извлекаем датаграммы клиента
+		while(client.write(datagram, now))
+			// Очищаем буфер датаграммы от предыдущей сборки
+			datagram.clear();
+	}
+	/**
+	 * Проверяем что соединение вернулось на последний проверенный адрес: без
+	 * возврата оно осталось бы на недостижимом адресе под лимитом анти-амплификации
+	 */
+	ASSERT_EQ(client.path(), ORIGIN);
+	/**
+	 * Проверяем что достижимость восстановленного адреса считается подтверждённой:
+	 * проверку он уже проходил, повторять её незачем (RFC 9000 §9.3)
+	 */
+	ASSERT_TRUE(client.validated());
+	// Открываем двунаправленный поток на восстановленном пути
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим данные потока в очередь отправки
+	ASSERT_EQ(client.send(sid, "connection survived spoofing", true), status_t::OK);
+	// Возвращаем клиенту исходный адрес удалённого сервера
+	client.address(ORIGIN);
+	// Выполняем обмен датаграммами до полного затишья
+	::pump(client, server, now);
+	// Буфер принятых сервером данных
+	std::string received = "";
+	// Флаг завершения потока
+	bool fin = false;
+	/**
+	 * Проверяем что соединение работоспособно: подделанная датаграмма стоила
+	 * ему лишь задержки на срок проверки, а не разрыва
+	 */
+	ASSERT_EQ(server.receive(sid, received, fin), status_t::OK);
+	ASSERT_EQ(received, "connection survived spoofing");
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест смены адреса пира во время проверки предыдущего (RFC 9000 §9.3.1)
+ *
+ * @details Отказ от проверки прежнего адреса ради перехода на новый возврата
+ *          на проверенный адрес не выполняет: возврат затёр бы адрес, на который
+ *          соединение как раз переходит, и очередная датаграмма с него запускала
+ *          бы ту же схему по кругу
+ */
+TEST_F(QuicFixture, ConnectionPathChainTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Адрес удалённого сервера, подтверждённый хендшейком
+	static const std::string ORIGIN = "198.51.100.9:443";
+	// Первый новый адрес удалённого сервера
+	static const std::string FIRST = "203.0.113.5:443";
+	// Второй новый адрес удалённого сервера
+	static const std::string SECOND = "203.0.113.77:443";
+	// Устанавливаем исходный адрес удалённого сервера на клиенте
+	client.address(ORIGIN);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что путь соединения проложен по исходному адресу
+	ASSERT_EQ(client.path(), ORIGIN);
+	// Нагрузка пакета сервера из одних фреймов PADDING
+	std::string payload = "";
+	// Выполняем сборку серии фреймов PADDING
+	frame::serialize::padding(payload, 64);
+	// Сообщаем клиенту о смене адреса удалённого эндпоинта
+	client.address(FIRST);
+	// Доставляем нагрузку клиенту пакетом 1-RTT с первого нового адреса
+	ASSERT_EQ(::inject(server, client, 4000, payload, now), status_t::OK);
+	// Проверяем что соединение перешло на первый новый адрес
+	ASSERT_EQ(client.path(), FIRST);
+	// Продвигаем тестовые часы, не давая проверке первого адреса завершиться
+	now += 50;
+	/**
+	 * Сообщаем клиенту о ещё одной смене адреса: проверка первого нового адреса
+	 * ещё выполняется, и отказ от неё не вправе затереть второй адрес
+	 */
+	client.address(SECOND);
+	// Доставляем нагрузку клиенту пакетом 1-RTT со второго нового адреса
+	ASSERT_EQ(::inject(server, client, 4001, payload, now), status_t::OK);
+	/**
+	 * Проверяем что соединение перешло на второй новый адрес: возврат на проверенный
+	 * адрес здесь отбросил бы соединение назад, и каждая следующая датаграмма
+	 * запускала бы смену пути заново
+	 */
+	ASSERT_EQ(client.path(), SECOND);
+	// Проверяем что достижимость второго адреса не подтверждена
+	ASSERT_FALSE(client.validated());
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Прогоняем часы без ответа на проверку: второй адрес не отвечает, и по
+	 * истечении срока соединение возвращается на последний проверенный адрес
+	 */
+	for(size_t i = 0; i < 40; i++){
+		// Продвигаем тестовые часы
+		now += 200;
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+		// Извлекаем датаграммы клиента
+		while(client.write(datagram, now))
+			// Очищаем буфер датаграммы от предыдущей сборки
+			datagram.clear();
+	}
+	/**
+	 * Проверяем что соединение вернулось на исходный адрес: последним проверенным
+	 * остаётся он - ни один из новых адресов проверку не прошёл
+	 */
+	ASSERT_EQ(client.path(), ORIGIN);
+	// Проверяем что достижимость восстановленного адреса считается подтверждённой
+	ASSERT_TRUE(client.validated());
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест молчания таймера PTO под лимитом анти-амплификации (RFC 9002 §6.2.2.1)
+ *
+ * @details Пока лимит запрещает отправку, зондировать нечем: срабатывания таймера
+ *          PTO лишь наращивали бы экспоненциальную выдержку вхолостую, а разблокирует
+ *          отправку приём датаграммы, а не таймер
+ */
+TEST_F(QuicFixture, ConnectionAmplificationTimerTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Устанавливаем исходный адрес удалённого сервера на клиенте
+	client.address("198.51.100.9:443");
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим объёмные данные потока в очередь отправки
+	ASSERT_EQ(client.send(sid, std::string(60000, 'x'), false), status_t::OK);
+	/**
+	 * Нагрузка пакета сервера из одних фреймов PADDING: подтверждения она не требует,
+	 * поэтому после её приёма у клиента не остаётся иных поводов взводить таймер,
+	 * кроме таймера PTO
+	 */
+	std::string payload = "";
+	// Выполняем сборку серии фреймов PADDING
+	frame::serialize::padding(payload, 64);
+	/**
+	 * Сообщаем клиенту о смене адреса удалённого эндпоинта: следующая датаграмма
+	 * приходит уже с нового адреса, что клиент трактует как смену пути
+	 */
+	client.address("203.0.113.5:443");
+	// Доставляем нагрузку клиенту пакетом 1-RTT с нового адреса
+	ASSERT_EQ(::inject(server, client, 4000, payload, now), status_t::OK);
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Извлекаем датаграммы клиента до исчерпания лимита анти-амплификации: данных
+	 * в очереди на порядок больше, поэтому отправка упирается именно в лимит
+	 */
+	while(client.write(datagram, now)){
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	/**
+	 * Проверяем что ближайшим событием таймера остаётся отказ от проверки пути,
+	 * а не зондирование: отправка запрещена лимитом, и срабатывание таймера PTO
+	 * лишь нарастило бы выдержку вхолостую (RFC 9000 §8.2.4, RFC 9002 §6.2.2.1)
+	 */
+	ASSERT_GT(client.timeout(), now);
+	ASSERT_LT((client.timeout() - now), static_cast <uint64_t> (10000));
+	/**
+	 * Прогоняем таймеры многократно за интервал PTO, не выходя за срок проверки
+	 * достижимости пути: под лимитом зондировать нечем, поэтому счётчик
+	 * срабатываний таймера нарастать не вправе
+	 */
+	for(size_t i = 0; i < 25; i++){
+		// Продвигаем тестовые часы за интервал таймера PTO
+		now += 50;
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Проверяем что отправка по-прежнему запрещена лимитом
+		ASSERT_FALSE(client.write(datagram, now));
+	}
+	/**
+	 * Доставляем клиенту серию датаграмм с нового адреса: принятые октеты поднимают
+	 * лимит настолько, что отправка возобновляется в полном объёме
+	 */
+	for(size_t i = 0; i < 32; i++)
+		// Доставляем нагрузку клиенту пакетом 1-RTT с нового адреса
+		ASSERT_EQ(::inject(server, client, (4001 + i), payload, now), status_t::OK);
+	// Проверяем что отправка возобновилась приёмом датаграмм
+	ASSERT_TRUE(client.write(datagram, now));
+	// Получаем дедлайн ближайшего события таймера клиента
+	const uint64_t deadline = client.timeout();
+	// Проверяем что дедлайн взведён
+	ASSERT_GT(deadline, now);
+	/**
+	 * Проверяем что выдержка таймера осталась исходной: каждое холостое срабатывание
+	 * под лимитом удваивало бы её: смена пути сбросила оценку задержки, поэтому
+	 * исходный интервал здесь начальный, а каждое холостое срабатывание отодвигало
+	 * бы зондирование ещё вдвое
+	 */
+	ASSERT_LT((deadline - now), static_cast <uint64_t> (2000));
+	// Проверяем отсутствие ошибки транспорта на клиенте
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 }
 
 /**
@@ -2289,6 +2645,403 @@ TEST_F(QuicFixture, RetryTest){
 	// Проверяем состояние соединения обоих эндпоинтов
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест потерь управляющих фреймов соединения (RFC 9002 §6.1)
+ *
+ * @details Управляющие фреймы несут состояние, согласуемое сторонами: подтверждение
+ *          хендшейка, лимиты данных и потоков, выдачу идентификаторов, токен проверки
+ *          адреса. Потерянный такой фрейм обязан отправляться заново - иначе стороны
+ *          расходятся в представлении о состоянии молча, без всякой ошибки
+ */
+TEST_F(QuicFixture, ConnectionLossyControlTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры эндпоинтов
+	params::params_t params;
+	/**
+	 * Устанавливаем тесный лимит данных соединения: его исчерпание вынуждает
+	 * получателя расширять окно фреймами MAX_DATA по ходу передачи
+	 */
+	params.initialMaxData = 32768;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 32768;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 32768;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 32768;
+	/**
+	 * Устанавливаем тесный лимит числа потоков: его исчерпание вынуждает получателя
+	 * возвращать кредит фреймами MAX_STREAMS по мере завершения потоков
+	 */
+	params.initialMaxStreamsBidi = 8;
+	// Устанавливаем лимит числа однонаправленных потоков
+	params.initialMaxStreamsUni = 8;
+	// Поднимаем лимит активных идентификаторов соединения для выдачи их фреймами
+	params.activeConnectionIdLimit = 6;
+	// Выполняем подготовку соединения клиента
+	::configure(client, params);
+	// Выполняем подготовку соединения сервера
+	::configure(server, params);
+	// Устанавливаем проверку адреса клиента для выдачи токена фреймом NEW_TOKEN
+	server.address("198.51.100.42:51000");
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Счётчик доставленных датаграмм для выбора теряемых
+	size_t counter = 0;
+	// Количество отброшенных датаграмм
+	size_t dropped = 0;
+	/**
+	 * @brief Функция доставки датаграмм с потерями
+	 *
+	 * @param from эндпоинт-отправитель датаграмм
+	 * @param to   эндпоинт-получатель датаграмм
+	 */
+	auto deliver = [&counter, &dropped, &now](connection_t & from, connection_t & to) noexcept -> void {
+		// Буфер исходящей датаграммы
+		std::string datagram = "";
+		// Количество извлечённых датаграмм
+		size_t taken = 0;
+		/**
+		 * Извлекаем датаграммы отправителя (с запасом итераций)
+		 */
+		while((taken < 64) && from.write(datagram, now)){
+			// Считаем извлечённую датаграмму
+			taken++;
+			// Считаем очередную датаграмму
+			counter++;
+			/**
+			 * Если датаграмма подлежит потере: теряется каждая пятая, включая
+			 * датаграммы хендшейка и первого флайта после него - именно они несут
+			 * подтверждение хендшейка, токен проверки адреса и выдачу идентификаторов
+			 */
+			if((counter % 5) == 4)
+				// Считаем отброшенную датаграмму
+				dropped++;
+			// Передаём датаграмму получателю
+			else to.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+			// Очищаем буфер датаграммы от предыдущей сборки
+			datagram.clear();
+		}
+	};
+	// Количество переданных потоками октетов
+	size_t transferred = 0;
+	// Количество завершённых потоков приложения
+	size_t completed = 0;
+	/**
+	 * Прогоняем работу соединения по теряющему пути: потоки открываются и
+	 * завершаются пачками, вынуждая обе стороны обмениваться лимитами
+	 */
+	for(size_t round = 0; round < 200; round++){
+		// Если соединение установлено и потоки открывать дозволено
+		if(client.state() == connection_t::state_t::CONNECTED){
+			/**
+			 * Открываем потоки очередной пачки
+			 */
+			for(size_t i = 0; i < 3; i++){
+				// Открываем двунаправленный поток на клиенте
+				const uint64_t sid = client.open(false);
+				// Если поток открыт
+				if(sid != connection_t::INVALID_STREAM)
+					// Ставим данные потока в очередь отправки с завершением
+					client.send(sid, std::string(2048, static_cast <char> ('a' + (round % 26))), true);
+			}
+		}
+		// Доставляем датаграммы клиента серверу
+		deliver(client, server);
+		// Продвигаем тестовые часы
+		now += 30;
+		// Доставляем датаграммы сервера клиенту
+		deliver(server, client);
+		// Продвигаем тестовые часы
+		now += 30;
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Выполняем обработку просроченных таймеров сервера
+		server.tick(now);
+		// Список потоков с собранными данными
+		std::vector <uint64_t> streams;
+		// Получаем список потоков с собранными данными
+		server.readable(streams);
+		/**
+		 * Перебираем список потоков с собранными данными
+		 */
+		for(auto & sid : streams){
+			// Буфер принятых сервером данных
+			std::string payload = "";
+			// Флаг завершения потока
+			bool fin = false;
+			// Выдаём принятые данные приложению
+			if(server.receive(sid, payload, fin) == status_t::OK){
+				// Считаем переданные потоком октеты
+				transferred += payload.size();
+				// Если поток завершён
+				if(fin)
+					// Считаем завершённый поток приложения
+					completed++;
+			}
+		}
+	}
+	// Проверяем что датаграммы действительно терялись
+	ASSERT_GT(dropped, static_cast <size_t> (30));
+	/**
+	 * Проверяем что обмен продолжался несмотря на потери управляющих фреймов:
+	 * потерянный лимит без переотправки застопорил бы соединение навсегда
+	 */
+	ASSERT_GT(completed, static_cast <size_t> (50));
+	ASSERT_GT(transferred, static_cast <size_t> (100000));
+	// Проверяем что соединение потери пережило
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест восстановления потока на теряющем и переставляющем пути (RFC 9002 §6)
+ *
+ * @details Тесты обмена гоняют идеальный путь, где ничего не теряется и не
+ *          переставляется. Между тем именно потери приводят в действие детект по
+ *          порогу времени, ретрансмиссию данных и управляющих фреймов, а перестановка -
+ *          слияние диапазонов подтверждений. Без потерь эти механизмы не исполняются
+ */
+TEST_F(QuicFixture, ConnectionLossyPathTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры эндпоинтов
+	params::params_t params;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 262144;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	params.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	params.initialMaxStreamsUni = 100;
+	// Выполняем подготовку соединения клиента
+	::configure(client, params);
+	// Выполняем подготовку соединения сервера
+	::configure(server, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Передаваемое содержимое потока приложения
+	std::string source(96 * 1024, '\0');
+	/**
+	 * Заполняем содержимое потока распознаваемым узором: искажение порядка сборки
+	 * обнаруживается сверкой, а не только длиной
+	 */
+	for(size_t i = 0; i < source.size(); i++)
+		// Записываем очередной октет узора
+		source[i] = static_cast <char> ('A' + (i % 26));
+	// Ставим содержимое потока в очередь отправки с завершением
+	ASSERT_EQ(client.send(sid, source, true), status_t::OK);
+	// Счётчик доставленных датаграмм для выбора теряемых
+	size_t counter = 0;
+	// Количество отброшенных датаграмм
+	size_t dropped = 0;
+	// Собранное сервером содержимое потока
+	std::string received = "";
+	// Флаг завершения потока
+	bool fin = false;
+	/**
+	 * @brief Функция доставки датаграмм с потерями и перестановкой
+	 *
+	 * @param from эндпоинт-отправитель датаграмм
+	 * @param to   эндпоинт-получатель датаграмм
+	 */
+	auto deliver = [&counter, &dropped, &now](connection_t & from, connection_t & to) noexcept -> void {
+		// Список извлечённых датаграмм отправителя
+		std::vector <std::string> batch;
+		// Буфер исходящей датаграммы
+		std::string datagram = "";
+		/**
+		 * Извлекаем датаграммы отправителя (с запасом итераций)
+		 */
+		while((batch.size() < 64) && from.write(datagram, now)){
+			// Запоминаем извлечённую датаграмму
+			batch.push_back(datagram);
+			// Очищаем буфер датаграммы от предыдущей сборки
+			datagram.clear();
+		}
+		/**
+		 * Переставляем соседние датаграммы: получатель видит разрывы в номерах
+		 * пакетов, которые заполняются последующими - именно так возникает
+		 * слияние диапазонов подтверждений
+		 */
+		for(size_t i = 1; i < batch.size(); i += 2)
+			// Меняем местами соседние датаграммы
+			batch[i].swap(batch[i - 1]);
+		/**
+		 * Перебираем список извлечённых датаграмм
+		 */
+		for(auto & item : batch){
+			// Считаем очередную датаграмму
+			counter++;
+			// Если датаграмма подлежит потере
+			if((counter % 4) == 3){
+				// Считаем отброшенную датаграмму
+				dropped++;
+				// Продолжаем перебор - датаграмма до получателя не доходит
+				continue;
+			}
+			// Передаём датаграмму получателю
+			to.read(reinterpret_cast <const uint8_t *> (item.data()), item.size(), now);
+		}
+	};
+	/**
+	 * Прогоняем обмен по теряющему пути: продвижение часов приводит в действие
+	 * детект потерь по порогу времени, а он - ретрансмиссию
+	 */
+	for(size_t i = 0; (i < 400) && !fin; i++){
+		// Доставляем датаграммы клиента серверу
+		deliver(client, server);
+		// Продвигаем тестовые часы
+		now += 40;
+		// Доставляем датаграммы сервера клиенту
+		deliver(server, client);
+		// Продвигаем тестовые часы
+		now += 40;
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Выполняем обработку просроченных таймеров сервера
+		server.tick(now);
+		// Буфер очередной порции собранных сервером данных
+		std::string chunk = "";
+		// Выдаём собранные данные потока на сервере
+		if(server.receive(sid, chunk, fin) == status_t::OK)
+			// Дописываем полученную порцию к собранному содержимому
+			received.append(chunk);
+	}
+	// Проверяем что датаграммы действительно терялись
+	ASSERT_GT(dropped, static_cast <size_t> (20));
+	// Проверяем что поток собран полностью несмотря на потери
+	ASSERT_TRUE(fin);
+	ASSERT_EQ(received.size(), source.size());
+	// Проверяем что собранное содержимое не искажено перестановкой
+	ASSERT_EQ(received, source);
+	// Проверяем что соединение потери пережило
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест приёма отставшего пакета прежней фазы ключей (RFC 9001 §6.3)
+ *
+ * @details Обновление ключей не отменяет пакетов, отправленных до него: они
+ *          приходят уже после переключения и обязаны расшифровываться ключами
+ *          прежней фазы. Отброшенный такой пакет означал бы потерю данных
+ *          на ровном месте при каждом обновлении ключей
+ */
+TEST_F(QuicFixture, KeyUpdateReorderTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим данные прежней фазы ключей в очередь отправки
+	ASSERT_EQ(client.send(sid, "phase zero ", false), status_t::OK);
+	// Запоминаем бит фазы ключей клиента до обновления
+	const bool phase = client.phase();
+	// Список задержанных датаграмм прежней фазы ключей
+	std::vector <std::string> delayed;
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Извлекаем датаграммы клиента, не доставляя их серверу: они уйдут в прежней
+	 * фазе ключей, а доставлены будут уже после переключения
+	 */
+	while(client.write(datagram, now)){
+		// Запоминаем задержанную датаграмму
+		delayed.push_back(datagram);
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	// Проверяем что датаграммы прежней фазы собраны
+	ASSERT_FALSE(delayed.empty());
+	// Выполняем обновление ключей клиентом (RFC 9001 §6)
+	ASSERT_EQ(client.rekey(), status_t::OK);
+	// Проверяем что бит фазы ключей переключился
+	ASSERT_NE(client.phase(), phase);
+	// Ставим данные новой фазы ключей в очередь отправки
+	ASSERT_EQ(client.send(sid, "phase one", true), status_t::OK);
+	// Продвигаем тестовые часы
+	now += 5;
+	/**
+	 * Доставляем серверу датаграммы новой фазы: сервер обнаруживает переключение
+	 * бита фазы и переходит на новые ключи, сохраняя прежние для отставших пакетов
+	 */
+	while(client.write(datagram, now)){
+		// Передаём датаграмму серверу
+		ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	// Проверяем что сервер переключился на новую фазу ключей
+	ASSERT_EQ(server.phase(), client.phase());
+	// Продвигаем тестовые часы
+	now += 5;
+	/**
+	 * Доставляем серверу задержанные датаграммы прежней фазы: ключи прежней фазы
+	 * сохранены, и нагрузка обязана расшифроваться
+	 */
+	for(auto & held : delayed)
+		// Передаём задержанную датаграмму серверу
+		ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (held.data()), held.size(), now), status_t::OK);
+	// Принятые данные потока
+	std::string received = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Выдаём собранные данные потока на сервере
+	ASSERT_EQ(server.receive(sid, received, fin), status_t::OK);
+	/**
+	 * Проверяем что данные обеих фаз собраны в правильном порядке: отставший пакет
+	 * прежней фазы несёт начало потока, и без его расшифровки поток остался бы
+	 * с разрывом в начале
+	 */
+	ASSERT_EQ(received, "phase zero phase one");
+	// Проверяем что завершение потока принято
+	ASSERT_TRUE(fin);
+	// Проверяем что сервер остался в новой фазе ключей
+	ASSERT_EQ(server.phase(), client.phase());
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);
@@ -4902,8 +5655,34 @@ TEST_F(QuicFixture, ConnectionPreferredAddressTest){
 	const cid_t before = client.dcid();
 	// Количество выполненных смен пути до переезда
 	const uint64_t migrations = client.migrations();
-	// Выполняем переезд на предпочтительный адрес сервера
+	// Начинаем переезд на предпочтительный адрес сервера
 	ASSERT_TRUE(client.relocate());
+	/**
+	 * Проверяем что соединение продолжает работать по прежнему пути: переезжать
+	 * дозволено лишь на проверенный адрес, поэтому до подтверждения его
+	 * достижимости идентификатор соединения не сменяется (RFC 9000 §9.6.2)
+	 */
+	ASSERT_TRUE(client.dcid() == before);
+	// Проверяем что смена пути ещё не учтена
+	ASSERT_EQ(client.migrations(), migrations);
+	// Проверяем что повторный запуск переезда невозможен
+	ASSERT_FALSE(client.relocate());
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	// Извлекаем датаграмму клиента с проверкой достижимости предпочтительного адреса
+	ASSERT_TRUE(client.write(datagram, now));
+	/**
+	 * Проверяем что датаграмма адресована предпочтительному адресу, а не текущему
+	 * пути, и дополнена до минимального размера (RFC 9000 §8.2.1/§9.6.2)
+	 */
+	ASSERT_TRUE(client.alternate());
+	ASSERT_GE(datagram.size(), static_cast <size_t> (proto::MIN_INITIAL_SIZE));
+	// Передаём датаграмму серверу на предпочтительный адрес
+	ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+	// Выполняем обмен датаграммами для подтверждения достижимости предпочтительного адреса
+	::pump(client, server, now);
+	// Проверяем что достижимость предпочтительного адреса подтверждена сервером
+	ASSERT_TRUE(client.validated());
 	// Проверяем что идентификатор соединения удалённого эндпоинта сменён
 	ASSERT_FALSE(client.dcid() == before);
 	/**
@@ -4913,13 +5692,11 @@ TEST_F(QuicFixture, ConnectionPreferredAddressTest){
 	ASSERT_TRUE(client.dcid() == options.preferredAddress.cid);
 	// Проверяем что смена пути учтена
 	ASSERT_EQ(client.migrations(), migrations + 1);
-	// Проверяем что повторный переезд невозможен
+	// Проверяем что повторный переезд более невозможен
 	ASSERT_FALSE(client.relocatable());
 	ASSERT_FALSE(client.relocate());
-	// Выполняем обмен датаграммами для подтверждения достижимости нового пути
-	::pump(client, server, now);
-	// Проверяем что достижимость нового пути подтверждена сервером
-	ASSERT_TRUE(client.validated());
+	// Проверяем что последующие датаграммы адресуются уже текущему пути
+	ASSERT_FALSE(client.alternate());
 	// Открываем двунаправленный поток на переехавшем соединении
 	const uint64_t sid = client.open(false);
 	// Проверяем что поток открыт
@@ -4936,6 +5713,1103 @@ TEST_F(QuicFixture, ConnectionPreferredAddressTest){
 	ASSERT_EQ(server.receive(sid, payload, fin), status_t::OK);
 	// Проверяем содержимое принятых данных
 	ASSERT_EQ(payload, "relocated connection");
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест отказа от проверки достижимости пути по таймеру (RFC 9000 §8.2.4)
+ *
+ * @details Ответа на проверку можно не дождаться вовсе. Переотправлять её
+ *          бесконечно незачем: по истечении отведённого срока путь признаётся
+ *          непригодным, а начатый переезд на него отменяется
+ */
+TEST_F(QuicFixture, ConnectionPathValidationTimeoutTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Транспортные параметры сервера с предпочтительным адресом
+	params::params_t options;
+	// Устанавливаем лимит данных соединения
+	options.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	options.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	options.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	options.initialMaxStreamsUni = 100;
+	// Устанавливаем флаг наличия предпочтительного адреса сервера
+	options.hasPreferredAddress = true;
+	// Устанавливаем предпочтительный IPv4-адрес сервера 192.0.2.10
+	options.preferredAddress.ipv4[0] = 192;
+	options.preferredAddress.ipv4[1] = 0;
+	options.preferredAddress.ipv4[2] = 2;
+	options.preferredAddress.ipv4[3] = 10;
+	// Устанавливаем порт предпочтительного IPv4-адреса сервера
+	options.preferredAddress.ipv4Port = 4433;
+	// Устанавливаем длину идентификатора соединения предпочтительного адреса
+	options.preferredAddress.cid.size = connection_t::LOCAL_CID_SIZE;
+	/**
+	 * Заполняем идентификатор соединения предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < connection_t::LOCAL_CID_SIZE; i++)
+		// Устанавливаем очередной октет идентификатора соединения
+		options.preferredAddress.cid.data[i] = static_cast <uint8_t> (0xA0 + i);
+	/**
+	 * Заполняем токен сброса без сохранения состояния предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < awh::quic::proto::RESET_TOKEN_SIZE; i++)
+		// Устанавливаем очередной октет токена сброса
+		options.preferredAddress.resetToken[i] = static_cast <uint8_t> (0xB0 + i);
+	// Выполняем подготовку соединения сервера с предпочтительным адресом
+	::configure(server, options);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Проверяем что до установления соединения переезд невозможен
+	ASSERT_FALSE(client.relocatable());
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что переезд на предпочтительный адрес возможен
+	ASSERT_TRUE(client.relocatable());
+	// Проверяем что сервер переезжать не вправе - адрес анонсирует он сам
+	ASSERT_FALSE(server.relocatable());
+	// Извлечённый предпочтительный адрес сервера
+	std::string ip = "";
+	// Извлечённый порт предпочтительного адреса сервера
+	uint16_t port = 0;
+	// Проверяем что адрес семейства IPv6 не анонсирован
+	ASSERT_FALSE(client.preferred(true, ip, port));
+	// Проверяем что адрес семейства IPv4 анонсирован
+	ASSERT_TRUE(client.preferred(false, ip, port));
+	// Проверяем длину извлечённого адреса
+	ASSERT_EQ(ip.size(), 4u);
+	// Проверяем содержимое извлечённого адреса
+	ASSERT_EQ(static_cast <uint8_t> (ip[0]), 192);
+	ASSERT_EQ(static_cast <uint8_t> (ip[1]), 0);
+	ASSERT_EQ(static_cast <uint8_t> (ip[2]), 2);
+	ASSERT_EQ(static_cast <uint8_t> (ip[3]), 10);
+	// Проверяем извлечённый порт предпочтительного адреса
+	ASSERT_EQ(port, 4433);
+	// Начинаем переезд на предпочтительный адрес сервера
+	ASSERT_TRUE(client.relocate());
+	// Запоминаем идентификатор соединения удалённого эндпоинта до переезда
+	const cid_t before = client.dcid();
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	// Извлекаем датаграмму клиента с проверкой достижимости предпочтительного адреса
+	ASSERT_TRUE(client.write(datagram, now));
+	// Проверяем что датаграмма адресована предпочтительному адресу
+	ASSERT_TRUE(client.alternate());
+	// Количество отправленных проверок достижимости предпочтительного адреса
+	size_t probing = 1;
+	/**
+	 * Прогоняем часы без единого ответа удалённого эндпоинта: пока срок не вышел,
+	 * проверка переотправляется по таймеру зондирования, а по его истечении
+	 * от неё отказываются
+	 */
+	for(size_t i = 0; i < 40; i++){
+		// Продвигаем тестовые часы
+		now += 200;
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+		/**
+		 * Извлекаем датаграммы клиента: адресованные предпочтительному адресу
+		 * являются повторными проверками его достижимости
+		 */
+		while(client.write(datagram, now)){
+			// Если датаграмма адресована предпочтительному адресу
+			if(client.alternate())
+				// Считаем отправленную проверку достижимости
+				probing++;
+			// Очищаем буфер датаграммы от предыдущей сборки
+			datagram.clear();
+		}
+	}
+	/**
+	 * Проверяем что проверка переотправлялась: единственная попытка означала бы,
+	 * что потеря первой датаграммы обрывает переезд без всякого срока
+	 */
+	ASSERT_GT(probing, static_cast <size_t> (1));
+	/**
+	 * Проверяем что от проверки отказались: соединение осталось на прежнем пути,
+	 * а переезд на непроверенный адрес не выполнен
+	 */
+	ASSERT_TRUE(client.dcid() == before);
+	ASSERT_EQ(client.migrations(), static_cast <uint64_t> (0));
+	ASSERT_FALSE(client.validated());
+	// Очищаем буфер датаграммы от предыдущей сборки
+	datagram.clear();
+	/**
+	 * Проверяем что проверка более не переотправляется: датаграмм на предпочтительный
+	 * адрес не собирается, а обычные датаграммы уходят по прежнему пути
+	 */
+	while(client.write(datagram, now)){
+		// Проверяем что датаграмма адресована прежнему пути
+		ASSERT_FALSE(client.alternate());
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	/**
+	 * Проверяем что переезд доступен для повторной попытки: непригодность пути
+	 * разрывом соединения не является, и приложение вправе попробовать снова
+	 */
+	ASSERT_TRUE(client.relocatable());
+	ASSERT_TRUE(client.relocate());
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест долгой жизни соединения с чередованием механизмов транспорта
+ *
+ * @details Механизмы модуля проверяются тестами по отдельности, но в жизни они
+ *          работают вперемешку на одном соединении: потоки открываются и
+ *          закрываются, ключи обновляются, путь меняется, датаграммы уходят мимо
+ *          потоков. Взаимное влияние их состояний ловится только совместным прогоном
+ */
+TEST_F(QuicFixture, ConnectionSoakTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры эндпоинтов
+	params::params_t params;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 16777216;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 1048576;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 1048576;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 1048576;
+	// Устанавливаем лимит числа двунаправленных потоков
+	params.initialMaxStreamsBidi = 1000;
+	// Устанавливаем лимит числа однонаправленных потоков
+	params.initialMaxStreamsUni = 1000;
+	// Устанавливаем предельный размер принимаемой датаграммы приложения
+	params.maxDatagramFrameSize = 1200;
+	// Поднимаем лимит активных идентификаторов соединения для многократной смены пути
+	params.activeConnectionIdLimit = 8;
+	// Выполняем подготовку соединения клиента
+	::configure(client, params);
+	// Выполняем подготовку соединения сервера
+	::configure(server, params);
+	// Включаем маркировку исходящих датаграмм клиента
+	client.ecn(true);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now, nullptr, awh::event::ecn_t::ECT0));
+	// Количество переданных потоками октетов
+	size_t transferred = 0;
+	// Количество выполненных обновлений ключей
+	size_t rekeys = 0;
+	// Количество принятых сервером датаграмм приложения
+	size_t datagrams = 0;
+	/**
+	 * Прогоняем циклы работы соединения: на каждом открывается пара потоков,
+	 * уходит датаграмма приложения, а каждый третий цикл обновляет ключи
+	 */
+	for(size_t cycle = 0; cycle < 60; cycle++){
+		// Открываем двунаправленный поток на клиенте
+		const uint64_t bidi = client.open(false);
+		// Проверяем что двунаправленный поток открыт
+		ASSERT_NE(bidi, connection_t::INVALID_STREAM);
+		// Открываем однонаправленный поток на клиенте
+		const uint64_t uni = client.open(true);
+		// Проверяем что однонаправленный поток открыт
+		ASSERT_NE(uni, connection_t::INVALID_STREAM);
+		// Полезная нагрузка потоков цикла
+		const std::string chunk(1024 + (cycle * 37), static_cast <char> ('a' + (cycle % 26)));
+		// Ставим данные двунаправленного потока в очередь отправки с завершением
+		ASSERT_EQ(client.send(bidi, chunk, true), status_t::OK);
+		// Ставим данные однонаправленного потока в очередь отправки с завершением
+		ASSERT_EQ(client.send(uni, chunk, true), status_t::OK);
+		// Ставим датаграмму приложения в очередь отправки
+		ASSERT_EQ(client.datagram(std::string(64, 'd')), status_t::OK);
+		// Продвигаем тестовые часы
+		now += 10;
+		// Передаём датаграммы клиента серверу с маркировкой поддержки ECN
+		::transfer(client, server, now, nullptr, awh::event::ecn_t::ECT0);
+		// Передаём датаграммы сервера клиенту
+		::transfer(server, client, now);
+		// Выполняем обмен датаграммами до полного затишья с маркировкой поддержки ECN
+		::pump(client, server, now, awh::event::ecn_t::ECT0);
+		// Буфер принятой сервером датаграммы приложения
+		std::string unreliable = "";
+		/**
+		 * Извлекаем принятые сервером датаграммы приложения
+		 */
+		while(server.datagram(unreliable))
+			// Считаем принятую датаграмму приложения
+			datagrams++;
+		// Список потоков с собранными данными
+		std::vector <uint64_t> streams;
+		// Получаем список потоков с собранными данными
+		server.readable(streams);
+		/**
+		 * Перебираем список потоков с собранными данными
+		 */
+		for(auto & sid : streams){
+			// Буфер принятых сервером данных
+			std::string payload = "";
+			// Флаг завершения потока
+			bool fin = false;
+			// Выдаём принятые данные приложению
+			if(server.receive(sid, payload, fin) == status_t::OK)
+				// Считаем переданные потоком октеты
+				transferred += payload.size();
+		}
+		// Если цикл требует обновления ключей уровня приложения
+		if((cycle % 3) == 2){
+			// Выполняем обновление ключей уровня приложения
+			if(client.rekey() == status_t::OK)
+				// Считаем выполненное обновление ключей
+				rekeys++;
+			// Выполняем обмен датаграммами после обновления ключей
+			::pump(client, server, now, awh::event::ecn_t::ECT0);
+		}
+		// Если цикл требует смены пути соединения
+		if((cycle % 20) == 19){
+			// Выполняем миграцию соединения на новый путь
+			if(client.migrate())
+				// Выполняем обмен датаграммами для подтверждения достижимости пути
+				::pump(client, server, now, awh::event::ecn_t::ECT0);
+		}
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Выполняем обработку просроченных таймеров сервера
+		server.tick(now);
+	}
+	// Проверяем что соединение пережило прогон
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	// Проверяем что данные потоков переданы
+	ASSERT_GT(transferred, static_cast <size_t> (100000));
+	// Проверяем что обновления ключей выполнялись
+	ASSERT_GT(rekeys, static_cast <size_t> (5));
+	// Проверяем что датаграммы приложения доставлялись
+	ASSERT_GT(datagrams, static_cast <size_t> (30));
+	/**
+	 * Проверяем что завершённые потоки освобождены: их за прогон открыто вдесятеро
+	 * больше порога сборки, и удержание завершённых означало бы утечку
+	 */
+	ASSERT_LT(client.streams(), static_cast <size_t> (80));
+	ASSERT_LT(server.streams(), static_cast <size_t> (80));
+	// Проверяем что маркировка перегрузки пути пережила прогон
+	ASSERT_EQ(client.marking(), awh::event::ecn_t::ECT0);
+}
+
+/**
+ * @brief Тест устойчивости машины состояний к произвольной нагрузке пакетов
+ *
+ * @details Существующие фаззеры бьют по кодекам фреймов, куда нагрузка приходит
+ *          уже вырезанной из пакета. Здесь произвольные октеты доставляются
+ *          настоящим пакетом под настоящей защитой: они проходят снятие защиты
+ *          и попадают в разбор и диспетчеризацию фреймов установленного соединения
+ */
+TEST_F(QuicFixture, ConnectionFuzzPayloadTest){
+	// Состояние генератора псевдослучайных чисел с фиксированным зерном
+	uint64_t seed = 0x9E3779B97F4A7C15ull;
+	/**
+	 * @brief Функция получения очередного псевдослучайного числа
+	 *
+	 * @return псевдослучайное число
+	 */
+	auto random = [&seed]() noexcept -> uint64_t {
+		// Перемешиваем состояние генератора сдвигами
+		seed ^= (seed << 13);
+		seed ^= (seed >> 7);
+		seed ^= (seed << 17);
+		// Выводим состояние генератора
+		return seed;
+	};
+	// Известные типы фреймов для построения правдоподобной нагрузки
+	static const uint8_t TYPES[] = {
+		0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07, 0x08, 0x0A, 0x0C, 0x0E,
+		0x10, 0x11, 0x12, 0x13, 0x14, 0x15, 0x16, 0x17, 0x18, 0x19, 0x1A, 0x1B,
+		0x1C, 0x1D, 0x1E, 0x30, 0x31
+	};
+	// Количество обработанных соединением нагрузок
+	size_t processed = 0;
+	/**
+	 * Перебираем раунды: каждый начинается со свежего соединения, поскольку
+	 * нарушившая протокол нагрузка соединение закрывает
+	 */
+	for(size_t round = 0; round < 200; round++){
+		// Создаём соединение клиента
+		connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+		// Создаём соединение сервера
+		connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+		// Выполняем подготовку соединения клиента
+		::setup(client);
+		// Выполняем подготовку соединения сервера
+		::setup(server);
+		// Выполняем начало соединения клиентом
+		ASSERT_EQ(client.connect(), status_t::OK);
+		// Тестовые часы в миллисекундах
+		uint64_t now = 1000;
+		// Выполняем полное установление соединения
+		ASSERT_TRUE(::establish(client, server, now));
+		// Номер очередного доставляемого пакета
+		uint64_t pn = 1000;
+		/**
+		 * Доставляем соединению произвольные нагрузки, пока оно принимает пакеты
+		 */
+		for(size_t i = 0; (i < 24) && (client.state() == connection_t::state_t::CONNECTED); i++){
+			// Собираемая нагрузка пакета
+			std::string payload = "";
+			// Количество фреймов в собираемой нагрузке
+			const size_t count = (1 + (random() % 6));
+			/**
+			 * Собираем нагрузку из правдоподобных фреймов: тип берётся из известных,
+			 * а поля заполняются произвольно - так разбор доходит до диспетчеризации,
+			 * а не отбрасывает нагрузку на первом же октете
+			 */
+			for(size_t j = 0; j < count; j++){
+				// Дописываем тип очередного фрейма
+				payload.push_back(static_cast <char> (TYPES[random() % (sizeof(TYPES) / sizeof(TYPES[0]))]));
+				// Количество произвольных октетов полей фрейма
+				const size_t length = (random() % 24);
+				/**
+				 * Дописываем произвольные октеты полей фрейма
+				 */
+				for(size_t k = 0; k < length; k++)
+					// Дописываем очередной произвольный октет
+					payload.push_back(static_cast <char> (random() & 0xFF));
+			}
+			// Продвигаем тестовые часы
+			now += 5;
+			// Доставляем нагрузку клиенту пакетом 1-RTT
+			::inject(server, client, pn++, payload, now);
+			// Считаем обработанную соединением нагрузку
+			processed++;
+			/**
+			 * Проверяем что соединение осталось в определённом состоянии: произвольная
+			 * нагрузка вправе его закрыть, но не вправе увести в состояние, из которого
+			 * оно не начиналось
+			 */
+			ASSERT_TRUE(
+				(client.state() == connection_t::state_t::CONNECTED) ||
+				(client.state() == connection_t::state_t::CLOSING) ||
+				(client.state() == connection_t::state_t::DRAINING)
+			);
+			// Буфер исходящей датаграммы клиента
+			std::string datagram = "";
+			/**
+			 * Извлекаем датаграммы клиента: собранная после произвольной нагрузки
+			 * датаграмма обязана оставаться в пределах размера пути
+			 */
+			while(client.write(datagram, now)){
+				// Проверяем что собранная датаграмма не пустая
+				ASSERT_FALSE(datagram.empty());
+				// Проверяем что собранная датаграмма не превышает размера пути
+				ASSERT_LE(datagram.size(), client.pmtu());
+				// Очищаем буфер датаграммы от предыдущей сборки
+				datagram.clear();
+			}
+			// Выполняем обработку просроченных таймеров клиента
+			client.tick(now);
+		}
+		/**
+		 * Проверяем что соединение, закрытое самим локальным эндпоинтом, сообщает
+		 * определённый код ошибки транспорта: коды подбирает сам модуль, и попадание
+		 * в диагностику неизвестного означало бы ошибку в нём самом. Код, присланный
+		 * удалённым эндпоинтом, проверке не подлежит - пространство кодов расширяемо,
+		 * и произвольное значение оттуда законно (RFC 9000 §20.1)
+		 */
+		if(client.state() == connection_t::state_t::CLOSING)
+			// Проверяем что причина закрытия соединения известна
+			ASSERT_NE(awh::quic::errorName(client.error()), "UNKNOWN_ERROR");
+	}
+	// Проверяем что нагрузки соединением действительно обрабатывались
+	ASSERT_GE(processed, static_cast <size_t> (200));
+	// Создаём соединение клиента для фазы порчи готовых датаграмм
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера для фазы порчи готовых датаграмм
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на сервере
+	const uint64_t sid = server.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим данные потока в очередь отправки
+	ASSERT_EQ(server.send(sid, std::string(4096, 'z'), false), status_t::OK);
+	// Буфер исходящей датаграммы сервера
+	std::string datagram = "";
+	/**
+	 * Портим готовые датаграммы сервера: испорченный пакет защиту не снимет и будет
+	 * отброшен, но путь отбрасывания обязан оставаться безопасным - в него попадают
+	 * и посторонний трафик на порту, и подделки (RFC 9000 §10.3.1)
+	 */
+	while(server.write(datagram, now)){
+		/**
+		 * Перебираем варианты порчи датаграммы
+		 */
+		for(size_t i = 0; i < 8; i++){
+			// Копия датаграммы для порчи
+			std::string damaged(datagram);
+			// Количество портимых октетов датаграммы
+			const size_t count = (1 + (random() % 4));
+			/**
+			 * Портим произвольные октеты копии датаграммы
+			 */
+			for(size_t j = 0; (j < count) && !damaged.empty(); j++)
+				// Инвертируем произвольный бит произвольного октета
+				damaged[random() % damaged.size()] ^= static_cast <char> (1 << (random() % 8));
+			// Доставляем испорченную датаграмму клиенту
+			client.read(reinterpret_cast <const uint8_t *> (damaged.data()), damaged.size(), now);
+			// Копия датаграммы для усечения
+			std::string cropped(datagram);
+			// Усекаем копию датаграммы до произвольной длины
+			cropped.resize(random() % (cropped.size() + 1));
+			// Доставляем усечённую датаграмму клиенту
+			client.read(reinterpret_cast <const uint8_t *> (cropped.data()), cropped.size(), now);
+		}
+		// Продвигаем тестовые часы
+		now += 5;
+		// Доставляем клиенту неиспорченную датаграмму
+		ASSERT_EQ(client.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	/**
+	 * Проверяем что соединение испорченными датаграммами не затронуто: неснявшийся
+	 * пакет отбрасывается, а данные неиспорченных доходят до приложения
+	 */
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	// Буфер принятых клиентом данных
+	std::string payload = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Проверяем что данные потока приняты клиентом
+	ASSERT_EQ(client.receive(sid, payload, fin), status_t::OK);
+	// Проверяем что принятые данные не искажены
+	ASSERT_EQ(payload, std::string(payload.size(), 'z'));
+	// Проверяем что данные потока приняты целиком
+	ASSERT_EQ(payload.size(), static_cast <size_t> (4096));
+}
+
+/**
+ * @brief Тест отказа миграции при выполняемой проверке пути (RFC 9000 §8.2)
+ *
+ * @details Смена пути поворачивает идентификатор соединения и сбрасывает состояние
+ *          пути, поэтому отказ обязан наступать до этих действий: иначе неудача
+ *          запуска новой проверки оставила бы соединение с повёрнутым идентификатором
+ *          на сброшенном пути, достижимость которого никто не проверяет
+ */
+TEST_F(QuicFixture, ConnectionMigrateGuardTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Начинаем проверку достижимости текущего пути
+	ASSERT_TRUE(client.probe());
+	// Запоминаем идентификатор соединения удалённого эндпоинта до попытки миграции
+	const cid_t before = client.dcid();
+	// Количество выполненных смен пути до попытки миграции
+	const uint64_t migrations = client.migrations();
+	/**
+	 * Проверяем что миграция отвергнута: проверка достижимости уже выполняется,
+	 * и запустить вторую поверх неё невозможно
+	 */
+	ASSERT_FALSE(client.migrate());
+	/**
+	 * Проверяем что состояние соединения не тронуто: отказ обязан наступать до
+	 * поворота идентификатора и сброса состояния пути
+	 */
+	ASSERT_TRUE(client.dcid() == before);
+	ASSERT_EQ(client.migrations(), migrations);
+	// Выполняем обмен датаграммами для завершения проверки достижимости
+	::pump(client, server, now);
+	// Проверяем что проверка достижимости пути завершена подтверждением
+	ASSERT_TRUE(client.validated());
+	// Проверяем что после завершения проверки миграция становится доступна
+	ASSERT_TRUE(client.migrate());
+	// Проверяем что идентификатор соединения удалённого эндпоинта сменён
+	ASSERT_FALSE(client.dcid() == before);
+	// Проверяем что смена пути учтена
+	ASSERT_EQ(client.migrations(), migrations + 1);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест миграции при единственном резервном идентификаторе (RFC 9000 §5.1.1)
+ *
+ * @details При лимите активных идентификаторов по умолчанию предпочтительный адрес
+ *          занимает один из двух слотов, и свободных для обычной смены пути не
+ *          остаётся вовсе. Миграция обязана отказать, не тронув состояние: забрав
+ *          резервный идентификатор, она сделала бы переезд невозможным
+ */
+TEST_F(QuicFixture, ConnectionMigrateReservedOnlyTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Транспортные параметры сервера с предпочтительным адресом
+	params::params_t options;
+	// Устанавливаем лимит данных соединения
+	options.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	options.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	options.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	options.initialMaxStreamsUni = 100;
+	// Устанавливаем флаг наличия предпочтительного адреса сервера
+	options.hasPreferredAddress = true;
+	// Устанавливаем предпочтительный IPv4-адрес сервера 192.0.2.10
+	options.preferredAddress.ipv4[0] = 192;
+	options.preferredAddress.ipv4[1] = 0;
+	options.preferredAddress.ipv4[2] = 2;
+	options.preferredAddress.ipv4[3] = 10;
+	// Устанавливаем порт предпочтительного IPv4-адреса сервера
+	options.preferredAddress.ipv4Port = 4433;
+	// Устанавливаем длину идентификатора соединения предпочтительного адреса
+	options.preferredAddress.cid.size = connection_t::LOCAL_CID_SIZE;
+	/**
+	 * Заполняем идентификатор соединения предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < connection_t::LOCAL_CID_SIZE; i++)
+		// Устанавливаем очередной октет идентификатора соединения
+		options.preferredAddress.cid.data[i] = static_cast <uint8_t> (0xA0 + i);
+	/**
+	 * Заполняем токен сброса без сохранения состояния предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < awh::quic::proto::RESET_TOKEN_SIZE; i++)
+		// Устанавливаем очередной октет токена сброса
+		options.preferredAddress.resetToken[i] = static_cast <uint8_t> (0xB0 + i);
+	// Выполняем подготовку соединения сервера с предпочтительным адресом
+	::configure(server, options);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Проверяем что до установления соединения переезд невозможен
+	ASSERT_FALSE(client.relocatable());
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что переезд на предпочтительный адрес возможен
+	ASSERT_TRUE(client.relocatable());
+	// Проверяем что сервер переезжать не вправе - адрес анонсирует он сам
+	ASSERT_FALSE(server.relocatable());
+	// Извлечённый предпочтительный адрес сервера
+	std::string ip = "";
+	// Извлечённый порт предпочтительного адреса сервера
+	uint16_t port = 0;
+	// Проверяем что адрес семейства IPv6 не анонсирован
+	ASSERT_FALSE(client.preferred(true, ip, port));
+	// Проверяем что адрес семейства IPv4 анонсирован
+	ASSERT_TRUE(client.preferred(false, ip, port));
+	// Проверяем длину извлечённого адреса
+	ASSERT_EQ(ip.size(), 4u);
+	// Проверяем содержимое извлечённого адреса
+	ASSERT_EQ(static_cast <uint8_t> (ip[0]), 192);
+	ASSERT_EQ(static_cast <uint8_t> (ip[1]), 0);
+	ASSERT_EQ(static_cast <uint8_t> (ip[2]), 2);
+	ASSERT_EQ(static_cast <uint8_t> (ip[3]), 10);
+	// Проверяем извлечённый порт предпочтительного адреса
+	ASSERT_EQ(port, 4433);
+	// Запоминаем идентификатор соединения удалённого эндпоинта до попытки миграции
+	const cid_t before = client.dcid();
+	/**
+	 * Проверяем что миграция отвергнута: единственный свободный идентификатор
+	 * закреплён за предпочтительным адресом и для смены пути непригоден
+	 */
+	ASSERT_FALSE(client.migrate());
+	// Проверяем что идентификатор соединения удалённого эндпоинта не тронут
+	ASSERT_TRUE(client.dcid() == before);
+	// Проверяем что смена пути не учтена
+	ASSERT_EQ(client.migrations(), static_cast <uint64_t> (0));
+	/**
+	 * Проверяем что переезд на предпочтительный адрес при этом доступен: его
+	 * идентификатор остался невостребованным
+	 */
+	ASSERT_TRUE(client.relocatable());
+	ASSERT_TRUE(client.relocate());
+	// Выполняем обмен датаграммами для подтверждения достижимости предпочтительного адреса
+	::pump(client, server, now);
+	// Проверяем что переезд выполнен на закреплённый за адресом идентификатор
+	ASSERT_TRUE(client.dcid() == options.preferredAddress.cid);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест выбора идентификатора при принудительном выводе текущего (RFC 9000 §5.1.2)
+ *
+ * @details Удалённый эндпоинт вправе вывести используемый идентификатор из обращения
+ *          полем Retire Prior To. Продолжать пользоваться выведенным нельзя, но и
+ *          закреплённый за предпочтительным адресом брать незачем, пока есть прочие
+ */
+TEST_F(QuicFixture, ConnectionForcedRetireCidTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры клиента
+	params::params_t settings;
+	// Устанавливаем лимит данных соединения
+	settings.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	settings.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	settings.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	settings.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	settings.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	settings.initialMaxStreamsUni = 100;
+	/**
+	 * Поднимаем лимит активных идентификаторов соединения: один из них закреплён
+	 * за предпочтительным адресом, и при лимите по умолчанию обычной смене пути
+	 * не осталось бы ни одного (RFC 9000 §18.2)
+	 */
+	settings.activeConnectionIdLimit = 4;
+	// Выполняем подготовку соединения клиента
+	::configure(client, settings);
+	// Транспортные параметры сервера с предпочтительным адресом
+	params::params_t options;
+	// Устанавливаем лимит данных соединения
+	options.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	options.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	options.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	options.initialMaxStreamsUni = 100;
+	// Устанавливаем флаг наличия предпочтительного адреса сервера
+	options.hasPreferredAddress = true;
+	// Устанавливаем предпочтительный IPv4-адрес сервера 192.0.2.10
+	options.preferredAddress.ipv4[0] = 192;
+	options.preferredAddress.ipv4[1] = 0;
+	options.preferredAddress.ipv4[2] = 2;
+	options.preferredAddress.ipv4[3] = 10;
+	// Устанавливаем порт предпочтительного IPv4-адреса сервера
+	options.preferredAddress.ipv4Port = 4433;
+	// Устанавливаем длину идентификатора соединения предпочтительного адреса
+	options.preferredAddress.cid.size = connection_t::LOCAL_CID_SIZE;
+	/**
+	 * Заполняем идентификатор соединения предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < connection_t::LOCAL_CID_SIZE; i++)
+		// Устанавливаем очередной октет идентификатора соединения
+		options.preferredAddress.cid.data[i] = static_cast <uint8_t> (0xA0 + i);
+	/**
+	 * Заполняем токен сброса без сохранения состояния предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < awh::quic::proto::RESET_TOKEN_SIZE; i++)
+		// Устанавливаем очередной октет токена сброса
+		options.preferredAddress.resetToken[i] = static_cast <uint8_t> (0xB0 + i);
+	// Выполняем подготовку соединения сервера с предпочтительным адресом
+	::configure(server, options);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Проверяем что до установления соединения переезд невозможен
+	ASSERT_FALSE(client.relocatable());
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что переезд на предпочтительный адрес возможен
+	ASSERT_TRUE(client.relocatable());
+	// Проверяем что сервер переезжать не вправе - адрес анонсирует он сам
+	ASSERT_FALSE(server.relocatable());
+	// Извлечённый предпочтительный адрес сервера
+	std::string ip = "";
+	// Извлечённый порт предпочтительного адреса сервера
+	uint16_t port = 0;
+	// Проверяем что адрес семейства IPv6 не анонсирован
+	ASSERT_FALSE(client.preferred(true, ip, port));
+	// Проверяем что адрес семейства IPv4 анонсирован
+	ASSERT_TRUE(client.preferred(false, ip, port));
+	// Проверяем длину извлечённого адреса
+	ASSERT_EQ(ip.size(), 4u);
+	// Проверяем содержимое извлечённого адреса
+	ASSERT_EQ(static_cast <uint8_t> (ip[0]), 192);
+	ASSERT_EQ(static_cast <uint8_t> (ip[1]), 0);
+	ASSERT_EQ(static_cast <uint8_t> (ip[2]), 2);
+	ASSERT_EQ(static_cast <uint8_t> (ip[3]), 10);
+	// Проверяем извлечённый порт предпочтительного адреса
+	ASSERT_EQ(port, 4433);
+	// Запоминаем идентификатор предпочтительного адреса
+	const cid_t reserved = options.preferredAddress.cid;
+	// Запоминаем идентификатор соединения удалённого эндпоинта до вывода из обращения
+	const cid_t before = client.dcid();
+	// Идентификатор соединения, выдаваемый взамен выводимых
+	cid_t replacement;
+	// Устанавливаем длину выдаваемого идентификатора соединения
+	replacement.size = connection_t::LOCAL_CID_SIZE;
+	/**
+	 * Заполняем выдаваемый идентификатор соединения
+	 */
+	for(uint8_t i = 0; i < connection_t::LOCAL_CID_SIZE; i++)
+		// Устанавливаем очередной октет идентификатора соединения
+		replacement.data[i] = static_cast <uint8_t> (0xC0 + i);
+	// Формируемый фрейм анонса нового идентификатора соединения
+	frame::new_connection_id_t announce;
+	// Устанавливаем порядковый номер выдаваемого идентификатора соединения
+	announce.seq = 4;
+	/**
+	 * Выводим из обращения только используемый клиентом идентификатор хендшейка:
+	 * закреплённый за предпочтительным адресом и выданные сервером остаются
+	 * в обращении, и выбор между ними есть
+	 */
+	announce.retirePriorTo = 1;
+	// Устанавливаем выдаваемый идентификатор соединения
+	announce.cid = replacement;
+	/**
+	 * Заполняем токен сброса без сохранения состояния выдаваемого идентификатора
+	 */
+	for(uint8_t i = 0; i < awh::quic::proto::RESET_TOKEN_SIZE; i++)
+		// Устанавливаем очередной октет токена сброса
+		announce.resetToken[i] = static_cast <uint8_t> (0xD0 + i);
+	// Нагрузка пакета сервера
+	std::string payload = "";
+	// Выполняем сборку фрейма NEW_CONNECTION_ID (RFC 9000 §19.15)
+	frame::serialize::newConnectionId(payload, announce);
+	// Доставляем нагрузку клиенту пакетом 1-RTT
+	ASSERT_EQ(::inject(server, client, 5000, payload, now), status_t::OK);
+	// Проверяем что клиент прекратил пользоваться выведенным идентификатором
+	ASSERT_FALSE(client.dcid() == before);
+	/**
+	 * Проверяем что взят не закреплённый за предпочтительным адресом идентификатор:
+	 * тот нужен переезду и в обычном обороте не участвует, пока есть прочие
+	 */
+	ASSERT_FALSE(client.dcid() == reserved);
+	// Проверяем что переезд на предпочтительный адрес остался доступен
+	ASSERT_TRUE(client.relocatable());
+	ASSERT_TRUE(client.relocate());
+	// Проверяем отсутствие ошибки транспорта на клиенте
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест неприкосновенности идентификатора предпочтительного адреса (RFC 9000 §5.1.1)
+ *
+ * @details Идентификатор с порядковым номером 1 закреплён сервером за предпочтительным
+ *          адресом. Обычная смена пути забирать его не вправе: забрав, соединение
+ *          сделало бы переезд невозможным, а сам идентификатор применило бы не
+ *          к тому адресу
+ */
+TEST_F(QuicFixture, ConnectionPreferredCidReservedTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры клиента
+	params::params_t settings;
+	// Устанавливаем лимит данных соединения
+	settings.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	settings.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	settings.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	settings.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	settings.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	settings.initialMaxStreamsUni = 100;
+	/**
+	 * Поднимаем лимит активных идентификаторов соединения: один из них закреплён
+	 * за предпочтительным адресом, и при лимите по умолчанию обычной смене пути
+	 * не осталось бы ни одного (RFC 9000 §18.2)
+	 */
+	settings.activeConnectionIdLimit = 4;
+	// Выполняем подготовку соединения клиента
+	::configure(client, settings);
+	// Транспортные параметры сервера с предпочтительным адресом
+	params::params_t options;
+	// Устанавливаем лимит данных соединения
+	options.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	options.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	options.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	options.initialMaxStreamsUni = 100;
+	// Устанавливаем флаг наличия предпочтительного адреса сервера
+	options.hasPreferredAddress = true;
+	// Устанавливаем предпочтительный IPv4-адрес сервера 192.0.2.10
+	options.preferredAddress.ipv4[0] = 192;
+	options.preferredAddress.ipv4[1] = 0;
+	options.preferredAddress.ipv4[2] = 2;
+	options.preferredAddress.ipv4[3] = 10;
+	// Устанавливаем порт предпочтительного IPv4-адреса сервера
+	options.preferredAddress.ipv4Port = 4433;
+	// Устанавливаем длину идентификатора соединения предпочтительного адреса
+	options.preferredAddress.cid.size = connection_t::LOCAL_CID_SIZE;
+	/**
+	 * Заполняем идентификатор соединения предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < connection_t::LOCAL_CID_SIZE; i++)
+		// Устанавливаем очередной октет идентификатора соединения
+		options.preferredAddress.cid.data[i] = static_cast <uint8_t> (0xA0 + i);
+	/**
+	 * Заполняем токен сброса без сохранения состояния предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < awh::quic::proto::RESET_TOKEN_SIZE; i++)
+		// Устанавливаем очередной октет токена сброса
+		options.preferredAddress.resetToken[i] = static_cast <uint8_t> (0xB0 + i);
+	// Выполняем подготовку соединения сервера с предпочтительным адресом
+	::configure(server, options);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Проверяем что до установления соединения переезд невозможен
+	ASSERT_FALSE(client.relocatable());
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что переезд на предпочтительный адрес возможен
+	ASSERT_TRUE(client.relocatable());
+	// Проверяем что сервер переезжать не вправе - адрес анонсирует он сам
+	ASSERT_FALSE(server.relocatable());
+	// Извлечённый предпочтительный адрес сервера
+	std::string ip = "";
+	// Извлечённый порт предпочтительного адреса сервера
+	uint16_t port = 0;
+	// Проверяем что адрес семейства IPv6 не анонсирован
+	ASSERT_FALSE(client.preferred(true, ip, port));
+	// Проверяем что адрес семейства IPv4 анонсирован
+	ASSERT_TRUE(client.preferred(false, ip, port));
+	// Проверяем длину извлечённого адреса
+	ASSERT_EQ(ip.size(), 4u);
+	// Проверяем содержимое извлечённого адреса
+	ASSERT_EQ(static_cast <uint8_t> (ip[0]), 192);
+	ASSERT_EQ(static_cast <uint8_t> (ip[1]), 0);
+	ASSERT_EQ(static_cast <uint8_t> (ip[2]), 2);
+	ASSERT_EQ(static_cast <uint8_t> (ip[3]), 10);
+	// Проверяем извлечённый порт предпочтительного адреса
+	ASSERT_EQ(port, 4433);
+	// Запоминаем идентификатор предпочтительного адреса
+	const cid_t reserved = options.preferredAddress.cid;
+	// Проверяем что переезд на предпочтительный адрес доступен
+	ASSERT_TRUE(client.relocatable());
+	// Выполняем обычную миграцию соединения на новый путь
+	ASSERT_TRUE(client.migrate());
+	/**
+	 * Проверяем что миграция взяла не закреплённый за предпочтительным адресом
+	 * идентификатор: иначе переезд остался бы без своего идентификатора
+	 */
+	ASSERT_FALSE(client.dcid() == reserved);
+	// Выполняем обмен датаграммами для подтверждения достижимости нового пути
+	::pump(client, server, now);
+	// Проверяем что достижимость нового пути подтверждена
+	ASSERT_TRUE(client.validated());
+	// Проверяем что переезд на предпочтительный адрес по-прежнему доступен
+	ASSERT_TRUE(client.relocatable());
+	// Начинаем переезд на предпочтительный адрес сервера
+	ASSERT_TRUE(client.relocate());
+	/**
+	 * Проверяем что подтверждение достижимости текущего пути сохранено: проверяется
+	 * другой адрес, а текущий путь проверку уже проходил
+	 */
+	ASSERT_TRUE(client.validated());
+	// Выполняем обмен датаграммами для подтверждения достижимости предпочтительного адреса
+	::pump(client, server, now);
+	// Проверяем что переезд выполнен на закреплённый за адресом идентификатор
+	ASSERT_TRUE(client.dcid() == reserved);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест работы по прежнему пути во время проверки предпочтительного адреса (RFC 9000 §9.6.2)
+ *
+ * @details Переезжать дозволено лишь на проверенный адрес, поэтому до подтверждения
+ *          его достижимости на предпочтительный адрес уходят одни пробирующие
+ *          датаграммы, а данные приложения продолжают идти по текущему пути
+ */
+TEST_F(QuicFixture, ConnectionRelocationProbingTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Транспортные параметры сервера с предпочтительным адресом
+	params::params_t options;
+	// Устанавливаем лимит данных соединения
+	options.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	options.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	options.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	options.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	options.initialMaxStreamsUni = 100;
+	// Устанавливаем флаг наличия предпочтительного адреса сервера
+	options.hasPreferredAddress = true;
+	// Устанавливаем предпочтительный IPv4-адрес сервера 192.0.2.10
+	options.preferredAddress.ipv4[0] = 192;
+	options.preferredAddress.ipv4[1] = 0;
+	options.preferredAddress.ipv4[2] = 2;
+	options.preferredAddress.ipv4[3] = 10;
+	// Устанавливаем порт предпочтительного IPv4-адреса сервера
+	options.preferredAddress.ipv4Port = 4433;
+	// Устанавливаем длину идентификатора соединения предпочтительного адреса
+	options.preferredAddress.cid.size = connection_t::LOCAL_CID_SIZE;
+	/**
+	 * Заполняем идентификатор соединения предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < connection_t::LOCAL_CID_SIZE; i++)
+		// Устанавливаем очередной октет идентификатора соединения
+		options.preferredAddress.cid.data[i] = static_cast <uint8_t> (0xA0 + i);
+	/**
+	 * Заполняем токен сброса без сохранения состояния предпочтительного адреса
+	 */
+	for(uint8_t i = 0; i < awh::quic::proto::RESET_TOKEN_SIZE; i++)
+		// Устанавливаем очередной октет токена сброса
+		options.preferredAddress.resetToken[i] = static_cast <uint8_t> (0xB0 + i);
+	// Выполняем подготовку соединения сервера с предпочтительным адресом
+	::configure(server, options);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Проверяем что до установления соединения переезд невозможен
+	ASSERT_FALSE(client.relocatable());
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что переезд на предпочтительный адрес возможен
+	ASSERT_TRUE(client.relocatable());
+	// Проверяем что сервер переезжать не вправе - адрес анонсирует он сам
+	ASSERT_FALSE(server.relocatable());
+	// Извлечённый предпочтительный адрес сервера
+	std::string ip = "";
+	// Извлечённый порт предпочтительного адреса сервера
+	uint16_t port = 0;
+	// Проверяем что адрес семейства IPv6 не анонсирован
+	ASSERT_FALSE(client.preferred(true, ip, port));
+	// Проверяем что адрес семейства IPv4 анонсирован
+	ASSERT_TRUE(client.preferred(false, ip, port));
+	// Проверяем длину извлечённого адреса
+	ASSERT_EQ(ip.size(), 4u);
+	// Проверяем содержимое извлечённого адреса
+	ASSERT_EQ(static_cast <uint8_t> (ip[0]), 192);
+	ASSERT_EQ(static_cast <uint8_t> (ip[1]), 0);
+	ASSERT_EQ(static_cast <uint8_t> (ip[2]), 2);
+	ASSERT_EQ(static_cast <uint8_t> (ip[3]), 10);
+	// Проверяем извлечённый порт предпочтительного адреса
+	ASSERT_EQ(port, 4433);
+	// Начинаем переезд на предпочтительный адрес сервера
+	ASSERT_TRUE(client.relocate());
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим данные потока в очередь отправки
+	ASSERT_EQ(client.send(sid, "data during validation", true), status_t::OK);
+	// Количество датаграмм, адресованных предпочтительному адресу
+	size_t probing = 0;
+	// Количество датаграмм, адресованных текущему пути
+	size_t regular = 0;
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Извлекаем датаграммы клиента: пока проверка не пройдена, соединение отправляет
+	 * по двум адресам сразу, и вызывающий код различает их признаком адресата
+	 */
+	while(client.write(datagram, now)){
+		// Если датаграмма адресована предпочтительному адресу
+		if(client.alternate()){
+			// Считаем пробирующую датаграмму
+			probing++;
+			/**
+			 * Проверяем что пробирующая датаграмма несёт одни пробирующие фреймы:
+			 * данные потока по непроверенному адресу уходить не должны
+			 */
+			std::string plain = "";
+			ASSERT_TRUE(::unseal(server, datagram, plain));
+			ASSERT_EQ(plain.find("data during validation"), std::string::npos);
+		// Если датаграмма адресована текущему пути
+		} else {
+			// Считаем датаграмму текущего пути
+			regular++;
+			// Передаём датаграмму серверу по текущему пути
+			ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+		}
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	// Проверяем что проверка достижимости предпочтительного адреса отправлена
+	ASSERT_EQ(probing, static_cast <size_t> (1));
+	// Проверяем что данные приложения ушли по текущему пути
+	ASSERT_GT(regular, static_cast <size_t> (0));
+	// Проверяем что переезд до подтверждения достижимости не выполнен
+	ASSERT_EQ(client.migrations(), static_cast <uint64_t> (0));
+	// Буфер принятых сервером данных
+	std::string payload = "";
+	// Флаг завершения потока
+	bool fin = false;
+	/**
+	 * Проверяем что данные приняты сервером по текущему пути: приостанавливать
+	 * работу соединения на время проверки нового адреса незачем
+	 */
+	ASSERT_EQ(server.receive(sid, payload, fin), status_t::OK);
+	ASSERT_EQ(payload, "data during validation");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);

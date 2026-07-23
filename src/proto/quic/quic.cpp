@@ -159,6 +159,10 @@ string_view awh::quic::frameName(const frame_t type) noexcept {
 	if((value >= static_cast <uint64_t> (frame_t::STREAM)) && (value <= (static_cast <uint64_t> (frame_t::STREAM) | 0x07)))
 		// Выводим название типа фрейма
 		return "STREAM";
+	// Если тип фрейма принадлежит диапазону DATAGRAM (0x30-0x31)
+	if((value >= static_cast <uint64_t> (frame_t::DATAGRAM)) && (value <= (static_cast <uint64_t> (frame_t::DATAGRAM) | 0x01)))
+		// Выводим название типа фрейма
+		return "DATAGRAM";
 	/**
 	 * В зависимости от типа фрейма, выводим соответствующее название
 	 */
