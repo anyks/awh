@@ -203,6 +203,46 @@ namespace {
 		return to.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now, ecn);
 	}
 	/**
+	 * @brief Функция доставки пакета 1-RTT с искажённым тегом AEAD
+	 *
+	 * @note Тег аутентификации искажается после защиты пакета: заголовок снимается
+	 *       штатно, а снятие защиты нагрузки неизбежно проваливается, что учитывается
+	 *       получателем в лимите целостности AEAD (RFC 9001 §6.6). Нагрузка избыточной
+	 *       длины удерживает образец защиты заголовка вдали от искажаемого тега
+	 *
+	 * @param from эндпоинт-отправитель пакета
+	 * @param to   эндпоинт-получатель пакета
+	 * @param pn   номер отправляемого пакета
+	 * @param now  текущее время тестовых часов в миллисекундах
+	 * @return     результат обработки нагрузки получателем
+	 */
+	static status_t injectBroken(connection_t & from, connection_t & to, const uint64_t pn, const uint64_t now) noexcept {
+		// Получаем ключи защиты исходящих пакетов уровня приложения отправителя
+		const crypto::keys_t * keys = from.handshake().encryption(level_t::APPLICATION);
+		// Если ключи защиты пакетов уровня приложения не выведены
+		if(keys == nullptr)
+			// Выводим отрицательный результат
+			return status_t::ERROR;
+		// Собираемый заголовок пакета
+		std::string header = "";
+		// Выполняем сборку короткого заголовка пакета 1-RTT с битом фазы ключей
+		if(!packet::serialize::shortHeader(header, from.dcid(), pn, 4, from.phase(), false))
+			// Выводим отрицательный результат
+			return status_t::ERROR;
+		// Нагрузка избыточной длины: искажение тега не заденет образец защиты заголовка
+		const std::string payload(64, '\0');
+		// Собираемая датаграмма пакета
+		std::string datagram = "";
+		// Выполняем защиту пакета: AEAD-шифрование нагрузки и защита заголовка
+		if(!crypto::seal(datagram, * keys, pn, header, payload))
+			// Выводим отрицательный результат
+			return status_t::ERROR;
+		// Искажаем последний октет тега аутентификации AEAD
+		datagram[datagram.size() - 1] = static_cast <char> (datagram[datagram.size() - 1] ^ 0xFF);
+		// Выводим результат обработки искажённой датаграммы получателем
+		return to.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now, awh::event::ecn_t::NOT_ECT);
+	}
+	/**
 	 * @brief Функция сборки и защиты пакета с длинным заголовком
 	 *
 	 * @note Пакет дописывается в буфер датаграммы, поэтому повторные вызовы
@@ -3665,6 +3705,167 @@ TEST_F(QuicFixture, KeyUpdateTest){
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест автоматического обновления ключей по лимиту конфиденциальности AEAD (RFC 9001 §6.6)
+ *
+ * @details Штатный лимит в 2²³ пакетов прогоном недостижим, поэтому он ужесточается
+ *          на клиенте до немногих пакетов. По его достижении клиент обязан переключить
+ *          фазу ключей, а сервер - последовать за ним по биту фазы принятых пакетов,
+ *          и передача данных обязана пережить смену ключей без потерь
+ *
+ */
+TEST_F(QuicFixture, AeadConfidentialityUpdateTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	/**
+	 * Ужесточаем лимит конфиденциальности только на клиенте: сервер обязан следовать
+	 * за сменой фазы клиента по биту фазы, а не переключаться самостоятельно, иначе
+	 * фазы эндпоинтов разошлись бы. Лимит целостности оставляем штатным
+	 */
+	client.aeadLimits(24, UINT64_MAX);
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Запоминаем бит фазы ключей клиента до передачи
+	const bool origin = client.phase();
+	// Флаг состоявшегося автоматического обновления ключей
+	bool updated = false;
+	// Переданное клиентом содержимое потока
+	std::string sent = "";
+	/**
+	 * Прогоняем пакеты уровня приложения через полный обмен: подтверждения тянут
+	 * largestAcked за номером первого пакета фазы, поэтому пересечение лимита ведёт
+	 * к переключению фазы, а не к завершению соединения
+	 */
+	for(size_t i = 0; i < 64; i++){
+		// Блок данных очередной итерации
+		const std::string chunk = "abcdefgh";
+		// Ставим данные в очередь отправки
+		ASSERT_EQ(client.send(sid, chunk, false), status_t::OK);
+		// Накапливаем ожидаемое содержимое
+		sent.append(chunk);
+		// Выполняем обмен датаграммами до затишья
+		::pump(client, server, now);
+		// Отмечаем состоявшееся переключение фазы ключей
+		if(client.phase() != origin)
+			// Фиксируем факт автоматического обновления ключей
+			updated = true;
+	}
+	// Проверяем что автоматическое обновление ключей состоялось
+	ASSERT_TRUE(updated);
+	// Проверяем совпадение фаз ключей эндпоинтов после обмена
+	ASSERT_EQ(server.phase(), client.phase());
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+	// Принятые сервером данные потока
+	std::string received = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Выдаём собранные данные потока на сервере
+	ASSERT_EQ(server.receive(sid, received, fin), status_t::OK);
+	// Проверяем целостность данных, переданных через смену ключей
+	ASSERT_EQ(received, sent);
+}
+
+/**
+ * @brief Тест завершения соединения по лимиту конфиденциальности AEAD без обновления (RFC 9001 §6.6)
+ *
+ * @details Клиент нагнетает пакеты уровня приложения без доставки серверу: подтверждений
+ *          нет, поэтому после однократного переключения фазы пакет новой фазы остаётся
+ *          неподтверждённым, и повторное исчерпание лимита обязано завершить соединение
+ *          ошибкой AEAD_LIMIT_REACHED - отправка сверх лимита недопустима
+ *
+ */
+TEST_F(QuicFixture, AeadConfidentialityLimitTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Ужесточаем лимит конфиденциальности клиента до предела в несколько пакетов
+	client.aeadLimits(3, UINT64_MAX);
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Буфер отбрасываемых исходящих датаграмм клиента
+	std::string datagram = "";
+	/**
+	 * Нагнетаем пакеты уровня приложения без доставки серверу и без подтверждений:
+	 * после переключения фазы её первый пакет не подтверждён, и следующее пересечение
+	 * лимита завершает соединение
+	 */
+	for(size_t i = 0; (i < 64) && (client.error() == error_t::NO_ERROR); i++){
+		// Ставим данные в очередь отправки
+		client.send(sid, "x", false);
+		// Извлекаем исходящие датаграммы клиента, отбрасывая их (подтверждений не будет)
+		while(client.write(datagram, now))
+			// Продвигаем тестовые часы
+			now += 5;
+	}
+	// Проверяем завершение соединения по достижении лимита конфиденциальности AEAD
+	ASSERT_EQ(client.error(), error_t::AEAD_LIMIT_REACHED);
+}
+
+/**
+ * @brief Тест завершения соединения по лимиту целостности AEAD (RFC 9001 §6.6)
+ *
+ * @details Серверу доставляются пакеты с искажённым тегом аутентификации: каждое
+ *          неудачное снятие защиты учитывается в лимите целостности, а его исчерпание
+ *          обязано завершить соединение ошибкой AEAD_LIMIT_REACHED - ключи признаются
+ *          непригодными
+ *
+ */
+TEST_F(QuicFixture, AeadIntegrityLimitTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Ужесточаем лимит целостности сервера до нескольких неудачных снятий защиты
+	server.aeadLimits(UINT64_MAX, 4);
+	// Номер очередного искажённого пакета
+	uint64_t pn = 1000;
+	// Доставляем серверу искажённые пакеты до исчерпания лимита целостности
+	for(size_t i = 0; (i < 32) && (server.error() == error_t::NO_ERROR); i++)
+		// Доставляем пакет уровня приложения с искажённым тегом AEAD
+		::injectBroken(client, server, pn++, now);
+	// Проверяем завершение соединения по достижении лимита целостности AEAD
+	ASSERT_EQ(server.error(), error_t::AEAD_LIMIT_REACHED);
 }
 
 /**

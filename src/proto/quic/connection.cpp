@@ -3836,7 +3836,7 @@ bool awh::quic::Connection::seal(string & output, const level_t level, string_vi
 		// Учитываем пакет в лимите конфиденциальности ключей текущей фазы (RFC 9001 §6.6)
 		this->_phase.packets++;
 		// Если лимит конфиденциальности ключей исчерпан
-		if(this->_phase.packets >= AEAD_CONFIDENTIALITY_LIMIT){
+		if(this->_phase.packets >= this->_confidentialityLimit){
 			/**
 			 * Ключи текущей фазы более непригодны: переключаемся на следующую фазу,
 			 * если она выведена и пакет текущей фазы подтверждён, иначе завершаем
@@ -4597,7 +4597,7 @@ awh::quic::status_t awh::quic::Connection::read(const uint8_t * data, const size
 				// Учитываем неудачное снятие защиты в лимите целостности AEAD (RFC 9001 §6.6)
 				this->_aeadFailures++;
 				// Если лимит целостности AEAD исчерпан
-				if(this->_aeadFailures >= AEAD_INTEGRITY_LIMIT){
+				if(this->_aeadFailures >= this->_integrityLimit){
 					// Ставим завершение соединения в очередь - ключи более не пригодны
 					this->fail(error_t::AEAD_LIMIT_REACHED);
 					// Выводим отрицательный результат
@@ -5502,6 +5502,21 @@ awh::quic::status_t awh::quic::Connection::rekey() noexcept {
 bool awh::quic::Connection::phase() const noexcept {
 	// Выводим бит фазы ключей уровня приложения
 	return this->_phase.current;
+}
+/**
+ * @brief Метод установки лимитов AEAD текущего соединения (RFC 9001 §6.6)
+ *
+ * @param confidentiality предельное число пакетов на одном ключе
+ * @param integrity       предельное число неудачных снятий защиты
+ */
+void awh::quic::Connection::aeadLimits(const uint64_t confidentiality, const uint64_t integrity) noexcept {
+	/**
+	 * Лимиты ограничиваются сверху пределами спецификации: метод способен только
+	 * ужесточить проверку, но не ослабить её ниже гарантий набора (RFC 9001 §6.6)
+	 */
+	this->_confidentialityLimit = ((confidentiality < AEAD_CONFIDENTIALITY_LIMIT) ? confidentiality : AEAD_CONFIDENTIALITY_LIMIT);
+	// Ограничиваем лимит целостности пределом спецификации
+	this->_integrityLimit = ((integrity < AEAD_INTEGRITY_LIMIT) ? integrity : AEAD_INTEGRITY_LIMIT);
 }
 /**
  * @brief Метод сброса состояния пути соединения (RFC 9000 §9.4)
@@ -6646,6 +6661,7 @@ const awh::quic::handshake_t & awh::quic::Connection::handshake() const noexcept
  */
 awh::quic::Connection::Connection(const endpoint_t endpoint, const tls::coder_t::id_t ctx, const tls::coder_t & coder, const log_t * log) noexcept :
  _endpoint(endpoint), _state(state_t::NONE), _address{""}, _stateless{""},
- _aeadFailures(0), _confirmed(false), _handshakeDone(false), _restored(false),
+ _aeadFailures(0), _confidentialityLimit(AEAD_CONFIDENTIALITY_LIMIT), _integrityLimit(AEAD_INTEGRITY_LIMIT),
+ _confirmed(false), _handshakeDone(false), _restored(false),
  _error(error_t::NO_ERROR), _amplify(endpoint), _now(0), _idleTime(0),
  _idleElicited(false), _log(log), _handshake(endpoint, ctx, coder, log) {}

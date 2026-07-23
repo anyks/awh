@@ -55,7 +55,7 @@ namespace awh {
 				 * @brief Структура конечной точки клиента, работающего через прокси
 				 *
 				 */
-				typedef struct Endpoint {
+				typedef struct __AWH_SHARED_EXPORT__ Endpoint {
 					/**
 					 * @brief Идентификатор события UDP-клиента
 					 *
@@ -64,7 +64,7 @@ namespace awh {
 						// Идентификатор события клиента
 						event::id_t eid = 0;
 						// Объект контекста заголовка UDP пакета
-						proto::socks5_t::udp_head_t ctx;
+						proto::socks5_t::udp_head_t ctx{};
 					} udp;
 					// Атрибуты сети для конечной точки
 					unique_ptr <net::attr_t> attr;
@@ -72,7 +72,7 @@ namespace awh {
 					 * @brief Конструктор
 					 *
 					 */
-					explicit Endpoint() noexcept : attr(nullptr) {}
+					explicit Endpoint() noexcept;
 				} endpoint_t;
 			private:
 				// Конечная точка клиента, работающего через прокси
@@ -102,13 +102,14 @@ namespace awh {
 				 * @param ok  результат подключения
 				 */
 				void connect(const event::id_t eid, const bool ok) noexcept;
+			private:
 				/**
 				 * @brief Метод обработки событий записи данных клиентом
 				 *
-				 * @param eid  идентификатор клиента
+				 * @param      идентификатор клиента
 				 * @param size размер данных для записи
 				 */
-				void write(const event::id_t eid, const size_t size) noexcept;
+				void write(const event::id_t, const size_t size) noexcept;
 				/**
 				 * @brief Метод обработки событий изменения состояния клиента
 				 *
@@ -124,9 +125,11 @@ namespace awh {
 				 * @param size   размер данных клиента
 				 */
 				void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+			private:
 				/**
 				 * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
 				 *
+				 * @param        идентификатор DNS-запроса
 				 * @param family семейство адресов (IPv4/IPv6)
 				 * @param domain доменное имя для разрешения
 				 * @param addr   указатель на структуру для хранения результата разрешения
@@ -136,19 +139,19 @@ namespace awh {
 				/**
 				 * @brief Метод получения состояния TLS
 				 *
-				 * @param id    идентификатор TLS
+				 * @param       идентификатор TLS
 				 * @param state состояние TLS
 				 */
-				void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
+				void stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept;
 				/**
 				 * @brief Метод получения событий шифрования/дешифрования данных TLS
 				 *
-				 * @param id     идентификатор TLS
+				 * @param        идентификатор TLS
 				 * @param event  тип события TLS
 				 * @param buffer буфер данных для события шифрования/дешифрования TLS
 				 * @param size   размер данных для события шифрования/дешифрования TLS
 				 */
-				void processTLS(const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
+				void processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept;
 			public:
 				/**
 				 * @brief Метод приостановки работы клиента

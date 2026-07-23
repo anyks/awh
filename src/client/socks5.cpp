@@ -93,6 +93,12 @@ namespace {
 };
 
 /**
+ * @brief Конструктор
+ *
+ */
+awh::client::Socks5::Endpoint::Endpoint() noexcept : attr(nullptr) {}
+
+/**
  * @brief Метод изменения статуса клиента
  *
  * @param index  индекс очереди запускаемого события
@@ -150,7 +156,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 								#endif
 							}
 						// Если клиент запущен удачно, выполняем функцию обратного вызова
-						} else this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getTargetPort(this->_id.eid));
+						} else this->_callback.call <void (const string &, const uint16_t)> ("launch", this->_unit->client.getTarget(this->_id.eid), this->_unit->client.getTargetPort(this->_id.eid));
 					}
 				} break;
 				// Если событие клиента остановлено
@@ -187,7 +193,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 										// Если событие клиента не запущено, запускаем его
 										if(this->_unit->client.commit(this->_id.eid)){
 											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, this->_unit->client.family(this->_id.eid), this->_host, this->_unit->client.getTarget(this->_id.eid));
+											this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", this->_unit->client.family(this->_id.eid), this->_host, this->_unit->client.getTarget(this->_id.eid));
 											// Запускаем клиента
 											this->_unit->client.start();
 										}
@@ -225,7 +231,7 @@ void awh::client::Socks5::status(const uint8_t index, const event::status_t stat
 								this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 							#endif
 						// Выполняем функцию обратного вызова
-						} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", this->_id.eid, event::error_t::NOT_FOUND, error);
+						} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::NOT_FOUND, error);
 					}
 				} break;
 				// Если событие DNS-резолвера остановлено
@@ -275,20 +281,20 @@ void awh::client::Socks5::connect(const event::id_t eid, const bool ok) noexcept
 				}
 			}
 		// Если подключение не выполнено, выполняем функцию обратного вызова
-		} else this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+		} else this->_callback.call <void (const bool)> ("connect", false);
 	}
 }
 /**
  * @brief Метод обработки событий записи данных клиентом
  *
- * @param eid  идентификатор клиента
+ * @param      идентификатор клиента
  * @param size размер данных для записи
  */
-void awh::client::Socks5::write(const event::id_t eid, const size_t size) noexcept {
+void awh::client::Socks5::write(const event::id_t, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false))
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const size_t)> ("write", this->_id.eid, size);
+		this->_callback.call <void (const size_t)> ("write", size);
 }
 /**
  * @brief Метод обработки событий изменения состояния клиента
@@ -300,7 +306,7 @@ void awh::client::Socks5::state(const event::id_t eid, const event::status_t sta
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const event::id_t, const event::status_t)> ("state", eid, status);
+		this->_callback.call <void (const event::status_t)> ("state", status);
 		// Если статус клиента изменился на "уничтожен"
 		if((eid == this->_id.eid) && (status == event::status_t::DESTROYED)){
 			// Обнуляем идентификатор клиента
@@ -361,7 +367,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							}
 						}
 					// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
-					} else this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer, size);
+					} else this->_callback.call <void (const uint8_t *, const size_t)> ("read", buffer, size);
 				// Если идентификатор клиента соответствует идентификатору UDP-клиента
 				} else if(eid == this->_endpoint.udp.eid) {
 					// Если парсинг данных от прокси-сервера выполнен успешно
@@ -390,7 +396,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									}
 								}
 							// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
-							} else this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size);
+							} else this->_callback.call <void (const uint8_t *, const size_t)> ("read", buffer + this->_endpoint.udp.ctx.size, size - this->_endpoint.udp.ctx.size);
 							// Выходим из функции
 							return;
 						}
@@ -413,7 +419,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 						#endif
 					// Выполняем функцию обратного вызова
-					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+					} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::NOT_FOUND, error);
 				}
 			// Если текущее состояние находится ещё в процессе общения с socks5 прокси-сервером
 			} else {
@@ -432,7 +438,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 				// Если кадр некорректный
 				if(frame == SIZE_MAX){
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+					this->_callback.call <void (const bool)> ("connect", false);
 					// Выходим из функции
 					return;
 				}
@@ -462,9 +468,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 									this->_log->print("%s", log_t::flag_t::CRITICAL, this->_socks5.statusMessage(this->_ctx.status));
 								#endif
 							// Выполняем функцию обратного вызова
-							} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(this->_ctx.status));
+							} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::CONNECTION_FAIL, this->_socks5.statusMessage(this->_ctx.status));
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							this->_callback.call <void (const bool)> ("connect", false);
 						} break;
 						// Если текущее состояние соответствует ожиданию выполнения подключения
 						case static_cast <uint8_t> (proto::socks5_t::state_t::CONNECT): {
@@ -593,7 +599,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								}
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							this->_callback.call <void (const bool)> ("connect", false);
 						} break;
 						// Если текущее состояние соответствует успешному завершению рукопожатия
 						case static_cast <uint8_t> (proto::socks5_t::state_t::HANDSHAKE): {
@@ -633,7 +639,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 															this->_log->print("%s", log_t::flag_t::WARNING, error.c_str());
 														#endif
 													// Выполняем функцию обратного вызова
-													} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::NOT_FOUND, error);
+													} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::NOT_FOUND, error);
 												// Если разрешение хоста не выполнено, выходим
 												} else return;
 											// Если DNS-резолвер не подключён
@@ -653,7 +659,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 												#endif
 											}
 											// Выполняем функцию обратного вызова
-											this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+											this->_callback.call <void (const bool)> ("connect", false);
 											// Выходим из функции
 											return;
 										}
@@ -771,9 +777,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Очищаем буфер накопления SOCKS5-кадров
 								this->_rx.clear();
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", eid, this->_unit->client.family(eid), domain, target);
+								this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", this->_unit->client.family(eid), domain, target);
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", eid, target, port);
+								this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
 								// Если объект транспортного уровня безопасности установлен
 								if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 									// Если рукопожатие TLS не выполнено
@@ -799,7 +805,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								// Если объект транспортного уровня безопасности не установлен
 								} else {
 									// Выполняем функцию обратного вызова
-									this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
+									this->_callback.call <void (const bool)> ("connect", true);
 									// Выходим из функции
 									return;
 								}
@@ -820,7 +826,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								#endif
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							this->_callback.call <void (const bool)> ("connect", false);
 						} break;
 						// В остальных случаях, проходим процедуру общения с сервером в автоматическом режиме
 						default: {
@@ -852,7 +858,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 								} else return;
 							}
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+							this->_callback.call <void (const bool)> ("connect", false);
 						}
 					}
 				// Если парсинг полного SOCKS5-кадра не выполнен
@@ -873,9 +879,9 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 							this->_log->print("Failed to parse data from proxy server", log_t::flag_t::WARNING);
 						#endif
 					// Выполняем функцию обратного вызова
-					} else this->_callback.call <void (const event::id_t, const event::error_t, const string &)> ("error", eid, event::error_t::CONNECTION_FAIL, "Failed to parse data from proxy server");
+					} else this->_callback.call <void (const event::error_t, const string &)> ("error", event::error_t::CONNECTION_FAIL, "Failed to parse data from proxy server");
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, false);
+					this->_callback.call <void (const bool)> ("connect", false);
 				}
 			}
 		/**
@@ -901,6 +907,7 @@ void awh::client::Socks5::read(const event::id_t eid, const uint8_t * buffer, co
 /**
  * @brief Метод разрешения доменного имени удалённого хоста в сетевой адрес
  *
+ * @param        идентификатор DNS-запроса
  * @param family семейство адресов (IPv4/IPv6)
  * @param domain доменное имя для разрешения
  * @param addr   указатель на структуру для хранения результата разрешения
@@ -923,7 +930,7 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 						// Если событие клиента не запущено, запускаем его
 						if(this->_unit->client.commit(this->_id.eid)){
 							// Выполняем функцию обратного вызова
-							this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, this->_unit->client.getTarget(this->_id.eid));
+							this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", family, domain, this->_unit->client.getTarget(this->_id.eid));
 							// Запускаем клиента
 							this->_unit->client.start();
 						}
@@ -947,9 +954,9 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 								// Получаем порт хоста для подключения к удалённому серверу
 								const uint16_t port = this->_unit->client.getTargetPort(this->_endpoint.udp.eid);
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const event::family_t, const string &, const string &)> ("ready", this->_id.eid, family, domain, target);
+								this->_callback.call <void (const event::family_t, const string &, const string &)> ("ready", family, domain, target);
 								// Выполняем функцию обратного вызова
-								this->_callback.call <void (const event::id_t, const string &, const uint16_t)> ("launch", this->_id.eid, target, port);
+								this->_callback.call <void (const string &, const uint16_t)> ("launch", target, port);
 								// Если объект транспортного уровня безопасности установлен
 								if((this->_coder != nullptr) && (this->_id.ctl > 0)){
 									// Если рукопожатие TLS не выполнено
@@ -972,7 +979,7 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 										}
 									}
 								// Если объект транспортного уровня безопасности не установлен, выполняем функцию обратного вызова
-								} else this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
+								} else this->_callback.call <void (const bool)> ("connect", true);
 							// Если запуск работы клиента, работающего через прокси, не выполнен
 							} else {
 								// Если функция обратного вызова не установлена
@@ -1055,29 +1062,29 @@ void awh::client::Socks5::resolve(const unit::dns_t::id_t, const event::family_t
 /**
  * @brief Метод получения состояния TLS
  *
- * @param id    идентификатор TLS
+ * @param       идентификатор TLS
  * @param state состояние TLS
  */
-void awh::client::Socks5::stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept {
+void awh::client::Socks5::stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		// Выполняем функцию обратного вызова
-		this->_callback.call <void (const tls::coder_t::id_t, const tls::coder_t::state_t)> ("state_tls", id, state);
+		this->_callback.call <void (const tls::coder_t::state_t)> ("state_tls", state);
 		// Если состояние рукопожатия успешно завершено
 		if(state == tls::coder_t::state_t::HANDSHAKED)
 			// Выполняем функцию обратного вызова
-			this->_callback.call <void (const event::id_t, const bool)> ("connect", this->_id.eid, true);
+			this->_callback.call <void (const bool)> ("connect", true);
 	}
 }
 /**
  * @brief Метод получения событий шифрования/дешифрования данных TLS
  *
- * @param id     идентификатор TLS
+ * @param        идентификатор TLS
  * @param event  тип события TLS
  * @param buffer буфер данных для события шифрования/дешифрования TLS
  * @param size   размер данных для события шифрования/дешифрования TLS
  */
-void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t id, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
+void awh::client::Socks5::processTLS(const tls::coder_t::id_t, const tls::coder_t::event_t event, const uint8_t * buffer, const size_t size) noexcept {
 	// Если DNS-резолвер находится в рабочем состоянии или клиент находится в рабочем состоянии
 	if(this->_dns.client != nullptr ? this->_dns.client->working() : (this->_unit != nullptr ? this->_unit->client.working() : false)){
 		/**
@@ -1179,7 +1186,7 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
+									this->_log->debug("Message sent by the UDP is too large for the configured MTU values of %zu bytes", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING, ::__awh_size__);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1197,7 +1204,7 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 							 */
 							#if DEBUG_MODE
 								// Записываем ошибку в лог
-								this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+								this->_log->debug("Failed to generate buffer for UDP packet", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 							/**
 							 * Если режим отладки не включён
 							 */
@@ -1217,7 +1224,7 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 									 */
 									#if DEBUG_MODE
 										// Записываем ошибку в лог
-										this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+										this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 									/**
 									 * Если режим отладки не включён
 									 */
@@ -1239,7 +1246,7 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 								 */
 								#if DEBUG_MODE
 									// Записываем ошибку в лог
-									this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
+									this->_log->debug("Data cannot be sent to the server", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::WARNING);
 								/**
 								 * Если режим отладки не включён
 								 */
@@ -1254,7 +1261,7 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 				// Если событие дешифрования данных TLS
 				case static_cast <uint8_t> (tls::coder_t::event_t::DECRYPTION):
 					// Выполняем функцию обратного вызова
-					this->_callback.call <void (const event::id_t, const uint8_t *, const size_t)> ("read", this->_id.eid, buffer, size);
+					this->_callback.call <void (const uint8_t *, const size_t)> ("read", buffer, size);
 				break;
 			}
 		/**
@@ -1266,7 +1273,7 @@ void awh::client::Socks5::processTLS([[maybe_unused]] const tls::coder_t::id_t i
 			 */
 			#if DEBUG_MODE
 				// Записываем ошибку в лог
-				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(id, static_cast <uint16_t> (event), buffer, size), log_t::flag_t::CRITICAL, error.what());
+				this->_log->debug("%s", __PRETTY_FUNCTION__, make_tuple(static_cast <uint16_t> (event), buffer, size), log_t::flag_t::CRITICAL, error.what());
 			/**
 			 * Если режим отладки не включён
 			 */

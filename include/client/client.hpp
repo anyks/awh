@@ -125,98 +125,100 @@ namespace awh {
 			/**
 			 * @brief Метод обработки событий подключения клиента к удалённому серверу
 			 *
-			 * @param eid идентификатор клиента
-			 * @param ok  результат подключения
+			 * @param    идентификатор клиента
+			 * @param ok результат подключения
 			 */
-			virtual void connect(const event::id_t eid, const bool ok) noexcept;
+			virtual void connect(const event::id_t, const bool ok) noexcept;
 			/**
 			 * @brief Метод обработки событий записи данных клиентом
 			 *
-			 * @param eid  идентификатор клиента
+			 * @param      идентификатор клиента
 			 * @param size размер данных для записи
 			 */
-			virtual void write(const event::id_t eid, const size_t size) noexcept;
+			virtual void write(const event::id_t, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки событий изменения состояния клиента
 			 *
-			 * @param eid    идентификатор клиента
+			 * @param        идентификатор клиента
 			 * @param status новый статус клиента
 			 */
-			virtual void state(const event::id_t eid, const event::status_t status) noexcept;
+			virtual void state(const event::id_t, const event::status_t status) noexcept;
 			/**
 			 * @brief Метод обработки действий клиента
 			 *
-			 * @param eid    идентификатор клиента
+			 * @param        идентификатор клиента
 			 * @param action действие клиента
 			 */
-			virtual void action(const event::id_t eid, const event::action_t action) noexcept;
+			virtual void action(const event::id_t, const event::action_t action) noexcept;
 			/**
 			 * @brief Метод обработки информационных метаданных о дейтаграммном пакете
 			 *
-			 * @param eid  идентификатор события
+			 * @param      идентификатор события
 			 * @param info информационные метаданные о дейтаграммном пакете
 			 */
-			virtual void traffic(const event::id_t eid, const net::dgram_info_t & info) noexcept;
+			virtual void traffic(const event::id_t, const net::dgram_info_t & info) noexcept;
 			/**
 			 * @brief Метод обработки событий получения данных клиентом
 			 *
-			 * @param eid    идентификатор клиента
+			 * @param        идентификатор клиента
 			 * @param buffer буфер данных клиента
 			 * @param size   размер данных клиента
 			 */
-			virtual void read(const event::id_t eid, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void read(const event::id_t, const uint8_t * buffer, const size_t size) noexcept;
 			/**
 			 * @brief Метод обработки события ошибки
 			 *
-			 * @param eid     идентификатор события
+			 * @param         идентификатор события
 			 * @param error   код ошибки
 			 * @param message сообщение об ошибке
 			 */
-			virtual void error(const event::id_t eid, const event::error_t error, const string & message) noexcept;
+			virtual void error(const event::id_t, const event::error_t error, const string & message) noexcept;
+			/**
+			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
+			 *
+			 * @param        идентификатор клиента
+			 * @param status статус доступности очереди
+			 * @param size   размер доступных данных очереди
+			 */
+			virtual void available(const event::id_t, const event::status_t status, const size_t size) noexcept;
+			/**
+			 * @brief Метод обработки событий истечения таймаута клиента
+			 *
+			 * @param        идентификатор клиента
+			 * @param action тип действия для истекшего таймаута
+			 * @param delay  задержка таймаута в миллисекундах
+			 * @return       нужно ли завершить клиента после истечения таймаута
+			 */
+			virtual bool timeout(const event::id_t, const event::action_t action, const uint32_t delay) noexcept;
 			/**
 			 * @brief Метод обработки попыток подключения клиента к удалённому серверу
 			 *
+			 * @param          идентификатор DNS-запроса
 			 * @param domain   доменное имя для резолвинга
 			 * @param attempts количество попыток подключения
 			 */
 			virtual void attempts(const unit::dns_t::id_t, const string & domain, const uint8_t attempts) noexcept;
 			/**
-			 * @brief Метод обработки событий доступности/недоступности очереди исходящих данных клиента
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param status статус доступности очереди
-			 * @param size   размер доступных данных очереди
-			 */
-			virtual void available(const event::id_t eid, const event::status_t status, const size_t size) noexcept;
-			/**
-			 * @brief Метод обработки событий истечения таймаута клиента
-			 *
-			 * @param eid    идентификатор клиента
-			 * @param action тип действия для истекшего таймаута
-			 * @param delay  задержка таймаута в миллисекундах
-			 * @return       нужно ли завершить клиента после истечения таймаута
-			 */
-			virtual bool timeout(const event::id_t eid, const event::action_t action, const uint32_t delay) noexcept;
-			/**
 			 * @brief Метод обработки неудачного резолвинга доменного имени
 			 *
-			 * @param id     идентификатор DNS-запроса
+			 * @param        идентификатор DNS-запроса
 			 * @param record тип записи DNS
 			 * @param domain доменное имя
 			 */
-			virtual void failure(const unit::dns_t::id_t id, const unit::dns_t::record_t record, const string & domain) noexcept;
+			virtual void failure(const unit::dns_t::id_t, const unit::dns_t::record_t record, const string & domain) noexcept;
 			/**
 			 * @brief Метод обработки события неотправленных данных клиента
 			 *
-			 * @param eid   идентификатор клиента
-			 * @param error тип ошибки отправки данных
+			 * @param        идентификатор клиента
+			 * @param error  тип ошибки отправки данных
 			 * @param buffer данные, которые не удалось отправить
-			 * @param size  размер данных, которые не удалось отправить
+			 * @param size   размер данных, которые не удалось отправить
 			 */
-			virtual void spool(const event::id_t eid, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
+			virtual void spool(const event::id_t, const event::send_error_t error, const uint8_t * buffer, const size_t size) noexcept;
 			/**
 			 * @brief Метод резолвинга доменного имени в сетевой адрес
 			 *
+			 * @param        идентификатор DNS-запроса
 			 * @param family семейство адресов (IPv4/IPv6)
 			 * @param domain доменное имя для резолвинга
 			 * @param addr   указатель на структуру для хранения результата резолвинга
@@ -226,21 +228,22 @@ namespace awh {
 			/**
 			 * @brief Метод получения состояния TLS
 			 *
-			 * @param id    идентификатор TLS
+			 * @param       идентификатор TLS
 			 * @param state состояние TLS
 			 */
-			virtual void stateTLS(const tls::coder_t::id_t id, const tls::coder_t::state_t state) noexcept;
+			virtual void stateTLS(const tls::coder_t::id_t, const tls::coder_t::state_t state) noexcept;
 			/**
 			 * @brief Метод получения ошибок TLS
 			 *
-			 * @param id      идентификатор TLS
+			 * @param         идентификатор TLS
 			 * @param error   код ошибки TLS
 			 * @param message сообщение об ошибке TLS
 			 */
-			virtual void errorTLS(const tls::coder_t::id_t id, const tls::coder_t::error_t error, const string & message) noexcept;
+			virtual void errorTLS(const tls::coder_t::id_t, const tls::coder_t::error_t error, const string & message) noexcept;
 			/**
 			 * @brief Метод получения событий шифрования/дешифрования данных TLS
 			 *
+			 * @param        идентификатор TLS
 			 * @param event  тип события TLS
 			 * @param buffer буфер данных для события шифрования/дешифрования TLS
 			 * @param size   размер полезной нагрузки в буфере для события шифрования/дешифрования TLS
