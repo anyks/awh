@@ -17,6 +17,8 @@
  */
 #include <string>
 #include <cstdint>
+#include <fstream>
+#include <sstream>
 #include <iostream>
 
 /**
@@ -43,6 +45,50 @@ using namespace placeholders;
  * @return     код выхода из приложения
  */
 int32_t main(int32_t argc, char * argv[]){
+	// Адрес удалённого сервера
+	string host = "127.0.0.1";
+	// Порт удалённого сервера
+	uint32_t port = 2222;
+	/**
+	 * Размер передаваемого блока данных потока: нулевой размер означает
+	 * приветственное сообщение, ненулевой - блок заданной длины для сверки
+	 * эха с чужой реализацией транспорта
+	 */
+	size_t size = 0;
+	/**
+	 * Путь к файлу состояния возобновления: билет сессии и токен проверки адреса
+	 * сохраняются в него после завершения соединения и восстанавливаются перед
+	 * следующим подключением (RFC 9001 §4.6, RFC 9000 §8.1.3)
+	 */
+	string state = "";
+	/**
+	 * Перебираем параметры командной строки
+	 */
+	for(int32_t i = 1; i < argc; i++){
+		// Если задан адрес удалённого сервера
+		if((::strcmp(argv[i], "--host") == 0) && ((i + 1) < argc))
+			// Запоминаем адрес удалённого сервера
+			host = argv[++i];
+		// Если задан порт удалённого сервера
+		else if((::strcmp(argv[i], "--port") == 0) && ((i + 1) < argc))
+			// Запоминаем порт удалённого сервера
+			port = static_cast <uint32_t> (::strtoul(argv[++i], nullptr, 10));
+		// Если задан размер передаваемого блока данных потока
+		else if((::strcmp(argv[i], "--size") == 0) && ((i + 1) < argc))
+			// Запоминаем размер передаваемого блока данных потока
+			size = static_cast <size_t> (::strtoull(argv[++i], nullptr, 10));
+		// Если задан путь к файлу состояния возобновления
+		else if((::strcmp(argv[i], "--state") == 0) && ((i + 1) < argc))
+			// Запоминаем путь к файлу состояния возобновления
+			state = argv[++i];
+		// Если параметр не распознан
+		else {
+			// Выводим подсказку по параметрам запуска
+			cout << " Использование: " << argv[0] << " [--host адрес] [--port порт] [--size байт] [--state файл]" << endl;
+			// Выходим из приложения с ошибкой
+			return EXIT_FAILURE;
+		}
+	}
 	// Создаём объект фреймворка
 	fmk_t fmk;
 	// Создаём объект логирования
@@ -110,6 +156,25 @@ int32_t main(int32_t argc, char * argv[]){
 	// Флаг полученного эхо-ответа датаграммой приложения
 	bool datagram = false;
 	/**
+	 * Передаваемое содержимое потока: при заданном размере это блок с
+	 * детерминированным заполнением, по которому эхо сверяется побайтно
+	 */
+	string payload = "Hello from QUIC client!";
+	// Если задан размер передаваемого блока данных потока
+	if(size > 0){
+		// Резервируем память под передаваемый блок данных потока
+		payload.assign(size, '\0');
+		/**
+		 * Заполняем блок повторяющейся последовательностью: расхождение эха
+		 * на любом смещении выявляется сравнением с исходным блоком
+		 */
+		for(size_t i = 0; i < size; i++)
+			// Устанавливаем очередной октет передаваемого блока
+			payload[i] = static_cast <char> ('a' + (i % 26));
+	}
+	// Накопленное содержимое эхо-ответа потока приложения
+	string echo = "";
+	/**
 	 * @brief Функция завершения соединения по получении обоих эхо-ответов
 	 *
 	 * @param eid идентификатор события клиента
@@ -124,7 +189,7 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	};
 	// Устанавливаем функцию обратного вызова на установленное соединение
-	callback.on <void (const event::id_t)> ("open", open_t([&client, &log](const event::id_t eid) noexcept -> void {
+	callback.on <void (const event::id_t)> ("open", open_t([&client, &log, &payload](const event::id_t eid) noexcept -> void {
 		// Записываем в лог сообщение об установленном соединении
 		log.print("Соединение установлено: ID=%u, ALPN=%s", log_t::flag_t::INFO, eid, client.alpn().protocol.c_str());
 		// Выполняем открытие двунаправленного потока приложения
@@ -136,12 +201,15 @@ int32_t main(int32_t argc, char * argv[]){
 			// Выходим из функции обработки
 			return;
 		}
-		// Текст исходящего сообщения
-		const string message("Hello from QUIC client!");
 		// Отправляем данные с завершением потока (FIN)
-		if(client.send(sid, message, true))
-			// Записываем в лог сообщение об отправке данных потока
-			log.print("Отправлено: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), message.size(), message.c_str());
+		if(client.send(sid, payload, true)){
+			// Если передаётся приветственное сообщение
+			if(payload.size() < 128)
+				// Записываем в лог сообщение об отправке данных потока
+				log.print("Отправлено: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), payload.size(), payload.c_str());
+			// Записываем в лог сообщение об отправке блока данных потока
+			else log.print("Отправлено: ID=%u, Поток=%llu, %zu байт", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), payload.size());
+		}
 		// Текст исходящей датаграммы приложения
 		const string unreliable("Hello from QUIC datagram!");
 		/**
@@ -164,13 +232,27 @@ int32_t main(int32_t argc, char * argv[]){
 		finish(eid);
 	}));
 	// Устанавливаем функцию обратного вызова на собранные данные потока приложения
-	callback.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", read_t([&log, &stream, &finish](const event::id_t eid, const uint64_t sid, const string & data, const bool fin) noexcept -> void {
+	callback.on <void (const event::id_t, const uint64_t, const string &, const bool)> ("read", read_t([&log, &stream, &finish, &payload, &echo](const event::id_t eid, const uint64_t sid, const string & data, const bool fin) noexcept -> void {
 		// Если данные потока получены
-		if(!data.empty())
-			// Записываем в лог сообщение о полученных данных потока
-			log.print("Прочитано: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), data.size(), data.c_str());
+		if(!data.empty()){
+			// Накапливаем принятое содержимое эхо-ответа потока
+			echo.append(data);
+			// Если передавалось приветственное сообщение
+			if(payload.size() < 128)
+				// Записываем в лог сообщение о полученных данных потока
+				log.print("Прочитано: ID=%u, Поток=%llu, %zu байт, сообщение: %s", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), data.size(), data.c_str());
+		}
 		// Если эхо-ответ потока получен полностью
 		if(fin){
+			// Записываем в лог сообщение о принятом объёме эхо-ответа
+			log.print("Принято эхо: ID=%u, Поток=%llu, %zu из %zu байт", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), echo.size(), payload.size());
+			/**
+			 * Сверяем принятое эхо с отправленным содержимым: расхождение означает
+			 * ошибку сборки потока, а не потерю - потерянное восстанавливается
+			 */
+			if(echo != payload)
+				// Записываем в лог сообщение о расхождении эхо-ответа
+				log.print("Эхо не совпадает с отправленным: ID=%u, Поток=%llu", log_t::flag_t::CRITICAL, eid, static_cast <unsigned long long> (sid));
 			// Устанавливаем флаг полученного эхо-ответа потока
 			stream = true;
 			// Выполняем завершение соединения по получении обоих эхо-ответов
@@ -178,9 +260,30 @@ int32_t main(int32_t argc, char * argv[]){
 		}
 	}));
 	// Устанавливаем функцию обратного вызова на завершённое соединение
-	callback.on <void (const event::id_t, const quic::error_t)> ("close", close_t([&client, &log](const event::id_t eid, const quic::error_t error) noexcept -> void {
+	callback.on <void (const event::id_t, const quic::error_t)> ("close", close_t([&client, &log, &state](const event::id_t eid, const quic::error_t error) noexcept -> void {
 		// Записываем в лог сообщение о завершении соединения
 		log.print("Соединение завершено: ID=%u, Ошибка=%s, Билет=%zu байт", log_t::flag_t::INFO, eid, quic::errorName(error).data(), client.session().size());
+		// Если задан файл состояния возобновления
+		if(!state.empty()){
+			// Если билет возобновления сессии получен от сервера
+			if(!client.session().empty()){
+				// Открываем файл состояния на запись в двоичном режиме
+				ofstream file(state, ios::binary | ios::trunc);
+				// Если файл состояния открыт
+				if(file.is_open())
+					// Сохраняем билет возобновления сессии
+					file.write(client.session().data(), static_cast <streamsize> (client.session().size()));
+			}
+			// Если токен проверки адреса получен от сервера
+			if(!client.token().empty()){
+				// Открываем файл токена на запись в двоичном режиме
+				ofstream file(state + ".token", ios::binary | ios::trunc);
+				// Если файл токена открыт
+				if(file.is_open())
+					// Сохраняем токен проверки адреса
+					file.write(client.token().data(), static_cast <streamsize> (client.token().size()));
+			}
+		}
 		/**
 		 * Останавливаем модуль клиента: соединение завершено окончательно - период
 		 * завершения выдержан, и работать модулю больше не над чем (RFC 9000 §10.2)
@@ -189,8 +292,49 @@ int32_t main(int32_t argc, char * argv[]){
 	}));
 	// Устанавливаем функции обратного вызова модуля клиента
 	client.callback(callback);
+	/**
+	 * @brief Функция чтения файла состояния возобновления целиком
+	 *
+	 * @param filename путь к файлу состояния
+	 * @return         содержимое файла либо пустая строка
+	 */
+	auto load = [](const string & filename) noexcept -> string {
+		// Открываем файл состояния на чтение в двоичном режиме
+		ifstream file(filename, ios::binary);
+		// Если файл состояния не открыт
+		if(!file.is_open())
+			// Выводим пустое содержимое
+			return "";
+		// Буфер чтения содержимого файла
+		ostringstream buffer;
+		// Считываем содержимое файла целиком
+		buffer << file.rdbuf();
+		// Выводим считанное содержимое
+		return buffer.str();
+	};
+	// Если задан файл состояния возобновления
+	if(!state.empty()){
+		// Считываем сохранённый билет возобновления сессии
+		const string ticket = load(state);
+		// Считываем сохранённый токен проверки адреса
+		const string address = load(state + ".token");
+		// Если билет возобновления сессии сохранён
+		if(!ticket.empty()){
+			// Устанавливаем билет возобновления сессии
+			client.session(ticket);
+			// Записываем в лог сообщение о восстановленном билете
+			log.print("Восстановлен билет возобновления: %zu байт", log_t::flag_t::INFO, ticket.size());
+		}
+		// Если токен проверки адреса сохранён
+		if(!address.empty()){
+			// Устанавливаем токен проверки адреса
+			client.token(address);
+			// Записываем в лог сообщение о восстановленном токене
+			log.print("Восстановлен токен проверки адреса: %zu байт", log_t::flag_t::INFO, address.size());
+		}
+	}
 	// Если подключение к удалённому серверу не выполнено
-	if(client.connect(event::family_t::IPV4, "127.0.0.1", 2222) == 0){
+	if(client.connect(event::family_t::IPV4, host, port) == 0){
 		// Записываем в лог сообщение об ошибке подключения
 		log.print("Клиент QUIC не подключён", log_t::flag_t::CRITICAL);
 		// Выходим из приложения с ошибкой

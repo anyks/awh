@@ -42,6 +42,7 @@ static int idle_probe = 0;
 static int use_key_update = 0;
 static int use_migration = 0;
 static size_t payload_size = 0;
+static uint32_t proto_version = NGTCP2_PROTO_VER_V1;
 static uint64_t deadline_ms = 5000;
 
 /* Полезная нагрузка потока и накопитель эха для побайтовой сверки */
@@ -59,6 +60,7 @@ static struct {
 	int corrupt;
 	int keyupdate;
 	int migrated;
+	int vneg;
 	char alpn[64];
 	size_t echolen;
 } report;
@@ -241,6 +243,27 @@ static int recv_stream_data_cb(ngtcp2_conn * conn, uint32_t flags, int64_t strea
 }
 
 /*
+ * Согласование версии протокола (RFC 9000 §6): сервер, не знающий предложенной
+ * версии, отвечает пакетом со списком поддерживаемых им версий.
+ */
+static int recv_version_negotiation_cb(ngtcp2_conn * conn, const ngtcp2_pkt_hd * hd, const uint32_t * sv, size_t nsv, void * user_data){
+	size_t i;
+	(void) conn;
+	(void) hd;
+	(void) user_data;
+	report.vneg = 1;
+	printf("[ngtcp2] принято согласование версии, сервер поддерживает %zu:", nsv);
+	for(i = 0; i < nsv; i++){
+		printf(" 0x%08x", sv[i]);
+		/* Запоминаем, предложена ли первая версия протокола */
+		if(sv[i] == NGTCP2_PROTO_VER_V1)
+			report.vneg = 2;
+	}
+	printf("\n");
+	return 0;
+}
+
+/*
  * Результат проверки пути после миграции (RFC 9000 §8.2): вызывается, когда
  * приходит PATH_RESPONSE либо истекает время ожидания.
  */
@@ -337,6 +360,7 @@ static int client_quic_init(struct client * c, const struct sockaddr * remote_ad
 		.get_path_challenge_data2 = ngtcp2_crypto_get_path_challenge_data2_cb,
 		.recv_datagram = recv_datagram_cb,
 		.path_validation = path_validation_cb,
+		.recv_version_negotiation = recv_version_negotiation_cb,
 	};
 	ngtcp2_cid dcid, scid;
 	ngtcp2_settings settings;
@@ -363,7 +387,7 @@ static int client_quic_init(struct client * c, const struct sockaddr * remote_ad
 	params.initial_max_stream_data_uni = 128 * 1024;
 	params.initial_max_data = 1024 * 1024;
 	params.max_datagram_frame_size = 1200;
-	rv = ngtcp2_conn_client_new(&c->conn, &dcid, &scid, &path, NGTCP2_PROTO_VER_V1, &callbacks, &settings, &params, NULL, c);
+	rv = ngtcp2_conn_client_new(&c->conn, &dcid, &scid, &path, proto_version, &callbacks, &settings, &params, NULL, c);
 	if(rv != 0){
 		fprintf(stderr, "ngtcp2_conn_client_new: %s\n", ngtcp2_strerror(rv));
 		return -1;
@@ -617,6 +641,7 @@ static void usage(const char * name){
 		"  --idle             не открывать поток, проверить только рукопожатие\n"
 		"  --key-update       обновить ключи в середине передачи\n"
 		"  --migrate          мигрировать на новый локальный порт в середине передачи\n"
+		"  --version <число>  версия протокола, по умолчанию 1\n"
 		"  --deadline <мс>    предельное время сеанса, по умолчанию 5000\n"
 		"  --verbose          подробный журнал ngtcp2\n", name);
 }
@@ -650,6 +675,8 @@ int main(int argc, char * argv[]){
 			deadline_ms = strtoull(argv[++i], NULL, 10);
 		else if(!strcmp(argv[i], "--size") && (i + 1) < argc)
 			payload_size = (size_t) strtoull(argv[++i], NULL, 10);
+		else if(!strcmp(argv[i], "--version") && (i + 1) < argc)
+			proto_version = (uint32_t) strtoul(argv[++i], NULL, 0);
 		else if(!strcmp(argv[i], "--datagram"))
 			use_datagram = 1;
 		else if(!strcmp(argv[i], "--key-update"))
@@ -767,6 +794,8 @@ int main(int argc, char * argv[]){
 		printf("обновление ключей:%s\n", report.keyupdate ? " выполнено" : " нет");
 	if(use_migration)
 		printf("миграция:         %s\n", report.migrated == 2 ? "путь подтверждён" : (report.migrated ? "не подтверждена" : "нет"));
+	if(proto_version != NGTCP2_PROTO_VER_V1)
+		printf("согласование:     %s\n", report.vneg == 2 ? "получено, предложена версия 1" : (report.vneg ? "получено без версии 1" : "нет"));
 	printf("завершение:       %s\n", report.closed ? "да" : "нет");
 	printf("ошибки:           %s\n", report.failed ? "да" : "нет");
 	if(report.corrupt || (!idle_probe && (report.echolen != payloadlen)))

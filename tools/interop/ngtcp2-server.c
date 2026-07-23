@@ -37,6 +37,8 @@ static const char * alpn = "h3";
 static int verbose = 0;
 static int use_retry = 0;
 static const char * broken_retry = "";
+static const char * vneg_mode = "";
+static int vneg_sent = 0;
 static uint64_t deadline_ms = 30000;
 
 /* Итоги сеанса, печатаются в конце и служат критерием успеха */
@@ -44,6 +46,8 @@ static struct {
 	int handshake;
 	int closed;
 	int failed;
+	int resumed;
+	int early;
 	size_t streamlen;
 	size_t datagrams;
 	char alpn[64];
@@ -150,6 +154,26 @@ static int server_ssl_init(struct server * s){
 		return -1;
 	}
 	SSL_CTX_set_alpn_select_cb(s->ssl_ctx, alpn_select_cb, NULL);
+	/* Разрешаем возобновление сессии билетом и приём ранних данных (RFC 9001 §4.6) */
+	SSL_CTX_set_session_cache_mode(s->ssl_ctx, SSL_SESS_CACHE_SERVER);
+	SSL_CTX_set_early_data_enabled(s->ssl_ctx, 1);
+	/*
+	 * Ключ шифрования билетов задан постоянным: сервер обслуживает одно
+	 * соединение за запуск, и со случайным ключом билет прошлого запуска
+	 * расшифровать было бы нечем, а возобновление проверить не на чем
+	 */
+	{
+		static const uint8_t ticket_key[48] = {
+			0x51, 0x55, 0x49, 0x43, 0x2d, 0x69, 0x6e, 0x74, 0x65, 0x72, 0x6f, 0x70,
+			0x2d, 0x74, 0x69, 0x63, 0x6b, 0x65, 0x74, 0x2d, 0x6b, 0x65, 0x79, 0x2d,
+			0x30, 0x31, 0x32, 0x33, 0x34, 0x35, 0x36, 0x37, 0x38, 0x39, 0x61, 0x62,
+			0x63, 0x64, 0x65, 0x66, 0x67, 0x68, 0x69, 0x6a, 0x6b, 0x6c, 0x6d, 0x6e,
+		};
+		if(SSL_CTX_set_tlsext_ticket_keys(s->ssl_ctx, ticket_key, sizeof(ticket_key)) != 1){
+			fprintf(stderr, "SSL_CTX_set_tlsext_ticket_keys failed\n");
+			return -1;
+		}
+	}
 	s->ssl = SSL_new(s->ssl_ctx);
 	if(!s->ssl){
 		fprintf(stderr, "SSL_new: %s\n", ERR_error_string(ERR_get_error(), NULL));
@@ -190,7 +214,11 @@ static int handshake_completed_cb(ngtcp2_conn * conn, void * user_data){
 		report.alpn[protolen] = 0;
 	}
 	report.handshake = 1;
-	printf("[ngtcp2] рукопожатие завершено, ALPN=%s, шифр=%s\n", report.alpn, SSL_get_cipher_name(s->ssl));
+	/* Возобновление сессии билетом и приём ранних данных (RFC 9001 §4.6) */
+	report.resumed = (SSL_session_reused(s->ssl) == 1);
+	report.early = (SSL_early_data_accepted(s->ssl) == 1);
+	printf("[ngtcp2] рукопожатие завершено, ALPN=%s, шифр=%s, возобновление=%s, ранние данные=%s\n",
+		report.alpn, SSL_get_cipher_name(s->ssl), report.resumed ? "да" : "нет", report.early ? "да" : "нет");
 	return 0;
 }
 
@@ -471,6 +499,38 @@ static int server_quic_init(struct server * s, const ngtcp2_pkt_hd * hd, const s
 	return 0;
 }
 
+/*
+ * Отправка пакета согласования версии (RFC 9000 §17.2.1): идентификаторы в нём
+ * меняются местами, а список версий зависит от режима отрицательного прогона.
+ */
+static int server_send_vneg(struct server * s, const ngtcp2_pkt_hd * hd, const struct sockaddr * remote_addr, socklen_t remote_addrlen){
+	uint8_t buf[NGTCP2_MAX_UDP_PAYLOAD_SIZE];
+	uint8_t scid[NGTCP2_MAX_CIDLEN];
+	uint32_t sv[2];
+	size_t nsv = 0;
+	ngtcp2_ssize nwrite;
+	/* Версия, которой у клиента заведомо нет */
+	if(!strcmp(vneg_mode, "other") || !strcmp(vneg_mode, "badcid"))
+		sv[nsv++] = 0x0a0a0a0aU;
+	/* Версия, которую клиент только что предложил сам */
+	else if(!strcmp(vneg_mode, "same"))
+		sv[nsv++] = hd->version;
+	else sv[nsv++] = 0x0a0a0a0aU;
+	memcpy(scid, hd->dcid.data, hd->dcid.datalen);
+	/* Порча идентификатора источника для отрицательного прогона */
+	if(!strcmp(vneg_mode, "badcid"))
+		scid[0] ^= 0xFF;
+	nwrite = ngtcp2_pkt_write_version_negotiation(buf, sizeof(buf), 0x1f, hd->scid.data, hd->scid.datalen, scid, hd->dcid.datalen, sv, nsv);
+	if(nwrite < 0){
+		fprintf(stderr, "[ngtcp2] ngtcp2_pkt_write_version_negotiation: %s\n", ngtcp2_strerror((int) nwrite));
+		return -1;
+	}
+	memcpy(&s->remote_addr, remote_addr, remote_addrlen);
+	s->remote_addrlen = remote_addrlen;
+	printf("[ngtcp2] отправлено согласование версии, режим %s, версия 0x%08x\n", vneg_mode, sv[0]);
+	return server_send_packet(s, buf, (size_t) nwrite);
+}
+
 /* Отправка пакета Retry для проверки адреса клиента (RFC 9000 §8.1.2) */
 static int server_send_retry(struct server * s, const ngtcp2_pkt_hd * hd, const struct sockaddr * remote_addr, socklen_t remote_addrlen){
 	uint8_t buf[NGTCP2_MAX_UDP_PAYLOAD_SIZE];
@@ -567,6 +627,7 @@ static void usage(const char * name){
 		"  --key <файл>       приватный ключ сервера\n"
 		"  --alpn <протокол>  принимаемый ALPN, по умолчанию h3\n"
 		"  --retry            проверять адрес клиента пакетом Retry\n"
+		"  --vneg <режим>     ответить согласованием версии: other, same, badcid\n"
 		"  --deadline <мс>    предельное время ожидания, по умолчанию 30000\n"
 		"  --verbose          подробный журнал ngtcp2\n", name);
 }
@@ -595,6 +656,8 @@ int main(int argc, char * argv[]){
 			broken_retry = argv[++i];
 			use_retry = 1;
 		}
+		else if(!strcmp(argv[i], "--vneg") && (i + 1) < argc)
+			vneg_mode = argv[++i];
 		else if(!strcmp(argv[i], "--verbose"))
 			verbose = 1;
 		else {
@@ -656,6 +719,13 @@ int main(int argc, char * argv[]){
 						fprintf(stderr, "[ngtcp2] ngtcp2_accept: %s\n", ngtcp2_strerror(rv));
 						continue;
 					}
+					/* Согласование версии отправляется до создания соединения */
+					if(vneg_mode[0] && !vneg_sent){
+						vneg_sent = 1;
+						if(server_send_vneg(&s, &hd, (struct sockaddr *) &addr, msg.msg_namelen) != 0)
+							report.failed = 1;
+						continue;
+					}
 					/* Проверка адреса клиента пакетом Retry до создания соединения */
 					if(use_retry && !retried){
 						retried = 1;
@@ -714,6 +784,8 @@ int main(int argc, char * argv[]){
 		server_close(&s);
 	printf("\n=== Итог сверки ===\n");
 	printf("рукопожатие:      %s\n", report.handshake ? "да" : "нет");
+	printf("возобновление:    %s\n", report.resumed ? "да" : "нет");
+	printf("ранние данные:    %s\n", report.early ? "да" : "нет");
 	printf("ALPN:             %s\n", report.alpn[0] ? report.alpn : "нет");
 	printf("данные потоков:   %zu байт\n", report.streamlen);
 	printf("датаграммы:       %zu\n", report.datagrams);
