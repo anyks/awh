@@ -860,6 +860,15 @@ void awh::unit::QuicClient::connected([[maybe_unused]] const event::id_t eid, co
 		// Выходим из метода
 		return;
 	}
+	/**
+	 * Оповещаем приложение о готовности к отправке ранних данных: ключи их защиты
+	 * выданы возобновлённой сессией, а лимиты взяты из прошлого соединения, так
+	 * что поставленное сейчас содержимое уйдёт вместе с первым пакетом хендшейка,
+	 * не дожидаясь его завершения (RFC 9001 §4.6)
+	 */
+	if(this->_connection->writable())
+		// Выполняем функцию обратного вызова о готовности к отправке ранних данных
+		this->_callback.call <void (const event::id_t)> ("early", this->_eid);
 	// Отправляем первый пакет хендшейка серверу
 	this->flush();
 }
@@ -1158,6 +1167,19 @@ uint64_t awh::unit::QuicClient::open(const bool mode) noexcept {
 	return this->_connection->open(mode);
 }
 /**
+ * @brief Метод проверки принятия ранних данных удалённым сервером (RFC 9001 §4.6.2)
+ *
+ * @return результат проверки
+ */
+bool awh::unit::QuicClient::early() const noexcept {
+	// Если соединение не создано
+	if(this->_connection == nullptr)
+		// Выводим отрицательный результат
+		return false;
+	// Выводим результат принятия ранних данных соединением
+	return this->_connection->early();
+}
+/**
  * @brief Метод отправки данных в поток приложения соединения
  *
  * @param sid  идентификатор потока приложения
@@ -1247,6 +1269,8 @@ awh::tls::coder_t::alpn_t awh::unit::QuicClient::alpn() const noexcept {
  * @param callback функции обратного вызова
  */
 void awh::unit::QuicClient::callback(const callback_t & callback) noexcept {
+	// Выполняем установку функции обратного вызова на готовность отправки ранних данных
+	this->_callback.set("early", callback);
 	// Выполняем установку функции обратного вызова на установленное соединение
 	this->_callback.set("open", callback);
 	// Выполняем установку функции обратного вызова на собранные данные потока

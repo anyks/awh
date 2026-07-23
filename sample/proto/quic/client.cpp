@@ -188,19 +188,32 @@ int32_t main(int32_t argc, char * argv[]){
 			client.close(0, "done");
 		}
 	};
-	// Устанавливаем функцию обратного вызова на установленное соединение
-	callback.on <void (const event::id_t)> ("open", open_t([&client, &log, &payload](const event::id_t eid) noexcept -> void {
-		// Записываем в лог сообщение об установленном соединении
-		log.print("Соединение установлено: ID=%u, ALPN=%s", log_t::flag_t::INFO, eid, client.alpn().protocol.c_str());
+	// Флаг выполненной отправки запроса приложения
+	bool requested = false;
+	/**
+	 * @brief Функция отправки запроса приложения
+	 *
+	 * @note Запрос отправляется однократно: он ставится в очередь либо ранними
+	 *       данными на возобновлённой сессии, либо по установлении соединения
+	 *
+	 * @param eid идентификатор события клиента
+	 */
+	auto request = [&client, &log, &payload, &requested](const event::id_t eid) noexcept -> void {
+		// Если запрос приложения уже отправлен
+		if(requested)
+			// Выходим из функции отправки
+			return;
 		// Выполняем открытие двунаправленного потока приложения
 		const uint64_t sid = client.open(false);
 		// Если поток приложения не открыт
 		if(sid == quic::connection_t::INVALID_STREAM){
 			// Записываем в лог сообщение об ошибке открытия потока
 			log.print("Поток приложения не открыт: ID=%u", log_t::flag_t::CRITICAL, eid);
-			// Выходим из функции обработки
+			// Выходим из функции отправки
 			return;
 		}
+		// Устанавливаем флаг выполненной отправки запроса приложения
+		requested = true;
 		// Отправляем данные с завершением потока (FIN)
 		if(client.send(sid, payload, true)){
 			// Если передаётся приветственное сообщение
@@ -210,6 +223,24 @@ int32_t main(int32_t argc, char * argv[]){
 			// Записываем в лог сообщение об отправке блока данных потока
 			else log.print("Отправлено: ID=%u, Поток=%llu, %zu байт", log_t::flag_t::INFO, eid, static_cast <unsigned long long> (sid), payload.size());
 		}
+	};
+	/**
+	 * Устанавливаем функцию обратного вызова на готовность отправки ранних данных:
+	 * запрос ставится в очередь до завершения хендшейка и уходит вместе с первым
+	 * пакетом, экономя круговую задержку (RFC 9001 §4.6)
+	 */
+	callback.on <void (const event::id_t)> ("early", open_t([&log, &request](const event::id_t eid) noexcept -> void {
+		// Записываем в лог сообщение о готовности к отправке ранних данных
+		log.print("Сессия возобновлена, отправляем ранние данные: ID=%u", log_t::flag_t::INFO, eid);
+		// Выполняем отправку запроса приложения ранними данными
+		request(eid);
+	}));
+	// Устанавливаем функцию обратного вызова на установленное соединение
+	callback.on <void (const event::id_t)> ("open", open_t([&client, &log, &request](const event::id_t eid) noexcept -> void {
+		// Записываем в лог сообщение об установленном соединении
+		log.print("Соединение установлено: ID=%u, ALPN=%s, ранние данные=%s", log_t::flag_t::INFO, eid, client.alpn().protocol.c_str(), (client.early() ? "приняты" : "нет"));
+		// Выполняем отправку запроса приложения, если он не ушёл ранними данными
+		request(eid);
 		// Текст исходящей датаграммы приложения
 		const string unreliable("Hello from QUIC datagram!");
 		/**

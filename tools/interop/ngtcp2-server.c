@@ -180,6 +180,18 @@ static int server_ssl_init(struct server * s){
 		return -1;
 	}
 	SSL_set_app_data(s->ssl, &s->conn_ref);
+	/*
+	 * Контекст ранних данных сервера: билет минтуется под него, и на
+	 * возобновлении значение сверяется. Без контекста boringssl ранние данные
+	 * для QUIC не предлагает вовсе
+	 */
+	{
+		static const uint8_t early_ctx[] = "quic-interop-early";
+		if(SSL_set_quic_early_data_context(s->ssl, early_ctx, sizeof(early_ctx) - 1) != 1){
+			fprintf(stderr, "SSL_set_quic_early_data_context failed\n");
+			return -1;
+		}
+	}
 	SSL_set_accept_state(s->ssl);
 	return 0;
 }
