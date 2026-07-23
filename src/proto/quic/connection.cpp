@@ -401,7 +401,8 @@ awh::quic::Connection::Limits::Limits() noexcept :
  *
  */
 awh::quic::Connection::Flow::Flow() noexcept :
- txData(0), txMax(0), txBlocked(false), rxData(0), rxConsumed(0), rxMax(0), rxQueued(false) {}
+ txData(0), txMax(0), txBlocked(false), txBlockedAt(numeric_limits <uint64_t>::max()),
+ rxData(0), rxConsumed(0), rxMax(0), rxQueued(false) {}
 
 /**
  * @brief Конструктор
@@ -458,6 +459,7 @@ awh::quic::Connection::RemoteCid::RemoteCid() noexcept : seq(0), used(false), ha
 awh::quic::Connection::Stream::Stream() noexcept :
  txOffset(0), txBuffer{""}, txCursor(0), txMax(0), txFin(false), txFinSent(false),
  txReset(false), txResetSent(false), txResetCode(0), txBlocked(false),
+ txBlockedAt(numeric_limits <uint64_t>::max()),
  rxOffset(0), rxHigh(0), rxReady{""}, rxMax(0), rxMaxQueued(false),
  rxFin(false), rxFinal(0), rxFinDelivered(false), rxCounted(0),
  rxReset(false), rxResetCode(0), stopQueued(false), stopSent(false),
@@ -3424,6 +3426,8 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 			elicit = true;
 			// Сбрасываем флаг заблокированной отправки данных соединения
 			this->_flow.txBlocked = false;
+			// Запоминаем лимит, о блокировке которым уведомлён удалённый эндпоинт
+			this->_flow.txBlockedAt = this->_flow.txMax;
 		}
 		/**
 		 * Пока есть анонсы новых идентификаторов соединения и в датаграмме осталось место
@@ -3517,6 +3521,8 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				elicit = true;
 				// Сбрасываем флаг заблокированной отправки данных потока
 				stream.txBlocked = false;
+				// Запоминаем лимит, о блокировке которым уведомлён удалённый эндпоинт
+				stream.txBlockedAt = stream.txMax;
 			}
 		}
 		/**
@@ -3626,15 +3632,23 @@ bool awh::quic::Connection::payload(const level_t level, const size_t budget, st
 				const size_t chunk = static_cast <size_t> (::min(::min(static_cast <uint64_t> (pending), ::min(streamWindow, connWindow)), static_cast <uint64_t> (budget - output.size() - STREAM_OVERHEAD)));
 				// Если данные заблокированы лимитом потока (RFC 9000 §19.13)
 				if((chunk == 0) && (streamWindow == 0)){
-					// Устанавливаем флаг заблокированной отправки данных потока
-					stream.txBlocked = true;
+					/**
+					 * Уведомление о блокировке отправляется однократно на каждое
+					 * значение лимита: пока удалённый эндпоинт не поднял лимит,
+					 * повторять сигнал бессмысленно (RFC 9000 §4.1)
+					 */
+					if(stream.txBlockedAt != stream.txMax)
+						// Устанавливаем флаг заблокированной отправки данных потока
+						stream.txBlocked = true;
 					// Переходим к следующему потоку
 					continue;
 				}
 				// Если данные заблокированы лимитом соединения (RFC 9000 §19.12)
 				if((chunk == 0) && (connWindow == 0)){
-					// Устанавливаем флаг заблокированной отправки данных соединения
-					this->_flow.txBlocked = true;
+					// Уведомление отправляется однократно на каждое значение лимита
+					if(this->_flow.txBlockedAt != this->_flow.txMax)
+						// Устанавливаем флаг заблокированной отправки данных соединения
+						this->_flow.txBlocked = true;
 					// Прекращаем упаковку данных потоков
 					break;
 				}

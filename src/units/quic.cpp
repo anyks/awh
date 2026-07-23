@@ -795,8 +795,15 @@ void awh::unit::QuicClient::complete() noexcept {
 	if((this->_connection == nullptr) || (this->_connection->state() != quic::connection_t::state_t::DRAINING))
 		// Выходим из метода
 		return;
-	// Если приложение было оповещено об установленном соединении
-	if(this->_connected){
+	/**
+	 * Оповещение выполняется однократно и независимо от того, было ли соединение
+	 * установлено: сорванное рукопожатие приложению требуется отличать от
+	 * успешно завершённого обмена, а без оповещения попытка подключения
+	 * заканчивается молча и причина разрыва снаружи неразличима
+	 */
+	if(!this->_notified){
+		// Устанавливаем флаг выполненного оповещения о завершённом соединении
+		this->_notified = true;
 		// Сбрасываем флаг оповещения приложения об установленном соединении
 		this->_connected = false;
 		// Выполняем функцию обратного вызова о завершённом соединении
@@ -1050,6 +1057,8 @@ awh::event::id_t awh::unit::QuicClient::connect(const event::family_t family, st
 	this->_family = ((family == event::family_t::IPV6) ? event::family_t::IPV6 : event::family_t::IPV4);
 	// Формируем адрес удалённого сервера
 	this->_address = (string(ip) + ":" + std::to_string(port));
+	// Сбрасываем флаг выполненного оповещения о завершённом соединении
+	this->_notified = false;
 	// Создаём соединение QUIC на шаблоне контекста безопасности
 	this->_connection = make_unique <quic::connection_t> (
 		quic::endpoint_t::CLIENT, this->_ctx,
@@ -1254,7 +1263,7 @@ void awh::unit::QuicClient::callback(const callback_t & callback) noexcept {
  * @param log объект для работы с логами
  */
 awh::unit::QuicClient::QuicClient(const fmk_t * fmk, const log_t * log) noexcept :
- unit_t(fmk, log), _eid(0), _tid(0), _connected(false), _resume(false), _ecn(false),
+ unit_t(fmk, log), _eid(0), _tid(0), _connected(false), _notified(false), _resume(false), _ecn(false),
  _family(event::family_t::IPV4), _marking(event::ecn_t::NOT_ECT), _ctx(0), _coder(nullptr),
  _ticket{""}, _token{""}, _address{""}, _connection(nullptr) {}
 /**
