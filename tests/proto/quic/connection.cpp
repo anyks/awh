@@ -177,9 +177,10 @@ namespace {
 	 * @param pn      номер отправляемого пакета
 	 * @param payload нагрузка пакета (фреймы)
 	 * @param now     текущее время тестовых часов в миллисекундах
+	 * @param ecn     маркировка ECN, с которой датаграмма доставляется получателю
 	 * @return        результат обработки нагрузки получателем
 	 */
-	static status_t inject(connection_t & from, connection_t & to, const uint64_t pn, const std::string & payload, const uint64_t now) noexcept {
+	static status_t inject(connection_t & from, connection_t & to, const uint64_t pn, const std::string & payload, const uint64_t now, const awh::event::ecn_t ecn = awh::event::ecn_t::NOT_ECT) noexcept {
 		// Получаем ключи защиты исходящих пакетов уровня приложения отправителя
 		const crypto::keys_t * keys = from.handshake().encryption(level_t::APPLICATION);
 		// Если ключи защиты пакетов уровня приложения не выведены
@@ -199,7 +200,7 @@ namespace {
 			// Выводим отрицательный результат
 			return status_t::ERROR;
 		// Выводим результат обработки датаграммы получателем
-		return to.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+		return to.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now, ecn);
 	}
 	/**
 	 * @brief Функция сборки и защиты пакета с длинным заголовком
@@ -2645,6 +2646,322 @@ TEST_F(QuicFixture, RetryTest){
 	// Проверяем состояние соединения обоих эндпоинтов
 	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
 	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест потери флайта управляющих фреймов после хендшейка (RFC 9002 §6.1)
+ *
+ * @details Сразу по завершении хендшейка сервер отправляет подтверждение хендшейка
+ *          и дополнительные идентификаторы соединения одним флайтом. Потеря его
+ *          иначе осталась бы незамеченной: соединение работает, но без запасных
+ *          идентификаторов, то есть без возможности сменить путь
+ */
+TEST_F(QuicFixture, ConnectionLostHandshakeFlightTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры эндпоинтов
+	params::params_t params;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	params.initialMaxStreamsBidi = 100;
+	// Устанавливаем лимит числа однонаправленных потоков
+	params.initialMaxStreamsUni = 100;
+	// Поднимаем лимит активных идентификаторов соединения для выдачи их фреймами
+	params.activeConnectionIdLimit = 4;
+	// Выполняем подготовку соединения клиента
+	::configure(client, params);
+	// Выполняем подготовку соединения сервера
+	::configure(server, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Буфер передаваемой датаграммы
+	std::string datagram = "";
+	/**
+	 * Прогоняем хендшейк до его завершения на сервере, доставляя всё без потерь
+	 */
+	for(size_t i = 0; (i < 10) && (server.state() != connection_t::state_t::CONNECTED); i++){
+		/**
+		 * Передаём датаграммы клиента серверу
+		 */
+		while(client.write(datagram, now)){
+			// Передаём датаграмму серверу
+			server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+			// Очищаем буфер датаграммы от предыдущей сборки
+			datagram.clear();
+		}
+		// Продвигаем тестовые часы
+		now += 10;
+		// Если хендшейк на сервере ещё не завершён
+		if(server.state() != connection_t::state_t::CONNECTED){
+			/**
+			 * Передаём датаграммы сервера клиенту
+			 */
+			while(server.write(datagram, now)){
+				// Передаём датаграмму клиенту
+				client.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+				// Очищаем буфер датаграммы от предыдущей сборки
+				datagram.clear();
+			}
+			// Продвигаем тестовые часы
+			now += 10;
+		}
+	}
+	// Проверяем что хендшейк на сервере завершён
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Количество отброшенных датаграмм первого флайта после хендшейка
+	size_t dropped = 0;
+	/**
+	 * Отбрасываем первый флайт сервера после хендшейка целиком: именно он несёт
+	 * подтверждение хендшейка, токен проверки адреса и выдачу идентификаторов
+	 */
+	while(server.write(datagram, now)){
+		// Считаем отброшенную датаграмму
+		dropped++;
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	// Проверяем что флайт после хендшейка действительно отброшен
+	ASSERT_GT(dropped, static_cast <size_t> (0));
+	// Проверяем что хендшейк на клиенте завершён
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	/**
+	 * Проверяем что запасных идентификаторов соединения у клиента нет: они уходили
+	 * отброшенным флайтом, а без неиспользованного идентификатора смена пути
+	 * невозможна (RFC 9000 §9.5)
+	 */
+	ASSERT_FALSE(client.migrate());
+	/**
+	 * Прогоняем обмен по исправному пути: потерянный флайт обязан быть переотправлен
+	 * по детекту потерь, иначе его содержимое утрачено безвозвратно
+	 */
+	for(size_t i = 0; i < 30; i++){
+		// Продвигаем тестовые часы
+		now += 100;
+		// Выполняем обработку просроченных таймеров сервера
+		server.tick(now);
+		// Выполняем обработку просроченных таймеров клиента
+		client.tick(now);
+		// Выполняем обмен датаграммами до полного затишья
+		::pump(client, server, now);
+	}
+	/**
+	 * Проверяем что выдача идентификаторов соединения дошла до клиента: содержимое
+	 * потерянного флайта восстановлено переотправкой, и смена пути, невозможная
+	 * сразу после его потери, теперь выполнима
+	 */
+	ASSERT_TRUE(client.migrate());
+	// Проверяем что соединение потерю флайта пережило
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест слияния диапазонов подтверждений при заполнении разрывов (RFC 9000 §19.3)
+ *
+ * @details Потерянные и переставленные пакеты образуют разрывы в номерах принятых,
+ *          и подтверждение кодируется несколькими диапазонами. Пришедший позже пакет
+ *          способен сомкнуть два соседних диапазона в один: без слияния подтверждение
+ *          росло бы диапазонами до предела их числа, теряя сведения о принятом
+ */
+TEST_F(QuicFixture, ConnectionAckRangeMergeTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Нагрузка пакета с ack-eliciting фреймом
+	std::string payload = "";
+	// Выполняем сборку фрейма PING (RFC 9000 §19.2)
+	frame::serialize::ping(payload);
+	// Базовый номер доставляемых пакетов
+	static constexpr uint64_t BASE = 2000;
+	/**
+	 * @brief Функция извлечения количества диапазонов подтверждения клиента
+	 *
+	 * @return количество диапазонов в собранном клиентом подтверждении
+	 */
+	auto ranges = [&client, &server, &now]() noexcept -> size_t {
+		// Буфер исходящей датаграммы клиента
+		std::string datagram = "";
+		// Если датаграмма клиентом не собрана
+		if(!client.write(datagram, now))
+			// Выводим нулевое количество диапазонов
+			return 0;
+		// Расшифрованная нагрузка пакета клиента
+		std::string plain = "";
+		// Если снятие защиты с пакета клиента не выполнено
+		if(!::unseal(server, datagram, plain))
+			// Выводим нулевое количество диапазонов
+			return 0;
+		// Разобранный фрейм подтверждения
+		frame::ack_t frame;
+		// Количество потреблённых октетов фрейма
+		size_t consumed = 0;
+		// Код ошибки транспорта
+		error_t error = error_t::NO_ERROR;
+		// Если нагрузка не начинается с фрейма подтверждения
+		if(frame::parser::ack(reinterpret_cast <const uint8_t *> (plain.data()), plain.size(), frame, consumed, error) != status_t::OK)
+			// Выводим нулевое количество диапазонов
+			return 0;
+		// Выводим количество диапазонов собранного подтверждения
+		return frame.ranges.size();
+	};
+	/**
+	 * Доставляем пакеты через один: принятые номера образуют разрывы, и подтверждение
+	 * кодируется отдельным диапазоном на каждый принятый пакет
+	 */
+	for(uint64_t i = 0; i < 4; i++)
+		// Доставляем нагрузку клиенту пакетом 1-RTT с чётным номером
+		ASSERT_EQ(::inject(server, client, (BASE + (i * 2)), payload, now), status_t::OK);
+	/**
+	 * Запоминаем количество диапазонов с разрывами: к принятому за хендшейк
+	 * добавились четыре одиночных пакета, поэтому счёт ведётся от него
+	 */
+	const size_t spread = ranges();
+	// Проверяем что разрывы образовали отдельные диапазоны
+	ASSERT_GE(spread, static_cast <size_t> (4));
+	/**
+	 * Доставляем пакет, смыкающий два соседних диапазона: разрыв между принятыми
+	 * номерами заполнен, и диапазоны обязаны слиться в один
+	 */
+	ASSERT_EQ(::inject(server, client, (BASE + 1), payload, now), status_t::OK);
+	// Проверяем что два диапазона слились в один
+	ASSERT_EQ(ranges(), (spread - 1));
+	/**
+	 * Заполняем оставшиеся разрывы, попутно доставляя пакеты с альтернативной
+	 * маркировкой поддержки перегрузки пути (RFC 9000 §13.4)
+	 */
+	ASSERT_EQ(::inject(server, client, (BASE + 3), payload, now, awh::event::ecn_t::ECT1), status_t::OK);
+	// Проверяем что очередной разрыв сомкнут
+	ASSERT_EQ(ranges(), (spread - 2));
+	// Доставляем последний недостающий пакет
+	ASSERT_EQ(::inject(server, client, (BASE + 5), payload, now, awh::event::ecn_t::ECT1), status_t::OK);
+	/**
+	 * Проверяем что все разрывы между доставленными пакетами сомкнуты: их номера
+	 * образуют сплошной промежуток, кодируемый единственным диапазоном
+	 */
+	ASSERT_EQ(ranges(), (spread - 3));
+	// Проверяем что соединение обработкой разрывов не затронуто
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на клиенте
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест хендшейка на переставляющем пакеты пути (RFC 9000 §7.5)
+ *
+ * @details Флайт хендшейка не помещается в одну датаграмму, и сеть вправе доставить
+ *          его пакеты в любом порядке. Данные криптографического потока при этом
+ *          приходят с разрывами и подлежат сборке по смещениям: без неё хендшейк
+ *          на переставляющем пути не завершается вовсе
+ */
+TEST_F(QuicFixture, ConnectionHandshakeReorderTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Количество переставленных флайтов
+	size_t reordered = 0;
+	/**
+	 * @brief Функция доставки флайта в обратном порядке
+	 *
+	 * @param from эндпоинт-отправитель датаграмм
+	 * @param to   эндпоинт-получатель датаграмм
+	 */
+	auto deliver = [&reordered, &now](connection_t & from, connection_t & to) noexcept -> void {
+		// Список извлечённых датаграмм отправителя
+		std::vector <std::string> batch;
+		// Буфер исходящей датаграммы
+		std::string datagram = "";
+		/**
+		 * Извлекаем датаграммы отправителя (с запасом итераций)
+		 */
+		while((batch.size() < 32) && from.write(datagram, now)){
+			// Запоминаем извлечённую датаграмму
+			batch.push_back(datagram);
+			// Очищаем буфер датаграммы от предыдущей сборки
+			datagram.clear();
+		}
+		// Если флайт содержит несколько датаграмм
+		if(batch.size() > 1)
+			// Считаем переставленный флайт
+			reordered++;
+		/**
+		 * Доставляем флайт в обратном порядке: получатель видит данные
+		 * криптографического потока с разрывом и обязан их собрать
+		 */
+		for(auto i = batch.rbegin(); i != batch.rend(); ++i)
+			// Передаём датаграмму получателю
+			to.read(reinterpret_cast <const uint8_t *> (i->data()), i->size(), now);
+	};
+	/**
+	 * Прогоняем хендшейк по переставляющему пути
+	 */
+	for(size_t i = 0; (i < 20) && ((client.state() != connection_t::state_t::CONNECTED) || (server.state() != connection_t::state_t::CONNECTED)); i++){
+		// Доставляем флайт клиента серверу
+		deliver(client, server);
+		// Продвигаем тестовые часы
+		now += 10;
+		// Доставляем флайт сервера клиенту
+		deliver(server, client);
+		// Продвигаем тестовые часы
+		now += 10;
+	}
+	// Проверяем что перестановка флайтов действительно выполнялась
+	ASSERT_GT(reordered, static_cast <size_t> (0));
+	// Проверяем что хендшейк на переставляющем пути завершён
+	ASSERT_EQ(client.state(), connection_t::state_t::CONNECTED);
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим данные потока в очередь отправки
+	ASSERT_EQ(client.send(sid, "handshake survived reordering", true), status_t::OK);
+	// Выполняем обмен датаграммами до полного затишья
+	::pump(client, server, now);
+	// Буфер принятых сервером данных
+	std::string payload = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Проверяем что данные приняты сервером на переставляющем пути
+	ASSERT_EQ(server.receive(sid, payload, fin), status_t::OK);
+	// Проверяем содержимое принятых данных
+	ASSERT_EQ(payload, "handshake survived reordering");
 	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
 	ASSERT_EQ(client.error(), error_t::NO_ERROR);
 	ASSERT_EQ(server.error(), error_t::NO_ERROR);
@@ -6016,6 +6333,223 @@ TEST_F(QuicFixture, ConnectionSoakTest){
 	ASSERT_LT(server.streams(), static_cast <size_t> (80));
 	// Проверяем что маркировка перегрузки пути пережила прогон
 	ASSERT_EQ(client.marking(), awh::event::ecn_t::ECT0);
+}
+
+/**
+ * @brief Тест удержания завершённых потоков со ссылками в очередях отправки
+ *
+ * @details Поток, завершённый обеими сторонами, подлежит освобождению - но только
+ *          когда на него не ссылаются учётные записи неподтверждённых пакетов.
+ *          Освобождённый раньше времени, он лишил бы ретрансмиссию данных, которые
+ *          при потере пакета придётся отправлять заново
+ */
+TEST_F(QuicFixture, ConnectionCollectReferencedTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Транспортные параметры эндпоинтов
+	params::params_t params;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 4194304;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 262144;
+	// Устанавливаем лимит числа двунаправленных потоков
+	params.initialMaxStreamsBidi = 200;
+	// Устанавливаем лимит числа однонаправленных потоков
+	params.initialMaxStreamsUni = 200;
+	// Выполняем подготовку соединения клиента
+	::configure(client, params);
+	// Выполняем подготовку соединения сервера
+	::configure(server, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Количество открываемых потоков сверх порога сборки завершённых
+	static constexpr size_t COUNT = 90;
+	/**
+	 * Открываем однонаправленные потоки и завершаем каждый: приёмной стороны у них
+	 * нет, поэтому завершённость наступает сразу по отправке признака конца потока
+	 */
+	for(size_t i = 0; i < COUNT; i++){
+		// Открываем однонаправленный поток на клиенте
+		const uint64_t sid = client.open(true);
+		// Проверяем что поток открыт
+		ASSERT_NE(sid, connection_t::INVALID_STREAM);
+		// Ставим данные потока в очередь отправки с завершением
+		ASSERT_EQ(client.send(sid, std::string(256, 'r'), true), status_t::OK);
+	}
+	// Проверяем что потоки клиентом обслуживаются
+	ASSERT_EQ(client.streams(), COUNT);
+	// Список задержанных датаграмм клиента
+	std::vector <std::string> delayed;
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Извлекаем датаграммы клиента, не доставляя их серверу: данные потоков
+	 * упакованы и отправлены, но подтверждения на них не приходят
+	 */
+	while(client.write(datagram, now)){
+		// Запоминаем задержанную датаграмму
+		delayed.push_back(datagram);
+		// Очищаем буфер датаграммы от предыдущей сборки
+		datagram.clear();
+	}
+	// Проверяем что данные потоков действительно отправлены
+	ASSERT_FALSE(delayed.empty());
+	// Продвигаем тестовые часы
+	now += 5;
+	// Выполняем ещё одну сборку - освобождение завершённых потоков выполняется в ней
+	client.write(datagram, now);
+	/**
+	 * Проверяем что завершённые потоки удержаны: на них ссылаются учётные записи
+	 * неподтверждённых пакетов, и при потере любого из них данные придётся
+	 * отправлять заново - освобождать поток рано
+	 */
+	ASSERT_EQ(client.streams(), COUNT);
+	/**
+	 * Доставляем задержанные датаграммы серверу: он подтвердит их приём, и ссылки
+	 * на потоки из учётных записей исчезнут
+	 */
+	for(auto & held : delayed)
+		// Передаём задержанную датаграмму серверу
+		ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (held.data()), held.size(), now), status_t::OK);
+	// Выполняем обмен датаграммами до полного затишья
+	::pump(client, server, now);
+	/**
+	 * Проверяем что подтверждённые потоки освобождены: ссылок на них более нет,
+	 * и удерживать их незачем
+	 */
+	ASSERT_LT(client.streams(), COUNT);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
+ * @brief Тест устойчивости сервера к произвольным датаграммам до аутентификации
+ *
+ * @details Первые датаграммы сервер разбирает, не зная отправителя: подделать их
+ *          способен кто угодно, и это самая доступная постороннему поверхность
+ *          модуля. Разбор заголовков, согласование версий, проверка токена и
+ *          вывод ключей выполняются здесь до всякой аутентификации
+ */
+TEST_F(QuicFixture, ConnectionFuzzUnauthenticatedTest){
+	// Состояние генератора псевдослучайных чисел с фиксированным зерном
+	uint64_t seed = 0xC2B2AE3D27D4EB4Full;
+	/**
+	 * @brief Функция получения очередного псевдослучайного числа
+	 *
+	 * @return псевдослучайное число
+	 */
+	auto random = [&seed]() noexcept -> uint64_t {
+		// Перемешиваем состояние генератора сдвигами
+		seed ^= (seed << 13);
+		seed ^= (seed >> 7);
+		seed ^= (seed << 17);
+		// Выводим состояние генератора
+		return seed;
+	};
+	// Количество обработанных сервером датаграмм
+	size_t processed = 0;
+	/**
+	 * Перебираем раунды: каждый начинается со свежего сервера, поскольку принятая
+	 * датаграмма способна перевести его в состояние завершения
+	 */
+	for(size_t round = 0; round < 300; round++){
+		// Создаём соединение сервера
+		connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+		// Выполняем подготовку соединения сервера
+		::setup(server);
+		// Устанавливаем адрес отправителя датаграмм
+		server.address("198.51.100.7:40000");
+		// Если раунд требует проверки адреса пакетом Retry
+		if((round % 3) == 0)
+			// Включаем проверку адреса клиента через пакет Retry
+			server.retry(true);
+		// Тестовые часы в миллисекундах
+		uint64_t now = 1000;
+		/**
+		 * Доставляем серверу произвольные датаграммы, пока он их принимает
+		 */
+		for(size_t i = 0; i < 8; i++){
+			// Собираемая датаграмма
+			std::string datagram = "";
+			// Размер собираемой датаграммы
+			const size_t length = (1 + (random() % 1400));
+			/**
+			 * Собираем датаграмму: первый октет задаёт форму заголовка, поэтому
+			 * он подбирается из правдоподобных, а прочее заполняется произвольно
+			 */
+			datagram.push_back(static_cast <char> (((random() % 2) != 0) ? (0xC0 | (random() & 0x3F)) : (0x40 | (random() & 0x3F))));
+			/**
+			 * Дописываем номер версии протокола: то поддерживаемый, то произвольный -
+			 * так разбор доходит и до согласования версий
+			 */
+			if((random() % 2) != 0){
+				// Дописываем октеты поддерживаемой версии протокола
+				datagram.append("\x00\x00\x00\x01", 4);
+			// Дописываем октеты произвольной версии протокола
+			} else {
+				/**
+				 * Перебираем октеты номера версии
+				 */
+				for(size_t j = 0; j < 4; j++)
+					// Дописываем очередной октет номера версии
+					datagram.push_back(static_cast <char> (random() & 0xFF));
+			}
+			/**
+			 * Дописываем произвольные октеты датаграммы
+			 */
+			while(datagram.size() < length)
+				// Дописываем очередной произвольный октет
+				datagram.push_back(static_cast <char> (random() & 0xFF));
+			// Продвигаем тестовые часы
+			now += 5;
+			// Доставляем произвольную датаграмму серверу
+			server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now);
+			// Считаем обработанную датаграмму
+			processed++;
+			/**
+			 * Проверяем что сервер остался в определённом состоянии: произвольная
+			 * датаграмма вправе его не тронуть, начать соединение либо завершить,
+			 * но не увести в состояние, из которого он не начинался
+			 */
+			ASSERT_TRUE(
+				(server.state() == connection_t::state_t::NONE) ||
+				(server.state() == connection_t::state_t::HANDSHAKING) ||
+				(server.state() == connection_t::state_t::CONNECTED) ||
+				(server.state() == connection_t::state_t::CLOSING) ||
+				(server.state() == connection_t::state_t::DRAINING)
+			);
+			// Буфер исходящей датаграммы сервера
+			std::string output = "";
+			/**
+			 * Извлекаем датаграммы сервера: ответ на произвольную датаграмму обязан
+			 * оставаться в пределах лимита анти-амплификации, иначе модуль стал бы
+			 * усилителем трафика на подделанный адрес (RFC 9000 §8.1)
+			 */
+			while(server.write(output, now)){
+				// Проверяем что собранная датаграмма не пустая
+				ASSERT_FALSE(output.empty());
+				// Проверяем что ответ не превышает трёхкратного объёма принятого
+				ASSERT_LE(output.size(), (3 * datagram.size()));
+				// Очищаем буфер датаграммы от предыдущей сборки
+				output.clear();
+			}
+			// Выполняем обработку просроченных таймеров сервера
+			server.tick(now);
+		}
+	}
+	// Проверяем что датаграммы сервером действительно обрабатывались
+	ASSERT_GE(processed, static_cast <size_t> (2400));
 }
 
 /**
