@@ -17,6 +17,7 @@
  */
 #include <new>
 #include <cstring>
+#include <utility>
 
 /**
  * Заголовочные файлы BoringSSL
@@ -189,6 +190,90 @@ namespace {
  *
  */
 awh::quic::crypto::Keys::Keys() noexcept : suite(suite_t::AES_128_GCM_SHA256) {}
+/**
+ * @brief Функция затирания ключевого материала набора в памяти
+ *
+ * @note Затирает секрет и выведенные из него ключ, вектор инициализации и ключ
+ *       защиты заголовка до освобождения либо перезаписи их буферов: ключевой
+ *       материал не должен оставаться в куче после разрыва соединения, смены фазы
+ *       или сброса уровня (RFC 9001 §6, defense-in-depth). Ключ развёрнутого
+ *       контекста AEAD и развёртка ключа защиты заголовка затираются
+ *       криптографической библиотекой при освобождении своих контекстов
+ *
+ * @param keys затираемый набор ключей
+ */
+static void wipeKeys(awh::quic::crypto::keys_t & keys) noexcept {
+	if(!keys.secret.empty())
+		// Затираем секрет направления
+		OPENSSL_cleanse(&keys.secret[0], keys.secret.size());
+	if(!keys.key.empty())
+		// Затираем ключ AEAD-шифрования нагрузки
+		OPENSSL_cleanse(&keys.key[0], keys.key.size());
+	if(!keys.iv.empty())
+		// Затираем вектор инициализации AEAD
+		OPENSSL_cleanse(&keys.iv[0], keys.iv.size());
+	if(!keys.hp.empty())
+		// Затираем ключ защиты заголовка
+		OPENSSL_cleanse(&keys.hp[0], keys.hp.size());
+}
+/**
+ * @brief Оператор копирующего присваивания
+ *
+ * @param keys копируемый набор ключей
+ * @return     набор ключей текущего объекта
+ */
+awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (const Keys & keys) noexcept {
+	// Если присваивание выполняется не самому себе
+	if(this != &keys){
+		// Затираем прежний ключевой материал до его перезаписи
+		wipeKeys(* this);
+		// Копируем криптографический набор
+		this->suite = keys.suite;
+		// Копируем секрет и выведенные ключи
+		this->secret = keys.secret;
+		this->key = keys.key;
+		this->iv = keys.iv;
+		this->hp = keys.hp;
+		// Копируем разделяемые контексты защиты пакетов
+		this->aead = keys.aead;
+		this->mask = keys.mask;
+	}
+	// Выводим текущий объект
+	return * this;
+}
+/**
+ * @brief Оператор перемещающего присваивания
+ *
+ * @param keys перемещаемый набор ключей
+ * @return     набор ключей текущего объекта
+ */
+awh::quic::crypto::Keys & awh::quic::crypto::Keys::operator = (Keys && keys) noexcept {
+	// Если присваивание выполняется не самому себе
+	if(this != &keys){
+		// Затираем прежний ключевой материал до его перезаписи
+		wipeKeys(* this);
+		// Копируем криптографический набор
+		this->suite = keys.suite;
+		// Перемещаем секрет и выведенные ключи
+		this->secret = std::move(keys.secret);
+		this->key = std::move(keys.key);
+		this->iv = std::move(keys.iv);
+		this->hp = std::move(keys.hp);
+		// Перемещаем разделяемые контексты защиты пакетов
+		this->aead = std::move(keys.aead);
+		this->mask = std::move(keys.mask);
+	}
+	// Выводим текущий объект
+	return * this;
+}
+/**
+ * @brief Деструктор
+ *
+ */
+awh::quic::crypto::Keys::~Keys() noexcept {
+	// Затираем ключевой материал набора до освобождения его буферов
+	wipeKeys(* this);
+}
 
 /**
  * @brief Функция вывода ключей HKDF-Expand-Label (RFC 8446 §7.1 / RFC 9001 §5.1)
@@ -530,6 +615,8 @@ awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size,
 	if(!result)
 		// Снятие защиты невозможно
 		return status_t::ERROR;
+	// Устанавливаем фактическую длину расшифрованной нагрузки до любых проверок
+	output.resize(length);
 	/**
 	 * Проверяем зарезервированные биты первого октета: они проверяются только после
 	 * снятия обеих защит, иначе неверные ключи давали бы ложное нарушение протокола
@@ -543,8 +630,6 @@ awh::quic::status_t awh::quic::crypto::open(uint8_t * packet, const size_t size,
 		// Снятие защиты невозможно
 		return status_t::ERROR;
 	}
-	// Устанавливаем фактическую длину расшифрованной нагрузки
-	output.resize(length);
 	// Снятие защиты выполнено успешно
 	return status_t::OK;
 }

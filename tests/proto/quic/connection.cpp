@@ -3668,6 +3668,100 @@ TEST_F(QuicFixture, KeyUpdateReorderTest){
 }
 
 /**
+ * @brief Тест сброса ключей предыдущей фазы по истечении выдержки (RFC 9001 §6.3)
+ *
+ * @details Ключи прежней фазы удерживаются лишь на время прихода отставших пакетов -
+ *          порядка трёх интервалов PTO. По истечении выдержки они сбрасываются, и
+ *          отставший пакет прежней фазы, пришедший позже, расшифровать уже нечем: он
+ *          молча отбрасывается, не разрывая соединение. Тот же обмен без выдержки
+ *          (KeyUpdateReorderTest) нагрузку принимает - разница только во времени
+ */
+TEST_F(QuicFixture, KeyUpdatePreviousDiscardTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Открываем двунаправленный поток на клиенте
+	const uint64_t sid = client.open(false);
+	// Проверяем что поток открыт
+	ASSERT_NE(sid, connection_t::INVALID_STREAM);
+	// Ставим данные прежней фазы ключей в очередь отправки
+	ASSERT_EQ(client.send(sid, "phase zero ", false), status_t::OK);
+	// Запоминаем бит фазы ключей клиента до обновления
+	const bool phase = client.phase();
+	// Список задержанных датаграмм прежней фазы ключей
+	std::vector <std::string> delayed;
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	// Извлекаем датаграммы прежней фазы, не доставляя их серверу
+	while(client.write(datagram, now)){
+		// Запоминаем задержанную датаграмму
+		delayed.push_back(datagram);
+		// Очищаем буфер датаграммы
+		datagram.clear();
+	}
+	// Проверяем что датаграммы прежней фазы собраны
+	ASSERT_FALSE(delayed.empty());
+	// Выполняем обновление ключей клиентом (RFC 9001 §6)
+	ASSERT_EQ(client.rekey(), status_t::OK);
+	// Проверяем что бит фазы ключей переключился
+	ASSERT_NE(client.phase(), phase);
+	// Ставим данные новой фазы ключей в очередь отправки
+	ASSERT_EQ(client.send(sid, "phase one", true), status_t::OK);
+	// Продвигаем тестовые часы
+	now += 5;
+	// Доставляем серверу датаграммы новой фазы - сервер переключается на новые ключи
+	while(client.write(datagram, now)){
+		// Передаём датаграмму серверу
+		ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (datagram.data()), datagram.size(), now), status_t::OK);
+		// Очищаем буфер датаграммы
+		datagram.clear();
+	}
+	// Проверяем что сервер переключился на новую фазу ключей
+	ASSERT_EQ(server.phase(), client.phase());
+	/**
+	 * Продвигаем часы далеко за окно удержания ключей прежней фазы (3×PTO) и
+	 * обрабатываем таймеры сервера: ключи прежней фазы сбрасываются (RFC 9001 §6.3)
+	 */
+	now += 5000;
+	// Выполняем обработку просроченных таймеров сервера
+	server.tick(now);
+	/**
+	 * Доставляем задержанные датаграммы прежней фазы уже после сброса её ключей:
+	 * расшифровать их нечем, поэтому они молча отбрасываются
+	 */
+	for(auto & held : delayed)
+		// Передаём задержанную датаграмму серверу
+		ASSERT_EQ(server.read(reinterpret_cast <const uint8_t *> (held.data()), held.size(), now), status_t::OK);
+	// Принятые сервером данные потока
+	std::string received = "";
+	// Флаг завершения потока
+	bool fin = false;
+	// Выдаём собранные данные потока на сервере
+	server.receive(sid, received, fin);
+	/**
+	 * Проверяем что данные прежней фазы не восстановлены: их пакеты отброшены, а
+	 * начало потока отсутствует, поэтому упорядоченная выдача ничего не возвращает
+	 */
+	ASSERT_TRUE(received.empty());
+	// Проверяем что отброшенные пакеты соединение не разорвали
+	ASSERT_EQ(server.state(), connection_t::state_t::CONNECTED);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
  * @brief Тест обновления ключей уровня приложения (RFC 9001 §6)
  *
  */
@@ -5453,6 +5547,57 @@ TEST_F(QuicFixture, ConnectionMigrationSpoofGuardTest){
 }
 
 /**
+ * @brief Тест отключения следования за миграцией удалённого эндпоинта (RFC 9000 §9)
+ *
+ * @details В выключенном режиме следования за миграцией смена адреса удалённого
+ *          эндпоинта не инициирует переход на новый путь даже по аутентифицированному
+ *          непробирующему пакету - это строгая модель §9, где миграцию отслеживает
+ *          только сервер. С включённым режимом тот же пакет вызывает миграцию
+ *          (ConnectionMigrationSpoofGuardTest)
+ */
+TEST_F(QuicFixture, ConnectionMigrationRoamingDisabledTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Выполняем подготовку соединения сервера
+	::setup(server);
+	// Адрес удалённого сервера, подтверждённый хендшейком
+	static const std::string ORIGIN = "198.51.100.9:443";
+	// Новый адрес удалённого сервера
+	static const std::string CHANGED = "203.0.113.5:443";
+	// Устанавливаем исходный адрес удалённого сервера на клиенте
+	client.address(ORIGIN);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Проверяем что путь проложен по исходному адресу
+	ASSERT_EQ(client.path(), ORIGIN);
+	// Отключаем следование за миграцией удалённого эндпоинта (строгая модель §9)
+	client.roaming(false);
+	// Сообщаем клиенту новый адрес отправителя
+	client.address(CHANGED);
+	// Нагрузка пакета с непробирующим фреймом PING
+	std::string nonProbing = "";
+	// Выполняем сборку фрейма PING
+	frame::serialize::ping(nonProbing);
+	// Дополняем нагрузку серией фреймов PADDING
+	frame::serialize::padding(nonProbing, 64);
+	// Доставляем клиенту аутентифицированный непробирующий пакет с нового адреса
+	ASSERT_EQ(::inject(server, client, 5000, nonProbing, now), status_t::OK);
+	// Проверяем что миграция не выполнена - следование за миграцией отключено
+	ASSERT_EQ(client.path(), ORIGIN);
+	ASSERT_EQ(client.migrations(), 0u);
+	// Проверяем отсутствие ошибки транспорта на клиенте
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+}
+
+/**
  * @brief Тест сигнализации блокировки лимитом потоков (RFC 9000 §19.14)
  *
  * @details Упираясь в лимит удалённого эндпоинта на открытие потоков, локальный
@@ -5539,6 +5684,108 @@ TEST_F(QuicFixture, ConnectionStreamsBlockedTest){
 }
 
 /**
+ * @brief Тест переармирования STREAMS_BLOCKED после поднятия лимита (RFC 9000 §19.14)
+ *
+ * @details Если удалённый эндпоинт поднял лимит потоков между блокировкой и отправкой
+ *          сигнала, устаревший STREAMS_BLOCKED снимается без отправки, а повторное
+ *          исчерпание уже нового лимита обязано сигнализироваться заново. Иначе
+ *          отметка об отправленном лимите заглушила бы позднюю настоящую блокировку
+ */
+TEST_F(QuicFixture, ConnectionStreamsBlockedRaiseTest){
+	// Создаём соединение клиента
+	connection_t client(endpoint_t::CLIENT, ::security().context(endpoint_t::CLIENT), ::security().coder(), &::logger());
+	// Создаём соединение сервера
+	connection_t server(endpoint_t::SERVER, ::security().context(endpoint_t::SERVER), ::security().coder(), &::logger());
+	// Выполняем подготовку соединения клиента
+	::setup(client);
+	// Транспортные параметры сервера с тесным лимитом двунаправленных потоков
+	params::params_t params;
+	// Устанавливаем лимит данных соединения
+	params.initialMaxData = 1048576;
+	// Устанавливаем лимит данных локально инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiLocal = 262144;
+	// Устанавливаем лимит данных удалённо инициируемых двунаправленных потоков
+	params.initialMaxStreamDataBidiRemote = 262144;
+	// Устанавливаем лимит данных однонаправленных потоков
+	params.initialMaxStreamDataUni = 262144;
+	// Устанавливаем тесный лимит двунаправленных потоков (один поток)
+	params.initialMaxStreamsBidi = 1;
+	// Устанавливаем лимит однонаправленных потоков
+	params.initialMaxStreamsUni = 100;
+	// Выполняем подготовку соединения сервера с тесным лимитом
+	::configure(server, params);
+	// Выполняем начало соединения клиентом
+	ASSERT_EQ(client.connect(), status_t::OK);
+	// Тестовые часы в миллисекундах
+	uint64_t now = 1000;
+	// Выполняем полное установление соединения
+	ASSERT_TRUE(::establish(client, server, now));
+	// Обмениваемся датаграммами до затишья
+	::pump(client, server, now);
+	// Открываем поток в пределах лимита сервера
+	ASSERT_NE(client.open(false), connection_t::INVALID_STREAM);
+	// Упираемся в лимит сервера - ставится сигнал блокировки
+	ASSERT_EQ(client.open(false), connection_t::INVALID_STREAM);
+	/**
+	 * Удалённый эндпоинт поднимает лимит потоков фреймом MAX_STREAMS до отправки
+	 * сигнала блокировки
+	 */
+	std::string raise = "";
+	// Выполняем сборку фрейма MAX_STREAMS с новым лимитом
+	frame::serialize::single(raise, frame_t::MAX_STREAMS_BIDI, 5);
+	// Доставляем фрейм MAX_STREAMS клиенту
+	ASSERT_EQ(::inject(server, client, 5000, raise, now), status_t::OK);
+	// Буфер исходящей датаграммы клиента
+	std::string datagram = "";
+	/**
+	 * Извлекаем датаграммы клиента, не доставляя их серверу: устаревший сигнал
+	 * блокировки снимается без отправки самим вызовом сборки датаграммы. Доставка
+	 * не нужна - подтверждение внедрённого пакета сервер посчитал бы подтверждением
+	 * не отправленного им пакета
+	 */
+	while(client.write(datagram, now))
+		// Очищаем буфер датаграммы
+		datagram.clear();
+	// Открываем потоки до нового лимита удалённого эндпоинта
+	for(size_t i = 0; i < 4; i++)
+		// Проверяем что поток открыт в пределах нового лимита
+		ASSERT_NE(client.open(false), connection_t::INVALID_STREAM);
+	// Упираемся в новый лимит - настоящая блокировка обязана сигнализироваться заново
+	ASSERT_EQ(client.open(false), connection_t::INVALID_STREAM);
+	// Флаг обнаружения фрейма STREAMS_BLOCKED с новым лимитом
+	bool blocked = false;
+	// Извлекаем датаграммы клиента и ищем сигнал блокировки на новом лимите (тип 0x16, лимит 5)
+	while(client.write(datagram, now)){
+		// Расшифрованная нагрузка пакета
+		std::string plain = "";
+		// Снимаем защиту с датаграммы ключами сервера
+		if(::unseal(server, datagram, plain)){
+			// Ищем фрейм STREAMS_BLOCKED_BIDI с новым лимитом
+			for(size_t i = 0; (i + 1) < plain.size(); i++){
+				// Если найдены тип фрейма и новый лимит блокировки
+				if((static_cast <uint8_t> (plain[i]) == 0x16) && (static_cast <uint8_t> (plain[i + 1]) == 0x05)){
+					// Устанавливаем флаг обнаружения фрейма
+					blocked = true;
+					// Прекращаем поиск
+					break;
+				}
+			}
+		}
+		// Очищаем буфер датаграммы
+		datagram.clear();
+		// Если фрейм обнаружен - прекращаем обмен
+		if(blocked)
+			// Прекращаем извлечение датаграмм
+			break;
+	}
+	// Проверяем что блокировка на новом лимите сигнализирована заново
+	ASSERT_TRUE(blocked);
+	// Проверяем отсутствие ошибки транспорта на обоих эндпоинтах
+	ASSERT_EQ(client.error(), error_t::NO_ERROR);
+	ASSERT_EQ(server.error(), error_t::NO_ERROR);
+}
+
+/**
  * @brief Тест дублирования CONNECTION_CLOSE в пространствах Initial и Handshake (RFC 9000 §10.2.3)
  *
  * @details До подтверждения хендшейка удалённый узел может не иметь ключей уровня
@@ -5593,6 +5840,11 @@ TEST_F(QuicFixture, ConnectionCloseHandshakeSpacesTest){
 	ASSERT_TRUE(::contains(datagram, packet_t::INITIAL));
 	// Проверяем что завершение продублировано в пакете Handshake (RFC 9000 §10.2.3)
 	ASSERT_TRUE(::contains(datagram, packet_t::HANDSHAKE));
+	/**
+	 * Проверяем что датаграмма с пакетом Initial дополнена до минимального размера:
+	 * короткую датаграмму с Initial-пакетом сервер отбросил бы (RFC 9000 §14.1)
+	 */
+	ASSERT_GE(datagram.size(), static_cast <size_t> (proto::MIN_INITIAL_SIZE));
 }
 
 /**
